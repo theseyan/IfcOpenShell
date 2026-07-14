@@ -123,6 +123,18 @@ def _compute_out_c_type(type_spec: TypeSpec, handle_c_type_map: dict[str, str]) 
         return "int64_t*"
     elif kind == "string":
         return "ifcopenshell_string_t*"
+    elif type_spec.sequence_depth:
+        if kind == "handle":
+            if type_spec.handle is None:
+                raise ValueError("handle type is missing handle name")
+            handle_c_type = handle_c_type_map.get(
+                type_spec.handle, f"ifcopenshell_demo_{type_spec.handle}_t"
+            )
+            suffix = "_list" * type_spec.sequence_depth
+            return f"{handle_c_type.removesuffix('_t')}{suffix}_t*"
+        return f"ifcopenshell_{kind}{'_list' * type_spec.sequence_depth}_t*"
+    elif kind == "struct":
+        return f"ifcopenshell_{type_spec.struct}_t*"
     elif kind == "handle":
         if type_spec.handle is None:
             raise ValueError("handle type is missing handle name")
@@ -712,6 +724,157 @@ class TestOutputHandling:
         )
         code = render_python_extension(meta)
         assert "wrap_demo_file" in code
+
+    def test_owned_and_borrowed_handle_results_own_the_envelope(self):
+        meta = _make_metadata(
+            handles={"item": _make_handle("item", "ifcopenshell_demo_item_t")},
+            functions={
+                "ifcopenshell_demo_owned": _make_function(
+                    c_name="ifcopenshell_demo_owned",
+                    returns=TypeSpec(kind="handle", handle="item", ownership="owned"),
+                ),
+                "ifcopenshell_demo_borrowed": _make_function(
+                    c_name="ifcopenshell_demo_borrowed",
+                    returns=TypeSpec(kind="handle", handle="item", ownership="borrowed"),
+                ),
+            },
+        )
+
+        code = render_python_extension(meta)
+
+        assert code.count("wrap_demo_item(result, 1)") == 2
+        assert "wrap_demo_item(result, 0)" not in code
+        assert "C handle envelope ownership flag" in code
+
+    def test_value_handle_results_are_wrapped_for_envelope_cleanup(self):
+        meta = _make_metadata(
+            handles={"value": _make_handle("value", "ifcopenshell_demo_value_t")},
+            functions={
+                "ifcopenshell_demo_get_value": _make_function(
+                    c_name="ifcopenshell_demo_get_value",
+                    returns=TypeSpec(kind="handle", handle="value", ownership="borrowed"),
+                )
+            },
+        )
+
+        code = render_python_extension(meta)
+
+        assert "wrap_demo_value(result, 1)" in code
+
+    def test_handle_sequence_transfers_envelopes_before_container_cleanup(self):
+        meta = _make_metadata(
+            handles={"item": _make_handle("item", "ifcopenshell_demo_item_t")},
+            value_types={
+                "demo_item_list": CTypeIR(
+                    c_type="ifcopenshell_demo_item_list_t",
+                    kind="handle_sequence",
+                    fields=(
+                        CFieldIR("items", "ifcopenshell_demo_item_t**"),
+                        CFieldIR("size", "size_t"),
+                    ),
+                    destroy_function="ifcopenshell_demo_item_list_destroy",
+                    element_type="ifcopenshell_demo_item_t",
+                    sequence_depth=1,
+                )
+            },
+            functions={
+                "ifcopenshell_demo_items": _make_function(
+                    c_name="ifcopenshell_demo_items",
+                    returns=TypeSpec(kind="handle", handle="item", sequence_depth=1),
+                )
+            },
+        )
+
+        code = render_python_extension(meta)
+
+        assert "wrap_demo_item(value->items[i], owned)" in code
+        assert "value->items[i] = NULL;" in code
+        assert "ifcopenshell_demo_item_list_destroy(value);" in code
+
+    def test_result_struct_cleanup_transfers_nested_handles(self):
+        meta = _make_metadata(
+            handles={"item": _make_handle("item", "ifcopenshell_demo_item_t")},
+            value_types={
+                "demo_item_list": CTypeIR(
+                    c_type="ifcopenshell_demo_item_list_t",
+                    kind="handle_sequence",
+                    fields=(
+                        CFieldIR("items", "ifcopenshell_demo_item_t**"),
+                        CFieldIR("size", "size_t"),
+                    ),
+                    destroy_function="ifcopenshell_demo_item_list_destroy",
+                    element_type="ifcopenshell_demo_item_t",
+                    sequence_depth=1,
+                ),
+                "double_list": CTypeIR(
+                    c_type="ifcopenshell_double_list_t",
+                    kind="sequence",
+                    fields=(CFieldIR("items", "double*"), CFieldIR("size", "size_t")),
+                    destroy_function="ifcopenshell_double_list_destroy",
+                    element_type="double",
+                    sequence_depth=1,
+                ),
+                "demo_result": CTypeIR(
+                    c_type="ifcopenshell_demo_result_t",
+                    kind="result_struct",
+                    fields=(
+                        CFieldIR("item", "ifcopenshell_demo_item_t*"),
+                        CFieldIR("items", "ifcopenshell_demo_item_list_t"),
+                        CFieldIR("values", "ifcopenshell_double_list_t"),
+                        CFieldIR("label", "ifcopenshell_string_t"),
+                    ),
+                    destroy_function="ifcopenshell_demo_result_destroy",
+                ),
+            },
+            functions={
+                "ifcopenshell_demo_result": _make_function(
+                    c_name="ifcopenshell_demo_result",
+                    returns=TypeSpec(kind="struct", struct="demo_result"),
+                )
+            },
+        )
+
+        code = render_python_extension(meta)
+
+        assert (
+            "if (!SimpleNamespaceType) {\n"
+            "        ifcopenshell_demo_result_destroy(value);" in code
+        )
+        assert "value->item = NULL;" in code
+        assert "ifcopenshell_demo_result_destroy(value);" in code
+        assert "convert_demo_item_list(&value->items, 1)" in code
+
+    def test_nullable_result_struct_cleanup_handles_absent_and_present_values(self):
+        meta = _make_metadata(
+            value_types={
+                "demo_result": CTypeIR(
+                    c_type="ifcopenshell_demo_result_t",
+                    kind="result_struct",
+                    fields=(CFieldIR("value", "double"),),
+                    destroy_function="ifcopenshell_demo_result_destroy",
+                ),
+                "optional_demo_result": CTypeIR(
+                    c_type="ifcopenshell_optional_demo_result_t",
+                    kind="optional_result_struct",
+                    fields=(
+                        CFieldIR("has_value", "bool"),
+                        CFieldIR("value", "ifcopenshell_demo_result_t"),
+                    ),
+                    destroy_function="ifcopenshell_optional_demo_result_destroy",
+                ),
+            },
+            functions={
+                "ifcopenshell_demo_optional": _make_function(
+                    c_name="ifcopenshell_demo_optional",
+                    returns=TypeSpec(kind="struct", struct="demo_result", nullable=True),
+                )
+            },
+        )
+
+        code = render_python_extension(meta)
+
+        assert "if (!value->has_value)" in code
+        assert "ifcopenshell_optional_demo_result_destroy(value);" in code
 
     def test_out_param_declared_before_call(self):
         meta = _make_metadata(

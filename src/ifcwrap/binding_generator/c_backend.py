@@ -19,6 +19,7 @@ from .c_sequence_helpers import (
     _used_handle_list_handles,
     _used_scalar_sequence_kinds,
 )
+from .c_value_rendering import _render_result_struct_destroy_impls
 from .c_variant_helpers import _render_variant_destroy_impls
 from .debug import debug_log
 
@@ -138,6 +139,7 @@ int {ir.c_prefix}_last_error_kind(void) {{
 {destroy_impls_block}
 {handle_list_destroy_impls}
 {handle_list_list_destroy_impls}
+{_render_result_struct_destroy_impls(ir)}
 {variant_destroy_impls}
 
 {call_impls}

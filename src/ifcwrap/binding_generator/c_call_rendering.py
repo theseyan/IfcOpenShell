@@ -94,6 +94,71 @@ def _finalized_variant_field_c_type(
     )
 
 
+def _render_result_struct_field_assignments(
+    struct: object,
+    spec: BindingIR,
+    source_expr: str,
+    target_expr: str,
+    indent: str = "",
+) -> list[str]:
+    assignments: list[str] = []
+    for field in struct.fields:
+        cpp_field = field.cpp_field or field.name
+        field_expr = f"{source_expr}.{cpp_field}"
+        target_separator = "->" if target_expr == "out_result" else "."
+        target_field = f"{target_expr}{target_separator}{field.name}"
+        field_type = field.type
+        field_sequence_kind = _type_spec_sequence_kind(field_type)
+        if field_sequence_kind is not None:
+            assignment = f"{_sequence_make_helper(field_sequence_kind)}({field_expr})"
+            assignments.append(f"{indent}{target_field} = {assignment};")
+        elif field_type.kind in _SCALAR_PARAM_TYPES:
+            c_type = _finalized_result_field_c_type(spec, struct.name, field.name)
+            assignments.append(
+                f"{indent}{target_field} = static_cast<{c_type}>({field_expr});"
+            )
+        elif field_type.kind == "string":
+            helper = (
+                "make_static_string"
+                if field_type.ownership == "static"
+                else "make_string"
+            )
+            assignments.append(f"{indent}{target_field} = {helper}({field_expr});")
+        elif field_type.kind == "handle":
+            if field_type.sequence_depth == 1:
+                assignment = (
+                    f"{_handle_list_helper_name(spec.handles[field_type.handle])}"
+                    f"({field_expr})"
+                )
+            elif field_type.sequence_depth == 2:
+                assignment = (
+                    f"{_handle_list_list_helper_name(spec.handles[field_type.handle])}"
+                    f"({field_expr})"
+                )
+            else:
+                assignment = _wrap_handle_expr(field_type, field_expr, spec)
+            assignments.append(f"{indent}{target_field} = {assignment};")
+        elif field_type.kind == "opaque_ptr":
+            assignments.append(
+                f"{indent}{target_field} = static_cast<void*>({field_expr});"
+            )
+        elif field_type.kind == "struct":
+            if field_type.struct is None:
+                raise ValueError(
+                    f"Result struct field {field.name} is missing struct name"
+                )
+            nested = spec.result_structs[field_type.struct]
+            assignments.append(f"{indent}{target_field} = {{}};")
+            assignments.extend(
+                _render_result_struct_field_assignments(
+                    nested, spec, field_expr, target_field, indent
+                )
+            )
+        else:
+            raise ValueError(f"Unsupported result struct field kind: {field_type.kind}")
+    return assignments
+
+
 def _value_handle_empty_expr(handle: object, value_expr: str) -> str:
     empty_check = getattr(handle, "empty_check", None)
     if empty_check:
@@ -262,55 +327,62 @@ def _render_result_assignment(call: CallIR, spec: BindingIR, expr: str) -> str:
         if type_spec.struct is None:
             raise ValueError(f"{call.c_name} struct return is missing struct name")
         struct = spec.result_structs[type_spec.struct]
-        lines = [f"auto result_value = {expr};"]
-        target = "out_result"
-        value_expr_prefix = "result_value"
+        if spec.abi is None:
+            raise ValueError("C emission requires a finalized BindingIR")
+        out_param = next(
+            param
+            for param in spec.abi.functions[call.c_name].params
+            if param.role == "out_result"
+        )
+        result_c_type = out_param.c_type.removesuffix("*").strip()
+        result_value_type = next(
+            value
+            for value in spec.abi.value_types.values()
+            if value.c_type == result_c_type
+        )
+        if result_value_type.destroy_function is None:
+            raise ValueError(f"{call.c_name} result struct has no destroy function")
+        local_result = "result_value_c"
+        lines = [
+            f"auto result_value = {expr};",
+            f"{result_c_type} {local_result}{{}};",
+            "try {",
+        ]
         if type_spec.nullable:
             lines.extend(
                 [
-                    "out_result->has_value = static_cast<bool>(result_value);",
-                    "if (result_value) {",
+                    f"    {local_result}.has_value = static_cast<bool>(result_value);",
+                    f"    if (result_value) {{",
                 ]
             )
-            target = "out_result->value"
             value_expr_prefix = "(*result_value)"
-        for field in struct.fields:
-            cpp_field = field.cpp_field or field.name
-            field_expr = f"{value_expr_prefix}.{cpp_field}"
-            field_type = field.type
-            field_sequence_kind = _type_spec_sequence_kind(field_type)
-            if field_sequence_kind is not None:
-                assignment = (
-                    f"{_sequence_make_helper(field_sequence_kind)}({field_expr})"
-                )
-            elif field_type.kind in _SCALAR_PARAM_TYPES:
-                c_type = _finalized_result_field_c_type(spec, struct.name, field.name)
-                assignment = f"static_cast<{c_type}>({field_expr})"
-            elif field_type.kind == "string":
-                helper = (
-                    "make_static_string"
-                    if field_type.ownership == "static"
-                    else "make_string"
-                )
-                assignment = f"{helper}({field_expr})"
-            elif field_type.kind == "handle":
-                if field_type.sequence_depth == 1:
-                    assignment = f"{_handle_list_helper_name(spec.handles[field_type.handle])}({field_expr})"
-                elif field_type.sequence_depth == 2:
-                    assignment = f"{_handle_list_list_helper_name(spec.handles[field_type.handle])}({field_expr})"
-                else:
-                    assignment = _wrap_handle_expr(field_type, field_expr, spec)
-            elif field_type.kind == "opaque_ptr":
-                assignment = f"static_cast<void*>({field_expr})"
-            else:
-                raise ValueError(
-                    f"Unsupported result struct field kind: {field_type.kind}"
-                )
-            separator = "." if target.endswith("value") else "->"
-            prefix = "    " if type_spec.nullable else ""
-            lines.append(f"{prefix}{target}{separator}{field.name} = {assignment};")
+            target_expr = f"{local_result}.value"
+            field_indent = "        "
+        else:
+            value_expr_prefix = "result_value"
+            target_expr = local_result
+            field_indent = "    "
+        lines.extend(
+            _render_result_struct_field_assignments(
+                struct,
+                spec,
+                value_expr_prefix,
+                target_expr,
+                field_indent,
+            )
+        )
         if type_spec.nullable:
-            lines.append("}")
+            lines.append(f"    }}")
+        lines.extend(
+            [
+                f"    *out_result = {local_result};",
+                f"    {local_result} = {{}};",
+                "} catch (...) {",
+                f"    {result_value_type.destroy_function}(&{local_result});",
+                "    throw;",
+                "}",
+            ]
+        )
         return "\n        ".join(lines)
     if kind == "variant":
         lines = [f"auto result_value = {expr};"]

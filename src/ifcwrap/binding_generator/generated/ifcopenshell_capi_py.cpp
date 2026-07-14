@@ -61,7 +61,7 @@ static int IfcOpenshellAggregationType_init(IfcOpenshellAggregationTypeObject *s
 static PyMemberDef IfcOpenshellAggregationType_members[] = {
     {"_handle_ptr", T_PYSSIZET, offsetof(IfcOpenshellAggregationTypeObject, handle), READONLY, "Raw C pointer"},
     {"handle", T_PYSSIZET, offsetof(IfcOpenshellAggregationTypeObject, handle), READONLY, "Raw C pointer"},
-    {"owned", T_INT, offsetof(IfcOpenshellAggregationTypeObject, owned), READONLY, "Ownership flag"},
+    {"owned", T_INT, offsetof(IfcOpenshellAggregationTypeObject, owned), READONLY, "C handle envelope ownership flag"},
     {NULL}
 };
 
@@ -112,7 +112,7 @@ static int IfcOpenshellAttribute_init(IfcOpenshellAttributeObject *self, PyObjec
 static PyMemberDef IfcOpenshellAttribute_members[] = {
     {"_handle_ptr", T_PYSSIZET, offsetof(IfcOpenshellAttributeObject, handle), READONLY, "Raw C pointer"},
     {"handle", T_PYSSIZET, offsetof(IfcOpenshellAttributeObject, handle), READONLY, "Raw C pointer"},
-    {"owned", T_INT, offsetof(IfcOpenshellAttributeObject, owned), READONLY, "Ownership flag"},
+    {"owned", T_INT, offsetof(IfcOpenshellAttributeObject, owned), READONLY, "C handle envelope ownership flag"},
     {NULL}
 };
 
@@ -163,7 +163,7 @@ static int IfcOpenshellDeclaration_init(IfcOpenshellDeclarationObject *self, PyO
 static PyMemberDef IfcOpenshellDeclaration_members[] = {
     {"_handle_ptr", T_PYSSIZET, offsetof(IfcOpenshellDeclarationObject, handle), READONLY, "Raw C pointer"},
     {"handle", T_PYSSIZET, offsetof(IfcOpenshellDeclarationObject, handle), READONLY, "Raw C pointer"},
-    {"owned", T_INT, offsetof(IfcOpenshellDeclarationObject, owned), READONLY, "Ownership flag"},
+    {"owned", T_INT, offsetof(IfcOpenshellDeclarationObject, owned), READONLY, "C handle envelope ownership flag"},
     {NULL}
 };
 
@@ -214,7 +214,7 @@ static int IfcOpenshellEntity_init(IfcOpenshellEntityObject *self, PyObject *arg
 static PyMemberDef IfcOpenshellEntity_members[] = {
     {"_handle_ptr", T_PYSSIZET, offsetof(IfcOpenshellEntityObject, handle), READONLY, "Raw C pointer"},
     {"handle", T_PYSSIZET, offsetof(IfcOpenshellEntityObject, handle), READONLY, "Raw C pointer"},
-    {"owned", T_INT, offsetof(IfcOpenshellEntityObject, owned), READONLY, "Ownership flag"},
+    {"owned", T_INT, offsetof(IfcOpenshellEntityObject, owned), READONLY, "C handle envelope ownership flag"},
     {NULL}
 };
 
@@ -265,7 +265,7 @@ static int IfcOpenshellEnumeration_init(IfcOpenshellEnumerationObject *self, PyO
 static PyMemberDef IfcOpenshellEnumeration_members[] = {
     {"_handle_ptr", T_PYSSIZET, offsetof(IfcOpenshellEnumerationObject, handle), READONLY, "Raw C pointer"},
     {"handle", T_PYSSIZET, offsetof(IfcOpenshellEnumerationObject, handle), READONLY, "Raw C pointer"},
-    {"owned", T_INT, offsetof(IfcOpenshellEnumerationObject, owned), READONLY, "Ownership flag"},
+    {"owned", T_INT, offsetof(IfcOpenshellEnumerationObject, owned), READONLY, "C handle envelope ownership flag"},
     {NULL}
 };
 
@@ -316,7 +316,7 @@ static int IfcOpenshellFileDescription_init(IfcOpenshellFileDescriptionObject *s
 static PyMemberDef IfcOpenshellFileDescription_members[] = {
     {"_handle_ptr", T_PYSSIZET, offsetof(IfcOpenshellFileDescriptionObject, handle), READONLY, "Raw C pointer"},
     {"handle", T_PYSSIZET, offsetof(IfcOpenshellFileDescriptionObject, handle), READONLY, "Raw C pointer"},
-    {"owned", T_INT, offsetof(IfcOpenshellFileDescriptionObject, owned), READONLY, "Ownership flag"},
+    {"owned", T_INT, offsetof(IfcOpenshellFileDescriptionObject, owned), READONLY, "C handle envelope ownership flag"},
     {NULL}
 };
 
@@ -367,7 +367,7 @@ static int IfcOpenshellFileName_init(IfcOpenshellFileNameObject *self, PyObject 
 static PyMemberDef IfcOpenshellFileName_members[] = {
     {"_handle_ptr", T_PYSSIZET, offsetof(IfcOpenshellFileNameObject, handle), READONLY, "Raw C pointer"},
     {"handle", T_PYSSIZET, offsetof(IfcOpenshellFileNameObject, handle), READONLY, "Raw C pointer"},
-    {"owned", T_INT, offsetof(IfcOpenshellFileNameObject, owned), READONLY, "Ownership flag"},
+    {"owned", T_INT, offsetof(IfcOpenshellFileNameObject, owned), READONLY, "C handle envelope ownership flag"},
     {NULL}
 };
 
@@ -418,7 +418,7 @@ static int IfcOpenshellFileSchema_init(IfcOpenshellFileSchemaObject *self, PyObj
 static PyMemberDef IfcOpenshellFileSchema_members[] = {
     {"_handle_ptr", T_PYSSIZET, offsetof(IfcOpenshellFileSchemaObject, handle), READONLY, "Raw C pointer"},
     {"handle", T_PYSSIZET, offsetof(IfcOpenshellFileSchemaObject, handle), READONLY, "Raw C pointer"},
-    {"owned", T_INT, offsetof(IfcOpenshellFileSchemaObject, owned), READONLY, "Ownership flag"},
+    {"owned", T_INT, offsetof(IfcOpenshellFileSchemaObject, owned), READONLY, "C handle envelope ownership flag"},
     {NULL}
 };
 
@@ -469,7 +469,7 @@ static int IfcOpenshellFile_init(IfcOpenshellFileObject *self, PyObject *args, P
 static PyMemberDef IfcOpenshellFile_members[] = {
     {"_handle_ptr", T_PYSSIZET, offsetof(IfcOpenshellFileObject, handle), READONLY, "Raw C pointer"},
     {"handle", T_PYSSIZET, offsetof(IfcOpenshellFileObject, handle), READONLY, "Raw C pointer"},
-    {"owned", T_INT, offsetof(IfcOpenshellFileObject, owned), READONLY, "Ownership flag"},
+    {"owned", T_INT, offsetof(IfcOpenshellFileObject, owned), READONLY, "C handle envelope ownership flag"},
     {NULL}
 };
 
@@ -520,7 +520,7 @@ static int IfcOpenshellGeomBrepElement_init(IfcOpenshellGeomBrepElementObject *s
 static PyMemberDef IfcOpenshellGeomBrepElement_members[] = {
     {"_handle_ptr", T_PYSSIZET, offsetof(IfcOpenshellGeomBrepElementObject, handle), READONLY, "Raw C pointer"},
     {"handle", T_PYSSIZET, offsetof(IfcOpenshellGeomBrepElementObject, handle), READONLY, "Raw C pointer"},
-    {"owned", T_INT, offsetof(IfcOpenshellGeomBrepElementObject, owned), READONLY, "Ownership flag"},
+    {"owned", T_INT, offsetof(IfcOpenshellGeomBrepElementObject, owned), READONLY, "C handle envelope ownership flag"},
     {NULL}
 };
 
@@ -571,7 +571,7 @@ static int IfcOpenshellGeomBrepRepresentation_init(IfcOpenshellGeomBrepRepresent
 static PyMemberDef IfcOpenshellGeomBrepRepresentation_members[] = {
     {"_handle_ptr", T_PYSSIZET, offsetof(IfcOpenshellGeomBrepRepresentationObject, handle), READONLY, "Raw C pointer"},
     {"handle", T_PYSSIZET, offsetof(IfcOpenshellGeomBrepRepresentationObject, handle), READONLY, "Raw C pointer"},
-    {"owned", T_INT, offsetof(IfcOpenshellGeomBrepRepresentationObject, owned), READONLY, "Ownership flag"},
+    {"owned", T_INT, offsetof(IfcOpenshellGeomBrepRepresentationObject, owned), READONLY, "C handle envelope ownership flag"},
     {NULL}
 };
 
@@ -622,7 +622,7 @@ static int IfcOpenshellGeomBuffer_init(IfcOpenshellGeomBufferObject *self, PyObj
 static PyMemberDef IfcOpenshellGeomBuffer_members[] = {
     {"_handle_ptr", T_PYSSIZET, offsetof(IfcOpenshellGeomBufferObject, handle), READONLY, "Raw C pointer"},
     {"handle", T_PYSSIZET, offsetof(IfcOpenshellGeomBufferObject, handle), READONLY, "Raw C pointer"},
-    {"owned", T_INT, offsetof(IfcOpenshellGeomBufferObject, owned), READONLY, "Ownership flag"},
+    {"owned", T_INT, offsetof(IfcOpenshellGeomBufferObject, owned), READONLY, "C handle envelope ownership flag"},
     {NULL}
 };
 
@@ -673,7 +673,7 @@ static int IfcOpenshellGeomConversionResultShape_init(IfcOpenshellGeomConversion
 static PyMemberDef IfcOpenshellGeomConversionResultShape_members[] = {
     {"_handle_ptr", T_PYSSIZET, offsetof(IfcOpenshellGeomConversionResultShapeObject, handle), READONLY, "Raw C pointer"},
     {"handle", T_PYSSIZET, offsetof(IfcOpenshellGeomConversionResultShapeObject, handle), READONLY, "Raw C pointer"},
-    {"owned", T_INT, offsetof(IfcOpenshellGeomConversionResultShapeObject, owned), READONLY, "Ownership flag"},
+    {"owned", T_INT, offsetof(IfcOpenshellGeomConversionResultShapeObject, owned), READONLY, "C handle envelope ownership flag"},
     {NULL}
 };
 
@@ -724,7 +724,7 @@ static int IfcOpenshellGeomElement_init(IfcOpenshellGeomElementObject *self, PyO
 static PyMemberDef IfcOpenshellGeomElement_members[] = {
     {"_handle_ptr", T_PYSSIZET, offsetof(IfcOpenshellGeomElementObject, handle), READONLY, "Raw C pointer"},
     {"handle", T_PYSSIZET, offsetof(IfcOpenshellGeomElementObject, handle), READONLY, "Raw C pointer"},
-    {"owned", T_INT, offsetof(IfcOpenshellGeomElementObject, owned), READONLY, "Ownership flag"},
+    {"owned", T_INT, offsetof(IfcOpenshellGeomElementObject, owned), READONLY, "C handle envelope ownership flag"},
     {NULL}
 };
 
@@ -775,7 +775,7 @@ static int IfcOpenshellGeomFunctionItemEvaluator_init(IfcOpenshellGeomFunctionIt
 static PyMemberDef IfcOpenshellGeomFunctionItemEvaluator_members[] = {
     {"_handle_ptr", T_PYSSIZET, offsetof(IfcOpenshellGeomFunctionItemEvaluatorObject, handle), READONLY, "Raw C pointer"},
     {"handle", T_PYSSIZET, offsetof(IfcOpenshellGeomFunctionItemEvaluatorObject, handle), READONLY, "Raw C pointer"},
-    {"owned", T_INT, offsetof(IfcOpenshellGeomFunctionItemEvaluatorObject, owned), READONLY, "Ownership flag"},
+    {"owned", T_INT, offsetof(IfcOpenshellGeomFunctionItemEvaluatorObject, owned), READONLY, "C handle envelope ownership flag"},
     {NULL}
 };
 
@@ -826,7 +826,7 @@ static int IfcOpenshellGeomGeometrySerializer_init(IfcOpenshellGeomGeometrySeria
 static PyMemberDef IfcOpenshellGeomGeometrySerializer_members[] = {
     {"_handle_ptr", T_PYSSIZET, offsetof(IfcOpenshellGeomGeometrySerializerObject, handle), READONLY, "Raw C pointer"},
     {"handle", T_PYSSIZET, offsetof(IfcOpenshellGeomGeometrySerializerObject, handle), READONLY, "Raw C pointer"},
-    {"owned", T_INT, offsetof(IfcOpenshellGeomGeometrySerializerObject, owned), READONLY, "Ownership flag"},
+    {"owned", T_INT, offsetof(IfcOpenshellGeomGeometrySerializerObject, owned), READONLY, "C handle envelope ownership flag"},
     {NULL}
 };
 
@@ -877,7 +877,7 @@ static int IfcOpenshellGeomIterator_init(IfcOpenshellGeomIteratorObject *self, P
 static PyMemberDef IfcOpenshellGeomIterator_members[] = {
     {"_handle_ptr", T_PYSSIZET, offsetof(IfcOpenshellGeomIteratorObject, handle), READONLY, "Raw C pointer"},
     {"handle", T_PYSSIZET, offsetof(IfcOpenshellGeomIteratorObject, handle), READONLY, "Raw C pointer"},
-    {"owned", T_INT, offsetof(IfcOpenshellGeomIteratorObject, owned), READONLY, "Ownership flag"},
+    {"owned", T_INT, offsetof(IfcOpenshellGeomIteratorObject, owned), READONLY, "C handle envelope ownership flag"},
     {NULL}
 };
 
@@ -928,7 +928,7 @@ static int IfcOpenshellGeomOpaqueNumber_init(IfcOpenshellGeomOpaqueNumberObject 
 static PyMemberDef IfcOpenshellGeomOpaqueNumber_members[] = {
     {"_handle_ptr", T_PYSSIZET, offsetof(IfcOpenshellGeomOpaqueNumberObject, handle), READONLY, "Raw C pointer"},
     {"handle", T_PYSSIZET, offsetof(IfcOpenshellGeomOpaqueNumberObject, handle), READONLY, "Raw C pointer"},
-    {"owned", T_INT, offsetof(IfcOpenshellGeomOpaqueNumberObject, owned), READONLY, "Ownership flag"},
+    {"owned", T_INT, offsetof(IfcOpenshellGeomOpaqueNumberObject, owned), READONLY, "C handle envelope ownership flag"},
     {NULL}
 };
 
@@ -979,7 +979,7 @@ static int IfcOpenshellGeomSerialization_init(IfcOpenshellGeomSerializationObjec
 static PyMemberDef IfcOpenshellGeomSerialization_members[] = {
     {"_handle_ptr", T_PYSSIZET, offsetof(IfcOpenshellGeomSerializationObject, handle), READONLY, "Raw C pointer"},
     {"handle", T_PYSSIZET, offsetof(IfcOpenshellGeomSerializationObject, handle), READONLY, "Raw C pointer"},
-    {"owned", T_INT, offsetof(IfcOpenshellGeomSerializationObject, owned), READONLY, "Ownership flag"},
+    {"owned", T_INT, offsetof(IfcOpenshellGeomSerializationObject, owned), READONLY, "C handle envelope ownership flag"},
     {NULL}
 };
 
@@ -1030,7 +1030,7 @@ static int IfcOpenshellGeomSerializedElement_init(IfcOpenshellGeomSerializedElem
 static PyMemberDef IfcOpenshellGeomSerializedElement_members[] = {
     {"_handle_ptr", T_PYSSIZET, offsetof(IfcOpenshellGeomSerializedElementObject, handle), READONLY, "Raw C pointer"},
     {"handle", T_PYSSIZET, offsetof(IfcOpenshellGeomSerializedElementObject, handle), READONLY, "Raw C pointer"},
-    {"owned", T_INT, offsetof(IfcOpenshellGeomSerializedElementObject, owned), READONLY, "Ownership flag"},
+    {"owned", T_INT, offsetof(IfcOpenshellGeomSerializedElementObject, owned), READONLY, "C handle envelope ownership flag"},
     {NULL}
 };
 
@@ -1081,7 +1081,7 @@ static int IfcOpenshellGeomSerializerSettings_init(IfcOpenshellGeomSerializerSet
 static PyMemberDef IfcOpenshellGeomSerializerSettings_members[] = {
     {"_handle_ptr", T_PYSSIZET, offsetof(IfcOpenshellGeomSerializerSettingsObject, handle), READONLY, "Raw C pointer"},
     {"handle", T_PYSSIZET, offsetof(IfcOpenshellGeomSerializerSettingsObject, handle), READONLY, "Raw C pointer"},
-    {"owned", T_INT, offsetof(IfcOpenshellGeomSerializerSettingsObject, owned), READONLY, "Ownership flag"},
+    {"owned", T_INT, offsetof(IfcOpenshellGeomSerializerSettingsObject, owned), READONLY, "C handle envelope ownership flag"},
     {NULL}
 };
 
@@ -1132,7 +1132,7 @@ static int IfcOpenshellGeomSerializer_init(IfcOpenshellGeomSerializerObject *sel
 static PyMemberDef IfcOpenshellGeomSerializer_members[] = {
     {"_handle_ptr", T_PYSSIZET, offsetof(IfcOpenshellGeomSerializerObject, handle), READONLY, "Raw C pointer"},
     {"handle", T_PYSSIZET, offsetof(IfcOpenshellGeomSerializerObject, handle), READONLY, "Raw C pointer"},
-    {"owned", T_INT, offsetof(IfcOpenshellGeomSerializerObject, owned), READONLY, "Ownership flag"},
+    {"owned", T_INT, offsetof(IfcOpenshellGeomSerializerObject, owned), READONLY, "C handle envelope ownership flag"},
     {NULL}
 };
 
@@ -1183,7 +1183,7 @@ static int IfcOpenshellGeomSettings_init(IfcOpenshellGeomSettingsObject *self, P
 static PyMemberDef IfcOpenshellGeomSettings_members[] = {
     {"_handle_ptr", T_PYSSIZET, offsetof(IfcOpenshellGeomSettingsObject, handle), READONLY, "Raw C pointer"},
     {"handle", T_PYSSIZET, offsetof(IfcOpenshellGeomSettingsObject, handle), READONLY, "Raw C pointer"},
-    {"owned", T_INT, offsetof(IfcOpenshellGeomSettingsObject, owned), READONLY, "Ownership flag"},
+    {"owned", T_INT, offsetof(IfcOpenshellGeomSettingsObject, owned), READONLY, "C handle envelope ownership flag"},
     {NULL}
 };
 
@@ -1234,7 +1234,7 @@ static int IfcOpenshellGeomSvgfillPolygon_init(IfcOpenshellGeomSvgfillPolygonObj
 static PyMemberDef IfcOpenshellGeomSvgfillPolygon_members[] = {
     {"_handle_ptr", T_PYSSIZET, offsetof(IfcOpenshellGeomSvgfillPolygonObject, handle), READONLY, "Raw C pointer"},
     {"handle", T_PYSSIZET, offsetof(IfcOpenshellGeomSvgfillPolygonObject, handle), READONLY, "Raw C pointer"},
-    {"owned", T_INT, offsetof(IfcOpenshellGeomSvgfillPolygonObject, owned), READONLY, "Ownership flag"},
+    {"owned", T_INT, offsetof(IfcOpenshellGeomSvgfillPolygonObject, owned), READONLY, "C handle envelope ownership flag"},
     {NULL}
 };
 
@@ -1285,7 +1285,7 @@ static int IfcOpenshellGeomTaxonomyBooleanResult_init(IfcOpenshellGeomTaxonomyBo
 static PyMemberDef IfcOpenshellGeomTaxonomyBooleanResult_members[] = {
     {"_handle_ptr", T_PYSSIZET, offsetof(IfcOpenshellGeomTaxonomyBooleanResultObject, handle), READONLY, "Raw C pointer"},
     {"handle", T_PYSSIZET, offsetof(IfcOpenshellGeomTaxonomyBooleanResultObject, handle), READONLY, "Raw C pointer"},
-    {"owned", T_INT, offsetof(IfcOpenshellGeomTaxonomyBooleanResultObject, owned), READONLY, "Ownership flag"},
+    {"owned", T_INT, offsetof(IfcOpenshellGeomTaxonomyBooleanResultObject, owned), READONLY, "C handle envelope ownership flag"},
     {NULL}
 };
 
@@ -1336,7 +1336,7 @@ static int IfcOpenshellGeomTaxonomyBsplineCurve_init(IfcOpenshellGeomTaxonomyBsp
 static PyMemberDef IfcOpenshellGeomTaxonomyBsplineCurve_members[] = {
     {"_handle_ptr", T_PYSSIZET, offsetof(IfcOpenshellGeomTaxonomyBsplineCurveObject, handle), READONLY, "Raw C pointer"},
     {"handle", T_PYSSIZET, offsetof(IfcOpenshellGeomTaxonomyBsplineCurveObject, handle), READONLY, "Raw C pointer"},
-    {"owned", T_INT, offsetof(IfcOpenshellGeomTaxonomyBsplineCurveObject, owned), READONLY, "Ownership flag"},
+    {"owned", T_INT, offsetof(IfcOpenshellGeomTaxonomyBsplineCurveObject, owned), READONLY, "C handle envelope ownership flag"},
     {NULL}
 };
 
@@ -1387,7 +1387,7 @@ static int IfcOpenshellGeomTaxonomyBsplineSurface_init(IfcOpenshellGeomTaxonomyB
 static PyMemberDef IfcOpenshellGeomTaxonomyBsplineSurface_members[] = {
     {"_handle_ptr", T_PYSSIZET, offsetof(IfcOpenshellGeomTaxonomyBsplineSurfaceObject, handle), READONLY, "Raw C pointer"},
     {"handle", T_PYSSIZET, offsetof(IfcOpenshellGeomTaxonomyBsplineSurfaceObject, handle), READONLY, "Raw C pointer"},
-    {"owned", T_INT, offsetof(IfcOpenshellGeomTaxonomyBsplineSurfaceObject, owned), READONLY, "Ownership flag"},
+    {"owned", T_INT, offsetof(IfcOpenshellGeomTaxonomyBsplineSurfaceObject, owned), READONLY, "C handle envelope ownership flag"},
     {NULL}
 };
 
@@ -1438,7 +1438,7 @@ static int IfcOpenshellGeomTaxonomyCircle_init(IfcOpenshellGeomTaxonomyCircleObj
 static PyMemberDef IfcOpenshellGeomTaxonomyCircle_members[] = {
     {"_handle_ptr", T_PYSSIZET, offsetof(IfcOpenshellGeomTaxonomyCircleObject, handle), READONLY, "Raw C pointer"},
     {"handle", T_PYSSIZET, offsetof(IfcOpenshellGeomTaxonomyCircleObject, handle), READONLY, "Raw C pointer"},
-    {"owned", T_INT, offsetof(IfcOpenshellGeomTaxonomyCircleObject, owned), READONLY, "Ownership flag"},
+    {"owned", T_INT, offsetof(IfcOpenshellGeomTaxonomyCircleObject, owned), READONLY, "C handle envelope ownership flag"},
     {NULL}
 };
 
@@ -1489,7 +1489,7 @@ static int IfcOpenshellGeomTaxonomyCollection_init(IfcOpenshellGeomTaxonomyColle
 static PyMemberDef IfcOpenshellGeomTaxonomyCollection_members[] = {
     {"_handle_ptr", T_PYSSIZET, offsetof(IfcOpenshellGeomTaxonomyCollectionObject, handle), READONLY, "Raw C pointer"},
     {"handle", T_PYSSIZET, offsetof(IfcOpenshellGeomTaxonomyCollectionObject, handle), READONLY, "Raw C pointer"},
-    {"owned", T_INT, offsetof(IfcOpenshellGeomTaxonomyCollectionObject, owned), READONLY, "Ownership flag"},
+    {"owned", T_INT, offsetof(IfcOpenshellGeomTaxonomyCollectionObject, owned), READONLY, "C handle envelope ownership flag"},
     {NULL}
 };
 
@@ -1540,7 +1540,7 @@ static int IfcOpenshellGeomTaxonomyColour_init(IfcOpenshellGeomTaxonomyColourObj
 static PyMemberDef IfcOpenshellGeomTaxonomyColour_members[] = {
     {"_handle_ptr", T_PYSSIZET, offsetof(IfcOpenshellGeomTaxonomyColourObject, handle), READONLY, "Raw C pointer"},
     {"handle", T_PYSSIZET, offsetof(IfcOpenshellGeomTaxonomyColourObject, handle), READONLY, "Raw C pointer"},
-    {"owned", T_INT, offsetof(IfcOpenshellGeomTaxonomyColourObject, owned), READONLY, "Ownership flag"},
+    {"owned", T_INT, offsetof(IfcOpenshellGeomTaxonomyColourObject, owned), READONLY, "C handle envelope ownership flag"},
     {NULL}
 };
 
@@ -1591,7 +1591,7 @@ static int IfcOpenshellGeomTaxonomyCylinder_init(IfcOpenshellGeomTaxonomyCylinde
 static PyMemberDef IfcOpenshellGeomTaxonomyCylinder_members[] = {
     {"_handle_ptr", T_PYSSIZET, offsetof(IfcOpenshellGeomTaxonomyCylinderObject, handle), READONLY, "Raw C pointer"},
     {"handle", T_PYSSIZET, offsetof(IfcOpenshellGeomTaxonomyCylinderObject, handle), READONLY, "Raw C pointer"},
-    {"owned", T_INT, offsetof(IfcOpenshellGeomTaxonomyCylinderObject, owned), READONLY, "Ownership flag"},
+    {"owned", T_INT, offsetof(IfcOpenshellGeomTaxonomyCylinderObject, owned), READONLY, "C handle envelope ownership flag"},
     {NULL}
 };
 
@@ -1642,7 +1642,7 @@ static int IfcOpenshellGeomTaxonomyDirection3_init(IfcOpenshellGeomTaxonomyDirec
 static PyMemberDef IfcOpenshellGeomTaxonomyDirection3_members[] = {
     {"_handle_ptr", T_PYSSIZET, offsetof(IfcOpenshellGeomTaxonomyDirection3Object, handle), READONLY, "Raw C pointer"},
     {"handle", T_PYSSIZET, offsetof(IfcOpenshellGeomTaxonomyDirection3Object, handle), READONLY, "Raw C pointer"},
-    {"owned", T_INT, offsetof(IfcOpenshellGeomTaxonomyDirection3Object, owned), READONLY, "Ownership flag"},
+    {"owned", T_INT, offsetof(IfcOpenshellGeomTaxonomyDirection3Object, owned), READONLY, "C handle envelope ownership flag"},
     {NULL}
 };
 
@@ -1693,7 +1693,7 @@ static int IfcOpenshellGeomTaxonomyEdge_init(IfcOpenshellGeomTaxonomyEdgeObject 
 static PyMemberDef IfcOpenshellGeomTaxonomyEdge_members[] = {
     {"_handle_ptr", T_PYSSIZET, offsetof(IfcOpenshellGeomTaxonomyEdgeObject, handle), READONLY, "Raw C pointer"},
     {"handle", T_PYSSIZET, offsetof(IfcOpenshellGeomTaxonomyEdgeObject, handle), READONLY, "Raw C pointer"},
-    {"owned", T_INT, offsetof(IfcOpenshellGeomTaxonomyEdgeObject, owned), READONLY, "Ownership flag"},
+    {"owned", T_INT, offsetof(IfcOpenshellGeomTaxonomyEdgeObject, owned), READONLY, "C handle envelope ownership flag"},
     {NULL}
 };
 
@@ -1744,7 +1744,7 @@ static int IfcOpenshellGeomTaxonomyEllipse_init(IfcOpenshellGeomTaxonomyEllipseO
 static PyMemberDef IfcOpenshellGeomTaxonomyEllipse_members[] = {
     {"_handle_ptr", T_PYSSIZET, offsetof(IfcOpenshellGeomTaxonomyEllipseObject, handle), READONLY, "Raw C pointer"},
     {"handle", T_PYSSIZET, offsetof(IfcOpenshellGeomTaxonomyEllipseObject, handle), READONLY, "Raw C pointer"},
-    {"owned", T_INT, offsetof(IfcOpenshellGeomTaxonomyEllipseObject, owned), READONLY, "Ownership flag"},
+    {"owned", T_INT, offsetof(IfcOpenshellGeomTaxonomyEllipseObject, owned), READONLY, "C handle envelope ownership flag"},
     {NULL}
 };
 
@@ -1795,7 +1795,7 @@ static int IfcOpenshellGeomTaxonomyExtrusion_init(IfcOpenshellGeomTaxonomyExtrus
 static PyMemberDef IfcOpenshellGeomTaxonomyExtrusion_members[] = {
     {"_handle_ptr", T_PYSSIZET, offsetof(IfcOpenshellGeomTaxonomyExtrusionObject, handle), READONLY, "Raw C pointer"},
     {"handle", T_PYSSIZET, offsetof(IfcOpenshellGeomTaxonomyExtrusionObject, handle), READONLY, "Raw C pointer"},
-    {"owned", T_INT, offsetof(IfcOpenshellGeomTaxonomyExtrusionObject, owned), READONLY, "Ownership flag"},
+    {"owned", T_INT, offsetof(IfcOpenshellGeomTaxonomyExtrusionObject, owned), READONLY, "C handle envelope ownership flag"},
     {NULL}
 };
 
@@ -1846,7 +1846,7 @@ static int IfcOpenshellGeomTaxonomyFace_init(IfcOpenshellGeomTaxonomyFaceObject 
 static PyMemberDef IfcOpenshellGeomTaxonomyFace_members[] = {
     {"_handle_ptr", T_PYSSIZET, offsetof(IfcOpenshellGeomTaxonomyFaceObject, handle), READONLY, "Raw C pointer"},
     {"handle", T_PYSSIZET, offsetof(IfcOpenshellGeomTaxonomyFaceObject, handle), READONLY, "Raw C pointer"},
-    {"owned", T_INT, offsetof(IfcOpenshellGeomTaxonomyFaceObject, owned), READONLY, "Ownership flag"},
+    {"owned", T_INT, offsetof(IfcOpenshellGeomTaxonomyFaceObject, owned), READONLY, "C handle envelope ownership flag"},
     {NULL}
 };
 
@@ -1897,7 +1897,7 @@ static int IfcOpenshellGeomTaxonomyItem_init(IfcOpenshellGeomTaxonomyItemObject 
 static PyMemberDef IfcOpenshellGeomTaxonomyItem_members[] = {
     {"_handle_ptr", T_PYSSIZET, offsetof(IfcOpenshellGeomTaxonomyItemObject, handle), READONLY, "Raw C pointer"},
     {"handle", T_PYSSIZET, offsetof(IfcOpenshellGeomTaxonomyItemObject, handle), READONLY, "Raw C pointer"},
-    {"owned", T_INT, offsetof(IfcOpenshellGeomTaxonomyItemObject, owned), READONLY, "Ownership flag"},
+    {"owned", T_INT, offsetof(IfcOpenshellGeomTaxonomyItemObject, owned), READONLY, "C handle envelope ownership flag"},
     {NULL}
 };
 
@@ -1948,7 +1948,7 @@ static int IfcOpenshellGeomTaxonomyLine_init(IfcOpenshellGeomTaxonomyLineObject 
 static PyMemberDef IfcOpenshellGeomTaxonomyLine_members[] = {
     {"_handle_ptr", T_PYSSIZET, offsetof(IfcOpenshellGeomTaxonomyLineObject, handle), READONLY, "Raw C pointer"},
     {"handle", T_PYSSIZET, offsetof(IfcOpenshellGeomTaxonomyLineObject, handle), READONLY, "Raw C pointer"},
-    {"owned", T_INT, offsetof(IfcOpenshellGeomTaxonomyLineObject, owned), READONLY, "Ownership flag"},
+    {"owned", T_INT, offsetof(IfcOpenshellGeomTaxonomyLineObject, owned), READONLY, "C handle envelope ownership flag"},
     {NULL}
 };
 
@@ -1999,7 +1999,7 @@ static int IfcOpenshellGeomTaxonomyLoft_init(IfcOpenshellGeomTaxonomyLoftObject 
 static PyMemberDef IfcOpenshellGeomTaxonomyLoft_members[] = {
     {"_handle_ptr", T_PYSSIZET, offsetof(IfcOpenshellGeomTaxonomyLoftObject, handle), READONLY, "Raw C pointer"},
     {"handle", T_PYSSIZET, offsetof(IfcOpenshellGeomTaxonomyLoftObject, handle), READONLY, "Raw C pointer"},
-    {"owned", T_INT, offsetof(IfcOpenshellGeomTaxonomyLoftObject, owned), READONLY, "Ownership flag"},
+    {"owned", T_INT, offsetof(IfcOpenshellGeomTaxonomyLoftObject, owned), READONLY, "C handle envelope ownership flag"},
     {NULL}
 };
 
@@ -2050,7 +2050,7 @@ static int IfcOpenshellGeomTaxonomyLoop_init(IfcOpenshellGeomTaxonomyLoopObject 
 static PyMemberDef IfcOpenshellGeomTaxonomyLoop_members[] = {
     {"_handle_ptr", T_PYSSIZET, offsetof(IfcOpenshellGeomTaxonomyLoopObject, handle), READONLY, "Raw C pointer"},
     {"handle", T_PYSSIZET, offsetof(IfcOpenshellGeomTaxonomyLoopObject, handle), READONLY, "Raw C pointer"},
-    {"owned", T_INT, offsetof(IfcOpenshellGeomTaxonomyLoopObject, owned), READONLY, "Ownership flag"},
+    {"owned", T_INT, offsetof(IfcOpenshellGeomTaxonomyLoopObject, owned), READONLY, "C handle envelope ownership flag"},
     {NULL}
 };
 
@@ -2101,7 +2101,7 @@ static int IfcOpenshellGeomTaxonomyMatrix4_init(IfcOpenshellGeomTaxonomyMatrix4O
 static PyMemberDef IfcOpenshellGeomTaxonomyMatrix4_members[] = {
     {"_handle_ptr", T_PYSSIZET, offsetof(IfcOpenshellGeomTaxonomyMatrix4Object, handle), READONLY, "Raw C pointer"},
     {"handle", T_PYSSIZET, offsetof(IfcOpenshellGeomTaxonomyMatrix4Object, handle), READONLY, "Raw C pointer"},
-    {"owned", T_INT, offsetof(IfcOpenshellGeomTaxonomyMatrix4Object, owned), READONLY, "Ownership flag"},
+    {"owned", T_INT, offsetof(IfcOpenshellGeomTaxonomyMatrix4Object, owned), READONLY, "C handle envelope ownership flag"},
     {NULL}
 };
 
@@ -2152,7 +2152,7 @@ static int IfcOpenshellGeomTaxonomyNode_init(IfcOpenshellGeomTaxonomyNodeObject 
 static PyMemberDef IfcOpenshellGeomTaxonomyNode_members[] = {
     {"_handle_ptr", T_PYSSIZET, offsetof(IfcOpenshellGeomTaxonomyNodeObject, handle), READONLY, "Raw C pointer"},
     {"handle", T_PYSSIZET, offsetof(IfcOpenshellGeomTaxonomyNodeObject, handle), READONLY, "Raw C pointer"},
-    {"owned", T_INT, offsetof(IfcOpenshellGeomTaxonomyNodeObject, owned), READONLY, "Ownership flag"},
+    {"owned", T_INT, offsetof(IfcOpenshellGeomTaxonomyNodeObject, owned), READONLY, "C handle envelope ownership flag"},
     {NULL}
 };
 
@@ -2203,7 +2203,7 @@ static int IfcOpenshellGeomTaxonomyOffsetCurve_init(IfcOpenshellGeomTaxonomyOffs
 static PyMemberDef IfcOpenshellGeomTaxonomyOffsetCurve_members[] = {
     {"_handle_ptr", T_PYSSIZET, offsetof(IfcOpenshellGeomTaxonomyOffsetCurveObject, handle), READONLY, "Raw C pointer"},
     {"handle", T_PYSSIZET, offsetof(IfcOpenshellGeomTaxonomyOffsetCurveObject, handle), READONLY, "Raw C pointer"},
-    {"owned", T_INT, offsetof(IfcOpenshellGeomTaxonomyOffsetCurveObject, owned), READONLY, "Ownership flag"},
+    {"owned", T_INT, offsetof(IfcOpenshellGeomTaxonomyOffsetCurveObject, owned), READONLY, "C handle envelope ownership flag"},
     {NULL}
 };
 
@@ -2254,7 +2254,7 @@ static int IfcOpenshellGeomTaxonomyPlane_init(IfcOpenshellGeomTaxonomyPlaneObjec
 static PyMemberDef IfcOpenshellGeomTaxonomyPlane_members[] = {
     {"_handle_ptr", T_PYSSIZET, offsetof(IfcOpenshellGeomTaxonomyPlaneObject, handle), READONLY, "Raw C pointer"},
     {"handle", T_PYSSIZET, offsetof(IfcOpenshellGeomTaxonomyPlaneObject, handle), READONLY, "Raw C pointer"},
-    {"owned", T_INT, offsetof(IfcOpenshellGeomTaxonomyPlaneObject, owned), READONLY, "Ownership flag"},
+    {"owned", T_INT, offsetof(IfcOpenshellGeomTaxonomyPlaneObject, owned), READONLY, "C handle envelope ownership flag"},
     {NULL}
 };
 
@@ -2305,7 +2305,7 @@ static int IfcOpenshellGeomTaxonomyPoint3_init(IfcOpenshellGeomTaxonomyPoint3Obj
 static PyMemberDef IfcOpenshellGeomTaxonomyPoint3_members[] = {
     {"_handle_ptr", T_PYSSIZET, offsetof(IfcOpenshellGeomTaxonomyPoint3Object, handle), READONLY, "Raw C pointer"},
     {"handle", T_PYSSIZET, offsetof(IfcOpenshellGeomTaxonomyPoint3Object, handle), READONLY, "Raw C pointer"},
-    {"owned", T_INT, offsetof(IfcOpenshellGeomTaxonomyPoint3Object, owned), READONLY, "Ownership flag"},
+    {"owned", T_INT, offsetof(IfcOpenshellGeomTaxonomyPoint3Object, owned), READONLY, "C handle envelope ownership flag"},
     {NULL}
 };
 
@@ -2356,7 +2356,7 @@ static int IfcOpenshellGeomTaxonomyRevolve_init(IfcOpenshellGeomTaxonomyRevolveO
 static PyMemberDef IfcOpenshellGeomTaxonomyRevolve_members[] = {
     {"_handle_ptr", T_PYSSIZET, offsetof(IfcOpenshellGeomTaxonomyRevolveObject, handle), READONLY, "Raw C pointer"},
     {"handle", T_PYSSIZET, offsetof(IfcOpenshellGeomTaxonomyRevolveObject, handle), READONLY, "Raw C pointer"},
-    {"owned", T_INT, offsetof(IfcOpenshellGeomTaxonomyRevolveObject, owned), READONLY, "Ownership flag"},
+    {"owned", T_INT, offsetof(IfcOpenshellGeomTaxonomyRevolveObject, owned), READONLY, "C handle envelope ownership flag"},
     {NULL}
 };
 
@@ -2407,7 +2407,7 @@ static int IfcOpenshellGeomTaxonomyShell_init(IfcOpenshellGeomTaxonomyShellObjec
 static PyMemberDef IfcOpenshellGeomTaxonomyShell_members[] = {
     {"_handle_ptr", T_PYSSIZET, offsetof(IfcOpenshellGeomTaxonomyShellObject, handle), READONLY, "Raw C pointer"},
     {"handle", T_PYSSIZET, offsetof(IfcOpenshellGeomTaxonomyShellObject, handle), READONLY, "Raw C pointer"},
-    {"owned", T_INT, offsetof(IfcOpenshellGeomTaxonomyShellObject, owned), READONLY, "Ownership flag"},
+    {"owned", T_INT, offsetof(IfcOpenshellGeomTaxonomyShellObject, owned), READONLY, "C handle envelope ownership flag"},
     {NULL}
 };
 
@@ -2458,7 +2458,7 @@ static int IfcOpenshellGeomTaxonomySolid_init(IfcOpenshellGeomTaxonomySolidObjec
 static PyMemberDef IfcOpenshellGeomTaxonomySolid_members[] = {
     {"_handle_ptr", T_PYSSIZET, offsetof(IfcOpenshellGeomTaxonomySolidObject, handle), READONLY, "Raw C pointer"},
     {"handle", T_PYSSIZET, offsetof(IfcOpenshellGeomTaxonomySolidObject, handle), READONLY, "Raw C pointer"},
-    {"owned", T_INT, offsetof(IfcOpenshellGeomTaxonomySolidObject, owned), READONLY, "Ownership flag"},
+    {"owned", T_INT, offsetof(IfcOpenshellGeomTaxonomySolidObject, owned), READONLY, "C handle envelope ownership flag"},
     {NULL}
 };
 
@@ -2509,7 +2509,7 @@ static int IfcOpenshellGeomTaxonomySphere_init(IfcOpenshellGeomTaxonomySphereObj
 static PyMemberDef IfcOpenshellGeomTaxonomySphere_members[] = {
     {"_handle_ptr", T_PYSSIZET, offsetof(IfcOpenshellGeomTaxonomySphereObject, handle), READONLY, "Raw C pointer"},
     {"handle", T_PYSSIZET, offsetof(IfcOpenshellGeomTaxonomySphereObject, handle), READONLY, "Raw C pointer"},
-    {"owned", T_INT, offsetof(IfcOpenshellGeomTaxonomySphereObject, owned), READONLY, "Ownership flag"},
+    {"owned", T_INT, offsetof(IfcOpenshellGeomTaxonomySphereObject, owned), READONLY, "C handle envelope ownership flag"},
     {NULL}
 };
 
@@ -2560,7 +2560,7 @@ static int IfcOpenshellGeomTaxonomyStyle_init(IfcOpenshellGeomTaxonomyStyleObjec
 static PyMemberDef IfcOpenshellGeomTaxonomyStyle_members[] = {
     {"_handle_ptr", T_PYSSIZET, offsetof(IfcOpenshellGeomTaxonomyStyleObject, handle), READONLY, "Raw C pointer"},
     {"handle", T_PYSSIZET, offsetof(IfcOpenshellGeomTaxonomyStyleObject, handle), READONLY, "Raw C pointer"},
-    {"owned", T_INT, offsetof(IfcOpenshellGeomTaxonomyStyleObject, owned), READONLY, "Ownership flag"},
+    {"owned", T_INT, offsetof(IfcOpenshellGeomTaxonomyStyleObject, owned), READONLY, "C handle envelope ownership flag"},
     {NULL}
 };
 
@@ -2611,7 +2611,7 @@ static int IfcOpenshellGeomTaxonomySweepAlongCurve_init(IfcOpenshellGeomTaxonomy
 static PyMemberDef IfcOpenshellGeomTaxonomySweepAlongCurve_members[] = {
     {"_handle_ptr", T_PYSSIZET, offsetof(IfcOpenshellGeomTaxonomySweepAlongCurveObject, handle), READONLY, "Raw C pointer"},
     {"handle", T_PYSSIZET, offsetof(IfcOpenshellGeomTaxonomySweepAlongCurveObject, handle), READONLY, "Raw C pointer"},
-    {"owned", T_INT, offsetof(IfcOpenshellGeomTaxonomySweepAlongCurveObject, owned), READONLY, "Ownership flag"},
+    {"owned", T_INT, offsetof(IfcOpenshellGeomTaxonomySweepAlongCurveObject, owned), READONLY, "C handle envelope ownership flag"},
     {NULL}
 };
 
@@ -2662,7 +2662,7 @@ static int IfcOpenshellGeomTaxonomyTorus_init(IfcOpenshellGeomTaxonomyTorusObjec
 static PyMemberDef IfcOpenshellGeomTaxonomyTorus_members[] = {
     {"_handle_ptr", T_PYSSIZET, offsetof(IfcOpenshellGeomTaxonomyTorusObject, handle), READONLY, "Raw C pointer"},
     {"handle", T_PYSSIZET, offsetof(IfcOpenshellGeomTaxonomyTorusObject, handle), READONLY, "Raw C pointer"},
-    {"owned", T_INT, offsetof(IfcOpenshellGeomTaxonomyTorusObject, owned), READONLY, "Ownership flag"},
+    {"owned", T_INT, offsetof(IfcOpenshellGeomTaxonomyTorusObject, owned), READONLY, "C handle envelope ownership flag"},
     {NULL}
 };
 
@@ -2713,7 +2713,7 @@ static int IfcOpenshellGeomTransformation_init(IfcOpenshellGeomTransformationObj
 static PyMemberDef IfcOpenshellGeomTransformation_members[] = {
     {"_handle_ptr", T_PYSSIZET, offsetof(IfcOpenshellGeomTransformationObject, handle), READONLY, "Raw C pointer"},
     {"handle", T_PYSSIZET, offsetof(IfcOpenshellGeomTransformationObject, handle), READONLY, "Raw C pointer"},
-    {"owned", T_INT, offsetof(IfcOpenshellGeomTransformationObject, owned), READONLY, "Ownership flag"},
+    {"owned", T_INT, offsetof(IfcOpenshellGeomTransformationObject, owned), READONLY, "C handle envelope ownership flag"},
     {NULL}
 };
 
@@ -2764,7 +2764,7 @@ static int IfcOpenshellGeomTreeClashList_init(IfcOpenshellGeomTreeClashListObjec
 static PyMemberDef IfcOpenshellGeomTreeClashList_members[] = {
     {"_handle_ptr", T_PYSSIZET, offsetof(IfcOpenshellGeomTreeClashListObject, handle), READONLY, "Raw C pointer"},
     {"handle", T_PYSSIZET, offsetof(IfcOpenshellGeomTreeClashListObject, handle), READONLY, "Raw C pointer"},
-    {"owned", T_INT, offsetof(IfcOpenshellGeomTreeClashListObject, owned), READONLY, "Ownership flag"},
+    {"owned", T_INT, offsetof(IfcOpenshellGeomTreeClashListObject, owned), READONLY, "C handle envelope ownership flag"},
     {NULL}
 };
 
@@ -2815,7 +2815,7 @@ static int IfcOpenshellGeomTreeClash_init(IfcOpenshellGeomTreeClashObject *self,
 static PyMemberDef IfcOpenshellGeomTreeClash_members[] = {
     {"_handle_ptr", T_PYSSIZET, offsetof(IfcOpenshellGeomTreeClashObject, handle), READONLY, "Raw C pointer"},
     {"handle", T_PYSSIZET, offsetof(IfcOpenshellGeomTreeClashObject, handle), READONLY, "Raw C pointer"},
-    {"owned", T_INT, offsetof(IfcOpenshellGeomTreeClashObject, owned), READONLY, "Ownership flag"},
+    {"owned", T_INT, offsetof(IfcOpenshellGeomTreeClashObject, owned), READONLY, "C handle envelope ownership flag"},
     {NULL}
 };
 
@@ -2866,7 +2866,7 @@ static int IfcOpenshellGeomTreeRayIntersectionList_init(IfcOpenshellGeomTreeRayI
 static PyMemberDef IfcOpenshellGeomTreeRayIntersectionList_members[] = {
     {"_handle_ptr", T_PYSSIZET, offsetof(IfcOpenshellGeomTreeRayIntersectionListObject, handle), READONLY, "Raw C pointer"},
     {"handle", T_PYSSIZET, offsetof(IfcOpenshellGeomTreeRayIntersectionListObject, handle), READONLY, "Raw C pointer"},
-    {"owned", T_INT, offsetof(IfcOpenshellGeomTreeRayIntersectionListObject, owned), READONLY, "Ownership flag"},
+    {"owned", T_INT, offsetof(IfcOpenshellGeomTreeRayIntersectionListObject, owned), READONLY, "C handle envelope ownership flag"},
     {NULL}
 };
 
@@ -2917,7 +2917,7 @@ static int IfcOpenshellGeomTreeRayIntersection_init(IfcOpenshellGeomTreeRayInter
 static PyMemberDef IfcOpenshellGeomTreeRayIntersection_members[] = {
     {"_handle_ptr", T_PYSSIZET, offsetof(IfcOpenshellGeomTreeRayIntersectionObject, handle), READONLY, "Raw C pointer"},
     {"handle", T_PYSSIZET, offsetof(IfcOpenshellGeomTreeRayIntersectionObject, handle), READONLY, "Raw C pointer"},
-    {"owned", T_INT, offsetof(IfcOpenshellGeomTreeRayIntersectionObject, owned), READONLY, "Ownership flag"},
+    {"owned", T_INT, offsetof(IfcOpenshellGeomTreeRayIntersectionObject, owned), READONLY, "C handle envelope ownership flag"},
     {NULL}
 };
 
@@ -2968,7 +2968,7 @@ static int IfcOpenshellGeomTree_init(IfcOpenshellGeomTreeObject *self, PyObject 
 static PyMemberDef IfcOpenshellGeomTree_members[] = {
     {"_handle_ptr", T_PYSSIZET, offsetof(IfcOpenshellGeomTreeObject, handle), READONLY, "Raw C pointer"},
     {"handle", T_PYSSIZET, offsetof(IfcOpenshellGeomTreeObject, handle), READONLY, "Raw C pointer"},
-    {"owned", T_INT, offsetof(IfcOpenshellGeomTreeObject, owned), READONLY, "Ownership flag"},
+    {"owned", T_INT, offsetof(IfcOpenshellGeomTreeObject, owned), READONLY, "C handle envelope ownership flag"},
     {NULL}
 };
 
@@ -3019,7 +3019,7 @@ static int IfcOpenshellGeomTriangulationElement_init(IfcOpenshellGeomTriangulati
 static PyMemberDef IfcOpenshellGeomTriangulationElement_members[] = {
     {"_handle_ptr", T_PYSSIZET, offsetof(IfcOpenshellGeomTriangulationElementObject, handle), READONLY, "Raw C pointer"},
     {"handle", T_PYSSIZET, offsetof(IfcOpenshellGeomTriangulationElementObject, handle), READONLY, "Raw C pointer"},
-    {"owned", T_INT, offsetof(IfcOpenshellGeomTriangulationElementObject, owned), READONLY, "Ownership flag"},
+    {"owned", T_INT, offsetof(IfcOpenshellGeomTriangulationElementObject, owned), READONLY, "C handle envelope ownership flag"},
     {NULL}
 };
 
@@ -3070,7 +3070,7 @@ static int IfcOpenshellGeomTriangulation_init(IfcOpenshellGeomTriangulationObjec
 static PyMemberDef IfcOpenshellGeomTriangulation_members[] = {
     {"_handle_ptr", T_PYSSIZET, offsetof(IfcOpenshellGeomTriangulationObject, handle), READONLY, "Raw C pointer"},
     {"handle", T_PYSSIZET, offsetof(IfcOpenshellGeomTriangulationObject, handle), READONLY, "Raw C pointer"},
-    {"owned", T_INT, offsetof(IfcOpenshellGeomTriangulationObject, owned), READONLY, "Ownership flag"},
+    {"owned", T_INT, offsetof(IfcOpenshellGeomTriangulationObject, owned), READONLY, "C handle envelope ownership flag"},
     {NULL}
 };
 
@@ -3121,7 +3121,7 @@ static int IfcOpenshellHeader_init(IfcOpenshellHeaderObject *self, PyObject *arg
 static PyMemberDef IfcOpenshellHeader_members[] = {
     {"_handle_ptr", T_PYSSIZET, offsetof(IfcOpenshellHeaderObject, handle), READONLY, "Raw C pointer"},
     {"handle", T_PYSSIZET, offsetof(IfcOpenshellHeaderObject, handle), READONLY, "Raw C pointer"},
-    {"owned", T_INT, offsetof(IfcOpenshellHeaderObject, owned), READONLY, "Ownership flag"},
+    {"owned", T_INT, offsetof(IfcOpenshellHeaderObject, owned), READONLY, "C handle envelope ownership flag"},
     {NULL}
 };
 
@@ -3172,7 +3172,7 @@ static int IfcOpenshellInstanceStreamer_init(IfcOpenshellInstanceStreamerObject 
 static PyMemberDef IfcOpenshellInstanceStreamer_members[] = {
     {"_handle_ptr", T_PYSSIZET, offsetof(IfcOpenshellInstanceStreamerObject, handle), READONLY, "Raw C pointer"},
     {"handle", T_PYSSIZET, offsetof(IfcOpenshellInstanceStreamerObject, handle), READONLY, "Raw C pointer"},
-    {"owned", T_INT, offsetof(IfcOpenshellInstanceStreamerObject, owned), READONLY, "Ownership flag"},
+    {"owned", T_INT, offsetof(IfcOpenshellInstanceStreamerObject, owned), READONLY, "C handle envelope ownership flag"},
     {NULL}
 };
 
@@ -3223,7 +3223,7 @@ static int IfcOpenshellInstance_init(IfcOpenshellInstanceObject *self, PyObject 
 static PyMemberDef IfcOpenshellInstance_members[] = {
     {"_handle_ptr", T_PYSSIZET, offsetof(IfcOpenshellInstanceObject, handle), READONLY, "Raw C pointer"},
     {"handle", T_PYSSIZET, offsetof(IfcOpenshellInstanceObject, handle), READONLY, "Raw C pointer"},
-    {"owned", T_INT, offsetof(IfcOpenshellInstanceObject, owned), READONLY, "Ownership flag"},
+    {"owned", T_INT, offsetof(IfcOpenshellInstanceObject, owned), READONLY, "C handle envelope ownership flag"},
     {NULL}
 };
 
@@ -3274,7 +3274,7 @@ static int IfcOpenshellInverseAttribute_init(IfcOpenshellInverseAttributeObject 
 static PyMemberDef IfcOpenshellInverseAttribute_members[] = {
     {"_handle_ptr", T_PYSSIZET, offsetof(IfcOpenshellInverseAttributeObject, handle), READONLY, "Raw C pointer"},
     {"handle", T_PYSSIZET, offsetof(IfcOpenshellInverseAttributeObject, handle), READONLY, "Raw C pointer"},
-    {"owned", T_INT, offsetof(IfcOpenshellInverseAttributeObject, owned), READONLY, "Ownership flag"},
+    {"owned", T_INT, offsetof(IfcOpenshellInverseAttributeObject, owned), READONLY, "C handle envelope ownership flag"},
     {NULL}
 };
 
@@ -3325,7 +3325,7 @@ static int IfcOpenshellNamedType_init(IfcOpenshellNamedTypeObject *self, PyObjec
 static PyMemberDef IfcOpenshellNamedType_members[] = {
     {"_handle_ptr", T_PYSSIZET, offsetof(IfcOpenshellNamedTypeObject, handle), READONLY, "Raw C pointer"},
     {"handle", T_PYSSIZET, offsetof(IfcOpenshellNamedTypeObject, handle), READONLY, "Raw C pointer"},
-    {"owned", T_INT, offsetof(IfcOpenshellNamedTypeObject, owned), READONLY, "Ownership flag"},
+    {"owned", T_INT, offsetof(IfcOpenshellNamedTypeObject, owned), READONLY, "C handle envelope ownership flag"},
     {NULL}
 };
 
@@ -3376,7 +3376,7 @@ static int IfcOpenshellParameterType_init(IfcOpenshellParameterTypeObject *self,
 static PyMemberDef IfcOpenshellParameterType_members[] = {
     {"_handle_ptr", T_PYSSIZET, offsetof(IfcOpenshellParameterTypeObject, handle), READONLY, "Raw C pointer"},
     {"handle", T_PYSSIZET, offsetof(IfcOpenshellParameterTypeObject, handle), READONLY, "Raw C pointer"},
-    {"owned", T_INT, offsetof(IfcOpenshellParameterTypeObject, owned), READONLY, "Ownership flag"},
+    {"owned", T_INT, offsetof(IfcOpenshellParameterTypeObject, owned), READONLY, "C handle envelope ownership flag"},
     {NULL}
 };
 
@@ -3427,7 +3427,7 @@ static int IfcOpenshellParseAttributeValue_init(IfcOpenshellParseAttributeValueO
 static PyMemberDef IfcOpenshellParseAttributeValue_members[] = {
     {"_handle_ptr", T_PYSSIZET, offsetof(IfcOpenshellParseAttributeValueObject, handle), READONLY, "Raw C pointer"},
     {"handle", T_PYSSIZET, offsetof(IfcOpenshellParseAttributeValueObject, handle), READONLY, "Raw C pointer"},
-    {"owned", T_INT, offsetof(IfcOpenshellParseAttributeValueObject, owned), READONLY, "Ownership flag"},
+    {"owned", T_INT, offsetof(IfcOpenshellParseAttributeValueObject, owned), READONLY, "C handle envelope ownership flag"},
     {NULL}
 };
 
@@ -3478,7 +3478,7 @@ static int IfcOpenshellParseInstanceList_init(IfcOpenshellParseInstanceListObjec
 static PyMemberDef IfcOpenshellParseInstanceList_members[] = {
     {"_handle_ptr", T_PYSSIZET, offsetof(IfcOpenshellParseInstanceListObject, handle), READONLY, "Raw C pointer"},
     {"handle", T_PYSSIZET, offsetof(IfcOpenshellParseInstanceListObject, handle), READONLY, "Raw C pointer"},
-    {"owned", T_INT, offsetof(IfcOpenshellParseInstanceListObject, owned), READONLY, "Ownership flag"},
+    {"owned", T_INT, offsetof(IfcOpenshellParseInstanceListObject, owned), READONLY, "C handle envelope ownership flag"},
     {NULL}
 };
 
@@ -3572,7 +3572,7 @@ static int IfcOpenshellPsetTemplateHandle_init(IfcOpenshellPsetTemplateHandleObj
 static PyMemberDef IfcOpenshellPsetTemplateHandle_members[] = {
     {"_handle_ptr", T_PYSSIZET, offsetof(IfcOpenshellPsetTemplateHandleObject, handle), READONLY, "Raw C pointer"},
     {"handle", T_PYSSIZET, offsetof(IfcOpenshellPsetTemplateHandleObject, handle), READONLY, "Raw C pointer"},
-    {"owned", T_INT, offsetof(IfcOpenshellPsetTemplateHandleObject, owned), READONLY, "Ownership flag"},
+    {"owned", T_INT, offsetof(IfcOpenshellPsetTemplateHandleObject, owned), READONLY, "C handle envelope ownership flag"},
     {NULL}
 };
 
@@ -3623,7 +3623,7 @@ static int IfcOpenshellSchema_init(IfcOpenshellSchemaObject *self, PyObject *arg
 static PyMemberDef IfcOpenshellSchema_members[] = {
     {"_handle_ptr", T_PYSSIZET, offsetof(IfcOpenshellSchemaObject, handle), READONLY, "Raw C pointer"},
     {"handle", T_PYSSIZET, offsetof(IfcOpenshellSchemaObject, handle), READONLY, "Raw C pointer"},
-    {"owned", T_INT, offsetof(IfcOpenshellSchemaObject, owned), READONLY, "Ownership flag"},
+    {"owned", T_INT, offsetof(IfcOpenshellSchemaObject, owned), READONLY, "C handle envelope ownership flag"},
     {NULL}
 };
 
@@ -3674,7 +3674,7 @@ static int IfcOpenshellSelectType_init(IfcOpenshellSelectTypeObject *self, PyObj
 static PyMemberDef IfcOpenshellSelectType_members[] = {
     {"_handle_ptr", T_PYSSIZET, offsetof(IfcOpenshellSelectTypeObject, handle), READONLY, "Raw C pointer"},
     {"handle", T_PYSSIZET, offsetof(IfcOpenshellSelectTypeObject, handle), READONLY, "Raw C pointer"},
-    {"owned", T_INT, offsetof(IfcOpenshellSelectTypeObject, owned), READONLY, "Ownership flag"},
+    {"owned", T_INT, offsetof(IfcOpenshellSelectTypeObject, owned), READONLY, "C handle envelope ownership flag"},
     {NULL}
 };
 
@@ -3725,7 +3725,7 @@ static int IfcOpenshellSimpleType_init(IfcOpenshellSimpleTypeObject *self, PyObj
 static PyMemberDef IfcOpenshellSimpleType_members[] = {
     {"_handle_ptr", T_PYSSIZET, offsetof(IfcOpenshellSimpleTypeObject, handle), READONLY, "Raw C pointer"},
     {"handle", T_PYSSIZET, offsetof(IfcOpenshellSimpleTypeObject, handle), READONLY, "Raw C pointer"},
-    {"owned", T_INT, offsetof(IfcOpenshellSimpleTypeObject, owned), READONLY, "Ownership flag"},
+    {"owned", T_INT, offsetof(IfcOpenshellSimpleTypeObject, owned), READONLY, "C handle envelope ownership flag"},
     {NULL}
 };
 
@@ -3776,7 +3776,7 @@ static int IfcOpenshellTypeDeclaration_init(IfcOpenshellTypeDeclarationObject *s
 static PyMemberDef IfcOpenshellTypeDeclaration_members[] = {
     {"_handle_ptr", T_PYSSIZET, offsetof(IfcOpenshellTypeDeclarationObject, handle), READONLY, "Raw C pointer"},
     {"handle", T_PYSSIZET, offsetof(IfcOpenshellTypeDeclarationObject, handle), READONLY, "Raw C pointer"},
-    {"owned", T_INT, offsetof(IfcOpenshellTypeDeclarationObject, owned), READONLY, "Ownership flag"},
+    {"owned", T_INT, offsetof(IfcOpenshellTypeDeclarationObject, owned), READONLY, "C handle envelope ownership flag"},
     {NULL}
 };
 
@@ -3827,7 +3827,7 @@ static int IfcOpenshellValue_init(IfcOpenshellValueObject *self, PyObject *args,
 static PyMemberDef IfcOpenshellValue_members[] = {
     {"_handle_ptr", T_PYSSIZET, offsetof(IfcOpenshellValueObject, handle), READONLY, "Raw C pointer"},
     {"handle", T_PYSSIZET, offsetof(IfcOpenshellValueObject, handle), READONLY, "Raw C pointer"},
-    {"owned", T_INT, offsetof(IfcOpenshellValueObject, owned), READONLY, "Ownership flag"},
+    {"owned", T_INT, offsetof(IfcOpenshellValueObject, owned), READONLY, "C handle envelope ownership flag"},
     {NULL}
 };
 
@@ -4802,7 +4802,10 @@ static PyObject *py_value_destroy(PyObject *self, PyObject *args) {
 static PyObject *wrap_aggregation_type(ifcopenshell_aggregation_type_t *handle, int owned) {
     if (!handle) Py_RETURN_NONE;
     IfcOpenshellAggregationTypeObject *result = (IfcOpenshellAggregationTypeObject *)IfcOpenshellAggregationTypeType.tp_alloc(&IfcOpenshellAggregationTypeType, 0);
-    if (!result) return NULL;
+    if (!result) {
+        ifcopenshell_aggregation_type_destroy(handle);
+        return NULL;
+    }
     result->handle = handle;
     result->owned = owned;
     return (PyObject *)result;
@@ -4811,7 +4814,10 @@ static PyObject *wrap_aggregation_type(ifcopenshell_aggregation_type_t *handle, 
 static PyObject *wrap_attribute(ifcopenshell_attribute_t *handle, int owned) {
     if (!handle) Py_RETURN_NONE;
     IfcOpenshellAttributeObject *result = (IfcOpenshellAttributeObject *)IfcOpenshellAttributeType.tp_alloc(&IfcOpenshellAttributeType, 0);
-    if (!result) return NULL;
+    if (!result) {
+        ifcopenshell_attribute_destroy(handle);
+        return NULL;
+    }
     result->handle = handle;
     result->owned = owned;
     return (PyObject *)result;
@@ -4820,7 +4826,10 @@ static PyObject *wrap_attribute(ifcopenshell_attribute_t *handle, int owned) {
 static PyObject *wrap_declaration(ifcopenshell_declaration_t *handle, int owned) {
     if (!handle) Py_RETURN_NONE;
     IfcOpenshellDeclarationObject *result = (IfcOpenshellDeclarationObject *)IfcOpenshellDeclarationType.tp_alloc(&IfcOpenshellDeclarationType, 0);
-    if (!result) return NULL;
+    if (!result) {
+        ifcopenshell_declaration_destroy(handle);
+        return NULL;
+    }
     result->handle = handle;
     result->owned = owned;
     return (PyObject *)result;
@@ -4829,7 +4838,10 @@ static PyObject *wrap_declaration(ifcopenshell_declaration_t *handle, int owned)
 static PyObject *wrap_entity(ifcopenshell_entity_t *handle, int owned) {
     if (!handle) Py_RETURN_NONE;
     IfcOpenshellEntityObject *result = (IfcOpenshellEntityObject *)IfcOpenshellEntityType.tp_alloc(&IfcOpenshellEntityType, 0);
-    if (!result) return NULL;
+    if (!result) {
+        ifcopenshell_entity_destroy(handle);
+        return NULL;
+    }
     result->handle = handle;
     result->owned = owned;
     return (PyObject *)result;
@@ -4838,7 +4850,10 @@ static PyObject *wrap_entity(ifcopenshell_entity_t *handle, int owned) {
 static PyObject *wrap_enumeration(ifcopenshell_enumeration_t *handle, int owned) {
     if (!handle) Py_RETURN_NONE;
     IfcOpenshellEnumerationObject *result = (IfcOpenshellEnumerationObject *)IfcOpenshellEnumerationType.tp_alloc(&IfcOpenshellEnumerationType, 0);
-    if (!result) return NULL;
+    if (!result) {
+        ifcopenshell_enumeration_destroy(handle);
+        return NULL;
+    }
     result->handle = handle;
     result->owned = owned;
     return (PyObject *)result;
@@ -4847,7 +4862,10 @@ static PyObject *wrap_enumeration(ifcopenshell_enumeration_t *handle, int owned)
 static PyObject *wrap_file_description(ifcopenshell_file_description_t *handle, int owned) {
     if (!handle) Py_RETURN_NONE;
     IfcOpenshellFileDescriptionObject *result = (IfcOpenshellFileDescriptionObject *)IfcOpenshellFileDescriptionType.tp_alloc(&IfcOpenshellFileDescriptionType, 0);
-    if (!result) return NULL;
+    if (!result) {
+        ifcopenshell_file_description_destroy(handle);
+        return NULL;
+    }
     result->handle = handle;
     result->owned = owned;
     return (PyObject *)result;
@@ -4856,7 +4874,10 @@ static PyObject *wrap_file_description(ifcopenshell_file_description_t *handle, 
 static PyObject *wrap_file_name(ifcopenshell_file_name_t *handle, int owned) {
     if (!handle) Py_RETURN_NONE;
     IfcOpenshellFileNameObject *result = (IfcOpenshellFileNameObject *)IfcOpenshellFileNameType.tp_alloc(&IfcOpenshellFileNameType, 0);
-    if (!result) return NULL;
+    if (!result) {
+        ifcopenshell_file_name_destroy(handle);
+        return NULL;
+    }
     result->handle = handle;
     result->owned = owned;
     return (PyObject *)result;
@@ -4865,7 +4886,10 @@ static PyObject *wrap_file_name(ifcopenshell_file_name_t *handle, int owned) {
 static PyObject *wrap_file_schema(ifcopenshell_file_schema_t *handle, int owned) {
     if (!handle) Py_RETURN_NONE;
     IfcOpenshellFileSchemaObject *result = (IfcOpenshellFileSchemaObject *)IfcOpenshellFileSchemaType.tp_alloc(&IfcOpenshellFileSchemaType, 0);
-    if (!result) return NULL;
+    if (!result) {
+        ifcopenshell_file_schema_destroy(handle);
+        return NULL;
+    }
     result->handle = handle;
     result->owned = owned;
     return (PyObject *)result;
@@ -4874,7 +4898,10 @@ static PyObject *wrap_file_schema(ifcopenshell_file_schema_t *handle, int owned)
 static PyObject *wrap_file(ifcopenshell_file_t *handle, int owned) {
     if (!handle) Py_RETURN_NONE;
     IfcOpenshellFileObject *result = (IfcOpenshellFileObject *)IfcOpenshellFileType.tp_alloc(&IfcOpenshellFileType, 0);
-    if (!result) return NULL;
+    if (!result) {
+        ifcopenshell_file_destroy(handle);
+        return NULL;
+    }
     result->handle = handle;
     result->owned = owned;
     return (PyObject *)result;
@@ -4883,7 +4910,10 @@ static PyObject *wrap_file(ifcopenshell_file_t *handle, int owned) {
 static PyObject *wrap_geom_brep_element(ifcopenshell_geom_brep_element_t *handle, int owned) {
     if (!handle) Py_RETURN_NONE;
     IfcOpenshellGeomBrepElementObject *result = (IfcOpenshellGeomBrepElementObject *)IfcOpenshellGeomBrepElementType.tp_alloc(&IfcOpenshellGeomBrepElementType, 0);
-    if (!result) return NULL;
+    if (!result) {
+        ifcopenshell_geom_brep_element_destroy(handle);
+        return NULL;
+    }
     result->handle = handle;
     result->owned = owned;
     return (PyObject *)result;
@@ -4892,7 +4922,10 @@ static PyObject *wrap_geom_brep_element(ifcopenshell_geom_brep_element_t *handle
 static PyObject *wrap_geom_brep_representation(ifcopenshell_geom_brep_representation_t *handle, int owned) {
     if (!handle) Py_RETURN_NONE;
     IfcOpenshellGeomBrepRepresentationObject *result = (IfcOpenshellGeomBrepRepresentationObject *)IfcOpenshellGeomBrepRepresentationType.tp_alloc(&IfcOpenshellGeomBrepRepresentationType, 0);
-    if (!result) return NULL;
+    if (!result) {
+        ifcopenshell_geom_brep_representation_destroy(handle);
+        return NULL;
+    }
     result->handle = handle;
     result->owned = owned;
     return (PyObject *)result;
@@ -4901,7 +4934,10 @@ static PyObject *wrap_geom_brep_representation(ifcopenshell_geom_brep_representa
 static PyObject *wrap_geom_buffer(ifcopenshell_geom_buffer_t *handle, int owned) {
     if (!handle) Py_RETURN_NONE;
     IfcOpenshellGeomBufferObject *result = (IfcOpenshellGeomBufferObject *)IfcOpenshellGeomBufferType.tp_alloc(&IfcOpenshellGeomBufferType, 0);
-    if (!result) return NULL;
+    if (!result) {
+        ifcopenshell_geom_buffer_destroy(handle);
+        return NULL;
+    }
     result->handle = handle;
     result->owned = owned;
     return (PyObject *)result;
@@ -4910,7 +4946,10 @@ static PyObject *wrap_geom_buffer(ifcopenshell_geom_buffer_t *handle, int owned)
 static PyObject *wrap_geom_conversion_result_shape(ifcopenshell_geom_conversion_result_shape_t *handle, int owned) {
     if (!handle) Py_RETURN_NONE;
     IfcOpenshellGeomConversionResultShapeObject *result = (IfcOpenshellGeomConversionResultShapeObject *)IfcOpenshellGeomConversionResultShapeType.tp_alloc(&IfcOpenshellGeomConversionResultShapeType, 0);
-    if (!result) return NULL;
+    if (!result) {
+        ifcopenshell_geom_conversion_result_shape_destroy(handle);
+        return NULL;
+    }
     result->handle = handle;
     result->owned = owned;
     return (PyObject *)result;
@@ -4919,7 +4958,10 @@ static PyObject *wrap_geom_conversion_result_shape(ifcopenshell_geom_conversion_
 static PyObject *wrap_geom_element(ifcopenshell_geom_element_t *handle, int owned) {
     if (!handle) Py_RETURN_NONE;
     IfcOpenshellGeomElementObject *result = (IfcOpenshellGeomElementObject *)IfcOpenshellGeomElementType.tp_alloc(&IfcOpenshellGeomElementType, 0);
-    if (!result) return NULL;
+    if (!result) {
+        ifcopenshell_geom_element_destroy(handle);
+        return NULL;
+    }
     result->handle = handle;
     result->owned = owned;
     return (PyObject *)result;
@@ -4928,7 +4970,10 @@ static PyObject *wrap_geom_element(ifcopenshell_geom_element_t *handle, int owne
 static PyObject *wrap_geom_function_item_evaluator(ifcopenshell_geom_function_item_evaluator_t *handle, int owned) {
     if (!handle) Py_RETURN_NONE;
     IfcOpenshellGeomFunctionItemEvaluatorObject *result = (IfcOpenshellGeomFunctionItemEvaluatorObject *)IfcOpenshellGeomFunctionItemEvaluatorType.tp_alloc(&IfcOpenshellGeomFunctionItemEvaluatorType, 0);
-    if (!result) return NULL;
+    if (!result) {
+        ifcopenshell_geom_function_item_evaluator_destroy(handle);
+        return NULL;
+    }
     result->handle = handle;
     result->owned = owned;
     return (PyObject *)result;
@@ -4937,7 +4982,10 @@ static PyObject *wrap_geom_function_item_evaluator(ifcopenshell_geom_function_it
 static PyObject *wrap_geom_geometry_serializer(ifcopenshell_geom_geometry_serializer_t *handle, int owned) {
     if (!handle) Py_RETURN_NONE;
     IfcOpenshellGeomGeometrySerializerObject *result = (IfcOpenshellGeomGeometrySerializerObject *)IfcOpenshellGeomGeometrySerializerType.tp_alloc(&IfcOpenshellGeomGeometrySerializerType, 0);
-    if (!result) return NULL;
+    if (!result) {
+        ifcopenshell_geom_geometry_serializer_destroy(handle);
+        return NULL;
+    }
     result->handle = handle;
     result->owned = owned;
     return (PyObject *)result;
@@ -4946,7 +4994,10 @@ static PyObject *wrap_geom_geometry_serializer(ifcopenshell_geom_geometry_serial
 static PyObject *wrap_geom_iterator(ifcopenshell_geom_iterator_t *handle, int owned) {
     if (!handle) Py_RETURN_NONE;
     IfcOpenshellGeomIteratorObject *result = (IfcOpenshellGeomIteratorObject *)IfcOpenshellGeomIteratorType.tp_alloc(&IfcOpenshellGeomIteratorType, 0);
-    if (!result) return NULL;
+    if (!result) {
+        ifcopenshell_geom_iterator_destroy(handle);
+        return NULL;
+    }
     result->handle = handle;
     result->owned = owned;
     return (PyObject *)result;
@@ -4955,7 +5006,10 @@ static PyObject *wrap_geom_iterator(ifcopenshell_geom_iterator_t *handle, int ow
 static PyObject *wrap_geom_opaque_number(ifcopenshell_geom_opaque_number_t *handle, int owned) {
     if (!handle) Py_RETURN_NONE;
     IfcOpenshellGeomOpaqueNumberObject *result = (IfcOpenshellGeomOpaqueNumberObject *)IfcOpenshellGeomOpaqueNumberType.tp_alloc(&IfcOpenshellGeomOpaqueNumberType, 0);
-    if (!result) return NULL;
+    if (!result) {
+        ifcopenshell_geom_opaque_number_destroy(handle);
+        return NULL;
+    }
     result->handle = handle;
     result->owned = owned;
     return (PyObject *)result;
@@ -4964,7 +5018,10 @@ static PyObject *wrap_geom_opaque_number(ifcopenshell_geom_opaque_number_t *hand
 static PyObject *wrap_geom_serialization(ifcopenshell_geom_serialization_t *handle, int owned) {
     if (!handle) Py_RETURN_NONE;
     IfcOpenshellGeomSerializationObject *result = (IfcOpenshellGeomSerializationObject *)IfcOpenshellGeomSerializationType.tp_alloc(&IfcOpenshellGeomSerializationType, 0);
-    if (!result) return NULL;
+    if (!result) {
+        ifcopenshell_geom_serialization_destroy(handle);
+        return NULL;
+    }
     result->handle = handle;
     result->owned = owned;
     return (PyObject *)result;
@@ -4973,7 +5030,10 @@ static PyObject *wrap_geom_serialization(ifcopenshell_geom_serialization_t *hand
 static PyObject *wrap_geom_serialized_element(ifcopenshell_geom_serialized_element_t *handle, int owned) {
     if (!handle) Py_RETURN_NONE;
     IfcOpenshellGeomSerializedElementObject *result = (IfcOpenshellGeomSerializedElementObject *)IfcOpenshellGeomSerializedElementType.tp_alloc(&IfcOpenshellGeomSerializedElementType, 0);
-    if (!result) return NULL;
+    if (!result) {
+        ifcopenshell_geom_serialized_element_destroy(handle);
+        return NULL;
+    }
     result->handle = handle;
     result->owned = owned;
     return (PyObject *)result;
@@ -4982,7 +5042,10 @@ static PyObject *wrap_geom_serialized_element(ifcopenshell_geom_serialized_eleme
 static PyObject *wrap_geom_serializer_settings(ifcopenshell_geom_serializer_settings_t *handle, int owned) {
     if (!handle) Py_RETURN_NONE;
     IfcOpenshellGeomSerializerSettingsObject *result = (IfcOpenshellGeomSerializerSettingsObject *)IfcOpenshellGeomSerializerSettingsType.tp_alloc(&IfcOpenshellGeomSerializerSettingsType, 0);
-    if (!result) return NULL;
+    if (!result) {
+        ifcopenshell_geom_serializer_settings_destroy(handle);
+        return NULL;
+    }
     result->handle = handle;
     result->owned = owned;
     return (PyObject *)result;
@@ -4991,7 +5054,10 @@ static PyObject *wrap_geom_serializer_settings(ifcopenshell_geom_serializer_sett
 static PyObject *wrap_geom_serializer(ifcopenshell_geom_serializer_t *handle, int owned) {
     if (!handle) Py_RETURN_NONE;
     IfcOpenshellGeomSerializerObject *result = (IfcOpenshellGeomSerializerObject *)IfcOpenshellGeomSerializerType.tp_alloc(&IfcOpenshellGeomSerializerType, 0);
-    if (!result) return NULL;
+    if (!result) {
+        ifcopenshell_geom_serializer_destroy(handle);
+        return NULL;
+    }
     result->handle = handle;
     result->owned = owned;
     return (PyObject *)result;
@@ -5000,7 +5066,10 @@ static PyObject *wrap_geom_serializer(ifcopenshell_geom_serializer_t *handle, in
 static PyObject *wrap_geom_settings(ifcopenshell_geom_settings_t *handle, int owned) {
     if (!handle) Py_RETURN_NONE;
     IfcOpenshellGeomSettingsObject *result = (IfcOpenshellGeomSettingsObject *)IfcOpenshellGeomSettingsType.tp_alloc(&IfcOpenshellGeomSettingsType, 0);
-    if (!result) return NULL;
+    if (!result) {
+        ifcopenshell_geom_settings_destroy(handle);
+        return NULL;
+    }
     result->handle = handle;
     result->owned = owned;
     return (PyObject *)result;
@@ -5009,7 +5078,10 @@ static PyObject *wrap_geom_settings(ifcopenshell_geom_settings_t *handle, int ow
 static PyObject *wrap_geom_svgfill_polygon(ifcopenshell_geom_svgfill_polygon_t *handle, int owned) {
     if (!handle) Py_RETURN_NONE;
     IfcOpenshellGeomSvgfillPolygonObject *result = (IfcOpenshellGeomSvgfillPolygonObject *)IfcOpenshellGeomSvgfillPolygonType.tp_alloc(&IfcOpenshellGeomSvgfillPolygonType, 0);
-    if (!result) return NULL;
+    if (!result) {
+        ifcopenshell_geom_svgfill_polygon_destroy(handle);
+        return NULL;
+    }
     result->handle = handle;
     result->owned = owned;
     return (PyObject *)result;
@@ -5018,7 +5090,10 @@ static PyObject *wrap_geom_svgfill_polygon(ifcopenshell_geom_svgfill_polygon_t *
 static PyObject *wrap_geom_taxonomy_boolean_result(ifcopenshell_geom_taxonomy_boolean_result_t *handle, int owned) {
     if (!handle) Py_RETURN_NONE;
     IfcOpenshellGeomTaxonomyBooleanResultObject *result = (IfcOpenshellGeomTaxonomyBooleanResultObject *)IfcOpenshellGeomTaxonomyBooleanResultType.tp_alloc(&IfcOpenshellGeomTaxonomyBooleanResultType, 0);
-    if (!result) return NULL;
+    if (!result) {
+        ifcopenshell_geom_taxonomy_boolean_result_destroy(handle);
+        return NULL;
+    }
     result->handle = handle;
     result->owned = owned;
     return (PyObject *)result;
@@ -5027,7 +5102,10 @@ static PyObject *wrap_geom_taxonomy_boolean_result(ifcopenshell_geom_taxonomy_bo
 static PyObject *wrap_geom_taxonomy_bspline_curve(ifcopenshell_geom_taxonomy_bspline_curve_t *handle, int owned) {
     if (!handle) Py_RETURN_NONE;
     IfcOpenshellGeomTaxonomyBsplineCurveObject *result = (IfcOpenshellGeomTaxonomyBsplineCurveObject *)IfcOpenshellGeomTaxonomyBsplineCurveType.tp_alloc(&IfcOpenshellGeomTaxonomyBsplineCurveType, 0);
-    if (!result) return NULL;
+    if (!result) {
+        ifcopenshell_geom_taxonomy_bspline_curve_destroy(handle);
+        return NULL;
+    }
     result->handle = handle;
     result->owned = owned;
     return (PyObject *)result;
@@ -5036,7 +5114,10 @@ static PyObject *wrap_geom_taxonomy_bspline_curve(ifcopenshell_geom_taxonomy_bsp
 static PyObject *wrap_geom_taxonomy_bspline_surface(ifcopenshell_geom_taxonomy_bspline_surface_t *handle, int owned) {
     if (!handle) Py_RETURN_NONE;
     IfcOpenshellGeomTaxonomyBsplineSurfaceObject *result = (IfcOpenshellGeomTaxonomyBsplineSurfaceObject *)IfcOpenshellGeomTaxonomyBsplineSurfaceType.tp_alloc(&IfcOpenshellGeomTaxonomyBsplineSurfaceType, 0);
-    if (!result) return NULL;
+    if (!result) {
+        ifcopenshell_geom_taxonomy_bspline_surface_destroy(handle);
+        return NULL;
+    }
     result->handle = handle;
     result->owned = owned;
     return (PyObject *)result;
@@ -5045,7 +5126,10 @@ static PyObject *wrap_geom_taxonomy_bspline_surface(ifcopenshell_geom_taxonomy_b
 static PyObject *wrap_geom_taxonomy_circle(ifcopenshell_geom_taxonomy_circle_t *handle, int owned) {
     if (!handle) Py_RETURN_NONE;
     IfcOpenshellGeomTaxonomyCircleObject *result = (IfcOpenshellGeomTaxonomyCircleObject *)IfcOpenshellGeomTaxonomyCircleType.tp_alloc(&IfcOpenshellGeomTaxonomyCircleType, 0);
-    if (!result) return NULL;
+    if (!result) {
+        ifcopenshell_geom_taxonomy_circle_destroy(handle);
+        return NULL;
+    }
     result->handle = handle;
     result->owned = owned;
     return (PyObject *)result;
@@ -5054,7 +5138,10 @@ static PyObject *wrap_geom_taxonomy_circle(ifcopenshell_geom_taxonomy_circle_t *
 static PyObject *wrap_geom_taxonomy_collection(ifcopenshell_geom_taxonomy_collection_t *handle, int owned) {
     if (!handle) Py_RETURN_NONE;
     IfcOpenshellGeomTaxonomyCollectionObject *result = (IfcOpenshellGeomTaxonomyCollectionObject *)IfcOpenshellGeomTaxonomyCollectionType.tp_alloc(&IfcOpenshellGeomTaxonomyCollectionType, 0);
-    if (!result) return NULL;
+    if (!result) {
+        ifcopenshell_geom_taxonomy_collection_destroy(handle);
+        return NULL;
+    }
     result->handle = handle;
     result->owned = owned;
     return (PyObject *)result;
@@ -5063,7 +5150,10 @@ static PyObject *wrap_geom_taxonomy_collection(ifcopenshell_geom_taxonomy_collec
 static PyObject *wrap_geom_taxonomy_colour(ifcopenshell_geom_taxonomy_colour_t *handle, int owned) {
     if (!handle) Py_RETURN_NONE;
     IfcOpenshellGeomTaxonomyColourObject *result = (IfcOpenshellGeomTaxonomyColourObject *)IfcOpenshellGeomTaxonomyColourType.tp_alloc(&IfcOpenshellGeomTaxonomyColourType, 0);
-    if (!result) return NULL;
+    if (!result) {
+        ifcopenshell_geom_taxonomy_colour_destroy(handle);
+        return NULL;
+    }
     result->handle = handle;
     result->owned = owned;
     return (PyObject *)result;
@@ -5072,7 +5162,10 @@ static PyObject *wrap_geom_taxonomy_colour(ifcopenshell_geom_taxonomy_colour_t *
 static PyObject *wrap_geom_taxonomy_cylinder(ifcopenshell_geom_taxonomy_cylinder_t *handle, int owned) {
     if (!handle) Py_RETURN_NONE;
     IfcOpenshellGeomTaxonomyCylinderObject *result = (IfcOpenshellGeomTaxonomyCylinderObject *)IfcOpenshellGeomTaxonomyCylinderType.tp_alloc(&IfcOpenshellGeomTaxonomyCylinderType, 0);
-    if (!result) return NULL;
+    if (!result) {
+        ifcopenshell_geom_taxonomy_cylinder_destroy(handle);
+        return NULL;
+    }
     result->handle = handle;
     result->owned = owned;
     return (PyObject *)result;
@@ -5081,7 +5174,10 @@ static PyObject *wrap_geom_taxonomy_cylinder(ifcopenshell_geom_taxonomy_cylinder
 static PyObject *wrap_geom_taxonomy_direction3(ifcopenshell_geom_taxonomy_direction3_t *handle, int owned) {
     if (!handle) Py_RETURN_NONE;
     IfcOpenshellGeomTaxonomyDirection3Object *result = (IfcOpenshellGeomTaxonomyDirection3Object *)IfcOpenshellGeomTaxonomyDirection3Type.tp_alloc(&IfcOpenshellGeomTaxonomyDirection3Type, 0);
-    if (!result) return NULL;
+    if (!result) {
+        ifcopenshell_geom_taxonomy_direction3_destroy(handle);
+        return NULL;
+    }
     result->handle = handle;
     result->owned = owned;
     return (PyObject *)result;
@@ -5090,7 +5186,10 @@ static PyObject *wrap_geom_taxonomy_direction3(ifcopenshell_geom_taxonomy_direct
 static PyObject *wrap_geom_taxonomy_edge(ifcopenshell_geom_taxonomy_edge_t *handle, int owned) {
     if (!handle) Py_RETURN_NONE;
     IfcOpenshellGeomTaxonomyEdgeObject *result = (IfcOpenshellGeomTaxonomyEdgeObject *)IfcOpenshellGeomTaxonomyEdgeType.tp_alloc(&IfcOpenshellGeomTaxonomyEdgeType, 0);
-    if (!result) return NULL;
+    if (!result) {
+        ifcopenshell_geom_taxonomy_edge_destroy(handle);
+        return NULL;
+    }
     result->handle = handle;
     result->owned = owned;
     return (PyObject *)result;
@@ -5099,7 +5198,10 @@ static PyObject *wrap_geom_taxonomy_edge(ifcopenshell_geom_taxonomy_edge_t *hand
 static PyObject *wrap_geom_taxonomy_ellipse(ifcopenshell_geom_taxonomy_ellipse_t *handle, int owned) {
     if (!handle) Py_RETURN_NONE;
     IfcOpenshellGeomTaxonomyEllipseObject *result = (IfcOpenshellGeomTaxonomyEllipseObject *)IfcOpenshellGeomTaxonomyEllipseType.tp_alloc(&IfcOpenshellGeomTaxonomyEllipseType, 0);
-    if (!result) return NULL;
+    if (!result) {
+        ifcopenshell_geom_taxonomy_ellipse_destroy(handle);
+        return NULL;
+    }
     result->handle = handle;
     result->owned = owned;
     return (PyObject *)result;
@@ -5108,7 +5210,10 @@ static PyObject *wrap_geom_taxonomy_ellipse(ifcopenshell_geom_taxonomy_ellipse_t
 static PyObject *wrap_geom_taxonomy_extrusion(ifcopenshell_geom_taxonomy_extrusion_t *handle, int owned) {
     if (!handle) Py_RETURN_NONE;
     IfcOpenshellGeomTaxonomyExtrusionObject *result = (IfcOpenshellGeomTaxonomyExtrusionObject *)IfcOpenshellGeomTaxonomyExtrusionType.tp_alloc(&IfcOpenshellGeomTaxonomyExtrusionType, 0);
-    if (!result) return NULL;
+    if (!result) {
+        ifcopenshell_geom_taxonomy_extrusion_destroy(handle);
+        return NULL;
+    }
     result->handle = handle;
     result->owned = owned;
     return (PyObject *)result;
@@ -5117,7 +5222,10 @@ static PyObject *wrap_geom_taxonomy_extrusion(ifcopenshell_geom_taxonomy_extrusi
 static PyObject *wrap_geom_taxonomy_face(ifcopenshell_geom_taxonomy_face_t *handle, int owned) {
     if (!handle) Py_RETURN_NONE;
     IfcOpenshellGeomTaxonomyFaceObject *result = (IfcOpenshellGeomTaxonomyFaceObject *)IfcOpenshellGeomTaxonomyFaceType.tp_alloc(&IfcOpenshellGeomTaxonomyFaceType, 0);
-    if (!result) return NULL;
+    if (!result) {
+        ifcopenshell_geom_taxonomy_face_destroy(handle);
+        return NULL;
+    }
     result->handle = handle;
     result->owned = owned;
     return (PyObject *)result;
@@ -5126,7 +5234,10 @@ static PyObject *wrap_geom_taxonomy_face(ifcopenshell_geom_taxonomy_face_t *hand
 static PyObject *wrap_geom_taxonomy_item(ifcopenshell_geom_taxonomy_item_t *handle, int owned) {
     if (!handle) Py_RETURN_NONE;
     IfcOpenshellGeomTaxonomyItemObject *result = (IfcOpenshellGeomTaxonomyItemObject *)IfcOpenshellGeomTaxonomyItemType.tp_alloc(&IfcOpenshellGeomTaxonomyItemType, 0);
-    if (!result) return NULL;
+    if (!result) {
+        ifcopenshell_geom_taxonomy_item_destroy(handle);
+        return NULL;
+    }
     result->handle = handle;
     result->owned = owned;
     return (PyObject *)result;
@@ -5135,7 +5246,10 @@ static PyObject *wrap_geom_taxonomy_item(ifcopenshell_geom_taxonomy_item_t *hand
 static PyObject *wrap_geom_taxonomy_line(ifcopenshell_geom_taxonomy_line_t *handle, int owned) {
     if (!handle) Py_RETURN_NONE;
     IfcOpenshellGeomTaxonomyLineObject *result = (IfcOpenshellGeomTaxonomyLineObject *)IfcOpenshellGeomTaxonomyLineType.tp_alloc(&IfcOpenshellGeomTaxonomyLineType, 0);
-    if (!result) return NULL;
+    if (!result) {
+        ifcopenshell_geom_taxonomy_line_destroy(handle);
+        return NULL;
+    }
     result->handle = handle;
     result->owned = owned;
     return (PyObject *)result;
@@ -5144,7 +5258,10 @@ static PyObject *wrap_geom_taxonomy_line(ifcopenshell_geom_taxonomy_line_t *hand
 static PyObject *wrap_geom_taxonomy_loft(ifcopenshell_geom_taxonomy_loft_t *handle, int owned) {
     if (!handle) Py_RETURN_NONE;
     IfcOpenshellGeomTaxonomyLoftObject *result = (IfcOpenshellGeomTaxonomyLoftObject *)IfcOpenshellGeomTaxonomyLoftType.tp_alloc(&IfcOpenshellGeomTaxonomyLoftType, 0);
-    if (!result) return NULL;
+    if (!result) {
+        ifcopenshell_geom_taxonomy_loft_destroy(handle);
+        return NULL;
+    }
     result->handle = handle;
     result->owned = owned;
     return (PyObject *)result;
@@ -5153,7 +5270,10 @@ static PyObject *wrap_geom_taxonomy_loft(ifcopenshell_geom_taxonomy_loft_t *hand
 static PyObject *wrap_geom_taxonomy_loop(ifcopenshell_geom_taxonomy_loop_t *handle, int owned) {
     if (!handle) Py_RETURN_NONE;
     IfcOpenshellGeomTaxonomyLoopObject *result = (IfcOpenshellGeomTaxonomyLoopObject *)IfcOpenshellGeomTaxonomyLoopType.tp_alloc(&IfcOpenshellGeomTaxonomyLoopType, 0);
-    if (!result) return NULL;
+    if (!result) {
+        ifcopenshell_geom_taxonomy_loop_destroy(handle);
+        return NULL;
+    }
     result->handle = handle;
     result->owned = owned;
     return (PyObject *)result;
@@ -5162,7 +5282,10 @@ static PyObject *wrap_geom_taxonomy_loop(ifcopenshell_geom_taxonomy_loop_t *hand
 static PyObject *wrap_geom_taxonomy_matrix4(ifcopenshell_geom_taxonomy_matrix4_t *handle, int owned) {
     if (!handle) Py_RETURN_NONE;
     IfcOpenshellGeomTaxonomyMatrix4Object *result = (IfcOpenshellGeomTaxonomyMatrix4Object *)IfcOpenshellGeomTaxonomyMatrix4Type.tp_alloc(&IfcOpenshellGeomTaxonomyMatrix4Type, 0);
-    if (!result) return NULL;
+    if (!result) {
+        ifcopenshell_geom_taxonomy_matrix4_destroy(handle);
+        return NULL;
+    }
     result->handle = handle;
     result->owned = owned;
     return (PyObject *)result;
@@ -5171,7 +5294,10 @@ static PyObject *wrap_geom_taxonomy_matrix4(ifcopenshell_geom_taxonomy_matrix4_t
 static PyObject *wrap_geom_taxonomy_node(ifcopenshell_geom_taxonomy_node_t *handle, int owned) {
     if (!handle) Py_RETURN_NONE;
     IfcOpenshellGeomTaxonomyNodeObject *result = (IfcOpenshellGeomTaxonomyNodeObject *)IfcOpenshellGeomTaxonomyNodeType.tp_alloc(&IfcOpenshellGeomTaxonomyNodeType, 0);
-    if (!result) return NULL;
+    if (!result) {
+        ifcopenshell_geom_taxonomy_node_destroy(handle);
+        return NULL;
+    }
     result->handle = handle;
     result->owned = owned;
     return (PyObject *)result;
@@ -5180,7 +5306,10 @@ static PyObject *wrap_geom_taxonomy_node(ifcopenshell_geom_taxonomy_node_t *hand
 static PyObject *wrap_geom_taxonomy_offset_curve(ifcopenshell_geom_taxonomy_offset_curve_t *handle, int owned) {
     if (!handle) Py_RETURN_NONE;
     IfcOpenshellGeomTaxonomyOffsetCurveObject *result = (IfcOpenshellGeomTaxonomyOffsetCurveObject *)IfcOpenshellGeomTaxonomyOffsetCurveType.tp_alloc(&IfcOpenshellGeomTaxonomyOffsetCurveType, 0);
-    if (!result) return NULL;
+    if (!result) {
+        ifcopenshell_geom_taxonomy_offset_curve_destroy(handle);
+        return NULL;
+    }
     result->handle = handle;
     result->owned = owned;
     return (PyObject *)result;
@@ -5189,7 +5318,10 @@ static PyObject *wrap_geom_taxonomy_offset_curve(ifcopenshell_geom_taxonomy_offs
 static PyObject *wrap_geom_taxonomy_plane(ifcopenshell_geom_taxonomy_plane_t *handle, int owned) {
     if (!handle) Py_RETURN_NONE;
     IfcOpenshellGeomTaxonomyPlaneObject *result = (IfcOpenshellGeomTaxonomyPlaneObject *)IfcOpenshellGeomTaxonomyPlaneType.tp_alloc(&IfcOpenshellGeomTaxonomyPlaneType, 0);
-    if (!result) return NULL;
+    if (!result) {
+        ifcopenshell_geom_taxonomy_plane_destroy(handle);
+        return NULL;
+    }
     result->handle = handle;
     result->owned = owned;
     return (PyObject *)result;
@@ -5198,7 +5330,10 @@ static PyObject *wrap_geom_taxonomy_plane(ifcopenshell_geom_taxonomy_plane_t *ha
 static PyObject *wrap_geom_taxonomy_point3(ifcopenshell_geom_taxonomy_point3_t *handle, int owned) {
     if (!handle) Py_RETURN_NONE;
     IfcOpenshellGeomTaxonomyPoint3Object *result = (IfcOpenshellGeomTaxonomyPoint3Object *)IfcOpenshellGeomTaxonomyPoint3Type.tp_alloc(&IfcOpenshellGeomTaxonomyPoint3Type, 0);
-    if (!result) return NULL;
+    if (!result) {
+        ifcopenshell_geom_taxonomy_point3_destroy(handle);
+        return NULL;
+    }
     result->handle = handle;
     result->owned = owned;
     return (PyObject *)result;
@@ -5207,7 +5342,10 @@ static PyObject *wrap_geom_taxonomy_point3(ifcopenshell_geom_taxonomy_point3_t *
 static PyObject *wrap_geom_taxonomy_revolve(ifcopenshell_geom_taxonomy_revolve_t *handle, int owned) {
     if (!handle) Py_RETURN_NONE;
     IfcOpenshellGeomTaxonomyRevolveObject *result = (IfcOpenshellGeomTaxonomyRevolveObject *)IfcOpenshellGeomTaxonomyRevolveType.tp_alloc(&IfcOpenshellGeomTaxonomyRevolveType, 0);
-    if (!result) return NULL;
+    if (!result) {
+        ifcopenshell_geom_taxonomy_revolve_destroy(handle);
+        return NULL;
+    }
     result->handle = handle;
     result->owned = owned;
     return (PyObject *)result;
@@ -5216,7 +5354,10 @@ static PyObject *wrap_geom_taxonomy_revolve(ifcopenshell_geom_taxonomy_revolve_t
 static PyObject *wrap_geom_taxonomy_shell(ifcopenshell_geom_taxonomy_shell_t *handle, int owned) {
     if (!handle) Py_RETURN_NONE;
     IfcOpenshellGeomTaxonomyShellObject *result = (IfcOpenshellGeomTaxonomyShellObject *)IfcOpenshellGeomTaxonomyShellType.tp_alloc(&IfcOpenshellGeomTaxonomyShellType, 0);
-    if (!result) return NULL;
+    if (!result) {
+        ifcopenshell_geom_taxonomy_shell_destroy(handle);
+        return NULL;
+    }
     result->handle = handle;
     result->owned = owned;
     return (PyObject *)result;
@@ -5225,7 +5366,10 @@ static PyObject *wrap_geom_taxonomy_shell(ifcopenshell_geom_taxonomy_shell_t *ha
 static PyObject *wrap_geom_taxonomy_solid(ifcopenshell_geom_taxonomy_solid_t *handle, int owned) {
     if (!handle) Py_RETURN_NONE;
     IfcOpenshellGeomTaxonomySolidObject *result = (IfcOpenshellGeomTaxonomySolidObject *)IfcOpenshellGeomTaxonomySolidType.tp_alloc(&IfcOpenshellGeomTaxonomySolidType, 0);
-    if (!result) return NULL;
+    if (!result) {
+        ifcopenshell_geom_taxonomy_solid_destroy(handle);
+        return NULL;
+    }
     result->handle = handle;
     result->owned = owned;
     return (PyObject *)result;
@@ -5234,7 +5378,10 @@ static PyObject *wrap_geom_taxonomy_solid(ifcopenshell_geom_taxonomy_solid_t *ha
 static PyObject *wrap_geom_taxonomy_sphere(ifcopenshell_geom_taxonomy_sphere_t *handle, int owned) {
     if (!handle) Py_RETURN_NONE;
     IfcOpenshellGeomTaxonomySphereObject *result = (IfcOpenshellGeomTaxonomySphereObject *)IfcOpenshellGeomTaxonomySphereType.tp_alloc(&IfcOpenshellGeomTaxonomySphereType, 0);
-    if (!result) return NULL;
+    if (!result) {
+        ifcopenshell_geom_taxonomy_sphere_destroy(handle);
+        return NULL;
+    }
     result->handle = handle;
     result->owned = owned;
     return (PyObject *)result;
@@ -5243,7 +5390,10 @@ static PyObject *wrap_geom_taxonomy_sphere(ifcopenshell_geom_taxonomy_sphere_t *
 static PyObject *wrap_geom_taxonomy_style(ifcopenshell_geom_taxonomy_style_t *handle, int owned) {
     if (!handle) Py_RETURN_NONE;
     IfcOpenshellGeomTaxonomyStyleObject *result = (IfcOpenshellGeomTaxonomyStyleObject *)IfcOpenshellGeomTaxonomyStyleType.tp_alloc(&IfcOpenshellGeomTaxonomyStyleType, 0);
-    if (!result) return NULL;
+    if (!result) {
+        ifcopenshell_geom_taxonomy_style_destroy(handle);
+        return NULL;
+    }
     result->handle = handle;
     result->owned = owned;
     return (PyObject *)result;
@@ -5252,7 +5402,10 @@ static PyObject *wrap_geom_taxonomy_style(ifcopenshell_geom_taxonomy_style_t *ha
 static PyObject *wrap_geom_taxonomy_sweep_along_curve(ifcopenshell_geom_taxonomy_sweep_along_curve_t *handle, int owned) {
     if (!handle) Py_RETURN_NONE;
     IfcOpenshellGeomTaxonomySweepAlongCurveObject *result = (IfcOpenshellGeomTaxonomySweepAlongCurveObject *)IfcOpenshellGeomTaxonomySweepAlongCurveType.tp_alloc(&IfcOpenshellGeomTaxonomySweepAlongCurveType, 0);
-    if (!result) return NULL;
+    if (!result) {
+        ifcopenshell_geom_taxonomy_sweep_along_curve_destroy(handle);
+        return NULL;
+    }
     result->handle = handle;
     result->owned = owned;
     return (PyObject *)result;
@@ -5261,7 +5414,10 @@ static PyObject *wrap_geom_taxonomy_sweep_along_curve(ifcopenshell_geom_taxonomy
 static PyObject *wrap_geom_taxonomy_torus(ifcopenshell_geom_taxonomy_torus_t *handle, int owned) {
     if (!handle) Py_RETURN_NONE;
     IfcOpenshellGeomTaxonomyTorusObject *result = (IfcOpenshellGeomTaxonomyTorusObject *)IfcOpenshellGeomTaxonomyTorusType.tp_alloc(&IfcOpenshellGeomTaxonomyTorusType, 0);
-    if (!result) return NULL;
+    if (!result) {
+        ifcopenshell_geom_taxonomy_torus_destroy(handle);
+        return NULL;
+    }
     result->handle = handle;
     result->owned = owned;
     return (PyObject *)result;
@@ -5270,7 +5426,10 @@ static PyObject *wrap_geom_taxonomy_torus(ifcopenshell_geom_taxonomy_torus_t *ha
 static PyObject *wrap_geom_transformation(ifcopenshell_geom_transformation_t *handle, int owned) {
     if (!handle) Py_RETURN_NONE;
     IfcOpenshellGeomTransformationObject *result = (IfcOpenshellGeomTransformationObject *)IfcOpenshellGeomTransformationType.tp_alloc(&IfcOpenshellGeomTransformationType, 0);
-    if (!result) return NULL;
+    if (!result) {
+        ifcopenshell_geom_transformation_destroy(handle);
+        return NULL;
+    }
     result->handle = handle;
     result->owned = owned;
     return (PyObject *)result;
@@ -5279,7 +5438,10 @@ static PyObject *wrap_geom_transformation(ifcopenshell_geom_transformation_t *ha
 static PyObject *wrap_geom_tree_clash_list(ifcopenshell_geom_tree_clash_list_t *handle, int owned) {
     if (!handle) Py_RETURN_NONE;
     IfcOpenshellGeomTreeClashListObject *result = (IfcOpenshellGeomTreeClashListObject *)IfcOpenshellGeomTreeClashListType.tp_alloc(&IfcOpenshellGeomTreeClashListType, 0);
-    if (!result) return NULL;
+    if (!result) {
+        ifcopenshell_geom_tree_clash_list_destroy(handle);
+        return NULL;
+    }
     result->handle = handle;
     result->owned = owned;
     return (PyObject *)result;
@@ -5288,7 +5450,10 @@ static PyObject *wrap_geom_tree_clash_list(ifcopenshell_geom_tree_clash_list_t *
 static PyObject *wrap_geom_tree_clash(ifcopenshell_geom_tree_clash_t *handle, int owned) {
     if (!handle) Py_RETURN_NONE;
     IfcOpenshellGeomTreeClashObject *result = (IfcOpenshellGeomTreeClashObject *)IfcOpenshellGeomTreeClashType.tp_alloc(&IfcOpenshellGeomTreeClashType, 0);
-    if (!result) return NULL;
+    if (!result) {
+        ifcopenshell_geom_tree_clash_destroy(handle);
+        return NULL;
+    }
     result->handle = handle;
     result->owned = owned;
     return (PyObject *)result;
@@ -5297,7 +5462,10 @@ static PyObject *wrap_geom_tree_clash(ifcopenshell_geom_tree_clash_t *handle, in
 static PyObject *wrap_geom_tree_ray_intersection_list(ifcopenshell_geom_tree_ray_intersection_list_t *handle, int owned) {
     if (!handle) Py_RETURN_NONE;
     IfcOpenshellGeomTreeRayIntersectionListObject *result = (IfcOpenshellGeomTreeRayIntersectionListObject *)IfcOpenshellGeomTreeRayIntersectionListType.tp_alloc(&IfcOpenshellGeomTreeRayIntersectionListType, 0);
-    if (!result) return NULL;
+    if (!result) {
+        ifcopenshell_geom_tree_ray_intersection_list_destroy(handle);
+        return NULL;
+    }
     result->handle = handle;
     result->owned = owned;
     return (PyObject *)result;
@@ -5306,7 +5474,10 @@ static PyObject *wrap_geom_tree_ray_intersection_list(ifcopenshell_geom_tree_ray
 static PyObject *wrap_geom_tree_ray_intersection(ifcopenshell_geom_tree_ray_intersection_t *handle, int owned) {
     if (!handle) Py_RETURN_NONE;
     IfcOpenshellGeomTreeRayIntersectionObject *result = (IfcOpenshellGeomTreeRayIntersectionObject *)IfcOpenshellGeomTreeRayIntersectionType.tp_alloc(&IfcOpenshellGeomTreeRayIntersectionType, 0);
-    if (!result) return NULL;
+    if (!result) {
+        ifcopenshell_geom_tree_ray_intersection_destroy(handle);
+        return NULL;
+    }
     result->handle = handle;
     result->owned = owned;
     return (PyObject *)result;
@@ -5315,7 +5486,10 @@ static PyObject *wrap_geom_tree_ray_intersection(ifcopenshell_geom_tree_ray_inte
 static PyObject *wrap_geom_tree(ifcopenshell_geom_tree_t *handle, int owned) {
     if (!handle) Py_RETURN_NONE;
     IfcOpenshellGeomTreeObject *result = (IfcOpenshellGeomTreeObject *)IfcOpenshellGeomTreeType.tp_alloc(&IfcOpenshellGeomTreeType, 0);
-    if (!result) return NULL;
+    if (!result) {
+        ifcopenshell_geom_tree_destroy(handle);
+        return NULL;
+    }
     result->handle = handle;
     result->owned = owned;
     return (PyObject *)result;
@@ -5324,7 +5498,10 @@ static PyObject *wrap_geom_tree(ifcopenshell_geom_tree_t *handle, int owned) {
 static PyObject *wrap_geom_triangulation_element(ifcopenshell_geom_triangulation_element_t *handle, int owned) {
     if (!handle) Py_RETURN_NONE;
     IfcOpenshellGeomTriangulationElementObject *result = (IfcOpenshellGeomTriangulationElementObject *)IfcOpenshellGeomTriangulationElementType.tp_alloc(&IfcOpenshellGeomTriangulationElementType, 0);
-    if (!result) return NULL;
+    if (!result) {
+        ifcopenshell_geom_triangulation_element_destroy(handle);
+        return NULL;
+    }
     result->handle = handle;
     result->owned = owned;
     return (PyObject *)result;
@@ -5333,7 +5510,10 @@ static PyObject *wrap_geom_triangulation_element(ifcopenshell_geom_triangulation
 static PyObject *wrap_geom_triangulation(ifcopenshell_geom_triangulation_t *handle, int owned) {
     if (!handle) Py_RETURN_NONE;
     IfcOpenshellGeomTriangulationObject *result = (IfcOpenshellGeomTriangulationObject *)IfcOpenshellGeomTriangulationType.tp_alloc(&IfcOpenshellGeomTriangulationType, 0);
-    if (!result) return NULL;
+    if (!result) {
+        ifcopenshell_geom_triangulation_destroy(handle);
+        return NULL;
+    }
     result->handle = handle;
     result->owned = owned;
     return (PyObject *)result;
@@ -5342,7 +5522,10 @@ static PyObject *wrap_geom_triangulation(ifcopenshell_geom_triangulation_t *hand
 static PyObject *wrap_header(ifcopenshell_header_t *handle, int owned) {
     if (!handle) Py_RETURN_NONE;
     IfcOpenshellHeaderObject *result = (IfcOpenshellHeaderObject *)IfcOpenshellHeaderType.tp_alloc(&IfcOpenshellHeaderType, 0);
-    if (!result) return NULL;
+    if (!result) {
+        ifcopenshell_header_destroy(handle);
+        return NULL;
+    }
     result->handle = handle;
     result->owned = owned;
     return (PyObject *)result;
@@ -5351,7 +5534,10 @@ static PyObject *wrap_header(ifcopenshell_header_t *handle, int owned) {
 static PyObject *wrap_instance_streamer(ifcopenshell_instance_streamer_t *handle, int owned) {
     if (!handle) Py_RETURN_NONE;
     IfcOpenshellInstanceStreamerObject *result = (IfcOpenshellInstanceStreamerObject *)IfcOpenshellInstanceStreamerType.tp_alloc(&IfcOpenshellInstanceStreamerType, 0);
-    if (!result) return NULL;
+    if (!result) {
+        ifcopenshell_instance_streamer_destroy(handle);
+        return NULL;
+    }
     result->handle = handle;
     result->owned = owned;
     return (PyObject *)result;
@@ -5360,7 +5546,10 @@ static PyObject *wrap_instance_streamer(ifcopenshell_instance_streamer_t *handle
 static PyObject *wrap_instance(ifcopenshell_instance_t *handle, int owned) {
     if (!handle) Py_RETURN_NONE;
     IfcOpenshellInstanceObject *result = (IfcOpenshellInstanceObject *)IfcOpenshellInstanceType.tp_alloc(&IfcOpenshellInstanceType, 0);
-    if (!result) return NULL;
+    if (!result) {
+        ifcopenshell_instance_destroy(handle);
+        return NULL;
+    }
     result->handle = handle;
     result->owned = owned;
     return (PyObject *)result;
@@ -5369,7 +5558,10 @@ static PyObject *wrap_instance(ifcopenshell_instance_t *handle, int owned) {
 static PyObject *wrap_inverse_attribute(ifcopenshell_inverse_attribute_t *handle, int owned) {
     if (!handle) Py_RETURN_NONE;
     IfcOpenshellInverseAttributeObject *result = (IfcOpenshellInverseAttributeObject *)IfcOpenshellInverseAttributeType.tp_alloc(&IfcOpenshellInverseAttributeType, 0);
-    if (!result) return NULL;
+    if (!result) {
+        ifcopenshell_inverse_attribute_destroy(handle);
+        return NULL;
+    }
     result->handle = handle;
     result->owned = owned;
     return (PyObject *)result;
@@ -5378,7 +5570,10 @@ static PyObject *wrap_inverse_attribute(ifcopenshell_inverse_attribute_t *handle
 static PyObject *wrap_named_type(ifcopenshell_named_type_t *handle, int owned) {
     if (!handle) Py_RETURN_NONE;
     IfcOpenshellNamedTypeObject *result = (IfcOpenshellNamedTypeObject *)IfcOpenshellNamedTypeType.tp_alloc(&IfcOpenshellNamedTypeType, 0);
-    if (!result) return NULL;
+    if (!result) {
+        ifcopenshell_named_type_destroy(handle);
+        return NULL;
+    }
     result->handle = handle;
     result->owned = owned;
     return (PyObject *)result;
@@ -5387,7 +5582,10 @@ static PyObject *wrap_named_type(ifcopenshell_named_type_t *handle, int owned) {
 static PyObject *wrap_parameter_type(ifcopenshell_parameter_type_t *handle, int owned) {
     if (!handle) Py_RETURN_NONE;
     IfcOpenshellParameterTypeObject *result = (IfcOpenshellParameterTypeObject *)IfcOpenshellParameterTypeType.tp_alloc(&IfcOpenshellParameterTypeType, 0);
-    if (!result) return NULL;
+    if (!result) {
+        ifcopenshell_parameter_type_destroy(handle);
+        return NULL;
+    }
     result->handle = handle;
     result->owned = owned;
     return (PyObject *)result;
@@ -5396,7 +5594,10 @@ static PyObject *wrap_parameter_type(ifcopenshell_parameter_type_t *handle, int 
 static PyObject *wrap_parse_attribute_value(ifcopenshell_parse_attribute_value_t *handle, int owned) {
     if (!handle) Py_RETURN_NONE;
     IfcOpenshellParseAttributeValueObject *result = (IfcOpenshellParseAttributeValueObject *)IfcOpenshellParseAttributeValueType.tp_alloc(&IfcOpenshellParseAttributeValueType, 0);
-    if (!result) return NULL;
+    if (!result) {
+        ifcopenshell_parse_attribute_value_destroy(handle);
+        return NULL;
+    }
     result->handle = handle;
     result->owned = owned;
     return (PyObject *)result;
@@ -5405,7 +5606,10 @@ static PyObject *wrap_parse_attribute_value(ifcopenshell_parse_attribute_value_t
 static PyObject *wrap_parse_instance_list(ifcopenshell_parse_instance_list_t *handle, int owned) {
     if (!handle) Py_RETURN_NONE;
     IfcOpenshellParseInstanceListObject *result = (IfcOpenshellParseInstanceListObject *)IfcOpenshellParseInstanceListType.tp_alloc(&IfcOpenshellParseInstanceListType, 0);
-    if (!result) return NULL;
+    if (!result) {
+        ifcopenshell_parse_instance_list_destroy(handle);
+        return NULL;
+    }
     result->handle = handle;
     result->owned = owned;
     return (PyObject *)result;
@@ -5414,7 +5618,10 @@ static PyObject *wrap_parse_instance_list(ifcopenshell_parse_instance_list_t *ha
 static PyObject *wrap_pset_template_handle(ifcopenshell_pset_template_handle_t *handle, int owned) {
     if (!handle) Py_RETURN_NONE;
     IfcOpenshellPsetTemplateHandleObject *result = (IfcOpenshellPsetTemplateHandleObject *)IfcOpenshellPsetTemplateHandleType.tp_alloc(&IfcOpenshellPsetTemplateHandleType, 0);
-    if (!result) return NULL;
+    if (!result) {
+        ifcopenshell_pset_template_handle_destroy(handle);
+        return NULL;
+    }
     result->handle = handle;
     result->owned = owned;
     return (PyObject *)result;
@@ -5423,7 +5630,10 @@ static PyObject *wrap_pset_template_handle(ifcopenshell_pset_template_handle_t *
 static PyObject *wrap_schema(ifcopenshell_schema_t *handle, int owned) {
     if (!handle) Py_RETURN_NONE;
     IfcOpenshellSchemaObject *result = (IfcOpenshellSchemaObject *)IfcOpenshellSchemaType.tp_alloc(&IfcOpenshellSchemaType, 0);
-    if (!result) return NULL;
+    if (!result) {
+        ifcopenshell_schema_destroy(handle);
+        return NULL;
+    }
     result->handle = handle;
     result->owned = owned;
     return (PyObject *)result;
@@ -5432,7 +5642,10 @@ static PyObject *wrap_schema(ifcopenshell_schema_t *handle, int owned) {
 static PyObject *wrap_select_type(ifcopenshell_select_type_t *handle, int owned) {
     if (!handle) Py_RETURN_NONE;
     IfcOpenshellSelectTypeObject *result = (IfcOpenshellSelectTypeObject *)IfcOpenshellSelectTypeType.tp_alloc(&IfcOpenshellSelectTypeType, 0);
-    if (!result) return NULL;
+    if (!result) {
+        ifcopenshell_select_type_destroy(handle);
+        return NULL;
+    }
     result->handle = handle;
     result->owned = owned;
     return (PyObject *)result;
@@ -5441,7 +5654,10 @@ static PyObject *wrap_select_type(ifcopenshell_select_type_t *handle, int owned)
 static PyObject *wrap_simple_type(ifcopenshell_simple_type_t *handle, int owned) {
     if (!handle) Py_RETURN_NONE;
     IfcOpenshellSimpleTypeObject *result = (IfcOpenshellSimpleTypeObject *)IfcOpenshellSimpleTypeType.tp_alloc(&IfcOpenshellSimpleTypeType, 0);
-    if (!result) return NULL;
+    if (!result) {
+        ifcopenshell_simple_type_destroy(handle);
+        return NULL;
+    }
     result->handle = handle;
     result->owned = owned;
     return (PyObject *)result;
@@ -5450,7 +5666,10 @@ static PyObject *wrap_simple_type(ifcopenshell_simple_type_t *handle, int owned)
 static PyObject *wrap_type_declaration(ifcopenshell_type_declaration_t *handle, int owned) {
     if (!handle) Py_RETURN_NONE;
     IfcOpenshellTypeDeclarationObject *result = (IfcOpenshellTypeDeclarationObject *)IfcOpenshellTypeDeclarationType.tp_alloc(&IfcOpenshellTypeDeclarationType, 0);
-    if (!result) return NULL;
+    if (!result) {
+        ifcopenshell_type_declaration_destroy(handle);
+        return NULL;
+    }
     result->handle = handle;
     result->owned = owned;
     return (PyObject *)result;
@@ -5459,7 +5678,10 @@ static PyObject *wrap_type_declaration(ifcopenshell_type_declaration_t *handle, 
 static PyObject *wrap_value(ifcopenshell_value_t *handle, int owned) {
     if (!handle) Py_RETURN_NONE;
     IfcOpenshellValueObject *result = (IfcOpenshellValueObject *)IfcOpenshellValueType.tp_alloc(&IfcOpenshellValueType, 0);
-    if (!result) return NULL;
+    if (!result) {
+        ifcopenshell_value_destroy(handle);
+        return NULL;
+    }
     result->handle = handle;
     result->owned = owned;
     return (PyObject *)result;
@@ -16828,120 +17050,147 @@ static PyObject *convert_int32_list_list_list_list(ifcopenshell_int32_list_list_
 
 static PyObject *convert_shape_builder_mep_transition_shape_result(ifcopenshell_shape_builder_mep_transition_shape_result_t *value, int owned) {
     if (!SimpleNamespaceType) {
+        ifcopenshell_shape_builder_mep_transition_shape_result_destroy(value);
         PyErr_SetString(PyExc_RuntimeError, "types.SimpleNamespace is not available");
         return NULL;
     }
     PyObject *result = PyObject_CallNoArgs(SimpleNamespaceType);
-    if (!result) return NULL;
+    if (!result) { ifcopenshell_shape_builder_mep_transition_shape_result_destroy(value); return NULL; }
     PyObject *item = NULL;
     item = wrap_instance(value->representation, 1);
-    if (!item) { Py_DECREF(result); return NULL; }
-    if (PyObject_SetAttrString(result, "representation", item) < 0) { Py_DECREF(item); Py_DECREF(result); return NULL; }
+    value->representation = NULL;
+    if (!item) { Py_DECREF(result); ifcopenshell_shape_builder_mep_transition_shape_result_destroy(value); return NULL; }
+    if (PyObject_SetAttrString(result, "representation", item) < 0) { Py_DECREF(item); Py_DECREF(result); ifcopenshell_shape_builder_mep_transition_shape_result_destroy(value); return NULL; }
     Py_DECREF(item);
     item = PyFloat_FromDouble(value->start_length);
-    if (!item) { Py_DECREF(result); return NULL; }
-    if (PyObject_SetAttrString(result, "start_length", item) < 0) { Py_DECREF(item); Py_DECREF(result); return NULL; }
+    if (!item) { Py_DECREF(result); ifcopenshell_shape_builder_mep_transition_shape_result_destroy(value); return NULL; }
+    if (PyObject_SetAttrString(result, "start_length", item) < 0) { Py_DECREF(item); Py_DECREF(result); ifcopenshell_shape_builder_mep_transition_shape_result_destroy(value); return NULL; }
     Py_DECREF(item);
     item = PyFloat_FromDouble(value->end_length);
-    if (!item) { Py_DECREF(result); return NULL; }
-    if (PyObject_SetAttrString(result, "end_length", item) < 0) { Py_DECREF(item); Py_DECREF(result); return NULL; }
+    if (!item) { Py_DECREF(result); ifcopenshell_shape_builder_mep_transition_shape_result_destroy(value); return NULL; }
+    if (PyObject_SetAttrString(result, "end_length", item) < 0) { Py_DECREF(item); Py_DECREF(result); ifcopenshell_shape_builder_mep_transition_shape_result_destroy(value); return NULL; }
     Py_DECREF(item);
     item = PyFloat_FromDouble(value->angle);
-    if (!item) { Py_DECREF(result); return NULL; }
-    if (PyObject_SetAttrString(result, "angle", item) < 0) { Py_DECREF(item); Py_DECREF(result); return NULL; }
+    if (!item) { Py_DECREF(result); ifcopenshell_shape_builder_mep_transition_shape_result_destroy(value); return NULL; }
+    if (PyObject_SetAttrString(result, "angle", item) < 0) { Py_DECREF(item); Py_DECREF(result); ifcopenshell_shape_builder_mep_transition_shape_result_destroy(value); return NULL; }
     Py_DECREF(item);
     item = convert_double_list(&value->profile_offset, 1);
-    if (!item) { Py_DECREF(result); return NULL; }
-    if (PyObject_SetAttrString(result, "profile_offset", item) < 0) { Py_DECREF(item); Py_DECREF(result); return NULL; }
+    if (!item) { Py_DECREF(result); ifcopenshell_shape_builder_mep_transition_shape_result_destroy(value); return NULL; }
+    if (PyObject_SetAttrString(result, "profile_offset", item) < 0) { Py_DECREF(item); Py_DECREF(result); ifcopenshell_shape_builder_mep_transition_shape_result_destroy(value); return NULL; }
     Py_DECREF(item);
     item = PyFloat_FromDouble(value->transition_length);
-    if (!item) { Py_DECREF(result); return NULL; }
-    if (PyObject_SetAttrString(result, "transition_length", item) < 0) { Py_DECREF(item); Py_DECREF(result); return NULL; }
+    if (!item) { Py_DECREF(result); ifcopenshell_shape_builder_mep_transition_shape_result_destroy(value); return NULL; }
+    if (PyObject_SetAttrString(result, "transition_length", item) < 0) { Py_DECREF(item); Py_DECREF(result); ifcopenshell_shape_builder_mep_transition_shape_result_destroy(value); return NULL; }
     Py_DECREF(item);
     item = PyFloat_FromDouble(value->full_transition_length);
-    if (!item) { Py_DECREF(result); return NULL; }
-    if (PyObject_SetAttrString(result, "full_transition_length", item) < 0) { Py_DECREF(item); Py_DECREF(result); return NULL; }
+    if (!item) { Py_DECREF(result); ifcopenshell_shape_builder_mep_transition_shape_result_destroy(value); return NULL; }
+    if (PyObject_SetAttrString(result, "full_transition_length", item) < 0) { Py_DECREF(item); Py_DECREF(result); ifcopenshell_shape_builder_mep_transition_shape_result_destroy(value); return NULL; }
     Py_DECREF(item);
+    ifcopenshell_shape_builder_mep_transition_shape_result_destroy(value);
     return result;
 }
 
 static PyObject *convert_shape_builder_mep_bend_shape_result(ifcopenshell_shape_builder_mep_bend_shape_result_t *value, int owned) {
     if (!SimpleNamespaceType) {
+        ifcopenshell_shape_builder_mep_bend_shape_result_destroy(value);
         PyErr_SetString(PyExc_RuntimeError, "types.SimpleNamespace is not available");
         return NULL;
     }
     PyObject *result = PyObject_CallNoArgs(SimpleNamespaceType);
-    if (!result) return NULL;
+    if (!result) { ifcopenshell_shape_builder_mep_bend_shape_result_destroy(value); return NULL; }
     PyObject *item = NULL;
     item = wrap_instance(value->representation, 1);
-    if (!item) { Py_DECREF(result); return NULL; }
-    if (PyObject_SetAttrString(result, "representation", item) < 0) { Py_DECREF(item); Py_DECREF(result); return NULL; }
+    value->representation = NULL;
+    if (!item) { Py_DECREF(result); ifcopenshell_shape_builder_mep_bend_shape_result_destroy(value); return NULL; }
+    if (PyObject_SetAttrString(result, "representation", item) < 0) { Py_DECREF(item); Py_DECREF(result); ifcopenshell_shape_builder_mep_bend_shape_result_destroy(value); return NULL; }
     Py_DECREF(item);
     item = PyFloat_FromDouble(value->start_length);
-    if (!item) { Py_DECREF(result); return NULL; }
-    if (PyObject_SetAttrString(result, "start_length", item) < 0) { Py_DECREF(item); Py_DECREF(result); return NULL; }
+    if (!item) { Py_DECREF(result); ifcopenshell_shape_builder_mep_bend_shape_result_destroy(value); return NULL; }
+    if (PyObject_SetAttrString(result, "start_length", item) < 0) { Py_DECREF(item); Py_DECREF(result); ifcopenshell_shape_builder_mep_bend_shape_result_destroy(value); return NULL; }
     Py_DECREF(item);
     item = PyFloat_FromDouble(value->end_length);
-    if (!item) { Py_DECREF(result); return NULL; }
-    if (PyObject_SetAttrString(result, "end_length", item) < 0) { Py_DECREF(item); Py_DECREF(result); return NULL; }
+    if (!item) { Py_DECREF(result); ifcopenshell_shape_builder_mep_bend_shape_result_destroy(value); return NULL; }
+    if (PyObject_SetAttrString(result, "end_length", item) < 0) { Py_DECREF(item); Py_DECREF(result); ifcopenshell_shape_builder_mep_bend_shape_result_destroy(value); return NULL; }
     Py_DECREF(item);
     item = PyFloat_FromDouble(value->radius);
-    if (!item) { Py_DECREF(result); return NULL; }
-    if (PyObject_SetAttrString(result, "radius", item) < 0) { Py_DECREF(item); Py_DECREF(result); return NULL; }
+    if (!item) { Py_DECREF(result); ifcopenshell_shape_builder_mep_bend_shape_result_destroy(value); return NULL; }
+    if (PyObject_SetAttrString(result, "radius", item) < 0) { Py_DECREF(item); Py_DECREF(result); ifcopenshell_shape_builder_mep_bend_shape_result_destroy(value); return NULL; }
     Py_DECREF(item);
     item = PyFloat_FromDouble(value->angle);
-    if (!item) { Py_DECREF(result); return NULL; }
-    if (PyObject_SetAttrString(result, "angle", item) < 0) { Py_DECREF(item); Py_DECREF(result); return NULL; }
+    if (!item) { Py_DECREF(result); ifcopenshell_shape_builder_mep_bend_shape_result_destroy(value); return NULL; }
+    if (PyObject_SetAttrString(result, "angle", item) < 0) { Py_DECREF(item); Py_DECREF(result); ifcopenshell_shape_builder_mep_bend_shape_result_destroy(value); return NULL; }
     Py_DECREF(item);
     item = PyLong_FromLong(value->lateral_axis);
-    if (!item) { Py_DECREF(result); return NULL; }
-    if (PyObject_SetAttrString(result, "lateral_axis", item) < 0) { Py_DECREF(item); Py_DECREF(result); return NULL; }
+    if (!item) { Py_DECREF(result); ifcopenshell_shape_builder_mep_bend_shape_result_destroy(value); return NULL; }
+    if (PyObject_SetAttrString(result, "lateral_axis", item) < 0) { Py_DECREF(item); Py_DECREF(result); ifcopenshell_shape_builder_mep_bend_shape_result_destroy(value); return NULL; }
     Py_DECREF(item);
     item = PyFloat_FromDouble(value->lateral_sign);
-    if (!item) { Py_DECREF(result); return NULL; }
-    if (PyObject_SetAttrString(result, "lateral_sign", item) < 0) { Py_DECREF(item); Py_DECREF(result); return NULL; }
+    if (!item) { Py_DECREF(result); ifcopenshell_shape_builder_mep_bend_shape_result_destroy(value); return NULL; }
+    if (PyObject_SetAttrString(result, "lateral_sign", item) < 0) { Py_DECREF(item); Py_DECREF(result); ifcopenshell_shape_builder_mep_bend_shape_result_destroy(value); return NULL; }
     Py_DECREF(item);
     item = PyLong_FromLong(value->z_axis_sign);
-    if (!item) { Py_DECREF(result); return NULL; }
-    if (PyObject_SetAttrString(result, "z_axis_sign", item) < 0) { Py_DECREF(item); Py_DECREF(result); return NULL; }
+    if (!item) { Py_DECREF(result); ifcopenshell_shape_builder_mep_bend_shape_result_destroy(value); return NULL; }
+    if (PyObject_SetAttrString(result, "z_axis_sign", item) < 0) { Py_DECREF(item); Py_DECREF(result); ifcopenshell_shape_builder_mep_bend_shape_result_destroy(value); return NULL; }
     Py_DECREF(item);
     item = PyFloat_FromDouble(value->main_profile_dimension);
-    if (!item) { Py_DECREF(result); return NULL; }
-    if (PyObject_SetAttrString(result, "main_profile_dimension", item) < 0) { Py_DECREF(item); Py_DECREF(result); return NULL; }
+    if (!item) { Py_DECREF(result); ifcopenshell_shape_builder_mep_bend_shape_result_destroy(value); return NULL; }
+    if (PyObject_SetAttrString(result, "main_profile_dimension", item) < 0) { Py_DECREF(item); Py_DECREF(result); ifcopenshell_shape_builder_mep_bend_shape_result_destroy(value); return NULL; }
     Py_DECREF(item);
+    ifcopenshell_shape_builder_mep_bend_shape_result_destroy(value);
     return result;
 }
 
 static PyObject *convert_sequence_duplicate_task_result(ifcopenshell_sequence_duplicate_task_result_t *value, int owned) {
     if (!SimpleNamespaceType) {
+        ifcopenshell_sequence_duplicate_task_result_destroy(value);
         PyErr_SetString(PyExc_RuntimeError, "types.SimpleNamespace is not available");
         return NULL;
     }
     PyObject *result = PyObject_CallNoArgs(SimpleNamespaceType);
-    if (!result) return NULL;
+    if (!result) { ifcopenshell_sequence_duplicate_task_result_destroy(value); return NULL; }
     PyObject *item = NULL;
     item = wrap_parse_instance_list(value->current, 1);
-    if (!item) { Py_DECREF(result); return NULL; }
-    if (PyObject_SetAttrString(result, "current", item) < 0) { Py_DECREF(item); Py_DECREF(result); return NULL; }
+    value->current = NULL;
+    if (!item) { Py_DECREF(result); ifcopenshell_sequence_duplicate_task_result_destroy(value); return NULL; }
+    if (PyObject_SetAttrString(result, "current", item) < 0) { Py_DECREF(item); Py_DECREF(result); ifcopenshell_sequence_duplicate_task_result_destroy(value); return NULL; }
     Py_DECREF(item);
     item = wrap_parse_instance_list(value->duplicate, 1);
-    if (!item) { Py_DECREF(result); return NULL; }
-    if (PyObject_SetAttrString(result, "duplicate", item) < 0) { Py_DECREF(item); Py_DECREF(result); return NULL; }
+    value->duplicate = NULL;
+    if (!item) { Py_DECREF(result); ifcopenshell_sequence_duplicate_task_result_destroy(value); return NULL; }
+    if (PyObject_SetAttrString(result, "duplicate", item) < 0) { Py_DECREF(item); Py_DECREF(result); ifcopenshell_sequence_duplicate_task_result_destroy(value); return NULL; }
     Py_DECREF(item);
+    ifcopenshell_sequence_duplicate_task_result_destroy(value);
     return result;
 }
 
 static PyObject *convert_optional_shape_builder_mep_transition_shape_result(ifcopenshell_optional_shape_builder_mep_transition_shape_result_t *value, int owned) {
-    if (!value->has_value) Py_RETURN_NONE;
-    return convert_shape_builder_mep_transition_shape_result(&value->value, owned);
+    if (!value->has_value) {
+        ifcopenshell_optional_shape_builder_mep_transition_shape_result_destroy(value);
+        Py_RETURN_NONE;
+    }
+    PyObject *result = convert_shape_builder_mep_transition_shape_result(&value->value, owned);
+    ifcopenshell_optional_shape_builder_mep_transition_shape_result_destroy(value);
+    return result;
 }
 
 static PyObject *convert_instance_string_variant(ifcopenshell_instance_string_variant_t *value, int owned) {
     (void)owned;
-    if (value->kind == 0) return wrap_instance(value->value_0, 1);
-    if (value->kind == 1) return convert_string(&value->value_1);
-    PyErr_SetString(PyExc_RuntimeError, "Unsupported variant alternative");
-    return NULL;
+    PyObject *result = NULL;
+    if (value->kind == 0) {
+        result = wrap_instance(value->value_0, 1);
+        value->value_0 = NULL;
+    }
+    if (value->kind == 1) {
+        result = convert_string(&value->value_1);
+
+    }
+    if (!result) {
+        if (!PyErr_Occurred()) PyErr_SetString(PyExc_RuntimeError, "Unsupported variant alternative");
+        ifcopenshell_instance_string_variant_destroy(value);
+        return NULL;
+    }
+    ifcopenshell_instance_string_variant_destroy(value);
+    return result;
 }
 
 static PyObject *py_ifcopenshell_aggregate_assign_object(PyObject *self, PyObject *args) {
@@ -16972,7 +17221,7 @@ static PyObject *py_ifcopenshell_aggregate_assign_object(PyObject *self, PyObjec
         raise_last_error("ifcopenshell_aggregate_assign_object failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
         release_option_refs(arg_options_refs, 5);
         free_input_aggregate_assign_object_options(&arg_options);
@@ -17037,7 +17286,7 @@ static PyObject *py_ifcopenshell_aggregation_type_as_aggregation_type(PyObject *
         raise_last_error("ifcopenshell_aggregation_type_as_aggregation_type failed");
         goto __cleanup;
     }
-    __py_result = wrap_aggregation_type(result, 0);
+    __py_result = wrap_aggregation_type(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -17179,7 +17428,7 @@ static PyObject *py_ifcopenshell_aggregation_type_type_of_element(PyObject *self
         raise_last_error("ifcopenshell_aggregation_type_type_of_element failed");
         goto __cleanup;
     }
-    __py_result = wrap_parameter_type(result, 0);
+    __py_result = wrap_parameter_type(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -17288,7 +17537,7 @@ static PyObject *py_ifcopenshell_attribute_type_of_attribute(PyObject *self, PyO
         raise_last_error("ifcopenshell_attribute_type_of_attribute failed");
         goto __cleanup;
     }
-    __py_result = wrap_parameter_type(result, 0);
+    __py_result = wrap_parameter_type(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -17361,7 +17610,7 @@ static PyObject *py_ifcopenshell_boundary_copy_boundary(PyObject *self, PyObject
         raise_last_error("ifcopenshell_boundary_copy_boundary failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -17458,7 +17707,7 @@ static PyObject *py_ifcopenshell_classification_add_classification(PyObject *sel
         raise_last_error("ifcopenshell_classification_add_classification failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -17491,7 +17740,7 @@ static PyObject *py_ifcopenshell_classification_add_reference(PyObject *self, Py
         raise_last_error("ifcopenshell_classification_add_reference failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
         release_option_refs(arg_options_refs, 8);
         free_input_classification_add_reference_options(&arg_options);
@@ -17623,7 +17872,7 @@ static PyObject *py_ifcopenshell_cogo_add_survey_point(PyObject *self, PyObject 
         raise_last_error("ifcopenshell_cogo_add_survey_point failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
         release_option_refs(arg_options_refs, 5);
         free_input_cogo_add_survey_point_options(&arg_options);
@@ -17749,7 +17998,7 @@ static PyObject *py_ifcopenshell_constraint_add_metric(PyObject *self, PyObject 
         raise_last_error("ifcopenshell_constraint_add_metric failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -17809,7 +18058,7 @@ static PyObject *py_ifcopenshell_constraint_add_objective(PyObject *self, PyObje
         raise_last_error("ifcopenshell_constraint_add_objective failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -17842,7 +18091,7 @@ static PyObject *py_ifcopenshell_constraint_assign_constraint(PyObject *self, Py
         raise_last_error("ifcopenshell_constraint_assign_constraint failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
         release_option_refs(arg_options_refs, 5);
         free_input_constraint_assign_constraint_options(&arg_options);
@@ -17979,7 +18228,7 @@ static PyObject *py_ifcopenshell_context_add_context(PyObject *self, PyObject *a
         raise_last_error("ifcopenshell_context_add_context failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
         release_option_refs(arg_options_refs, 5);
         free_input_context_add_context_options(&arg_options);
@@ -18094,7 +18343,7 @@ static PyObject *py_ifcopenshell_control_assign_control(PyObject *self, PyObject
         raise_last_error("ifcopenshell_control_assign_control failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
         release_option_refs(arg_options_refs, 5);
         free_input_control_assign_control_options(&arg_options);
@@ -18165,7 +18414,7 @@ static PyObject *py_ifcopenshell_cost_add_cost_item(PyObject *self, PyObject *ar
         raise_last_error("ifcopenshell_cost_add_cost_item failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
         release_option_refs(arg_options_refs, 5);
         free_input_cost_add_cost_item_options(&arg_options);
@@ -18200,7 +18449,7 @@ static PyObject *py_ifcopenshell_cost_add_cost_item_quantity(PyObject *self, PyO
         raise_last_error("ifcopenshell_cost_add_cost_item_quantity failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -18235,7 +18484,7 @@ static PyObject *py_ifcopenshell_cost_add_cost_schedule(PyObject *self, PyObject
         raise_last_error("ifcopenshell_cost_add_cost_schedule failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -18267,7 +18516,7 @@ static PyObject *py_ifcopenshell_cost_add_cost_value(PyObject *self, PyObject *a
         raise_last_error("ifcopenshell_cost_add_cost_value failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -18493,7 +18742,7 @@ static PyObject *py_ifcopenshell_cost_copy_cost_schedule(PyObject *self, PyObjec
         raise_last_error("ifcopenshell_cost_copy_cost_schedule failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
         release_option_refs(arg_options_refs, 3);
         free_input_cost_copy_cost_schedule_options(&arg_options);
@@ -18940,7 +19189,7 @@ static PyObject *py_ifcopenshell_declaration_as_entity(PyObject *self, PyObject 
         raise_last_error("ifcopenshell_declaration_as_entity failed");
         goto __cleanup;
     }
-    __py_result = wrap_entity(result, 0);
+    __py_result = wrap_entity(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -18967,7 +19216,7 @@ static PyObject *py_ifcopenshell_declaration_as_enumeration_type(PyObject *self,
         raise_last_error("ifcopenshell_declaration_as_enumeration_type failed");
         goto __cleanup;
     }
-    __py_result = wrap_enumeration(result, 0);
+    __py_result = wrap_enumeration(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -18994,7 +19243,7 @@ static PyObject *py_ifcopenshell_declaration_as_select_type(PyObject *self, PyOb
         raise_last_error("ifcopenshell_declaration_as_select_type failed");
         goto __cleanup;
     }
-    __py_result = wrap_select_type(result, 0);
+    __py_result = wrap_select_type(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -19021,7 +19270,7 @@ static PyObject *py_ifcopenshell_declaration_as_type_declaration(PyObject *self,
         raise_last_error("ifcopenshell_declaration_as_type_declaration failed");
         goto __cleanup;
     }
-    __py_result = wrap_type_declaration(result, 0);
+    __py_result = wrap_type_declaration(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -19141,7 +19390,7 @@ static PyObject *py_ifcopenshell_declaration_schema(PyObject *self, PyObject *ar
         raise_last_error("ifcopenshell_declaration_schema failed");
         goto __cleanup;
     }
-    __py_result = wrap_schema(result, 0);
+    __py_result = wrap_schema(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -19197,7 +19446,7 @@ static PyObject *py_ifcopenshell_document_add_information(PyObject *self, PyObje
         raise_last_error("ifcopenshell_document_add_information failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
         release_option_refs(arg_options_refs, 4);
         free_input_document_add_information_options(&arg_options);
@@ -19231,7 +19480,7 @@ static PyObject *py_ifcopenshell_document_add_reference(PyObject *self, PyObject
         raise_last_error("ifcopenshell_document_add_reference failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -19264,7 +19513,7 @@ static PyObject *py_ifcopenshell_document_assign_document(PyObject *self, PyObje
         raise_last_error("ifcopenshell_document_assign_document failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
         release_option_refs(arg_options_refs, 5);
         free_input_document_assign_document_options(&arg_options);
@@ -19401,7 +19650,7 @@ static PyObject *py_ifcopenshell_drawing_assign_product(PyObject *self, PyObject
         raise_last_error("ifcopenshell_drawing_assign_product failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
         release_option_refs(arg_options_refs, 5);
         free_input_drawing_assign_product_options(&arg_options);
@@ -19466,7 +19715,7 @@ static PyObject *py_ifcopenshell_element_get_aggregate(PyObject *self, PyObject 
         raise_last_error("ifcopenshell_element_get_aggregate failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -19526,7 +19775,7 @@ static PyObject *py_ifcopenshell_element_get_container(PyObject *self, PyObject 
         raise_last_error("ifcopenshell_element_get_container failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
         release_option_refs(arg_options_refs, 2);
         free_input_element_get_container_options(&arg_options);
@@ -19752,7 +20001,7 @@ static PyObject *py_ifcopenshell_element_get_filled_void(PyObject *self, PyObjec
         raise_last_error("ifcopenshell_element_get_filled_void failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -19839,7 +20088,7 @@ static PyObject *py_ifcopenshell_element_get_material(PyObject *self, PyObject *
         raise_last_error("ifcopenshell_element_get_material failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
         release_option_refs(arg_options_refs, 2);
         free_input_element_get_material_options(&arg_options);
@@ -19868,7 +20117,7 @@ static PyObject *py_ifcopenshell_element_get_nest(PyObject *self, PyObject *args
         raise_last_error("ifcopenshell_element_get_nest failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -19922,7 +20171,7 @@ static PyObject *py_ifcopenshell_element_get_parent(PyObject *self, PyObject *ar
         raise_last_error("ifcopenshell_element_get_parent failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -20154,7 +20403,7 @@ static PyObject *py_ifcopenshell_element_get_type(PyObject *self, PyObject *args
         raise_last_error("ifcopenshell_element_get_type failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -20208,7 +20457,7 @@ static PyObject *py_ifcopenshell_element_get_voided_element(PyObject *self, PyOb
         raise_last_error("ifcopenshell_element_get_voided_element failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -20315,7 +20564,7 @@ static PyObject *py_ifcopenshell_entity_all_attributes(PyObject *self, PyObject 
         raise_last_error("ifcopenshell_entity_all_attributes failed");
         goto __cleanup;
     }
-    __py_result = convert_attribute_list(&result, 0);
+    __py_result = convert_attribute_list(&result, 1);
 __cleanup:
     return __py_result;
 }
@@ -20338,7 +20587,7 @@ static PyObject *py_ifcopenshell_entity_all_inverse_attributes(PyObject *self, P
         raise_last_error("ifcopenshell_entity_all_inverse_attributes failed");
         goto __cleanup;
     }
-    __py_result = convert_inverse_attribute_list(&result, 0);
+    __py_result = convert_inverse_attribute_list(&result, 1);
 __cleanup:
     return __py_result;
 }
@@ -20388,7 +20637,7 @@ static PyObject *py_ifcopenshell_entity_as_entity(PyObject *self, PyObject *args
         raise_last_error("ifcopenshell_entity_as_entity failed");
         goto __cleanup;
     }
-    __py_result = wrap_entity(result, 0);
+    __py_result = wrap_entity(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -20416,7 +20665,7 @@ static PyObject *py_ifcopenshell_entity_attribute_by_index(PyObject *self, PyObj
         raise_last_error("ifcopenshell_entity_attribute_by_index failed");
         goto __cleanup;
     }
-    __py_result = wrap_attribute(result, 0);
+    __py_result = wrap_attribute(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -20486,7 +20735,7 @@ static PyObject *py_ifcopenshell_entity_attributes(PyObject *self, PyObject *arg
         raise_last_error("ifcopenshell_entity_attributes failed");
         goto __cleanup;
     }
-    __py_result = convert_attribute_list(&result, 0);
+    __py_result = convert_attribute_list(&result, 1);
 __cleanup:
     return __py_result;
 }
@@ -20532,7 +20781,7 @@ static PyObject *py_ifcopenshell_entity_inverse_attributes(PyObject *self, PyObj
         raise_last_error("ifcopenshell_entity_inverse_attributes failed");
         goto __cleanup;
     }
-    __py_result = convert_inverse_attribute_list(&result, 0);
+    __py_result = convert_inverse_attribute_list(&result, 1);
 __cleanup:
     return __py_result;
 }
@@ -20747,7 +20996,7 @@ static PyObject *py_ifcopenshell_entity_subtypes(PyObject *self, PyObject *args)
         raise_last_error("ifcopenshell_entity_subtypes failed");
         goto __cleanup;
     }
-    __py_result = convert_entity_list(&result, 0);
+    __py_result = convert_entity_list(&result, 1);
 __cleanup:
     return __py_result;
 }
@@ -20774,7 +21023,7 @@ static PyObject *py_ifcopenshell_entity_supertype(PyObject *self, PyObject *args
         raise_last_error("ifcopenshell_entity_supertype failed");
         goto __cleanup;
     }
-    __py_result = wrap_entity(result, 0);
+    __py_result = wrap_entity(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -20824,7 +21073,7 @@ static PyObject *py_ifcopenshell_enumeration_as_enumeration_type(PyObject *self,
         raise_last_error("ifcopenshell_enumeration_as_enumeration_type failed");
         goto __cleanup;
     }
-    __py_result = wrap_enumeration(result, 0);
+    __py_result = wrap_enumeration(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -20928,7 +21177,7 @@ static PyObject *py_ifcopenshell_feature_add_feature(PyObject *self, PyObject *a
         raise_last_error("ifcopenshell_feature_add_feature failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
         release_option_refs(arg_options_refs, 4);
         free_input_feature_add_feature_options(&arg_options);
@@ -20967,7 +21216,7 @@ static PyObject *py_ifcopenshell_feature_add_filling(PyObject *self, PyObject *a
         raise_last_error("ifcopenshell_feature_add_filling failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -21069,7 +21318,7 @@ static PyObject *py_ifcopenshell_file_add(PyObject *self, PyObject *args) {
         raise_last_error("ifcopenshell_file_add failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -21102,7 +21351,7 @@ static PyObject *py_ifcopenshell_file_add_entity(PyObject *self, PyObject *args)
         raise_last_error("ifcopenshell_file_add_entity failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -21252,7 +21501,7 @@ static PyObject *py_ifcopenshell_file_by_guid(PyObject *self, PyObject *args) {
         raise_last_error("ifcopenshell_file_by_guid failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -21280,7 +21529,7 @@ static PyObject *py_ifcopenshell_file_by_id(PyObject *self, PyObject *args) {
         raise_last_error("ifcopenshell_file_by_id failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -21398,7 +21647,7 @@ static PyObject *py_ifcopenshell_file_create(PyObject *self, PyObject *args) {
         raise_last_error("ifcopenshell_file_create failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -21426,7 +21675,7 @@ static PyObject *py_ifcopenshell_file_create_entity_by_name(PyObject *self, PyOb
         raise_last_error("ifcopenshell_file_create_entity_by_name failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -21455,7 +21704,7 @@ static PyObject *py_ifcopenshell_file_create_entity_by_name_with_id(PyObject *se
         raise_last_error("ifcopenshell_file_create_entity_by_name_with_id failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -21505,7 +21754,7 @@ static PyObject *py_ifcopenshell_file_description_class(PyObject *self, PyObject
         raise_last_error("ifcopenshell_file_description_class failed");
         goto __cleanup;
     }
-    __py_result = wrap_entity(result, 0);
+    __py_result = wrap_entity(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -21583,7 +21832,7 @@ static PyObject *py_ifcopenshell_file_description_initialize(PyObject *self, PyO
         raise_last_error("ifcopenshell_file_description_initialize failed");
         goto __cleanup;
     }
-    __py_result = wrap_file_description(result, 0);
+    __py_result = wrap_file_description(result, 1);
 __cleanup:
         free_input_string_list(&arg_v1_description);
     return __py_result;
@@ -21829,7 +22078,7 @@ static PyObject *py_ifcopenshell_file_get_inverses_by_declaration(PyObject *self
         raise_last_error("ifcopenshell_file_get_inverses_by_declaration failed");
         goto __cleanup;
     }
-    __py_result = convert_instance_list(&result, 0);
+    __py_result = convert_instance_list(&result, 1);
 __cleanup:
     return __py_result;
 }
@@ -21978,7 +22227,7 @@ static PyObject *py_ifcopenshell_file_header(PyObject *self, PyObject *args) {
         raise_last_error("ifcopenshell_file_header failed");
         goto __cleanup;
     }
-    __py_result = wrap_header(result, 0);
+    __py_result = wrap_header(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -22005,7 +22254,7 @@ static PyObject *py_ifcopenshell_file_header_file_description(PyObject *self, Py
         raise_last_error("ifcopenshell_file_header_file_description failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -22032,7 +22281,7 @@ static PyObject *py_ifcopenshell_file_header_file_name(PyObject *self, PyObject 
         raise_last_error("ifcopenshell_file_header_file_name failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -22059,7 +22308,7 @@ static PyObject *py_ifcopenshell_file_header_file_schema(PyObject *self, PyObjec
         raise_last_error("ifcopenshell_file_header_file_schema failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -22086,7 +22335,7 @@ static PyObject *py_ifcopenshell_file_ifcroot_type(PyObject *self, PyObject *arg
         raise_last_error("ifcopenshell_file_ifcroot_type failed");
         goto __cleanup;
     }
-    __py_result = wrap_declaration(result, 0);
+    __py_result = wrap_declaration(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -22261,7 +22510,7 @@ static PyObject *py_ifcopenshell_file_name_class(PyObject *self, PyObject *args)
         raise_last_error("ifcopenshell_file_name_class failed");
         goto __cleanup;
     }
-    __py_result = wrap_entity(result, 0);
+    __py_result = wrap_entity(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -22302,7 +22551,7 @@ static PyObject *py_ifcopenshell_file_name_initialize(PyObject *self, PyObject *
         raise_last_error("ifcopenshell_file_name_initialize failed");
         goto __cleanup;
     }
-    __py_result = wrap_file_name(result, 0);
+    __py_result = wrap_file_name(result, 1);
 __cleanup:
         free_input_string_list(&arg_v4_organization);
         free_input_string_list(&arg_v3_author);
@@ -22812,7 +23061,7 @@ static PyObject *py_ifcopenshell_file_schema(PyObject *self, PyObject *args) {
         raise_last_error("ifcopenshell_file_schema failed");
         goto __cleanup;
     }
-    __py_result = wrap_schema(result, 0);
+    __py_result = wrap_schema(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -22839,7 +23088,7 @@ static PyObject *py_ifcopenshell_file_schema_class(PyObject *self, PyObject *arg
         raise_last_error("ifcopenshell_file_schema_class failed");
         goto __cleanup;
     }
-    __py_result = wrap_entity(result, 0);
+    __py_result = wrap_entity(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -22870,7 +23119,7 @@ static PyObject *py_ifcopenshell_file_schema_initialize(PyObject *self, PyObject
         raise_last_error("ifcopenshell_file_schema_initialize failed");
         goto __cleanup;
     }
-    __py_result = wrap_file_schema(result, 0);
+    __py_result = wrap_file_schema(result, 1);
 __cleanup:
         free_input_string_list(&arg_v1_schema_identifiers);
     return __py_result;
@@ -23265,7 +23514,7 @@ static PyObject *py_ifcopenshell_geom_brep_element_geometry(PyObject *self, PyOb
         raise_last_error("ifcopenshell_geom_brep_element_geometry failed");
         goto __cleanup;
     }
-    __py_result = wrap_geom_brep_representation(result, 0);
+    __py_result = wrap_geom_brep_representation(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -23444,7 +23693,7 @@ static PyObject *py_ifcopenshell_geom_brep_representation_item(PyObject *self, P
         raise_last_error("ifcopenshell_geom_brep_representation_item failed");
         goto __cleanup;
     }
-    __py_result = wrap_geom_conversion_result_shape(result, 0);
+    __py_result = wrap_geom_conversion_result_shape(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -23495,7 +23744,7 @@ static PyObject *py_ifcopenshell_geom_brep_representation_settings(PyObject *sel
         raise_last_error("ifcopenshell_geom_brep_representation_settings failed");
         goto __cleanup;
     }
-    __py_result = wrap_geom_settings(result, 0);
+    __py_result = wrap_geom_settings(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -23596,7 +23845,7 @@ static PyObject *py_ifcopenshell_geom_conversion_result_shape_add(PyObject *self
         raise_last_error("ifcopenshell_geom_conversion_result_shape_add failed");
         goto __cleanup;
     }
-    __py_result = wrap_geom_conversion_result_shape(result, 0);
+    __py_result = wrap_geom_conversion_result_shape(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -23646,7 +23895,7 @@ static PyObject *py_ifcopenshell_geom_conversion_result_shape_box(PyObject *self
         raise_last_error("ifcopenshell_geom_conversion_result_shape_box failed");
         goto __cleanup;
     }
-    __py_result = wrap_geom_conversion_result_shape(result, 0);
+    __py_result = wrap_geom_conversion_result_shape(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -23678,7 +23927,7 @@ static PyObject *py_ifcopenshell_geom_conversion_result_shape_concat(PyObject *s
         raise_last_error("ifcopenshell_geom_conversion_result_shape_concat failed");
         goto __cleanup;
     }
-    __py_result = wrap_geom_conversion_result_shape(result, 0);
+    __py_result = wrap_geom_conversion_result_shape(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -23730,7 +23979,7 @@ static PyObject *py_ifcopenshell_geom_conversion_result_shape_edges(PyObject *se
         raise_last_error("ifcopenshell_geom_conversion_result_shape_edges failed");
         goto __cleanup;
     }
-    __py_result = convert_geom_conversion_result_shape_list(&result, 0);
+    __py_result = convert_geom_conversion_result_shape_list(&result, 1);
 __cleanup:
     return __py_result;
 }
@@ -23753,7 +24002,7 @@ static PyObject *py_ifcopenshell_geom_conversion_result_shape_facets(PyObject *s
         raise_last_error("ifcopenshell_geom_conversion_result_shape_facets failed");
         goto __cleanup;
     }
-    __py_result = convert_geom_conversion_result_shape_list(&result, 0);
+    __py_result = convert_geom_conversion_result_shape_list(&result, 1);
 __cleanup:
     return __py_result;
 }
@@ -23780,7 +24029,7 @@ static PyObject *py_ifcopenshell_geom_conversion_result_shape_halfspaces(PyObjec
         raise_last_error("ifcopenshell_geom_conversion_result_shape_halfspaces failed");
         goto __cleanup;
     }
-    __py_result = wrap_geom_conversion_result_shape(result, 0);
+    __py_result = wrap_geom_conversion_result_shape(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -23812,7 +24061,7 @@ static PyObject *py_ifcopenshell_geom_conversion_result_shape_intersect(PyObject
         raise_last_error("ifcopenshell_geom_conversion_result_shape_intersect failed");
         goto __cleanup;
     }
-    __py_result = wrap_geom_conversion_result_shape(result, 0);
+    __py_result = wrap_geom_conversion_result_shape(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -23890,7 +24139,7 @@ static PyObject *py_ifcopenshell_geom_conversion_result_shape_moved(PyObject *se
         raise_last_error("ifcopenshell_geom_conversion_result_shape_moved failed");
         goto __cleanup;
     }
-    __py_result = wrap_geom_conversion_result_shape(result, 0);
+    __py_result = wrap_geom_conversion_result_shape(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -24032,7 +24281,7 @@ static PyObject *py_ifcopenshell_geom_conversion_result_shape_solid(PyObject *se
         raise_last_error("ifcopenshell_geom_conversion_result_shape_solid failed");
         goto __cleanup;
     }
-    __py_result = wrap_geom_conversion_result_shape(result, 0);
+    __py_result = wrap_geom_conversion_result_shape(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -24059,7 +24308,7 @@ static PyObject *py_ifcopenshell_geom_conversion_result_shape_solid_mt(PyObject 
         raise_last_error("ifcopenshell_geom_conversion_result_shape_solid_mt failed");
         goto __cleanup;
     }
-    __py_result = wrap_geom_conversion_result_shape(result, 0);
+    __py_result = wrap_geom_conversion_result_shape(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -24091,7 +24340,7 @@ static PyObject *py_ifcopenshell_geom_conversion_result_shape_subtract(PyObject 
         raise_last_error("ifcopenshell_geom_conversion_result_shape_subtract failed");
         goto __cleanup;
     }
-    __py_result = wrap_geom_conversion_result_shape(result, 0);
+    __py_result = wrap_geom_conversion_result_shape(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -24169,7 +24418,7 @@ static PyObject *py_ifcopenshell_geom_conversion_result_shape_vertices(PyObject 
         raise_last_error("ifcopenshell_geom_conversion_result_shape_vertices failed");
         goto __cleanup;
     }
-    __py_result = convert_geom_conversion_result_shape_list(&result, 0);
+    __py_result = convert_geom_conversion_result_shape_list(&result, 1);
 __cleanup:
     return __py_result;
 }
@@ -24219,7 +24468,7 @@ static PyObject *py_ifcopenshell_geom_conversion_result_shape_wrap_in_compound(P
         raise_last_error("ifcopenshell_geom_conversion_result_shape_wrap_in_compound failed");
         goto __cleanup;
     }
-    __py_result = wrap_geom_conversion_result_shape(result, 0);
+    __py_result = wrap_geom_conversion_result_shape(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -25045,7 +25294,7 @@ static PyObject *py_ifcopenshell_geom_element_parents(PyObject *self, PyObject *
         raise_last_error("ifcopenshell_geom_element_parents failed");
         goto __cleanup;
     }
-    __py_result = convert_geom_element_list(&result, 0);
+    __py_result = convert_geom_element_list(&result, 1);
 __cleanup:
     return __py_result;
 }
@@ -25072,7 +25321,7 @@ static PyObject *py_ifcopenshell_geom_element_product(PyObject *self, PyObject *
         raise_last_error("ifcopenshell_geom_element_product failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -25099,7 +25348,7 @@ static PyObject *py_ifcopenshell_geom_element_transformation(PyObject *self, PyO
         raise_last_error("ifcopenshell_geom_element_transformation failed");
         goto __cleanup;
     }
-    __py_result = wrap_geom_transformation(result, 0);
+    __py_result = wrap_geom_transformation(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -25380,7 +25629,7 @@ static PyObject *py_ifcopenshell_geom_geometry_serializer_geometry_settings(PyOb
         raise_last_error("ifcopenshell_geom_geometry_serializer_geometry_settings failed");
         goto __cleanup;
     }
-    __py_result = wrap_geom_settings(result, 0);
+    __py_result = wrap_geom_settings(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -25461,7 +25710,7 @@ static PyObject *py_ifcopenshell_geom_geometry_serializer_read(PyObject *self, P
         raise_last_error("ifcopenshell_geom_geometry_serializer_read failed");
         goto __cleanup;
     }
-    __py_result = wrap_geom_element(result, 0);
+    __py_result = wrap_geom_element(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -25574,7 +25823,7 @@ static PyObject *py_ifcopenshell_geom_geometry_serializer_settings(PyObject *sel
         raise_last_error("ifcopenshell_geom_geometry_serializer_settings failed");
         goto __cleanup;
     }
-    __py_result = wrap_geom_serializer_settings(result, 0);
+    __py_result = wrap_geom_serializer_settings(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -25718,7 +25967,7 @@ static PyObject *py_ifcopenshell_geom_iterator_bounds_max(PyObject *self, PyObje
         raise_last_error("ifcopenshell_geom_iterator_bounds_max failed");
         goto __cleanup;
     }
-    __py_result = wrap_geom_taxonomy_point3(result, 0);
+    __py_result = wrap_geom_taxonomy_point3(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -25745,7 +25994,7 @@ static PyObject *py_ifcopenshell_geom_iterator_bounds_min(PyObject *self, PyObje
         raise_last_error("ifcopenshell_geom_iterator_bounds_min failed");
         goto __cleanup;
     }
-    __py_result = wrap_geom_taxonomy_point3(result, 0);
+    __py_result = wrap_geom_taxonomy_point3(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -25801,7 +26050,7 @@ static PyObject *py_ifcopenshell_geom_iterator_create(PyObject *self, PyObject *
         raise_last_error("ifcopenshell_geom_iterator_create failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -25828,7 +26077,7 @@ static PyObject *py_ifcopenshell_geom_iterator_file(PyObject *self, PyObject *ar
         raise_last_error("ifcopenshell_geom_iterator_file failed");
         goto __cleanup;
     }
-    __py_result = wrap_file(result, 0);
+    __py_result = wrap_file(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -25855,7 +26104,7 @@ static PyObject *py_ifcopenshell_geom_iterator_get(PyObject *self, PyObject *arg
         raise_last_error("ifcopenshell_geom_iterator_get failed");
         goto __cleanup;
     }
-    __py_result = wrap_geom_element(result, 0);
+    __py_result = wrap_geom_element(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -25882,7 +26131,7 @@ static PyObject *py_ifcopenshell_geom_iterator_get_as_brep_element(PyObject *sel
         raise_last_error("ifcopenshell_geom_iterator_get_as_brep_element failed");
         goto __cleanup;
     }
-    __py_result = wrap_geom_brep_element(result, 0);
+    __py_result = wrap_geom_brep_element(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -25909,7 +26158,7 @@ static PyObject *py_ifcopenshell_geom_iterator_get_as_serialized_element(PyObjec
         raise_last_error("ifcopenshell_geom_iterator_get_as_serialized_element failed");
         goto __cleanup;
     }
-    __py_result = wrap_geom_serialized_element(result, 0);
+    __py_result = wrap_geom_serialized_element(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -25936,7 +26185,7 @@ static PyObject *py_ifcopenshell_geom_iterator_get_as_triangulation_element(PyOb
         raise_last_error("ifcopenshell_geom_iterator_get_as_triangulation_element failed");
         goto __cleanup;
     }
-    __py_result = wrap_geom_triangulation_element(result, 0);
+    __py_result = wrap_geom_triangulation_element(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -25986,7 +26235,7 @@ static PyObject *py_ifcopenshell_geom_iterator_get_native(PyObject *self, PyObje
         raise_last_error("ifcopenshell_geom_iterator_get_native failed");
         goto __cleanup;
     }
-    __py_result = wrap_geom_brep_element(result, 0);
+    __py_result = wrap_geom_brep_element(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -26014,7 +26263,7 @@ static PyObject *py_ifcopenshell_geom_iterator_get_object(PyObject *self, PyObje
         raise_last_error("ifcopenshell_geom_iterator_get_object failed");
         goto __cleanup;
     }
-    __py_result = wrap_geom_element(result, 0);
+    __py_result = wrap_geom_element(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -26037,7 +26286,7 @@ static PyObject *py_ifcopenshell_geom_iterator_get_task_items(PyObject *self, Py
         raise_last_error("ifcopenshell_geom_iterator_get_task_items failed");
         goto __cleanup;
     }
-    __py_result = convert_geom_taxonomy_item_list(&result, 0);
+    __py_result = convert_geom_taxonomy_item_list(&result, 1);
 __cleanup:
     return __py_result;
 }
@@ -26060,7 +26309,7 @@ static PyObject *py_ifcopenshell_geom_iterator_get_task_products(PyObject *self,
         raise_last_error("ifcopenshell_geom_iterator_get_task_products failed");
         goto __cleanup;
     }
-    __py_result = convert_instance_list_list(&result, 0);
+    __py_result = convert_instance_list_list(&result, 1);
 __cleanup:
     return __py_result;
 }
@@ -26339,7 +26588,7 @@ static PyObject *py_ifcopenshell_geom_opaque_number_clone(PyObject *self, PyObje
         raise_last_error("ifcopenshell_geom_opaque_number_clone failed");
         goto __cleanup;
     }
-    __py_result = wrap_geom_opaque_number(result, 0);
+    __py_result = wrap_geom_opaque_number(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -26702,7 +26951,7 @@ static PyObject *py_ifcopenshell_geom_serialized_element_geometry(PyObject *self
         raise_last_error("ifcopenshell_geom_serialized_element_geometry failed");
         goto __cleanup;
     }
-    __py_result = wrap_geom_serialization(result, 0);
+    __py_result = wrap_geom_serialization(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -27840,7 +28089,7 @@ static PyObject *py_ifcopenshell_geom_taxonomy_boolean_result_item_at(PyObject *
         raise_last_error("ifcopenshell_geom_taxonomy_boolean_result_item_at failed");
         goto __cleanup;
     }
-    __py_result = wrap_geom_taxonomy_item(result, 0);
+    __py_result = wrap_geom_taxonomy_item(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -27941,7 +28190,7 @@ static PyObject *py_ifcopenshell_geom_taxonomy_bspline_curve_control_point_at(Py
         raise_last_error("ifcopenshell_geom_taxonomy_bspline_curve_control_point_at failed");
         goto __cleanup;
     }
-    __py_result = wrap_geom_taxonomy_point3(result, 0);
+    __py_result = wrap_geom_taxonomy_point3(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -28526,7 +28775,7 @@ static PyObject *py_ifcopenshell_geom_taxonomy_collection_item_at(PyObject *self
         raise_last_error("ifcopenshell_geom_taxonomy_collection_item_at failed");
         goto __cleanup;
     }
-    __py_result = wrap_geom_taxonomy_item(result, 0);
+    __py_result = wrap_geom_taxonomy_item(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -29478,7 +29727,7 @@ static PyObject *py_ifcopenshell_geom_taxonomy_face_loop_at(PyObject *self, PyOb
         raise_last_error("ifcopenshell_geom_taxonomy_face_loop_at failed");
         goto __cleanup;
     }
-    __py_result = wrap_geom_taxonomy_loop(result, 0);
+    __py_result = wrap_geom_taxonomy_loop(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -29808,7 +30057,7 @@ static PyObject *py_ifcopenshell_geom_taxonomy_loft_item_at(PyObject *self, PyOb
         raise_last_error("ifcopenshell_geom_taxonomy_loft_item_at failed");
         goto __cleanup;
     }
-    __py_result = wrap_geom_taxonomy_item(result, 0);
+    __py_result = wrap_geom_taxonomy_item(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -29892,7 +30141,7 @@ static PyObject *py_ifcopenshell_geom_taxonomy_loop_edge_at(PyObject *self, PyOb
         raise_last_error("ifcopenshell_geom_taxonomy_loop_edge_at failed");
         goto __cleanup;
     }
-    __py_result = wrap_geom_taxonomy_edge(result, 0);
+    __py_result = wrap_geom_taxonomy_edge(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -30274,7 +30523,7 @@ static PyObject *py_ifcopenshell_geom_taxonomy_shell_face_at(PyObject *self, PyO
         raise_last_error("ifcopenshell_geom_taxonomy_shell_face_at failed");
         goto __cleanup;
     }
-    __py_result = wrap_geom_taxonomy_face(result, 0);
+    __py_result = wrap_geom_taxonomy_face(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -30352,7 +30601,7 @@ static PyObject *py_ifcopenshell_geom_taxonomy_solid_shell_at(PyObject *self, Py
         raise_last_error("ifcopenshell_geom_taxonomy_solid_shell_at failed");
         goto __cleanup;
     }
-    __py_result = wrap_geom_taxonomy_shell(result, 0);
+    __py_result = wrap_geom_taxonomy_shell(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -31641,7 +31890,7 @@ static PyObject *py_ifcopenshell_geom_tree_ray_intersection_instance(PyObject *s
         raise_last_error("ifcopenshell_geom_tree_ray_intersection_instance failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -32068,7 +32317,7 @@ static PyObject *py_ifcopenshell_geom_tree_styles(PyObject *self, PyObject *args
         raise_last_error("ifcopenshell_geom_tree_styles failed");
         goto __cleanup;
     }
-    __py_result = convert_geom_taxonomy_style_list(&result, 0);
+    __py_result = convert_geom_taxonomy_style_list(&result, 1);
 __cleanup:
     return __py_result;
 }
@@ -32315,7 +32564,7 @@ static PyObject *py_ifcopenshell_geom_triangulation_element_geometry(PyObject *s
         raise_last_error("ifcopenshell_geom_triangulation_element_geometry failed");
         goto __cleanup;
     }
-    __py_result = wrap_geom_triangulation(result, 0);
+    __py_result = wrap_geom_triangulation(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -32489,7 +32738,7 @@ static PyObject *py_ifcopenshell_geom_triangulation_material_at(PyObject *self, 
         raise_last_error("ifcopenshell_geom_triangulation_material_at failed");
         goto __cleanup;
     }
-    __py_result = wrap_geom_taxonomy_style(result, 0);
+    __py_result = wrap_geom_taxonomy_style(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -32608,7 +32857,7 @@ static PyObject *py_ifcopenshell_geom_triangulation_materials(PyObject *self, Py
         raise_last_error("ifcopenshell_geom_triangulation_materials failed");
         goto __cleanup;
     }
-    __py_result = convert_geom_taxonomy_style_list(&result, 0);
+    __py_result = convert_geom_taxonomy_style_list(&result, 1);
 __cleanup:
     return __py_result;
 }
@@ -32909,7 +33158,7 @@ static PyObject *py_ifcopenshell_geometry_add_axis_representation(PyObject *self
         raise_last_error("ifcopenshell_geometry_add_axis_representation failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
         free_input_double_list_list(&arg_axis);
     return __py_result;
@@ -32981,7 +33230,7 @@ static PyObject *py_ifcopenshell_geometry_add_door_representation(PyObject *self
         raise_last_error("ifcopenshell_geometry_add_door_representation failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
         release_option_refs(arg_options_refs, 8);
         free_input_geometry_add_door_representation_options(&arg_options);
@@ -33019,7 +33268,7 @@ static PyObject *py_ifcopenshell_geometry_add_footprint_representation(PyObject 
         raise_last_error("ifcopenshell_geometry_add_footprint_representation failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
         free_input_instance_list(&arg_curves);
     return __py_result;
@@ -33058,7 +33307,7 @@ static PyObject *py_ifcopenshell_geometry_add_mesh_representation(PyObject *self
         raise_last_error("ifcopenshell_geometry_add_mesh_representation failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
         release_option_refs(arg_options_refs, 3);
         free_input_geometry_add_mesh_representation_options(&arg_options);
@@ -33093,7 +33342,7 @@ static PyObject *py_ifcopenshell_geometry_add_railing_representation(PyObject *s
         raise_last_error("ifcopenshell_geometry_add_railing_representation failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
         release_option_refs(arg_options_refs, 10);
         free_input_geometry_add_railing_representation_options(&arg_options);
@@ -33128,7 +33377,7 @@ static PyObject *py_ifcopenshell_geometry_add_shape_aspect(PyObject *self, PyObj
         raise_last_error("ifcopenshell_geometry_add_shape_aspect failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
         release_option_refs(arg_options_refs, 5);
         free_input_geometry_add_shape_aspect_options(&arg_options);
@@ -33163,7 +33412,7 @@ static PyObject *py_ifcopenshell_geometry_add_slab_representation(PyObject *self
         raise_last_error("ifcopenshell_geometry_add_slab_representation failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
         release_option_refs(arg_options_refs, 10);
         free_input_geometry_add_slab_representation_options(&arg_options);
@@ -33198,7 +33447,7 @@ static PyObject *py_ifcopenshell_geometry_add_topology_representation(PyObject *
         raise_last_error("ifcopenshell_geometry_add_topology_representation failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
         release_option_refs(arg_options_refs, 4);
         free_input_geometry_add_topology_representation_options(&arg_options);
@@ -33233,7 +33482,7 @@ static PyObject *py_ifcopenshell_geometry_add_wall_representation(PyObject *self
         raise_last_error("ifcopenshell_geometry_add_wall_representation failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
         release_option_refs(arg_options_refs, 12);
         free_input_geometry_add_wall_representation_options(&arg_options);
@@ -33268,7 +33517,7 @@ static PyObject *py_ifcopenshell_geometry_add_window_representation(PyObject *se
         raise_last_error("ifcopenshell_geometry_add_window_representation failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
         release_option_refs(arg_options_refs, 8);
         free_input_geometry_add_window_representation_options(&arg_options);
@@ -33307,7 +33556,7 @@ static PyObject *py_ifcopenshell_geometry_assign_representation(PyObject *self, 
         raise_last_error("ifcopenshell_geometry_assign_representation failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -33340,7 +33589,7 @@ static PyObject *py_ifcopenshell_geometry_clip_solid(PyObject *self, PyObject *a
         raise_last_error("ifcopenshell_geometry_clip_solid failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
         release_option_refs(arg_options_refs, 7);
         free_input_geometry_clip_solid_options(&arg_options);
@@ -33375,7 +33624,7 @@ static PyObject *py_ifcopenshell_geometry_clip_solid_bounded(PyObject *self, PyO
         raise_last_error("ifcopenshell_geometry_clip_solid_bounded failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
         release_option_refs(arg_options_refs, 9);
         free_input_geometry_clip_solid_bounded_options(&arg_options);
@@ -33410,7 +33659,7 @@ static PyObject *py_ifcopenshell_geometry_connect_element(PyObject *self, PyObje
         raise_last_error("ifcopenshell_geometry_connect_element failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
         release_option_refs(arg_options_refs, 6);
         free_input_geometry_connect_element_options(&arg_options);
@@ -33445,7 +33694,7 @@ static PyObject *py_ifcopenshell_geometry_connect_path(PyObject *self, PyObject 
         raise_last_error("ifcopenshell_geometry_connect_path failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
         release_option_refs(arg_options_refs, 9);
         free_input_geometry_connect_path_options(&arg_options);
@@ -33480,7 +33729,7 @@ static PyObject *py_ifcopenshell_geometry_connect_wall(PyObject *self, PyObject 
         raise_last_error("ifcopenshell_geometry_connect_wall failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
         release_option_refs(arg_options_refs, 6);
         free_input_geometry_connect_wall_options(&arg_options);
@@ -33515,7 +33764,7 @@ static PyObject *py_ifcopenshell_geometry_copy_representation(PyObject *self, Py
         raise_last_error("ifcopenshell_geometry_copy_representation failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
         release_option_refs(arg_options_refs, 3);
         free_input_geometry_copy_representation_options(&arg_options);
@@ -33550,7 +33799,7 @@ static PyObject *py_ifcopenshell_geometry_create_2pt_wall(PyObject *self, PyObje
         raise_last_error("ifcopenshell_geometry_create_2pt_wall failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
         release_option_refs(arg_options_refs, 8);
         free_input_geometry_create2_pt_wall_options(&arg_options);
@@ -33659,7 +33908,7 @@ static PyObject *py_ifcopenshell_geometry_edit_object_placement(PyObject *self, 
         raise_last_error("ifcopenshell_geometry_edit_object_placement failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
         release_option_refs(arg_options_refs, 4);
         free_input_geometry_edit_object_placement_options(&arg_options);
@@ -33693,7 +33942,7 @@ static PyObject *py_ifcopenshell_geometry_map_representation(PyObject *self, PyO
         raise_last_error("ifcopenshell_geometry_map_representation failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -33754,7 +34003,7 @@ static PyObject *py_ifcopenshell_geometry_regenerate_wall_representation(PyObjec
         raise_last_error("ifcopenshell_geometry_regenerate_wall_representation failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
         release_option_refs(arg_options_refs, 4);
         free_input_geometry_regenerate_wall_representation_options(&arg_options);
@@ -34156,7 +34405,7 @@ static PyObject *py_ifcopenshell_grid_create_grid_axis(PyObject *self, PyObject 
         raise_last_error("ifcopenshell_grid_create_grid_axis failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -34222,7 +34471,7 @@ static PyObject *py_ifcopenshell_group_add_group(PyObject *self, PyObject *args)
         raise_last_error("ifcopenshell_group_add_group failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
         release_option_refs(arg_options_refs, 5);
         free_input_group_add_group_options(&arg_options);
@@ -34257,7 +34506,7 @@ static PyObject *py_ifcopenshell_group_assign_group(PyObject *self, PyObject *ar
         raise_last_error("ifcopenshell_group_assign_group failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
         release_option_refs(arg_options_refs, 5);
         free_input_group_assign_group_options(&arg_options);
@@ -34361,7 +34610,7 @@ static PyObject *py_ifcopenshell_group_update_group_products(PyObject *self, PyO
         raise_last_error("ifcopenshell_group_update_group_products failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
         release_option_refs(arg_options_refs, 5);
         free_input_group_update_group_products_options(&arg_options);
@@ -34450,7 +34699,7 @@ static PyObject *py_ifcopenshell_header_file(PyObject *self, PyObject *args) {
         raise_last_error("ifcopenshell_header_file failed");
         goto __cleanup;
     }
-    __py_result = wrap_file(result, 0);
+    __py_result = wrap_file(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -34477,7 +34726,7 @@ static PyObject *py_ifcopenshell_header_file_description(PyObject *self, PyObjec
         raise_last_error("ifcopenshell_header_file_description failed");
         goto __cleanup;
     }
-    __py_result = wrap_file_description(result, 0);
+    __py_result = wrap_file_description(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -34504,7 +34753,7 @@ static PyObject *py_ifcopenshell_header_file_name(PyObject *self, PyObject *args
         raise_last_error("ifcopenshell_header_file_name failed");
         goto __cleanup;
     }
-    __py_result = wrap_file_name(result, 0);
+    __py_result = wrap_file_name(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -34531,7 +34780,7 @@ static PyObject *py_ifcopenshell_header_file_schema(PyObject *self, PyObject *ar
         raise_last_error("ifcopenshell_header_file_schema failed");
         goto __cleanup;
     }
-    __py_result = wrap_file_schema(result, 0);
+    __py_result = wrap_file_schema(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -34605,7 +34854,7 @@ static PyObject *py_ifcopenshell_instance_declaration(PyObject *self, PyObject *
         raise_last_error("ifcopenshell_instance_declaration failed");
         goto __cleanup;
     }
-    __py_result = wrap_declaration(result, 0);
+    __py_result = wrap_declaration(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -34632,7 +34881,7 @@ static PyObject *py_ifcopenshell_instance_file(PyObject *self, PyObject *args) {
         raise_last_error("ifcopenshell_instance_file failed");
         goto __cleanup;
     }
-    __py_result = wrap_file(result, 0);
+    __py_result = wrap_file(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -34683,7 +34932,7 @@ static PyObject *py_ifcopenshell_instance_get_argument(PyObject *self, PyObject 
         raise_last_error("ifcopenshell_instance_get_argument failed");
         goto __cleanup;
     }
-    __py_result = wrap_parse_attribute_value(result, 0);
+    __py_result = wrap_parse_attribute_value(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -35829,7 +36078,7 @@ static PyObject *py_ifcopenshell_inverse_attribute_attribute_reference(PyObject 
         raise_last_error("ifcopenshell_inverse_attribute_attribute_reference failed");
         goto __cleanup;
     }
-    __py_result = wrap_attribute(result, 0);
+    __py_result = wrap_attribute(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -35902,7 +36151,7 @@ static PyObject *py_ifcopenshell_inverse_attribute_entity_reference(PyObject *se
         raise_last_error("ifcopenshell_inverse_attribute_entity_reference failed");
         goto __cleanup;
     }
-    __py_result = wrap_entity(result, 0);
+    __py_result = wrap_entity(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -35999,7 +36248,7 @@ static PyObject *py_ifcopenshell_layer_add_layer(PyObject *self, PyObject *args)
         raise_last_error("ifcopenshell_layer_add_layer failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -36033,7 +36282,7 @@ static PyObject *py_ifcopenshell_layer_add_layer_with_style(PyObject *self, PyOb
         raise_last_error("ifcopenshell_layer_add_layer_with_style failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
         release_option_refs(arg_options_refs, 4);
         free_input_layer_add_layer_with_style_options(&arg_options);
@@ -36172,7 +36421,7 @@ static PyObject *py_ifcopenshell_library_add_library(PyObject *self, PyObject *a
         raise_last_error("ifcopenshell_library_add_library failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -36204,7 +36453,7 @@ static PyObject *py_ifcopenshell_library_add_reference(PyObject *self, PyObject 
         raise_last_error("ifcopenshell_library_add_reference failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -36237,7 +36486,7 @@ static PyObject *py_ifcopenshell_library_assign_reference(PyObject *self, PyObje
         raise_last_error("ifcopenshell_library_assign_reference failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
         release_option_refs(arg_options_refs, 5);
         free_input_library_assign_reference_options(&arg_options);
@@ -36379,7 +36628,7 @@ static PyObject *py_ifcopenshell_material_add_constituent(PyObject *self, PyObje
         raise_last_error("ifcopenshell_material_add_constituent failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
         release_option_refs(arg_options_refs, 2);
         free_input_material_add_constituent_options(&arg_options);
@@ -36419,7 +36668,7 @@ static PyObject *py_ifcopenshell_material_add_layer(PyObject *self, PyObject *ar
         raise_last_error("ifcopenshell_material_add_layer failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
         release_option_refs(arg_options_refs, 2);
         free_input_material_add_layer_options(&arg_options);
@@ -36492,7 +36741,7 @@ static PyObject *py_ifcopenshell_material_add_material(PyObject *self, PyObject 
         raise_last_error("ifcopenshell_material_add_material failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
         release_option_refs(arg_options_refs, 3);
         free_input_material_add_material_options(&arg_options);
@@ -36527,7 +36776,7 @@ static PyObject *py_ifcopenshell_material_add_material_set(PyObject *self, PyObj
         raise_last_error("ifcopenshell_material_add_material_set failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
         release_option_refs(arg_options_refs, 2);
         free_input_material_add_material_set_options(&arg_options);
@@ -36567,7 +36816,7 @@ static PyObject *py_ifcopenshell_material_add_profile(PyObject *self, PyObject *
         raise_last_error("ifcopenshell_material_add_profile failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
         release_option_refs(arg_options_refs, 3);
         free_input_material_add_profile_options(&arg_options);
@@ -37027,7 +37276,7 @@ static PyObject *py_ifcopenshell_named_type_as_named_type(PyObject *self, PyObje
         raise_last_error("ifcopenshell_named_type_as_named_type failed");
         goto __cleanup;
     }
-    __py_result = wrap_named_type(result, 0);
+    __py_result = wrap_named_type(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -37054,7 +37303,7 @@ static PyObject *py_ifcopenshell_named_type_declared_type(PyObject *self, PyObje
         raise_last_error("ifcopenshell_named_type_declared_type failed");
         goto __cleanup;
     }
-    __py_result = wrap_declaration(result, 0);
+    __py_result = wrap_declaration(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -37111,7 +37360,7 @@ static PyObject *py_ifcopenshell_nest_assign_object(PyObject *self, PyObject *ar
         raise_last_error("ifcopenshell_nest_assign_object failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
         release_option_refs(arg_options_refs, 5);
         free_input_nest_assign_object_options(&arg_options);
@@ -37182,7 +37431,7 @@ static PyObject *py_ifcopenshell_owner_add_actor(PyObject *self, PyObject *args)
         raise_last_error("ifcopenshell_owner_add_actor failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
         release_option_refs(arg_options_refs, 5);
         free_input_owner_add_actor_options(&arg_options);
@@ -37217,7 +37466,7 @@ static PyObject *py_ifcopenshell_owner_add_address(PyObject *self, PyObject *arg
         raise_last_error("ifcopenshell_owner_add_address failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -37250,7 +37499,7 @@ static PyObject *py_ifcopenshell_owner_add_application(PyObject *self, PyObject 
         raise_last_error("ifcopenshell_owner_add_application failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
         release_option_refs(arg_options_refs, 7);
         free_input_owner_add_application_options(&arg_options);
@@ -37281,7 +37530,7 @@ static PyObject *py_ifcopenshell_owner_add_organisation(PyObject *self, PyObject
         raise_last_error("ifcopenshell_owner_add_organisation failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -37311,7 +37560,7 @@ static PyObject *py_ifcopenshell_owner_add_person(PyObject *self, PyObject *args
         raise_last_error("ifcopenshell_owner_add_person failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -37348,7 +37597,7 @@ static PyObject *py_ifcopenshell_owner_add_person_and_organisation(PyObject *sel
         raise_last_error("ifcopenshell_owner_add_person_and_organisation failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -37381,7 +37630,7 @@ static PyObject *py_ifcopenshell_owner_add_role(PyObject *self, PyObject *args) 
         raise_last_error("ifcopenshell_owner_add_role failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -37414,7 +37663,7 @@ static PyObject *py_ifcopenshell_owner_assign_actor(PyObject *self, PyObject *ar
         raise_last_error("ifcopenshell_owner_assign_actor failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
         release_option_refs(arg_options_refs, 5);
         free_input_owner_assign_actor_options(&arg_options);
@@ -37449,7 +37698,7 @@ static PyObject *py_ifcopenshell_owner_create_owner_history(PyObject *self, PyOb
         raise_last_error("ifcopenshell_owner_create_owner_history failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
         release_option_refs(arg_options_refs, 2);
         free_input_owner_create_owner_history_options(&arg_options);
@@ -37751,7 +38000,7 @@ static PyObject *py_ifcopenshell_owner_update_owner_history(PyObject *self, PyOb
         raise_last_error("ifcopenshell_owner_update_owner_history failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
         release_option_refs(arg_options_refs, 3);
         free_input_owner_update_owner_history_options(&arg_options);
@@ -37780,7 +38029,7 @@ static PyObject *py_ifcopenshell_parameter_type_as_aggregation_type(PyObject *se
         raise_last_error("ifcopenshell_parameter_type_as_aggregation_type failed");
         goto __cleanup;
     }
-    __py_result = wrap_aggregation_type(result, 0);
+    __py_result = wrap_aggregation_type(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -37807,7 +38056,7 @@ static PyObject *py_ifcopenshell_parameter_type_as_named_type(PyObject *self, Py
         raise_last_error("ifcopenshell_parameter_type_as_named_type failed");
         goto __cleanup;
     }
-    __py_result = wrap_named_type(result, 0);
+    __py_result = wrap_named_type(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -37834,7 +38083,7 @@ static PyObject *py_ifcopenshell_parameter_type_as_simple_type(PyObject *self, P
         raise_last_error("ifcopenshell_parameter_type_as_simple_type failed");
         goto __cleanup;
     }
-    __py_result = wrap_simple_type(result, 0);
+    __py_result = wrap_simple_type(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -38019,7 +38268,7 @@ static PyObject *py_ifcopenshell_parse_attribute_value_as_enumeration_type(PyObj
         raise_last_error("ifcopenshell_parse_attribute_value_as_enumeration_type failed");
         goto __cleanup;
     }
-    __py_result = wrap_enumeration(result, 0);
+    __py_result = wrap_enumeration(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -38069,7 +38318,7 @@ static PyObject *py_ifcopenshell_parse_attribute_value_as_instance(PyObject *sel
         raise_last_error("ifcopenshell_parse_attribute_value_as_instance failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -38605,7 +38854,7 @@ static PyObject *py_ifcopenshell_parse_instance_list_get(PyObject *self, PyObjec
         raise_last_error("ifcopenshell_parse_instance_list_get failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -38863,7 +39112,7 @@ static PyObject *py_ifcopenshell_parse_schema_by_name(PyObject *self, PyObject *
         raise_last_error("ifcopenshell_parse_schema_by_name failed");
         goto __cleanup;
     }
-    __py_result = wrap_schema(result, 0);
+    __py_result = wrap_schema(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -39477,7 +39726,7 @@ static PyObject *py_ifcopenshell_profile_add_arbitrary_profile(PyObject *self, P
         raise_last_error("ifcopenshell_profile_add_arbitrary_profile failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
         release_option_refs(arg_options_refs, 2);
         free_input_profile_add_arbitrary_profile_options(&arg_options);
@@ -39512,7 +39761,7 @@ static PyObject *py_ifcopenshell_profile_add_arbitrary_profile_with_voids(PyObje
         raise_last_error("ifcopenshell_profile_add_arbitrary_profile_with_voids failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
         release_option_refs(arg_options_refs, 3);
         free_input_profile_add_arbitrary_profile_with_voids_options(&arg_options);
@@ -39543,7 +39792,7 @@ static PyObject *py_ifcopenshell_profile_add_parameterized_profile(PyObject *sel
         raise_last_error("ifcopenshell_profile_add_parameterized_profile failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -39575,7 +39824,7 @@ static PyObject *py_ifcopenshell_profile_copy_profile(PyObject *self, PyObject *
         raise_last_error("ifcopenshell_profile_copy_profile failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -39683,7 +39932,7 @@ static PyObject *py_ifcopenshell_project_assign_declaration(PyObject *self, PyOb
         raise_last_error("ifcopenshell_project_assign_declaration failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
         release_option_refs(arg_options_refs, 5);
         free_input_project_assign_declaration_options(&arg_options);
@@ -39754,7 +40003,7 @@ static PyObject *py_ifcopenshell_pset_add_pset(PyObject *self, PyObject *args) {
         raise_last_error("ifcopenshell_pset_add_pset failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
         release_option_refs(arg_options_refs, 6);
         free_input_pset_add_pset_options(&arg_options);
@@ -39789,7 +40038,7 @@ static PyObject *py_ifcopenshell_pset_add_qto(PyObject *self, PyObject *args) {
         raise_last_error("ifcopenshell_pset_add_qto failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
         release_option_refs(arg_options_refs, 5);
         free_input_pset_add_qto_options(&arg_options);
@@ -39824,7 +40073,7 @@ static PyObject *py_ifcopenshell_pset_assign_pset(PyObject *self, PyObject *args
         raise_last_error("ifcopenshell_pset_assign_pset failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
         release_option_refs(arg_options_refs, 5);
         free_input_pset_assign_pset_options(&arg_options);
@@ -40820,7 +41069,7 @@ static PyObject *py_ifcopenshell_pset_template_add_prop_template(PyObject *self,
         raise_last_error("ifcopenshell_pset_template_add_prop_template failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -40850,7 +41099,7 @@ static PyObject *py_ifcopenshell_pset_template_add_pset_template(PyObject *self,
         raise_last_error("ifcopenshell_pset_template_add_pset_template failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -40967,7 +41216,7 @@ static PyObject *py_ifcopenshell_pset_template_get_by_name(PyObject *self, PyObj
         raise_last_error("ifcopenshell_pset_template_get_by_name failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -40991,7 +41240,7 @@ static PyObject *py_ifcopenshell_pset_template_get_template(PyObject *self, PyOb
         raise_last_error("ifcopenshell_pset_template_get_template failed");
         goto __cleanup;
     }
-    __py_result = wrap_pset_template_handle(result, 0);
+    __py_result = wrap_pset_template_handle(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -41251,7 +41500,7 @@ static PyObject *py_ifcopenshell_representation_get_context(PyObject *self, PyOb
         raise_last_error("ifcopenshell_representation_get_context failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -41311,7 +41560,7 @@ static PyObject *py_ifcopenshell_representation_get_product_representation(PyObj
         raise_last_error("ifcopenshell_representation_get_product_representation failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
         release_option_refs(arg_options_refs, 4);
         free_input_representation_get_product_representation_options(&arg_options);
@@ -41340,7 +41589,7 @@ static PyObject *py_ifcopenshell_representation_resolve(PyObject *self, PyObject
         raise_last_error("ifcopenshell_representation_resolve failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -41447,7 +41696,7 @@ static PyObject *py_ifcopenshell_root_create_entity(PyObject *self, PyObject *ar
         raise_last_error("ifcopenshell_root_create_entity failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
         release_option_refs(arg_options_refs, 4);
         free_input_root_create_entity_options(&arg_options);
@@ -41518,7 +41767,7 @@ static PyObject *py_ifcopenshell_schema_declaration_by_index(PyObject *self, PyO
         raise_last_error("ifcopenshell_schema_declaration_by_index failed");
         goto __cleanup;
     }
-    __py_result = wrap_declaration(result, 0);
+    __py_result = wrap_declaration(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -41546,7 +41795,7 @@ static PyObject *py_ifcopenshell_schema_declaration_by_name(PyObject *self, PyOb
         raise_last_error("ifcopenshell_schema_declaration_by_name failed");
         goto __cleanup;
     }
-    __py_result = wrap_declaration(result, 0);
+    __py_result = wrap_declaration(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -41569,7 +41818,7 @@ static PyObject *py_ifcopenshell_schema_declarations(PyObject *self, PyObject *a
         raise_last_error("ifcopenshell_schema_declarations failed");
         goto __cleanup;
     }
-    __py_result = convert_declaration_list(&result, 0);
+    __py_result = convert_declaration_list(&result, 1);
 __cleanup:
     return __py_result;
 }
@@ -41592,7 +41841,7 @@ static PyObject *py_ifcopenshell_schema_entities(PyObject *self, PyObject *args)
         raise_last_error("ifcopenshell_schema_entities failed");
         goto __cleanup;
     }
-    __py_result = convert_entity_list(&result, 0);
+    __py_result = convert_entity_list(&result, 1);
 __cleanup:
     return __py_result;
 }
@@ -41615,7 +41864,7 @@ static PyObject *py_ifcopenshell_schema_enumeration_types(PyObject *self, PyObje
         raise_last_error("ifcopenshell_schema_enumeration_types failed");
         goto __cleanup;
     }
-    __py_result = convert_enumeration_list(&result, 0);
+    __py_result = convert_enumeration_list(&result, 1);
 __cleanup:
     return __py_result;
 }
@@ -41671,7 +41920,7 @@ static PyObject *py_ifcopenshell_schema_reassign_class(PyObject *self, PyObject 
         raise_last_error("ifcopenshell_schema_reassign_class failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -41694,7 +41943,7 @@ static PyObject *py_ifcopenshell_schema_select_types(PyObject *self, PyObject *a
         raise_last_error("ifcopenshell_schema_select_types failed");
         goto __cleanup;
     }
-    __py_result = convert_select_type_list(&result, 0);
+    __py_result = convert_select_type_list(&result, 1);
 __cleanup:
     return __py_result;
 }
@@ -41717,7 +41966,7 @@ static PyObject *py_ifcopenshell_schema_type_declarations(PyObject *self, PyObje
         raise_last_error("ifcopenshell_schema_type_declarations failed");
         goto __cleanup;
     }
-    __py_result = convert_type_declaration_list(&result, 0);
+    __py_result = convert_type_declaration_list(&result, 1);
 __cleanup:
     return __py_result;
 }
@@ -41744,7 +41993,7 @@ static PyObject *py_ifcopenshell_select_type_as_select_type(PyObject *self, PyOb
         raise_last_error("ifcopenshell_select_type_as_select_type failed");
         goto __cleanup;
     }
-    __py_result = wrap_select_type(result, 0);
+    __py_result = wrap_select_type(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -41767,7 +42016,7 @@ static PyObject *py_ifcopenshell_select_type_select_list(PyObject *self, PyObjec
         raise_last_error("ifcopenshell_select_type_select_list failed");
         goto __cleanup;
     }
-    __py_result = convert_declaration_list(&result, 0);
+    __py_result = convert_declaration_list(&result, 1);
 __cleanup:
     return __py_result;
 }
@@ -42411,7 +42660,7 @@ static PyObject *py_ifcopenshell_sequence_add_task(PyObject *self, PyObject *arg
         raise_last_error("ifcopenshell_sequence_add_task failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
         release_option_refs(arg_options_refs, 9);
         free_input_sequence_add_task_options(&arg_options);
@@ -42451,7 +42700,7 @@ static PyObject *py_ifcopenshell_sequence_add_task_time(PyObject *self, PyObject
         raise_last_error("ifcopenshell_sequence_add_task_time failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
         release_option_refs(arg_options_refs, 1);
         free_input_sequence_add_task_time_options(&arg_options);
@@ -42491,7 +42740,7 @@ static PyObject *py_ifcopenshell_sequence_add_time_period(PyObject *self, PyObje
         raise_last_error("ifcopenshell_sequence_add_time_period failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
         release_option_refs(arg_options_refs, 2);
         free_input_sequence_add_time_period_options(&arg_options);
@@ -42526,7 +42775,7 @@ static PyObject *py_ifcopenshell_sequence_add_work_calendar(PyObject *self, PyOb
         raise_last_error("ifcopenshell_sequence_add_work_calendar failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
         release_option_refs(arg_options_refs, 5);
         free_input_sequence_add_work_calendar_options(&arg_options);
@@ -42561,7 +42810,7 @@ static PyObject *py_ifcopenshell_sequence_add_work_plan(PyObject *self, PyObject
         raise_last_error("ifcopenshell_sequence_add_work_plan failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
         release_option_refs(arg_options_refs, 8);
         free_input_sequence_add_work_plan_options(&arg_options);
@@ -42596,7 +42845,7 @@ static PyObject *py_ifcopenshell_sequence_add_work_schedule(PyObject *self, PyOb
         raise_last_error("ifcopenshell_sequence_add_work_schedule failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
         release_option_refs(arg_options_refs, 10);
         free_input_sequence_add_work_schedule_options(&arg_options);
@@ -42631,7 +42880,7 @@ static PyObject *py_ifcopenshell_sequence_add_work_time(PyObject *self, PyObject
         raise_last_error("ifcopenshell_sequence_add_work_time failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -42670,7 +42919,7 @@ static PyObject *py_ifcopenshell_sequence_assign_lag_time(PyObject *self, PyObje
         raise_last_error("ifcopenshell_sequence_assign_lag_time failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
         release_option_refs(arg_options_refs, 1);
         free_input_sequence_assign_lag_time_options(&arg_options);
@@ -42715,7 +42964,7 @@ static PyObject *py_ifcopenshell_sequence_assign_process(PyObject *self, PyObjec
         raise_last_error("ifcopenshell_sequence_assign_process failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
         release_option_refs(arg_options_refs, 3);
         free_input_sequence_assign_process_options(&arg_options);
@@ -42760,7 +43009,7 @@ static PyObject *py_ifcopenshell_sequence_assign_product(PyObject *self, PyObjec
         raise_last_error("ifcopenshell_sequence_assign_product failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
         release_option_refs(arg_options_refs, 3);
         free_input_sequence_assign_product_options(&arg_options);
@@ -42795,7 +43044,7 @@ static PyObject *py_ifcopenshell_sequence_assign_recurrence_pattern(PyObject *se
         raise_last_error("ifcopenshell_sequence_assign_recurrence_pattern failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -42838,7 +43087,7 @@ static PyObject *py_ifcopenshell_sequence_assign_sequence(PyObject *self, PyObje
         raise_last_error("ifcopenshell_sequence_assign_sequence failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
         release_option_refs(arg_options_refs, 4);
         free_input_sequence_assign_sequence_options(&arg_options);
@@ -42883,7 +43132,7 @@ static PyObject *py_ifcopenshell_sequence_assign_work_plan(PyObject *self, PyObj
         raise_last_error("ifcopenshell_sequence_assign_work_plan failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
         release_option_refs(arg_options_refs, 3);
         free_input_sequence_assign_work_plan_options(&arg_options);
@@ -42989,7 +43238,7 @@ static PyObject *py_ifcopenshell_sequence_copy_work_schedule(PyObject *self, PyO
         raise_last_error("ifcopenshell_sequence_copy_work_schedule failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
         release_option_refs(arg_options_refs, 3);
         free_input_sequence_copy_work_schedule_options(&arg_options);
@@ -43790,7 +44039,7 @@ static PyObject *py_ifcopenshell_sequence_unassign_process(PyObject *self, PyObj
         raise_last_error("ifcopenshell_sequence_unassign_process failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
         release_option_refs(arg_options_refs, 2);
         free_input_sequence_remove_options(&arg_options);
@@ -43835,7 +44084,7 @@ static PyObject *py_ifcopenshell_sequence_unassign_product(PyObject *self, PyObj
         raise_last_error("ifcopenshell_sequence_unassign_product failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
         release_option_refs(arg_options_refs, 2);
         free_input_sequence_remove_options(&arg_options);
@@ -43941,7 +44190,7 @@ static PyObject *py_ifcopenshell_shape_builder_axis2_placement_2d(PyObject *self
         raise_last_error("ifcopenshell_shape_builder_axis2_placement_2d failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
         release_option_refs(arg_options_refs, 2);
         free_input_shape_builder_axis2_placement2d_options(&arg_options);
@@ -43976,7 +44225,7 @@ static PyObject *py_ifcopenshell_shape_builder_axis2_placement_3d(PyObject *self
         raise_last_error("ifcopenshell_shape_builder_axis2_placement_3d failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
         release_option_refs(arg_options_refs, 3);
         free_input_shape_builder_axis2_placement3d_options(&arg_options);
@@ -44011,7 +44260,7 @@ static PyObject *py_ifcopenshell_shape_builder_block(PyObject *self, PyObject *a
         raise_last_error("ifcopenshell_shape_builder_block failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
         release_option_refs(arg_options_refs, 4);
         free_input_shape_builder_block_options(&arg_options);
@@ -44045,7 +44294,7 @@ static PyObject *py_ifcopenshell_shape_builder_circle(PyObject *self, PyObject *
         raise_last_error("ifcopenshell_shape_builder_circle failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
         free_input_double_list(&arg_center);
     return __py_result;
@@ -44077,7 +44326,7 @@ static PyObject *py_ifcopenshell_shape_builder_curve_between_two_points(PyObject
         raise_last_error("ifcopenshell_shape_builder_curve_between_two_points failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
         free_input_double_list_list(&arg_points);
     return __py_result;
@@ -44110,7 +44359,7 @@ static PyObject *py_ifcopenshell_shape_builder_deep_copy(PyObject *self, PyObjec
         raise_last_error("ifcopenshell_shape_builder_deep_copy failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -44146,7 +44395,7 @@ static PyObject *py_ifcopenshell_shape_builder_edge(PyObject *self, PyObject *ar
         raise_last_error("ifcopenshell_shape_builder_edge failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
         free_input_double_list(&arg_end);
         free_input_double_list(&arg_start);
@@ -44181,7 +44430,7 @@ static PyObject *py_ifcopenshell_shape_builder_ellipse_curve(PyObject *self, PyO
         raise_last_error("ifcopenshell_shape_builder_ellipse_curve failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
         release_option_refs(arg_options_refs, 6);
         free_input_shape_builder_ellipse_curve_options(&arg_options);
@@ -44216,7 +44465,7 @@ static PyObject *py_ifcopenshell_shape_builder_extrude(PyObject *self, PyObject 
         raise_last_error("ifcopenshell_shape_builder_extrude failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
         release_option_refs(arg_options_refs, 7);
         free_input_shape_builder_extrude_options(&arg_options);
@@ -44249,7 +44498,7 @@ static PyObject *py_ifcopenshell_shape_builder_face(PyObject *self, PyObject *ar
         raise_last_error("ifcopenshell_shape_builder_face failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
         free_input_double_list_list(&arg_points);
     return __py_result;
@@ -44286,7 +44535,7 @@ static PyObject *py_ifcopenshell_shape_builder_faceted_brep(PyObject *self, PyOb
         raise_last_error("ifcopenshell_shape_builder_faceted_brep failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
         free_input_int32_list_list(&arg_faces);
         free_input_double_list_list(&arg_points);
@@ -44344,7 +44593,7 @@ static PyObject *py_ifcopenshell_shape_builder_half_space_solid(PyObject *self, 
         raise_last_error("ifcopenshell_shape_builder_half_space_solid failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
         release_option_refs(arg_options_refs, 2);
         free_input_shape_builder_half_space_solid_options(&arg_options);
@@ -44382,7 +44631,7 @@ static PyObject *py_ifcopenshell_shape_builder_indexed_polycurve_2d(PyObject *se
         raise_last_error("ifcopenshell_shape_builder_indexed_polycurve_2d failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
         free_input_int32_list_list(&arg_segments);
         free_input_double_list_list(&arg_points);
@@ -44534,7 +44783,7 @@ static PyObject *py_ifcopenshell_shape_builder_mesh(PyObject *self, PyObject *ar
         raise_last_error("ifcopenshell_shape_builder_mesh failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
         free_input_int32_list_list(&arg_faces);
         free_input_double_list_list(&arg_points);
@@ -44569,7 +44818,7 @@ static PyObject *py_ifcopenshell_shape_builder_mirror(PyObject *self, PyObject *
         raise_last_error("ifcopenshell_shape_builder_mirror failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
         release_option_refs(arg_options_refs, 5);
         free_input_shape_builder_mirror_options(&arg_options);
@@ -44607,7 +44856,7 @@ static PyObject *py_ifcopenshell_shape_builder_plane(PyObject *self, PyObject *a
         raise_last_error("ifcopenshell_shape_builder_plane failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
         free_input_double_list(&arg_normal);
         free_input_double_list(&arg_location);
@@ -44645,7 +44894,7 @@ static PyObject *py_ifcopenshell_shape_builder_polygonal_face_set(PyObject *self
         raise_last_error("ifcopenshell_shape_builder_polygonal_face_set failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
         free_input_int32_list_list_list(&arg_faces);
         free_input_double_list_list(&arg_points);
@@ -44680,7 +44929,7 @@ static PyObject *py_ifcopenshell_shape_builder_polyline(PyObject *self, PyObject
         raise_last_error("ifcopenshell_shape_builder_polyline failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
         release_option_refs(arg_options_refs, 4);
         free_input_shape_builder_polyline_options(&arg_options);
@@ -44715,7 +44964,7 @@ static PyObject *py_ifcopenshell_shape_builder_profile(PyObject *self, PyObject 
         raise_last_error("ifcopenshell_shape_builder_profile failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
         release_option_refs(arg_options_refs, 4);
         free_input_shape_builder_profile_options(&arg_options);
@@ -44750,7 +44999,7 @@ static PyObject *py_ifcopenshell_shape_builder_representation(PyObject *self, Py
         raise_last_error("ifcopenshell_shape_builder_representation failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
         release_option_refs(arg_options_refs, 3);
         free_input_shape_builder_representation_options(&arg_options);
@@ -44785,7 +45034,7 @@ static PyObject *py_ifcopenshell_shape_builder_rotate(PyObject *self, PyObject *
         raise_last_error("ifcopenshell_shape_builder_rotate failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
         release_option_refs(arg_options_refs, 5);
         free_input_shape_builder_rotate_options(&arg_options);
@@ -44823,7 +45072,7 @@ static PyObject *py_ifcopenshell_shape_builder_set_polyline_coords(PyObject *sel
         raise_last_error("ifcopenshell_shape_builder_set_polyline_coords failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
         free_input_double_list_list(&arg_coords);
     return __py_result;
@@ -44857,7 +45106,7 @@ static PyObject *py_ifcopenshell_shape_builder_sphere(PyObject *self, PyObject *
         raise_last_error("ifcopenshell_shape_builder_sphere failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
         release_option_refs(arg_options_refs, 2);
         free_input_shape_builder_sphere_options(&arg_options);
@@ -44892,7 +45141,7 @@ static PyObject *py_ifcopenshell_shape_builder_swept_disk_solid(PyObject *self, 
         raise_last_error("ifcopenshell_shape_builder_swept_disk_solid failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -44925,7 +45174,7 @@ static PyObject *py_ifcopenshell_shape_builder_translate(PyObject *self, PyObjec
         raise_last_error("ifcopenshell_shape_builder_translate failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
         release_option_refs(arg_options_refs, 3);
         free_input_shape_builder_translate_options(&arg_options);
@@ -44963,7 +45212,7 @@ static PyObject *py_ifcopenshell_shape_builder_triangulated_face_set(PyObject *s
         raise_last_error("ifcopenshell_shape_builder_triangulated_face_set failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
         free_input_int32_list_list(&arg_faces);
         free_input_double_list_list(&arg_points);
@@ -44996,7 +45245,7 @@ static PyObject *py_ifcopenshell_shape_builder_vertex(PyObject *self, PyObject *
         raise_last_error("ifcopenshell_shape_builder_vertex failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
         free_input_double_list(&arg_position);
     return __py_result;
@@ -45046,7 +45295,7 @@ static PyObject *py_ifcopenshell_simple_type_as_simple_type(PyObject *self, PyOb
         raise_last_error("ifcopenshell_simple_type_as_simple_type failed");
         goto __cleanup;
     }
-    __py_result = wrap_simple_type(result, 0);
+    __py_result = wrap_simple_type(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -45125,7 +45374,7 @@ static PyObject *py_ifcopenshell_spatial_assign_container(PyObject *self, PyObje
         raise_last_error("ifcopenshell_spatial_assign_container failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
         release_option_refs(arg_options_refs, 5);
         free_input_spatial_assign_container_options(&arg_options);
@@ -45196,7 +45445,7 @@ static PyObject *py_ifcopenshell_spatial_reference_structure(PyObject *self, PyO
         raise_last_error("ifcopenshell_spatial_reference_structure failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
         release_option_refs(arg_options_refs, 5);
         free_input_spatial_reference_structure_options(&arg_options);
@@ -45280,7 +45529,7 @@ static PyObject *py_ifcopenshell_structural_add_structural_activity(PyObject *se
         raise_last_error("ifcopenshell_structural_add_structural_activity failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
         release_option_refs(arg_options_refs, 2);
         free_input_structural_add_structural_activity_options(&arg_options);
@@ -45314,7 +45563,7 @@ static PyObject *py_ifcopenshell_structural_add_structural_analysis_model(PyObje
         raise_last_error("ifcopenshell_structural_add_structural_analysis_model failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -45348,7 +45597,7 @@ static PyObject *py_ifcopenshell_structural_add_structural_boundary_condition(Py
         raise_last_error("ifcopenshell_structural_add_structural_boundary_condition failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
         release_option_refs(arg_options_refs, 2);
         free_input_structural_add_structural_boundary_condition_options(&arg_options);
@@ -45379,7 +45628,7 @@ static PyObject *py_ifcopenshell_structural_add_structural_load(PyObject *self, 
         raise_last_error("ifcopenshell_structural_add_structural_load failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -45414,7 +45663,7 @@ static PyObject *py_ifcopenshell_structural_add_structural_load_case(PyObject *s
         raise_last_error("ifcopenshell_structural_add_structural_load_case failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -45449,7 +45698,7 @@ static PyObject *py_ifcopenshell_structural_add_structural_load_group(PyObject *
         raise_last_error("ifcopenshell_structural_add_structural_load_group failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -45491,7 +45740,7 @@ static PyObject *py_ifcopenshell_structural_add_structural_member_connection(PyO
         raise_last_error("ifcopenshell_structural_add_structural_member_connection failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -45533,7 +45782,7 @@ static PyObject *py_ifcopenshell_structural_assign_product(PyObject *self, PyObj
         raise_last_error("ifcopenshell_structural_assign_product failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -45575,7 +45824,7 @@ static PyObject *py_ifcopenshell_structural_assign_structural_analysis_model(PyO
         raise_last_error("ifcopenshell_structural_assign_structural_analysis_model failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
         release_option_refs(arg_options_refs, 3);
         free_input_structural_assign_structural_analysis_model_options(&arg_options);
@@ -45620,7 +45869,7 @@ static PyObject *py_ifcopenshell_structural_assign_to_building(PyObject *self, P
         raise_last_error("ifcopenshell_structural_assign_to_building failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -46025,7 +46274,7 @@ static PyObject *py_ifcopenshell_style_add_style(PyObject *self, PyObject *args)
         raise_last_error("ifcopenshell_style_add_style failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -46058,7 +46307,7 @@ static PyObject *py_ifcopenshell_style_assign_item_style(PyObject *self, PyObjec
         raise_last_error("ifcopenshell_style_assign_item_style failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
         release_option_refs(arg_options_refs, 3);
         free_input_style_assign_item_style_options(&arg_options);
@@ -46404,7 +46653,7 @@ static PyObject *py_ifcopenshell_system_add_port(PyObject *self, PyObject *args)
         raise_last_error("ifcopenshell_system_add_port failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
         release_option_refs(arg_options_refs, 4);
         free_input_system_add_port_options(&arg_options);
@@ -46439,7 +46688,7 @@ static PyObject *py_ifcopenshell_system_add_system(PyObject *self, PyObject *arg
         raise_last_error("ifcopenshell_system_add_system failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
         release_option_refs(arg_options_refs, 2);
         free_input_system_add_system_options(&arg_options);
@@ -46474,7 +46723,7 @@ static PyObject *py_ifcopenshell_system_assign_flow_control(PyObject *self, PyOb
         raise_last_error("ifcopenshell_system_assign_flow_control failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
         release_option_refs(arg_options_refs, 5);
         free_input_system_assign_flow_control_options(&arg_options);
@@ -46509,7 +46758,7 @@ static PyObject *py_ifcopenshell_system_assign_port(PyObject *self, PyObject *ar
         raise_last_error("ifcopenshell_system_assign_port failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
         release_option_refs(arg_options_refs, 5);
         free_input_system_assign_port_options(&arg_options);
@@ -46544,7 +46793,7 @@ static PyObject *py_ifcopenshell_system_assign_system(PyObject *self, PyObject *
         raise_last_error("ifcopenshell_system_assign_system failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
         release_option_refs(arg_options_refs, 5);
         free_input_system_assign_system_options(&arg_options);
@@ -46789,7 +47038,7 @@ static PyObject *py_ifcopenshell_type_assign_type(PyObject *self, PyObject *args
         raise_last_error("ifcopenshell_type_assign_type failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
         release_option_refs(arg_options_refs, 6);
         free_input_type_assign_type_options(&arg_options);
@@ -46841,7 +47090,7 @@ static PyObject *py_ifcopenshell_type_declaration_as_type_declaration(PyObject *
         raise_last_error("ifcopenshell_type_declaration_as_type_declaration failed");
         goto __cleanup;
     }
-    __py_result = wrap_type_declaration(result, 0);
+    __py_result = wrap_type_declaration(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -46868,7 +47117,7 @@ static PyObject *py_ifcopenshell_type_declaration_declared_type(PyObject *self, 
         raise_last_error("ifcopenshell_type_declaration_declared_type failed");
         goto __cleanup;
     }
-    __py_result = wrap_parameter_type(result, 0);
+    __py_result = wrap_parameter_type(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -46970,7 +47219,7 @@ static PyObject *py_ifcopenshell_unit_add_context_dependent_unit(PyObject *self,
         raise_last_error("ifcopenshell_unit_add_context_dependent_unit failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
         free_input_int64_list(&arg_dimensions);
     return __py_result;
@@ -47009,7 +47258,7 @@ static PyObject *py_ifcopenshell_unit_add_derived_unit(PyObject *self, PyObject 
         raise_last_error("ifcopenshell_unit_add_derived_unit failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
         free_input_int64_list(&arg_exponents);
         free_input_instance_list(&arg_units);
@@ -47039,7 +47288,7 @@ static PyObject *py_ifcopenshell_unit_add_monetary_unit(PyObject *self, PyObject
         raise_last_error("ifcopenshell_unit_add_monetary_unit failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -47068,7 +47317,7 @@ static PyObject *py_ifcopenshell_unit_add_si_unit(PyObject *self, PyObject *args
         raise_last_error("ifcopenshell_unit_add_si_unit failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -47322,7 +47571,7 @@ static PyObject *py_ifcopenshell_unit_get_project_unit(PyObject *self, PyObject 
         raise_last_error("ifcopenshell_unit_get_project_unit failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -47409,7 +47658,7 @@ static PyObject *py_ifcopenshell_unit_get_unit_assignment(PyObject *self, PyObje
         raise_last_error("ifcopenshell_unit_get_unit_assignment failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -47578,7 +47827,7 @@ static PyObject *py_ifcopenshell_unit_resolve_property_table_defined_unit(PyObje
         raise_last_error("ifcopenshell_unit_resolve_property_table_defined_unit failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -47628,7 +47877,7 @@ static PyObject *py_ifcopenshell_unit_resolve_property_table_defining_unit(PyObj
         raise_last_error("ifcopenshell_unit_resolve_property_table_defining_unit failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -47655,7 +47904,7 @@ static PyObject *py_ifcopenshell_unit_resolve_property_unit(PyObject *self, PyOb
         raise_last_error("ifcopenshell_unit_resolve_property_unit failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -47761,7 +48010,7 @@ static PyObject *py_ifcopenshell_value_as_instance(PyObject *self, PyObject *arg
         raise_last_error("ifcopenshell_value_as_instance failed");
         goto __cleanup;
     }
-    __py_result = wrap_instance(result, 0);
+    __py_result = wrap_instance(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -47911,7 +48160,7 @@ static PyObject *py_ifcopenshell_value_dict_value_at(PyObject *self, PyObject *a
         raise_last_error("ifcopenshell_value_dict_value_at failed");
         goto __cleanup;
     }
-    __py_result = wrap_value(result, 0);
+    __py_result = wrap_value(result, 1);
 __cleanup:
     return __py_result;
 }
@@ -47990,7 +48239,7 @@ static PyObject *py_ifcopenshell_value_list_at(PyObject *self, PyObject *args) {
         raise_last_error("ifcopenshell_value_list_at failed");
         goto __cleanup;
     }
-    __py_result = wrap_value(result, 0);
+    __py_result = wrap_value(result, 1);
 __cleanup:
     return __py_result;
 }

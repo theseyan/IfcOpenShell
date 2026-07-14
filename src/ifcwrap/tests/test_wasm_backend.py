@@ -404,7 +404,7 @@ class TestWasmJsGlue:
         assert "module.FS.unlink(path);" in code
         assert "import initIfcOpenShellWasmModule" not in code
 
-    def test_wraps_owned_and_borrowed_handle_returns(self):
+    def test_wraps_owned_and_borrowed_handle_returns_with_envelope_ownership(self):
         metadata = _make_metadata(
             handles={"template": _make_handle("ifcopenshell_demo_template_t")},
             functions={
@@ -429,10 +429,9 @@ class TestWasmJsGlue:
             "_wrapIfcOpenshellDemoTemplate(module.getValue(outResultPtr, '*'), true, module)"
             in code
         )
-        assert (
-            "_wrapIfcOpenshellDemoTemplate(module.getValue(outResultPtr, '*'), false, module)"
-            in code
-        )
+        assert code.count(
+            "_wrapIfcOpenshellDemoTemplate(module.getValue(outResultPtr, '*'), true, module)"
+        ) == 2
 
     def test_destroys_variant_results_after_transferring_handles(self):
         variant = TypeSpec(
@@ -476,8 +475,139 @@ class TestWasmJsGlue:
             "module._ifcopenshell_demo_instance_string_variant_destroy(outResultPtr);"
             in code
         )
-        assert "const ptr = module.getValue(fieldPtr, '*');" in code
+        assert "const handlePtr = module.getValue(fieldPtr, '*');" in code
         assert "module.setValue(fieldPtr, 0, '*');" in code
+
+    def test_transfers_wasm_handle_sequence_items_before_destroying_containers(self):
+        metadata = _make_metadata(
+            handles={"item": _make_handle("ifcopenshell_demo_item_t")},
+            value_types={
+                "demo_item_list": CTypeIR(
+                    c_type="ifcopenshell_demo_item_list_t",
+                    kind="handle_sequence",
+                    fields=(
+                        CFieldIR("items", "ifcopenshell_demo_item_t**"),
+                        CFieldIR("size", "size_t"),
+                    ),
+                    destroy_function="ifcopenshell_demo_item_list_destroy",
+                    element_type="ifcopenshell_demo_item_t",
+                    sequence_depth=1,
+                ),
+                "demo_item_list_list": CTypeIR(
+                    c_type="ifcopenshell_demo_item_list_list_t",
+                    kind="handle_sequence",
+                    fields=(
+                        CFieldIR("items", "ifcopenshell_demo_item_list_t*"),
+                        CFieldIR("size", "size_t"),
+                    ),
+                    destroy_function="ifcopenshell_demo_item_list_list_destroy",
+                    element_type="ifcopenshell_demo_item_list_t",
+                    sequence_depth=2,
+                ),
+            },
+            functions={
+                "ifcopenshell_demo_items": _make_function(
+                    c_name="ifcopenshell_demo_items",
+                    returns=TypeSpec(kind="handle", handle="item", sequence_depth=1),
+                ),
+                "ifcopenshell_demo_rows": _make_function(
+                    c_name="ifcopenshell_demo_rows",
+                    returns=TypeSpec(kind="handle", handle="item", sequence_depth=2),
+                ),
+            },
+        )
+
+        code = render_js_glue(metadata)
+
+        assert "const handle = _wrapHandleByType(module, elementType, module.getValue(elementPtr, '*'), true);" in code
+        assert "module.setValue(elementPtr, 0, '*');" in code
+        assert "module._ifcopenshell_demo_item_list_destroy(outResultPtr);" in code
+        assert "module._ifcopenshell_demo_item_list_list_destroy(outResultPtr);" in code
+
+    def test_result_struct_and_nullable_result_struct_cleanup_is_generated(self):
+        metadata = _make_metadata(
+            handles={"item": _make_handle("ifcopenshell_demo_item_t")},
+            value_types={
+                "string": CTypeIR(
+                    c_type="ifcopenshell_string_t",
+                    kind="string",
+                    fields=(
+                        CFieldIR("data", "char*"),
+                        CFieldIR("size", "size_t"),
+                        CFieldIR("owned", "bool"),
+                    ),
+                    destroy_function="ifcopenshell_string_destroy",
+                ),
+                "demo_item_list": CTypeIR(
+                    c_type="ifcopenshell_demo_item_list_t",
+                    kind="handle_sequence",
+                    fields=(
+                        CFieldIR("items", "ifcopenshell_demo_item_t**"),
+                        CFieldIR("size", "size_t"),
+                    ),
+                    destroy_function="ifcopenshell_demo_item_list_destroy",
+                    element_type="ifcopenshell_demo_item_t",
+                    sequence_depth=1,
+                ),
+                "double_list": CTypeIR(
+                    c_type="ifcopenshell_double_list_t",
+                    kind="sequence",
+                    fields=(CFieldIR("items", "double*"), CFieldIR("size", "size_t")),
+                    destroy_function="ifcopenshell_double_list_destroy",
+                    element_type="double",
+                    sequence_depth=1,
+                ),
+                "demo_result": CTypeIR(
+                    c_type="ifcopenshell_demo_result_t",
+                    kind="result_struct",
+                    fields=(
+                        CFieldIR("item", "ifcopenshell_demo_item_t*"),
+                        CFieldIR("items", "ifcopenshell_demo_item_list_t"),
+                        CFieldIR("values", "ifcopenshell_double_list_t"),
+                        CFieldIR("label", "ifcopenshell_string_t"),
+                    ),
+                    destroy_function="ifcopenshell_demo_result_destroy",
+                ),
+                "optional_demo_result": CTypeIR(
+                    c_type="ifcopenshell_optional_demo_result_t",
+                    kind="optional_result_struct",
+                    fields=(
+                        CFieldIR("has_value", "bool"),
+                        CFieldIR("value", "ifcopenshell_demo_result_t"),
+                    ),
+                    destroy_function="ifcopenshell_optional_demo_result_destroy",
+                    element_type="demo_result",
+                ),
+            },
+            functions={
+                "ifcopenshell_demo_result": _make_function(
+                    c_name="ifcopenshell_demo_result",
+                    returns=TypeSpec(kind="struct", struct="demo_result"),
+                ),
+                "ifcopenshell_demo_optional": _make_function(
+                    c_name="ifcopenshell_demo_optional",
+                    returns=TypeSpec(kind="struct", struct="demo_result", nullable=True),
+                ),
+            },
+        )
+
+        code = render_js_glue(metadata)
+
+        assert "result[field.name] = _wrapHandleByType" in code
+        assert "module.setValue(fieldPtr, 0, '*');" in code
+        assert "module._ifcopenshell_demo_result_destroy(outResultPtr);" in code
+        assert "module._ifcopenshell_optional_demo_result_destroy(outResultPtr);" in code
+
+    def test_handle_destroy_is_idempotent_after_envelope_transfer(self):
+        metadata = _make_metadata(
+            handles={"item": _make_handle("ifcopenshell_demo_item_t")},
+        )
+
+        code = render_js_glue(metadata)
+
+        assert "if (this.#ptr && this.#envelopeOwned" in code
+        assert "this.#ptr = 0;" in code
+        assert "this.#envelopeOwned = false;" in code
 
     def test_generates_nested_api_modules(self):
         metadata = BindingABI(

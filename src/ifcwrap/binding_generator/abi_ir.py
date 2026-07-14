@@ -182,6 +182,10 @@ def _sequence_destroy_name(kind: str) -> str:
     return f"ifcopenshell_{kind}_destroy"
 
 
+def _value_destroy_name(c_type: str) -> str:
+    return f"ifcopenshell_{_snake_name(c_type)}_destroy"
+
+
 def _type_spec_sequence_kind(type_spec: TypeSpec) -> str | None:
     if type_spec.sequence_depth <= 0 or type_spec.kind == "handle":
         return None
@@ -360,6 +364,10 @@ def _field_c_type(type_spec: TypeSpec, ir: BindingIR) -> str:
         if type_spec.sequence_depth == 2:
             return _handle_list_list_c_type(handle)
         return f"{handle.c_type}*"
+    if type_spec.kind == "struct":
+        if type_spec.struct is None:
+            raise ValueError("struct type is missing struct name")
+        return ir.result_structs[type_spec.struct].c_type
     if type_spec.kind == "opaque_ptr":
         return "void*"
     if type_spec.kind == "variant":
@@ -448,7 +456,7 @@ def _finalize_value_types(ir: BindingIR) -> dict[str, CTypeIR]:
                 CFieldIR(field.name, _field_c_type(field.type, ir), field.doc)
                 for field in struct.fields
             ),
-            destroy_function=None,
+            destroy_function=_value_destroy_name(struct.c_type),
             element_type=struct.cpp_type,
         )
     for call in ir.calls:
@@ -462,7 +470,7 @@ def _finalize_value_types(ir: BindingIR) -> dict[str, CTypeIR]:
                     CFieldIR("has_value", "bool"),
                     CFieldIR("value", ir.result_structs[returns.struct].c_type),
                 ),
-                destroy_function=None,
+                destroy_function=_value_destroy_name(c_type),
                 element_type=returns.struct,
             )
         if returns.kind == "variant":

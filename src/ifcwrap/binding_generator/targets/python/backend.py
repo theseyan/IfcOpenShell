@@ -222,7 +222,7 @@ static int {py_name}_init({py_name}Object *self, PyObject *args, PyObject *kwds)
 static PyMemberDef {py_name}_members[] = {{
     {{"_handle_ptr", T_PYSSIZET, offsetof({py_name}Object, handle), READONLY, "Raw C pointer"}},
     {{"handle", T_PYSSIZET, offsetof({py_name}Object, handle), READONLY, "Raw C pointer"}},
-    {{"owned", T_INT, offsetof({py_name}Object, owned), READONLY, "Ownership flag"}},
+    {{"owned", T_INT, offsetof({py_name}Object, owned), READONLY, "C handle envelope ownership flag"}},
     {{NULL}}
 }};
 
@@ -336,25 +336,41 @@ static PyObject *convert_{name}({c_type} *value, int owned) {{
 def _render_result_struct_converter(
     struct: CTypeIR, handles: dict[str, CTypeIR], owned: int = 1
 ) -> str:
+    destroy = (
+        struct.destroy_function or f"ifcopenshell_{_snake_name(struct.c_type)}_destroy"
+    )
     assignments = []
     for field in struct.fields:
+        normalized = _normalize_c_type(field.c_type)
+        base, pointer_depth = _base_pointer_type(normalized)
+        transfer = (
+            f"    value->{field.name} = NULL;"
+            if pointer_depth == 1 and base in {h.c_type for h in handles.values()}
+            else ""
+        )
         assignments.append(
             f"    item = {_convert_expr(field.c_type, f'value->{field.name}', handles, owned=owned)};"
         )
-        assignments.append("    if (!item) { Py_DECREF(result); return NULL; }")
+        if transfer:
+            assignments.append(transfer)
         assignments.append(
-            f'    if (PyObject_SetAttrString(result, "{field.name}", item) < 0) {{ Py_DECREF(item); Py_DECREF(result); return NULL; }}'
+            f"    if (!item) {{ Py_DECREF(result); {destroy}(value); return NULL; }}"
+        )
+        assignments.append(
+            f'    if (PyObject_SetAttrString(result, "{field.name}", item) < 0) {{ Py_DECREF(item); Py_DECREF(result); {destroy}(value); return NULL; }}'
         )
         assignments.append("    Py_DECREF(item);")
+    assignments.append(f"    {destroy}(value);")
     body = "\n".join(assignments)
     return f"""\
 static PyObject *convert_{_snake_name(struct.c_type)}({struct.c_type} *value, int owned) {{
     if (!SimpleNamespaceType) {{
+        {destroy}(value);
         PyErr_SetString(PyExc_RuntimeError, \"types.SimpleNamespace is not available\");
         return NULL;
     }}
     PyObject *result = PyObject_CallNoArgs(SimpleNamespaceType);
-    if (!result) return NULL;
+    if (!result) {{ {destroy}(value); return NULL; }}
     PyObject *item = NULL;
 {body}
     return result;
@@ -374,27 +390,51 @@ def _render_optional_result_struct_converter(
     )
     return f"""\
 static PyObject *convert_{_snake_name(struct.c_type)}({struct.c_type} *value, int owned) {{
-    if (!value->has_value) Py_RETURN_NONE;
-    return convert_{_snake_name(payload_type.c_type)}(&value->value, owned);
+    if (!value->has_value) {{
+        {struct.destroy_function or f"ifcopenshell_{_snake_name(struct.c_type)}_destroy"}(value);
+        Py_RETURN_NONE;
+    }}
+    PyObject *result = convert_{_snake_name(payload_type.c_type)}(&value->value, owned);
+    {struct.destroy_function or f"ifcopenshell_{_snake_name(struct.c_type)}_destroy"}(value);
+    return result;
 }}
 """
 
 
 def _render_variant_converter(struct: CTypeIR, handles: dict[str, CTypeIR]) -> str:
+    destroy = (
+        struct.destroy_function or f"ifcopenshell_{_snake_name(struct.c_type)}_destroy"
+    )
     branches = []
     for index, field in enumerate(
         field for field in struct.fields if field.name.startswith("value_")
     ):
+        normalized = _normalize_c_type(field.c_type)
+        base, pointer_depth = _base_pointer_type(normalized)
+        transfer = (
+            f"        value->{field.name} = NULL;"
+            if pointer_depth == 1 and base in {h.c_type for h in handles.values()}
+            else ""
+        )
         branches.append(
-            f"    if (value->kind == {index}) return {_convert_expr(field.c_type, f'value->{field.name}', handles, owned=1)};"
+            f"    if (value->kind == {index}) {{\n"
+            f"        result = {_convert_expr(field.c_type, f'value->{field.name}', handles, owned=1)};\n"
+            f"{transfer}\n"
+            "    }"
         )
     body = "\n".join(branches)
     return f"""\
 static PyObject *convert_{_snake_name(struct.c_type)}({struct.c_type} *value, int owned) {{
     (void)owned;
+    PyObject *result = NULL;
 {body}
-    PyErr_SetString(PyExc_RuntimeError, "Unsupported variant alternative");
-    return NULL;
+    if (!result) {{
+        if (!PyErr_Occurred()) PyErr_SetString(PyExc_RuntimeError, "Unsupported variant alternative");
+        {destroy}(value);
+        return NULL;
+    }}
+    {destroy}(value);
+    return result;
 }}
 """
 
@@ -466,11 +506,17 @@ def _convert_expr(
 def _render_wrap_handle(handle: CTypeIR) -> str:
     py_name = _py_type_name(handle.c_type)
     snake = _snake_name(handle.c_type)
+    destroy = (
+        handle.destroy_function or f"ifcopenshell_{_snake_name(handle.c_type)}_destroy"
+    )
     return f"""\
 static PyObject *wrap_{snake}({handle.c_type} *handle, int owned) {{
     if (!handle) Py_RETURN_NONE;
     {py_name}Object *result = ({py_name}Object *){py_name}Type.tp_alloc(&{py_name}Type, 0);
-    if (!result) return NULL;
+    if (!result) {{
+        {destroy}(handle);
+        return NULL;
+    }}
     result->handle = handle;
     result->owned = owned;
     return (PyObject *)result;
@@ -989,7 +1035,9 @@ def _render_function_wrapper(
 """
     out_decl = ""
     result_assign = ""
-    owned = 0 if function.returns.ownership in ("borrowed", "static") else 1
+    # Every successful result envelope is allocated by the C ABI for this call.
+    # The envelope's internal owned flag controls only pointee destruction.
+    owned = 1
     if len(out_params) > 1:
         out_decls = []
         result_items = []

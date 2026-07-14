@@ -15,12 +15,14 @@ from .c_sequence_helpers import (
     _used_scalar_sequence_kinds,
 )
 from .c_type_rendering import (
+    _ordered_result_structs,
     _render_call_decl,
     _render_option_struct_decl,
     _render_optional_result_struct_decl,
     _render_result_struct_decl,
     _render_variant_decl,
 )
+from .c_value_rendering import _render_result_struct_destroy_decls
 from .c_variant_helpers import _render_variant_destroy_decls
 from .debug import debug_log
 
@@ -56,7 +58,7 @@ def _render_header(spec: BindingIR) -> str:
     )
     result_struct_decls = "\n\n".join(
         _render_result_struct_decl(struct, spec)
-        for struct in spec.result_structs.values()
+        for struct in _ordered_result_structs(spec)
     )
     optional_result_struct_decls = "\n\n".join(
         _render_optional_result_struct_decl(call.returns, spec)
@@ -82,6 +84,7 @@ def _render_header(spec: BindingIR) -> str:
         _render_handle_list_list_destroy_decl(handle) for handle in handle_list_types
     )
     variant_destroy_decls = _render_variant_destroy_decls(spec)
+    result_struct_destroy_decls = _render_result_struct_destroy_decls(spec.abi)
     call_decls = "\n".join(_render_call_decl(call, spec) for call in spec.calls)
     sequence_kinds = _used_scalar_sequence_kinds(spec)
     common_type_decls = _render_common_type_decls(sequence_kinds)
@@ -134,6 +137,7 @@ int {spec.c_prefix}_last_error_kind(void);
 {destroy_decls}
 {handle_list_destroy_decls}
 {handle_list_list_destroy_decls}
+{result_struct_destroy_decls}
 {variant_destroy_decls}
 
 {call_decls}

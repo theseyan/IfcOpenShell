@@ -13,6 +13,29 @@ from .binding_ir import BindingIR, CallIR
 from .binding_model import OptionStructSpec
 
 
+def _ordered_result_structs(spec: BindingIR) -> tuple[object, ...]:
+    ordered: list[object] = []
+    visiting: set[str] = set()
+    visited: set[str] = set()
+
+    def visit(struct: object) -> None:
+        if struct.name in visited:
+            return
+        if struct.name in visiting:
+            raise ValueError(f"Cyclic result struct dependency at {struct.name}")
+        visiting.add(struct.name)
+        for field in struct.fields:
+            if field.type.kind == "struct" and field.type.struct is not None:
+                visit(spec.result_structs[field.type.struct])
+        visiting.remove(struct.name)
+        visited.add(struct.name)
+        ordered.append(struct)
+
+    for struct in spec.result_structs.values():
+        visit(struct)
+    return tuple(ordered)
+
+
 def _normalize_cpp_type(cpp_type: str | None) -> str:
     if not cpp_type:
         return ""

@@ -1058,8 +1058,6 @@ def _wrap_file_ptr(ptr, *, owned=True, raw=False) -> file:
     f = file.__new__(file)
     f._handle = ptr
     f._owns_ptr = owned
-    if not owned:
-        ptr.owned = 0
     f.header = _file_header(f)
     f.transaction = None
     f.history = []

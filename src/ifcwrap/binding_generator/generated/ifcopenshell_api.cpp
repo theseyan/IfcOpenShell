@@ -3016,6 +3016,50 @@ void ifcopenshell_geom_element_list_list_destroy(ifcopenshell_geom_element_list_
     value->items = nullptr;
     value->size = 0;
 }
+void ifcopenshell_shape_builder_mep_transition_shape_result_destroy(ifcopenshell_shape_builder_mep_transition_shape_result_t* value) {
+    if (value == nullptr) {
+        return;
+    }
+    if (value->representation != nullptr) {
+        ifcopenshell_instance_destroy(value->representation);
+        value->representation = nullptr;
+    }
+    ifcopenshell_double_list_destroy(&value->profile_offset);
+}
+
+void ifcopenshell_shape_builder_mep_bend_shape_result_destroy(ifcopenshell_shape_builder_mep_bend_shape_result_t* value) {
+    if (value == nullptr) {
+        return;
+    }
+    if (value->representation != nullptr) {
+        ifcopenshell_instance_destroy(value->representation);
+        value->representation = nullptr;
+    }
+}
+
+void ifcopenshell_sequence_duplicate_task_result_destroy(ifcopenshell_sequence_duplicate_task_result_t* value) {
+    if (value == nullptr) {
+        return;
+    }
+    if (value->current != nullptr) {
+        ifcopenshell_parse_instance_list_destroy(value->current);
+        value->current = nullptr;
+    }
+    if (value->duplicate != nullptr) {
+        ifcopenshell_parse_instance_list_destroy(value->duplicate);
+        value->duplicate = nullptr;
+    }
+}
+
+void ifcopenshell_optional_shape_builder_mep_transition_shape_result_destroy(ifcopenshell_optional_shape_builder_mep_transition_shape_result_t* value) {
+    if (value == nullptr) {
+        return;
+    }
+    if (value->has_value) {
+        ifcopenshell_shape_builder_mep_transition_shape_result_destroy(&value->value);
+    }
+    value->has_value = false;
+}
 void ifcopenshell_instance_string_variant_destroy(ifcopenshell_instance_string_variant_t* value) {
     if (value == nullptr) {
         return;
@@ -11485,8 +11529,16 @@ bool ifcopenshell_sequence_duplicate_task(ifcopenshell_file_t* file, ifcopenshel
         options_cpp.application = options->application->value;
     }
         auto result_value = ifcapi::bindings::sequence_duplicate_task(file_cpp, task_cpp, options_cpp);
-        out_result->current = new ifcopenshell_parse_instance_list_t{result_value.current};
-        out_result->duplicate = new ifcopenshell_parse_instance_list_t{result_value.duplicate};
+        ifcopenshell_sequence_duplicate_task_result_t result_value_c{};
+        try {
+            result_value_c.current = new ifcopenshell_parse_instance_list_t{result_value.current};
+            result_value_c.duplicate = new ifcopenshell_parse_instance_list_t{result_value.duplicate};
+            *out_result = result_value_c;
+            result_value_c = {};
+        } catch (...) {
+            ifcopenshell_sequence_duplicate_task_result_destroy(&result_value_c);
+            throw;
+        }
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -12356,15 +12408,23 @@ bool ifcopenshell_shape_builder_mep_bend_shape(ifcopenshell_file_t* file, const 
     options_cpp.bend_vector = to_cpp_double_list(options->bend_vector);
     options_cpp.flip_z_axis = static_cast<bool>(options->flip_z_axis);
         auto result_value = ifcapi::bindings::shape_builder_mep_bend_shape(file_cpp, options_cpp);
-        out_result->representation = new ifcopenshell_instance_t{result_value.representation};
-        out_result->start_length = static_cast<double>(result_value.start_length);
-        out_result->end_length = static_cast<double>(result_value.end_length);
-        out_result->radius = static_cast<double>(result_value.radius);
-        out_result->angle = static_cast<double>(result_value.angle);
-        out_result->lateral_axis = static_cast<int32_t>(result_value.lateral_axis);
-        out_result->lateral_sign = static_cast<double>(result_value.lateral_sign);
-        out_result->z_axis_sign = static_cast<int32_t>(result_value.z_axis_sign);
-        out_result->main_profile_dimension = static_cast<double>(result_value.main_profile_dimension);
+        ifcopenshell_shape_builder_mep_bend_shape_result_t result_value_c{};
+        try {
+            result_value_c.representation = new ifcopenshell_instance_t{result_value.representation};
+            result_value_c.start_length = static_cast<double>(result_value.start_length);
+            result_value_c.end_length = static_cast<double>(result_value.end_length);
+            result_value_c.radius = static_cast<double>(result_value.radius);
+            result_value_c.angle = static_cast<double>(result_value.angle);
+            result_value_c.lateral_axis = static_cast<int32_t>(result_value.lateral_axis);
+            result_value_c.lateral_sign = static_cast<double>(result_value.lateral_sign);
+            result_value_c.z_axis_sign = static_cast<int32_t>(result_value.z_axis_sign);
+            result_value_c.main_profile_dimension = static_cast<double>(result_value.main_profile_dimension);
+            *out_result = result_value_c;
+            result_value_c = {};
+        } catch (...) {
+            ifcopenshell_shape_builder_mep_bend_shape_result_destroy(&result_value_c);
+            throw;
+        }
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -12451,15 +12511,23 @@ bool ifcopenshell_shape_builder_mep_transition_shape(ifcopenshell_file_t* file, 
     if (options->profile_offset == nullptr) { throw std::runtime_error("Options field \"profile_offset\" must not be null"); }
     options_cpp.profile_offset = to_cpp_double_list(options->profile_offset);
         auto result_value = ifcapi::bindings::shape_builder_mep_transition_shape(file_cpp, options_cpp);
-        out_result->has_value = static_cast<bool>(result_value);
-        if (result_value) {
-            out_result->value.representation = new ifcopenshell_instance_t{(*result_value).representation};
-            out_result->value.start_length = static_cast<double>((*result_value).start_length);
-            out_result->value.end_length = static_cast<double>((*result_value).end_length);
-            out_result->value.angle = static_cast<double>((*result_value).angle);
-            out_result->value.profile_offset = make_double_list((*result_value).profile_offset);
-            out_result->value.transition_length = static_cast<double>((*result_value).transition_length);
-            out_result->value.full_transition_length = static_cast<double>((*result_value).full_transition_length);
+        ifcopenshell_optional_shape_builder_mep_transition_shape_result_t result_value_c{};
+        try {
+            result_value_c.has_value = static_cast<bool>(result_value);
+            if (result_value) {
+                result_value_c.value.representation = new ifcopenshell_instance_t{(*result_value).representation};
+                result_value_c.value.start_length = static_cast<double>((*result_value).start_length);
+                result_value_c.value.end_length = static_cast<double>((*result_value).end_length);
+                result_value_c.value.angle = static_cast<double>((*result_value).angle);
+                result_value_c.value.profile_offset = make_double_list((*result_value).profile_offset);
+                result_value_c.value.transition_length = static_cast<double>((*result_value).transition_length);
+                result_value_c.value.full_transition_length = static_cast<double>((*result_value).full_transition_length);
+            }
+            *out_result = result_value_c;
+            result_value_c = {};
+        } catch (...) {
+            ifcopenshell_optional_shape_builder_mep_transition_shape_result_destroy(&result_value_c);
+            throw;
         }
         return true;
     } catch (const std::exception& e) {

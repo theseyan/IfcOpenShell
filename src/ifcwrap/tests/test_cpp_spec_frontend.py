@@ -22,10 +22,22 @@ from src.ifcwrap.binding_generator.binding_model import (
     OptionStructFieldSpec,
     OptionStructSpec,
     ParamSpec,
+    ResultStructFieldSpec,
+    ResultStructSpec,
     TypeSpec,
 )
 from src.ifcwrap.binding_generator.c_backend import _render_cpp
+from src.ifcwrap.binding_generator.c_handle_rendering import _destroy_body
 from src.ifcwrap.binding_generator.c_header_rendering import _render_header
+from src.ifcwrap.binding_generator.c_sequence_helpers import (
+    _render_handle_list_destroy_impl,
+)
+from src.ifcwrap.binding_generator.c_value_rendering import (
+    _render_result_struct_destroy,
+)
+from src.ifcwrap.binding_generator.c_variant_helpers import (
+    _render_variant_destroy_impls,
+)
 from src.ifcwrap.binding_generator.clang_discovery import (
     CompilationConfig,
     DiscoveryEnvironment,
@@ -425,6 +437,302 @@ def test_c_abi_variants_destroy_owned_alternatives() -> None:
     assert metadata.value_types["demo_instance_string_variant"].destroy_function == (
         "ifcopenshell_demo_instance_string_variant_destroy"
     )
+
+
+def test_c_abi_result_structs_destroy_nested_values_and_handle_envelopes() -> None:
+    inner = ResultStructSpec(
+        name="DemoInner",
+        cpp_type="Demo::Inner",
+        c_type="ifcopenshell_demo_inner_t",
+        fields=(ResultStructFieldSpec("value", TypeSpec(kind="double")),),
+    )
+    result = ResultStructSpec(
+        name="DemoResult",
+        cpp_type="Demo::Result",
+        c_type="ifcopenshell_demo_result_t",
+        fields=(
+            ResultStructFieldSpec(
+                "item",
+                TypeSpec(
+                    kind="handle",
+                    handle="item",
+                    cpp_type="Demo::Item*",
+                    ownership="borrowed",
+                ),
+            ),
+            ResultStructFieldSpec(
+                "items",
+                TypeSpec(
+                    kind="handle",
+                    handle="item",
+                    cpp_type="std::vector<Demo::Item*>",
+                    sequence_depth=1,
+                ),
+            ),
+            ResultStructFieldSpec(
+                "values",
+                TypeSpec(
+                    kind="double",
+                    cpp_type="std::vector<double>",
+                    sequence_depth=1,
+                ),
+            ),
+            ResultStructFieldSpec("label", TypeSpec(kind="string")),
+            ResultStructFieldSpec(
+                "inner",
+                TypeSpec(kind="struct", struct="DemoInner", cpp_type="Demo::Inner"),
+            ),
+        ),
+    )
+    spec = finalize_binding_ir(
+        BindingIR(
+            module="demo",
+            c_prefix="ifcopenshell_demo",
+            public_headers=(),
+            handles={
+                "item": HandleSpec(
+                    name="item",
+                    cpp_type="Demo::Item",
+                    c_type="ifcopenshell_demo_item_t",
+                    destructor="delete",
+                )
+            },
+            result_structs={"DemoResult": result, "DemoInner": inner},
+            calls=(
+                CallIR(
+                    expose_as="result",
+                    c_name="ifcopenshell_demo_result",
+                    receiver=None,
+                    returns=TypeSpec(
+                        kind="struct",
+                        struct="DemoResult",
+                        cpp_type="Demo::Result",
+                    ),
+                    params=(),
+                    operation=DirectCallOp(cpp_name="Demo::result"),
+                ),
+            ),
+        )
+    )
+
+    header = _render_header(spec)
+    cpp = _render_cpp(spec, "demo_api.h")
+
+    assert (
+        "void ifcopenshell_demo_result_destroy(ifcopenshell_demo_result_t* value);"
+        in header
+    )
+    assert "ifcopenshell_demo_item_destroy(value->item);" in cpp
+    assert "ifcopenshell_demo_item_list_destroy(&value->items);" in cpp
+    assert "ifcopenshell_double_list_destroy(&value->values);" in cpp
+    assert "ifcopenshell_string_destroy(&value->label);" in cpp
+    assert "ifcopenshell_demo_inner_destroy(&value->inner);" in cpp
+    assert "ifcopenshell_demo_result_t result_value_c{};" in cpp
+    assert "*out_result = result_value_c;" in cpp
+    assert "ifcopenshell_demo_result_destroy(&result_value_c);" in cpp
+    assert header.index("ifcopenshell_demo_inner_t {") < header.index(
+        "ifcopenshell_demo_result_t {"
+    )
+    metadata = spec.abi
+    assert metadata is not None
+    assert metadata.value_types["DemoResult"].destroy_function == (
+        "ifcopenshell_demo_result_destroy"
+    )
+
+
+def test_generated_compound_cleanup_runtime_preserves_transferred_handles(
+    tmp_path: Path,
+) -> None:
+    compiler = shutil.which("clang++")
+    if compiler is None:
+        pytest.skip("clang++ is not available")
+
+    variant = TypeSpec(
+        kind="variant",
+        cpp_type="std::variant<Demo::Item*, std::string>",
+        variants=(
+            TypeSpec(
+                kind="handle",
+                handle="item",
+                cpp_type="Demo::Item*",
+                ownership="borrowed",
+            ),
+            TypeSpec(kind="string", cpp_type="std::string"),
+        ),
+    )
+    handle = HandleSpec(
+        name="item",
+        cpp_type="Demo::Item",
+        c_type="ifcopenshell_demo_item_t",
+        destructor="function:destroy_demo_item",
+    )
+    result = ResultStructSpec(
+        name="DemoResult",
+        cpp_type="Demo::Result",
+        c_type="ifcopenshell_demo_result_t",
+        fields=(
+            ResultStructFieldSpec(
+                "borrowed",
+                TypeSpec(
+                    kind="handle",
+                    handle="item",
+                    cpp_type="Demo::Item*",
+                    ownership="borrowed",
+                ),
+            ),
+            ResultStructFieldSpec(
+                "owned",
+                TypeSpec(
+                    kind="handle",
+                    handle="item",
+                    cpp_type="Demo::Item*",
+                    ownership="owned",
+                ),
+            ),
+            ResultStructFieldSpec(
+                "items",
+                TypeSpec(
+                    kind="handle",
+                    handle="item",
+                    cpp_type="std::vector<Demo::Item*>",
+                    sequence_depth=1,
+                ),
+            ),
+            ResultStructFieldSpec("alternative", variant),
+        ),
+    )
+    ir = finalize_binding_ir(
+        BindingIR(
+            module="demo",
+            c_prefix="ifcopenshell_demo",
+            public_headers=(),
+            handles={"item": handle},
+            result_structs={"DemoResult": result},
+            calls=(
+                CallIR(
+                    expose_as="value",
+                    c_name="ifcopenshell_demo_value",
+                    receiver=None,
+                    returns=variant,
+                    params=(),
+                    operation=DirectCallOp(cpp_name="Demo::value"),
+                ),
+            ),
+        )
+    )
+    metadata = ir.abi
+    assert metadata is not None
+    result_type = metadata.value_types["DemoResult"]
+    list_type = next(
+        value
+        for value in metadata.value_types.values()
+        if value.kind == "handle_sequence"
+    )
+    variant_type = next(
+        value for value in metadata.value_types.values() if value.kind == "variant"
+    )
+
+    def struct_declaration(c_type: str) -> str:
+        value = next(
+            item for item in metadata.value_types.values() if item.c_type == c_type
+        )
+        fields = "\n".join(
+            f"    {field.c_type} {field.name};" for field in value.fields
+        )
+        return f"struct {c_type} {{\n{fields}\n}};"
+
+    handle_destroy = f"""void ifcopenshell_demo_item_destroy(ifcopenshell_demo_item_t* handle) {{
+    if (handle == nullptr) {{
+        return;
+    }}
+    {_destroy_body(handle)}
+}}"""
+    fixture = f"""
+#include <cassert>
+#include <cstddef>
+#include <cstdint>
+
+static int envelope_count = 0;
+static int pointee_count = 0;
+
+struct ifcopenshell_string_t {{
+    char* data;
+    size_t size;
+    bool owned;
+}};
+
+struct ifcopenshell_demo_item_t {{
+    int* ptr;
+    bool owned;
+    ~ifcopenshell_demo_item_t() {{ ++envelope_count; }}
+}};
+{struct_declaration(list_type.c_type)}
+{struct_declaration(variant_type.c_type)}
+{struct_declaration(result_type.c_type)}
+
+void ifcopenshell_string_destroy(ifcopenshell_string_t* value) {{
+    if (value == nullptr) return;
+    if (value->owned) delete[] value->data;
+    value->data = nullptr;
+    value->size = 0;
+    value->owned = false;
+}}
+
+void destroy_demo_item(int* value) {{
+    ++pointee_count;
+    delete value;
+}}
+
+{handle_destroy}
+{_render_handle_list_destroy_impl(handle)}
+{_render_variant_destroy_impls(ir)}
+{_render_result_struct_destroy(result_type, metadata)}
+
+int main() {{
+    int* borrowed_pointee = new int(1);
+    int* sequence_pointee = new int(2);
+    int* alternative_pointee = new int(3);
+    auto* borrowed = new ifcopenshell_demo_item_t{{borrowed_pointee, false}};
+    auto* owned = new ifcopenshell_demo_item_t{{new int(4), true}};
+    auto* sequence_item = new ifcopenshell_demo_item_t{{sequence_pointee, false}};
+    auto* alternative = new ifcopenshell_demo_item_t{{alternative_pointee, false}};
+    auto** items = new ifcopenshell_demo_item_t*[1]{{sequence_item}};
+    ifcopenshell_demo_result_t value{{borrowed, owned, {{items, 1}}, {{0, alternative}}}};
+
+    value.borrowed = nullptr;
+    value.items.items[0] = nullptr;
+    value.alternative.value_0 = nullptr;
+    ifcopenshell_demo_result_destroy(&value);
+    assert(envelope_count == 1);
+    assert(pointee_count == 1);
+    assert(*borrowed_pointee == 1);
+    assert(*sequence_pointee == 2);
+    assert(*alternative_pointee == 3);
+
+    ifcopenshell_demo_result_destroy(&value);
+    assert(envelope_count == 1);
+    assert(pointee_count == 1);
+
+    ifcopenshell_demo_item_destroy(borrowed);
+    ifcopenshell_demo_item_destroy(sequence_item);
+    ifcopenshell_demo_item_destroy(alternative);
+    assert(envelope_count == 4);
+    assert(pointee_count == 1);
+    delete borrowed_pointee;
+    delete sequence_pointee;
+    delete alternative_pointee;
+}}
+"""
+    source = tmp_path / "cleanup_fixture.cpp"
+    executable = tmp_path / "cleanup_fixture"
+    source.write_text(fixture, encoding="utf-8")
+    subprocess.run(
+        [compiler, "-std=c++17", "-O0", str(source), "-o", str(executable)],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    subprocess.run([str(executable)], check=True, capture_output=True, text=True)
 
 
 def test_c_backend_emits_sequence_helpers_used_only_by_option_structs() -> None:

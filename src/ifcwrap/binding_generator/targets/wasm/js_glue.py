@@ -198,12 +198,13 @@ def _return_expr(function: CFunctionIR, metadata: BindingABI) -> str:
         return "_readInt64(module, outResultPtr)"
     if returns.kind == "handle" and returns.handle is not None:
         handle = metadata.handles[returns.handle]
-        owned = "true" if returns.ownership == "owned" else "false"
-        return f"_wrap{_type_name(handle.c_type)}(module.getValue(outResultPtr, '*'), {owned}, module)"
+        return f"_wrap{_type_name(handle.c_type)}(module.getValue(outResultPtr, '*'), true, module)"
     return "module.getValue(outResultPtr, '*')"
 
 
-def _destroy_out_result(function: CFunctionIR, metadata: BindingABI) -> str | None:
+def _out_result_destroy_function(
+    function: CFunctionIR, metadata: BindingABI
+) -> str | None:
     returns = function.returns
     if returns.sequence_depth > 0:
         destroy = _sequence_value_type(returns, metadata).destroy_function
@@ -215,8 +216,24 @@ def _destroy_out_result(function: CFunctionIR, metadata: BindingABI) -> str | No
             for item in metadata.value_types.values()
             if item.kind == "variant" and item.element_type == returns.cpp_type
         )
+    elif returns.kind == "struct" and returns.struct is not None:
+        if returns.nullable:
+            payload = metadata.value_types[returns.struct].c_type
+            destroy = next(
+                item.destroy_function
+                for item in metadata.value_types.values()
+                if item.kind == "optional_result_struct"
+                and any(field.c_type == payload for field in item.fields)
+            )
+        else:
+            destroy = metadata.value_types[returns.struct].destroy_function
     else:
         destroy = None
+    return destroy
+
+
+def _destroy_out_result(function: CFunctionIR, metadata: BindingABI) -> str | None:
+    destroy = _out_result_destroy_function(function, metadata)
     if destroy is None:
         return None
     return f"    if (outResultPtr) module._{destroy}(outResultPtr);"
@@ -310,25 +327,25 @@ def _render_handle_classes(metadata: BindingABI) -> str:
         chunks.append(
             f"export class {type_name} {{\n"
             "    #ptr;\n"
-            "    #owned;\n"
+            "    #envelopeOwned;\n"
             "    #module;\n\n"
-            "    constructor(ptr, owned, module) {\n"
+            "    constructor(ptr, envelopeOwned, module) {\n"
             "        this.#ptr = ptr;\n"
-            "        this.#owned = owned;\n"
+            "        this.#envelopeOwned = envelopeOwned;\n"
             "        this.#module = module;\n"
             "    }\n\n"
             "    get ptr() {\n"
             "        return this.#ptr;\n"
             "    }\n\n"
             "    destroy() {\n"
-            f"        if (this.#ptr && this.#owned && this.#module._{destroy}) {{\n"
+            f"        if (this.#ptr && this.#envelopeOwned && this.#module._{destroy}) {{\n"
             f"            this.#module._{destroy}(this.#ptr);\n"
             "            this.#ptr = 0;\n"
-            "            this.#owned = false;\n"
+            "            this.#envelopeOwned = false;\n"
             "        }\n"
             "    }" + ("\n\n" + method_block if method_block else "") + "\n}\n\n"
-            f"function _wrap{type_name}(ptr, owned, module) {{\n"
-            f"    return ptr ? new {type_name}(ptr, owned, module) : null;\n"
+            f"function _wrap{type_name}(ptr, envelopeOwned, module) {{\n"
+            f"    return ptr ? new {type_name}(ptr, envelopeOwned, module) : null;\n"
             "}"
         )
     return "\n\n".join(chunks)
@@ -389,6 +406,7 @@ def _render_wrapper(function: CFunctionIR, metadata: BindingABI) -> str:
         call_args = out_arg.removeprefix(", ")
 
     error_name = function.c_name
+    destroy_function = _out_result_destroy_function(function, metadata)
     destroy_line = _destroy_out_result(function, metadata)
     return_body = []
     if function.returns.kind != "void":
@@ -397,6 +415,7 @@ def _render_wrapper(function: CFunctionIR, metadata: BindingABI) -> str:
         )
         if destroy_line:
             return_body.append(destroy_line)
+            return_body.append("    outResultNeedsDestroy = false;")
         return_body.append("    return result;")
     else:
         return_body.append("    return undefined;")
@@ -418,12 +437,19 @@ def _render_wrapper(function: CFunctionIR, metadata: BindingABI) -> str:
         f"function invoke_{function.c_name}({', '.join(signature_names)}) {{\n"
         f"    module._{metadata.error_functions['clear_error']}();\n"
         "    let outResultPtr = 0;\n"
+        "    let outResultNeedsDestroy = false;\n"
         "    try {\n"
         + ("\n".join(marshalling_lines) + ("\n" if marshalling_lines else ""))
         + out_alloc
         + call_block
+        + ("    outResultNeedsDestroy = true;\n" if destroy_line else "")
         + return_statement
         + "    } finally {\n"
+        + (
+            f"        if (outResultNeedsDestroy && outResultPtr) module._{destroy_function}(outResultPtr);\n"
+            if destroy_line
+            else ""
+        )
         + cleanup_block
         + "    }\n"
         + "}"
@@ -794,7 +820,9 @@ def render_js_glue(
             "        } else if (elementType in _VALUE_TYPES) {",
             "            result.push(_readValueType(module, elementPtr, _VALUE_TYPES[elementType]));",
             "        } else if (_normalizeCType(elementType).endsWith('_t')) {",
-            "            result.push(_wrapHandleByType(module, elementType, module.getValue(elementPtr, '*'), true));",
+            "            const handle = _wrapHandleByType(module, elementType, module.getValue(elementPtr, '*'), true);",
+            "            module.setValue(elementPtr, 0, '*');",
+            "            result.push(handle);",
             "        } else {",
             "            const value = _getValue(module, elementPtr, elementType);",
             "            result.push(_normalizeCType(elementType) === 'bool' ? value !== 0 : value);",
@@ -812,6 +840,7 @@ def render_js_glue(
             "            result[field.name] = _readValueType(module, fieldPtr, field.info.valueType);",
             "        } else if (_normalizeCType(field.cType).endsWith('_t*')) {",
             "            result[field.name] = _wrapHandleByType(module, _normalizeCType(field.cType).slice(0, -1), module.getValue(fieldPtr, '*'), true);",
+            "            module.setValue(fieldPtr, 0, '*');",
             "        } else {",
             "            const value = _getValue(module, fieldPtr, field.cType);",
             "            result[field.name] = _normalizeCType(field.cType) === 'bool' ? value !== 0 : value;",
@@ -836,13 +865,13 @@ def render_js_glue(
             "    const valueField = layout.fields.find((field) => field.name === `value_${kind}`);",
             "    if (!valueField) throw new Error(`Unsupported variant alternative ${kind} for ${metadata.cType}`);",
             "    const fieldPtr = ptr + valueField.offset;",
-            "    if (valueField.info.getter === 'struct') return _readValueType(module, fieldPtr, valueField.info.valueType);",
             "    if (_normalizeCType(valueField.cType).endsWith('_t*')) {",
-            "        const ptr = module.getValue(fieldPtr, '*');",
-            "        const result = _wrapHandleByType(module, _normalizeCType(valueField.cType).slice(0, -1), ptr, true);",
+            "        const handlePtr = module.getValue(fieldPtr, '*');",
+            "        const result = _wrapHandleByType(module, _normalizeCType(valueField.cType).slice(0, -1), handlePtr, true);",
             "        module.setValue(fieldPtr, 0, '*');",
             "        return result;",
             "    }",
+            "    if (valueField.info.getter === 'struct') return _readValueType(module, fieldPtr, valueField.info.valueType);",
             "    const value = _getValue(module, fieldPtr, valueField.cType);",
             "    return _normalizeCType(valueField.cType) === 'bool' ? value !== 0 : value;",
             "}",
