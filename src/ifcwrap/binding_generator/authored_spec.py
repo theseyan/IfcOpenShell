@@ -151,7 +151,7 @@ class MethodAtAccessorSpec:
     method_name: str
     expose_as: str
     item_handle: str
-    ownership: str
+    ownership: str | None
     out_of_range_message: str
     exception_type: str
 
@@ -1352,10 +1352,13 @@ def _parse_discovery(
             if exception_type not in {"std::out_of_range", "std::runtime_error"}:
                 msg = f"{accessor_context}.exception must be std::out_of_range or std::runtime_error"
                 raise ValueError(msg)
-            ownership = _expect_str(
-                accessor_mapping.get("ownership"), f"{accessor_context}.ownership"
+            ownership_raw = accessor_mapping.get("ownership")
+            ownership = (
+                _expect_str(ownership_raw, f"{accessor_context}.ownership")
+                if ownership_raw is not None
+                else None
             )
-            if ownership not in {"owned", "borrowed", "static"}:
+            if ownership is not None and ownership not in {"owned", "borrowed", "static"}:
                 msg = f"{accessor_context}.ownership must be one of owned, borrowed, static"
                 raise ValueError(msg)
             method_at_accessors.append(
@@ -1980,24 +1983,32 @@ def _type_spec_from_record_semantic(
     nullable: bool,
     own_shared_ptr: bool = False,
 ) -> TypeSpec | None:
-    for match_name in semantic_record_match_names(semantic):
+    match_names = list(semantic_record_match_names(semantic))
+    if semantic.pointer_wrapper is not None and semantic.pointee is not None:
+        match_names.insert(0, semantic.pointee.cpp_type)
+    for match_name in match_names:
         handle_name = _find_handle_for_cpp_type(match_name, handles)
         if handle_name is not None:
             is_shared_ptr = (
                 semantic.pointer_wrapper == "shared_ptr"
                 or _normalize_cpp_type(semantic.cpp_type).endswith("::ptr")
             )
+            normalized = _normalize_cpp_type(semantic.cpp_type)
+            is_reference = normalized.endswith("&") or normalized.endswith("&&")
+            is_raw_pointer = semantic.pointer_wrapper is None and normalized.endswith("*")
+            is_nullable_pointer = semantic.pointer_wrapper == "unique_ptr"
             resolved_ownership = (
                 "owned"
                 if semantic.pointer_wrapper == "unique_ptr"
                 or (own_shared_ptr and is_shared_ptr)
+                or (not is_reference and not is_raw_pointer)
                 else ownership
             )
             return TypeSpec(
                 kind="handle",
                 handle=handle_name,
                 ownership=resolved_ownership,
-                nullable=nullable,
+                nullable=nullable or is_nullable_pointer,
                 cpp_type=semantic.cpp_type,
             )
     return None
@@ -2076,7 +2087,7 @@ def _lower_generic_sequence_type(
         return TypeSpec(
             kind="handle",
             handle=record_spec.handle,
-            ownership=ownership,
+            ownership=record_spec.ownership,
             cpp_type=semantic.cpp_type,
             sequence_depth=depth,
         )
@@ -2132,6 +2143,7 @@ def _infer_type(
             handles,
             ownership=ownership,
             nullable_pointers=True,
+            own_shared_ptr=own_shared_ptr,
             result_structs=result_structs,
         )
         return TypeSpec(
@@ -2152,6 +2164,7 @@ def _infer_type(
                 handles,
                 ownership=ownership,
                 nullable_pointers=False,
+                own_shared_ptr=own_shared_ptr,
                 result_structs=result_structs,
             )
             for alternative in semantic.alternatives
@@ -3831,13 +3844,27 @@ def _discover_method_calls(
                     f"which does not contain item handle type '{item_handle.cpp_type}'"
                 )
                 raise ValueError(msg)
+            inferred_container = _infer_return_type(
+                discovered.return_type_ref, handles
+            )
+            if (
+                inferred_container.kind != "handle"
+                or inferred_container.handle != accessor.item_handle
+                or inferred_container.sequence_depth == 0
+            ):
+                msg = (
+                    f"method_at_accessors entry '{accessor.method_name}' returns "
+                    f"'{discovered.return_cpp_type}', which does not infer a sequence "
+                    f"of '{accessor.item_handle}' handles"
+                )
+                raise ValueError(msg)
             at_call = PolicyCallSpec(
                 expose_as=accessor.expose_as,
                 receiver=item.handle,
                 returns=TypeSpec(
                     kind="handle",
                     handle=accessor.item_handle,
-                    ownership=accessor.ownership,
+                    ownership=accessor.ownership or inferred_container.ownership,
                 ),
                 params=(ParamSpec(name="index", type=TypeSpec(kind="size")),),
                 operation=MethodAtPolicyOp(

@@ -41,7 +41,7 @@ IFCAPI_BINDING express::Base constraint_add_metric(
  *
  * @return The created IfcReference chain in order from outermost to innermost.
  */
-IFCAPI_BINDING IFCAPI_OWNED std::vector<express::Base> constraint_add_metric_reference(
+IFCAPI_BINDING std::vector<express::Base> constraint_add_metric_reference(
     ifcopenshell::file* file,
     express::Base* metric,
     const std::string& reference_path);

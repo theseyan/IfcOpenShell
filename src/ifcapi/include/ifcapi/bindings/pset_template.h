@@ -70,7 +70,7 @@ IFCAPI_BINDING bool pset_template_is_templated(ifcopenshell_pset_template_t* pqt
  * If neither flag is set, returns both types. When predefined_type or
  * schema_name is omitted, the default is used.
  */
-IFCAPI_BINDING IFCAPI_COPY std::vector<express::Base> pset_template_get_applicable(
+IFCAPI_BINDING std::vector<express::Base> pset_template_get_applicable(
     ifcopenshell_pset_template_t* pqt,
     const char* ifc_class,
     const char* predefined_type,

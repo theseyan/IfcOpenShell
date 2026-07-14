@@ -176,7 +176,6 @@ discover:
         - method: materials
           expose_as: material_at
           item_handle: taxonomy_style
-          ownership: borrowed
           out_of_range_message: Material index out of bounds
           exception: std::runtime_error
 
@@ -213,18 +212,26 @@ discover:
         - Triangulate
         - Serialize
         - area
+        - add
         - bounding_box
+        - box
+        - concat
         - convex_decomposition
+        - edges
+        - facets
+        - halfspaces
+        - intersect
         - length
         - map
+        - moved
         - plane_equation
         - position
+        - solid
+        - subtract
         - volume
+        - vertices
+        - wrap_in_compound
         - axis
-      overloads:
-        - cpp_name: solid
-          expose_as: solid_mt
-          params: []
 
     - handle: function_item_evaluator
       translation_unit: function_item_evaluator.cpp
@@ -467,6 +474,7 @@ discover:
     - handle: opaque_number
       translation_unit: ConversionResult.cpp
       exclude:
+        - clone
         - clone_
 
     - handle: serializer
@@ -558,7 +566,6 @@ discover:
         - method: styles
           expose_as: style_at
           item_handle: taxonomy_style
-          ownership: owned
           out_of_range_message: Style index out of range
           exception: std::out_of_range
 

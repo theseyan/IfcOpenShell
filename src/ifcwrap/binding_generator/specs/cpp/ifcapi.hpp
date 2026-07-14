@@ -94,15 +94,15 @@ struct ifcopenshell_sequence_duplicate_task_result_t {
     std::vector<express::Base> duplicate;
 };
 
-inline IFCAPI_OWNED std::string guid_generate() {
+inline std::string guid_generate() {
     return ::ifcapi::guid_new();
 }
 
-inline IFCAPI_OWNED std::string guid_compress(const std::string& uuid_hex) {
+inline std::string guid_compress(const std::string& uuid_hex) {
     return ::ifcapi::guid_compress(uuid_hex);
 }
 
-inline IFCAPI_OWNED std::string guid_expand(const std::string& guid) {
+inline std::string guid_expand(const std::string& guid) {
     return ::ifcapi::guid_expand(guid);
 }
 

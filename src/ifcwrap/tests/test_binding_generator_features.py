@@ -720,7 +720,6 @@ def test_method_at_accessors_generate_indexed_method_items(tmp_path: Path) -> No
                     - method: styles
                       expose_as: style_at
                       item_handle: style
-                      ownership: owned
                       out_of_range_message: Style index out of range
                       exception: std::runtime_error
             """
@@ -3267,6 +3266,7 @@ def test_autodiscovery_supports_shared_ptr_handle_vectors(tmp_path: Path) -> Non
     assert calls["ifcopenshell_demo_widget_children"].returns.kind == "handle"
     assert calls["ifcopenshell_demo_widget_children"].returns.sequence_depth == 1
     assert calls["ifcopenshell_demo_widget_children"].returns.handle == "child"
+    assert calls["ifcopenshell_demo_widget_children"].returns.ownership == "owned"
     assert (
         calls["ifcopenshell_demo_widget_children"].returns.cpp_type
         == "std::vector<Demo::Child::ptr>"
@@ -3427,17 +3427,21 @@ def test_autodiscovery_supports_unique_ptr_handles(tmp_path: Path) -> None:
     assert calls["ifcopenshell_demo_widget_take_child"].returns.kind == "handle"
     assert calls["ifcopenshell_demo_widget_take_child"].returns.handle == "child"
     assert calls["ifcopenshell_demo_widget_take_child"].returns.ownership == "owned"
+    assert calls["ifcopenshell_demo_widget_take_child"].returns.nullable
     assert calls["ifcopenshell_demo_widget_steal_children"].returns.kind == "handle"
     assert calls["ifcopenshell_demo_widget_steal_children"].returns.handle == "child"
     assert calls["ifcopenshell_demo_widget_steal_children"].returns.sequence_depth == 1
+    assert calls["ifcopenshell_demo_widget_steal_children"].returns.ownership == "owned"
 
     header_out = tmp_path / "unique_ptr_handles_api.h"
     cpp_out = tmp_path / "unique_ptr_handles_api.cpp"
     generate(spec_path, header_out, cpp_out, discovery_include_dirs=discovery_dirs)
     generated_cpp = cpp_out.read_text(encoding="utf-8")
 
+    assert "auto result_value = self_cpp->take_child();" in generated_cpp
+    assert "if (!result_value)" in generated_cpp
     assert (
-        "*out_result = new ifcopenshell_demo_child_t{self_cpp->take_child().release(), true};"
+        "new ifcopenshell_demo_child_t{std::move(result_value).release(), true}"
         in generated_cpp
     )
     assert (

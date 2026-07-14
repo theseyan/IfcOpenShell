@@ -104,7 +104,7 @@ inline std::vector<express::Base> to_base_vector(const std::vector<express::Enti
     return result;
 }
 
-inline IFCAPI_COPY const char* argument_type_to_string(int type) {
+inline std::string argument_type_to_string(int type) {
     return ifcopenshell::argument_type_to_string(static_cast<ifcopenshell::argument_type>(type));
 }
 
@@ -144,7 +144,7 @@ inline std::vector<std::string> schema_names() {
     return ifcopenshell::schema_names();
 }
 
-inline IFCAPI_COPY const char* schema_plugin_registration_symbol() {
+inline std::string schema_plugin_registration_symbol() {
     return ifcopenshell::schema_plugin_registration_symbol();
 }
 
@@ -180,7 +180,7 @@ inline bool valid_binary_string(const std::string& binary_string) {
     return ifcopenshell::valid_binary_string(binary_string);
 }
 
-inline IFCAPI_OWNED ifcopenshell::file* open(const std::string& path, bool readonly) {
+inline std::unique_ptr<ifcopenshell::file> open(const std::string& path, bool readonly) {
     {
         std::ifstream probe(path.c_str());
         if (!probe.good()) {
@@ -191,10 +191,10 @@ inline IFCAPI_OWNED ifcopenshell::file* open(const std::string& path, bool reado
     if (!file->good()) {
         throw std::runtime_error(std::string("Failed to open IFC file: ") + path);
     }
-    return file.release();
+    return file;
 }
 
-inline IFCAPI_OWNED ifcopenshell::file* open_bypass(
+inline std::unique_ptr<ifcopenshell::file> open_bypass(
     const std::string& path,
     const std::vector<std::string>& type_names
 ) {
@@ -205,19 +205,20 @@ inline IFCAPI_OWNED ifcopenshell::file* open_bypass(
     if (!file->initialize(path)) {
         throw std::runtime_error(std::string("Failed to open IFC file: ") + path);
     }
-    return file.release();
+    return file;
 }
 
-inline IFCAPI_OWNED ifcopenshell::file* new_file(
+inline std::unique_ptr<ifcopenshell::file> new_file(
     const std::string& schema_identifier,
     int file_type,
     const std::string& path
 ) {
     const ifcopenshell::schema_definition* schema = ifcopenshell::schema_by_name(schema_identifier);
-    return new ifcopenshell::file(schema, static_cast<ifcopenshell::filetype>(file_type), path);
+    return std::make_unique<ifcopenshell::file>(
+        schema, static_cast<ifcopenshell::filetype>(file_type), path);
 }
 
-inline IFCAPI_OWNED ifcopenshell::file* read_memory(const void* data, int length) {
+inline std::unique_ptr<ifcopenshell::file> read_memory(const void* data, int length) {
     if (length < 0) {
         throw std::runtime_error("length is negative");
     }
@@ -225,27 +226,28 @@ inline IFCAPI_OWNED ifcopenshell::file* read_memory(const void* data, int length
     if (!file->good()) {
         throw std::runtime_error("Failed to parse IFC data from string");
     }
-    return file.release();
+    return file;
 }
 
-inline IFCAPI_OWNED ifcopenshell::instance_streamer<>* stream() {
-    return new ifcopenshell::instance_streamer<>();
+inline std::unique_ptr<ifcopenshell::instance_streamer<>> stream() {
+    return std::make_unique<ifcopenshell::instance_streamer<>>();
 }
 
-inline IFCAPI_OWNED ifcopenshell::instance_streamer<>* stream_from_path(
+inline std::unique_ptr<ifcopenshell::instance_streamer<>> stream_from_path(
     const std::string& path,
     bool mmap
 ) {
 #ifdef USE_MMAP
-    return new ifcopenshell::instance_streamer<>(path, mmap);
+    return std::make_unique<ifcopenshell::instance_streamer<>>(path, mmap);
 #else
     (void)mmap;
-    return new ifcopenshell::instance_streamer<>(path, false);
+    return std::make_unique<ifcopenshell::instance_streamer<>>(path, false);
 #endif
 }
 
-inline IFCAPI_OWNED ifcopenshell::instance_streamer<>* stream_from_string(const std::string& data) {
-    return new ifcopenshell::instance_streamer<>((void*)data.data(), static_cast<int>(data.size()));
+inline std::unique_ptr<ifcopenshell::instance_streamer<>> stream_from_string(const std::string& data) {
+    return std::make_unique<ifcopenshell::instance_streamer<>>(
+        (void*)data.data(), static_cast<int>(data.size()));
 }
 
 inline IFCAPI_STATIC const char* version() {
@@ -292,7 +294,7 @@ inline bool get_feature(const std::string& name) {
     return ifcopenshell::capi::get_feature(name);
 }
 
-inline IFCAPI_COPY std::string get_log() {
+inline std::string get_log() {
     return ifcopenshell::capi::get_log();
 }
 
@@ -312,7 +314,7 @@ inline void set_log_format_text() {
     ifcopenshell::capi::set_log_format_text();
 }
 
-inline IFCAPI_COPY std::string get_info_cpp(const express::Base& instance, bool include_identifier) {
+inline std::string get_info_cpp(const express::Base& instance, bool include_identifier) {
     return ifcopenshell::capi::get_info_cpp(instance, include_identifier);
 }
 
@@ -643,7 +645,7 @@ inline bool set_argument_enumeration_by_name(
     return ifcopenshell::capi::set_instance_argument_enumeration_by_name(self, index, value);
 }
 
-inline IFCAPI_OWNED std::vector<express::Base> instance_list_create_from_handles(
+inline std::vector<express::Base> instance_list_create_from_handles(
     const std::vector<express::Base>& instances
 ) {
     std::vector<express::Base> agg;
@@ -656,7 +658,7 @@ inline IFCAPI_OWNED std::vector<express::Base> instance_list_create_from_handles
     return agg;
 }
 
-inline IFCAPI_OWNED std::vector<express::Base> get_inverse(
+inline std::vector<express::Base> get_inverse(
     ifcopenshell::file* self,
     express::Base* instance
 ) {
@@ -717,7 +719,7 @@ inline void unset_attribute_value(express::Base& self, const std::string& name) 
     ifcopenshell::capi::unset_instance_argument(self, static_cast<size_t>(index));
 }
 
-inline IFCAPI_OWNED std::vector<express::Base> get_inverse(
+inline std::vector<express::Base> get_inverse(
     express::Base& self,
     const std::string& name
 ) {
@@ -727,14 +729,14 @@ inline IFCAPI_OWNED std::vector<express::Base> get_inverse(
     throw ifcopenshell::exception(name + " not found on " + self.declaration().name());
 }
 
-inline IFCAPI_OWNED attribute_value get_attribute_value(
+inline attribute_value get_attribute_value(
     express::Base& self,
     std::size_t index
 ) {
     return self.get_attribute_value(index);
 }
 
-inline IFCAPI_OWNED attribute_value get_argument_by_name(
+inline attribute_value get_argument_by_name(
     express::Base& self,
     const std::string& name
 ) {
@@ -797,7 +799,7 @@ inline std::vector<std::string> get_inverse_attribute_names(express::Base& self)
     return names;
 }
 
-inline IFCAPI_OWNED std::vector<express::Base> get_inverse_attribute_by_name(
+inline std::vector<express::Base> get_inverse_attribute_by_name(
     express::Base& self,
     const std::string& name
 ) {
@@ -881,7 +883,7 @@ inline std::optional<express::Base> as_instance(attribute_value& self) {
     return static_cast<express::Base>(self);
 }
 
-inline IFCAPI_OWNED std::vector<express::Base> as_instance_list(
+inline std::vector<express::Base> as_instance_list(
     attribute_value& self
 ) {
     return static_cast<std::vector<express::Base>>(self);

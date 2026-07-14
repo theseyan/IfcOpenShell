@@ -393,7 +393,7 @@ struct GeometryValidateTypeOptions {
  * @param operator_type Boolean operator: "DIFFERENCE", "UNION", or "INTERSECTION".
  * @return Created boolean result entities, or an empty list if creation fails.
  */
-IFCAPI_BINDING IFCAPI_OWNED std::vector<express::Base> geometry_add_boolean(
+IFCAPI_BINDING std::vector<express::Base> geometry_add_boolean(
     ifcopenshell::file* file,
     express::Base* first_item,
     const std::vector<express::Base>& second_items,

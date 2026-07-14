@@ -104,7 +104,7 @@ inline std::vector<express::Base> to_base_vector(const std::vector<express::Enti
     return result;
 }
 
-inline IFCAPI_OWNED IfcGeom::Iterator* create_iterator(
+inline std::unique_ptr<IfcGeom::Iterator> create_iterator(
     const std::string& geometry_library_cpp,
     ifcopenshell::geometry::Settings* settings_cpp,
     ifcopenshell::file* file_cpp,
@@ -112,10 +112,11 @@ inline IFCAPI_OWNED IfcGeom::Iterator* create_iterator(
 ) {
     auto* settings_ptr = settings_cpp;
     auto kernel = ifcopenshell::geometry::kernels::construct(file_cpp, geometry_library_cpp, *settings_ptr);
-    return new IfcGeom::Iterator(std::move(kernel), *settings_ptr, file_cpp, num_threads);
+    return std::make_unique<IfcGeom::Iterator>(
+        std::move(kernel), *settings_ptr, file_cpp, num_threads);
 }
 
-inline IFCAPI_OWNED IfcGeom::Iterator* create_iterator_with_include_exclude(
+inline std::unique_ptr<IfcGeom::Iterator> create_iterator_with_include_exclude(
     const std::string& geometry_library_cpp,
     ifcopenshell::geometry::Settings* settings_cpp,
     ifcopenshell::file* file_cpp,
@@ -127,10 +128,12 @@ inline IFCAPI_OWNED IfcGeom::Iterator* create_iterator_with_include_exclude(
     auto kernel = ifcopenshell::geometry::kernels::construct(file_cpp, geometry_library_cpp, *settings_ptr);
     std::set<std::string> elems_set(elems_cpp.begin(), elems_cpp.end());
     IfcGeom::entity_filter ef{include, false, elems_set};
-    return new IfcGeom::Iterator(std::move(kernel), *settings_ptr, file_cpp, {ef}, num_threads);
+    return std::make_unique<IfcGeom::Iterator>(
+        std::move(kernel), *settings_ptr, file_cpp,
+        std::vector<ifcopenshell::geometry::filter_t>{ef}, num_threads);
 }
 
-inline IFCAPI_OWNED IfcGeom::Iterator* create_iterator_with_include_exclude_globalid(
+inline std::unique_ptr<IfcGeom::Iterator> create_iterator_with_include_exclude_globalid(
     const std::string& geometry_library_cpp,
     ifcopenshell::geometry::Settings* settings_cpp,
     ifcopenshell::file* file_cpp,
@@ -145,10 +148,12 @@ inline IFCAPI_OWNED IfcGeom::Iterator* create_iterator_with_include_exclude_glob
     af.attribute_name = "GlobalId";
     af.populate(elems_set);
     af.include = include;
-    return new IfcGeom::Iterator(std::move(kernel), *settings_ptr, file_cpp, {af}, num_threads);
+    return std::make_unique<IfcGeom::Iterator>(
+        std::move(kernel), *settings_ptr, file_cpp,
+        std::vector<ifcopenshell::geometry::filter_t>{af}, num_threads);
 }
 
-inline IFCAPI_OWNED IfcGeom::Iterator* create_iterator_with_include_exclude_id(
+inline std::unique_ptr<IfcGeom::Iterator> create_iterator_with_include_exclude_id(
     const std::string& geometry_library_cpp,
     ifcopenshell::geometry::Settings* settings_cpp,
     ifcopenshell::file* file_cpp,
@@ -160,10 +165,12 @@ inline IFCAPI_OWNED IfcGeom::Iterator* create_iterator_with_include_exclude_id(
     auto kernel = ifcopenshell::geometry::kernels::construct(file_cpp, geometry_library_cpp, *settings_ptr);
     std::set<int> elems_set(elems_cpp.begin(), elems_cpp.end());
     IfcGeom::instance_id_filter af(include, false, elems_set);
-    return new IfcGeom::Iterator(std::move(kernel), *settings_ptr, file_cpp, {af}, num_threads);
+    return std::make_unique<IfcGeom::Iterator>(
+        std::move(kernel), *settings_ptr, file_cpp,
+        std::vector<ifcopenshell::geometry::filter_t>{af}, num_threads);
 }
 
-inline IFCAPI_OWNED ifcopenshell::geometry::taxonomy::direction3::ptr taxonomy_create_direction3(
+inline ifcopenshell::geometry::taxonomy::direction3::ptr taxonomy_create_direction3(
     double x,
     double y,
     double z
@@ -175,23 +182,23 @@ inline IFCAPI_OWNED ifcopenshell::geometry::taxonomy::direction3::ptr taxonomy_c
     return ifcopenshell::geometry::taxonomy::make<ifcopenshell::geometry::taxonomy::direction3>(direction);
 }
 
-inline IFCAPI_OWNED ifcopenshell::geometry::taxonomy::collection::ptr taxonomy_create_collection() {
+inline ifcopenshell::geometry::taxonomy::collection::ptr taxonomy_create_collection() {
     return ifcopenshell::geometry::taxonomy::make<ifcopenshell::geometry::taxonomy::collection>();
 }
 
-inline IFCAPI_OWNED ifcopenshell::geometry::taxonomy::loft::ptr taxonomy_create_loft() {
+inline ifcopenshell::geometry::taxonomy::loft::ptr taxonomy_create_loft() {
     return ifcopenshell::geometry::taxonomy::make<ifcopenshell::geometry::taxonomy::loft>();
 }
 
-inline IFCAPI_OWNED ifcopenshell::geometry::taxonomy::node::ptr taxonomy_create_node() {
+inline ifcopenshell::geometry::taxonomy::node::ptr taxonomy_create_node() {
     return ifcopenshell::geometry::taxonomy::make<ifcopenshell::geometry::taxonomy::node>();
 }
 
-inline IFCAPI_OWNED ifcopenshell::geometry::taxonomy::point3::ptr taxonomy_create_point3(double x, double y, double z) {
+inline ifcopenshell::geometry::taxonomy::point3::ptr taxonomy_create_point3(double x, double y, double z) {
     return ifcopenshell::geometry::taxonomy::make<ifcopenshell::geometry::taxonomy::point3>(x, y, z);
 }
 
-inline IFCAPI_OWNED ifcopenshell::geometry::taxonomy::bspline_curve::ptr taxonomy_create_bspline_curve(int degree) {
+inline ifcopenshell::geometry::taxonomy::bspline_curve::ptr taxonomy_create_bspline_curve(int degree) {
     if (degree < 1) {
         throw std::runtime_error("B-spline curve degree must be >= 1");
     }
@@ -200,7 +207,7 @@ inline IFCAPI_OWNED ifcopenshell::geometry::taxonomy::bspline_curve::ptr taxonom
     return value;
 }
 
-inline IFCAPI_OWNED ifcopenshell::geometry::taxonomy::bspline_surface::ptr taxonomy_create_bspline_surface(
+inline ifcopenshell::geometry::taxonomy::bspline_surface::ptr taxonomy_create_bspline_surface(
     int degree_u,
     int degree_v
 ) {
@@ -212,7 +219,7 @@ inline IFCAPI_OWNED ifcopenshell::geometry::taxonomy::bspline_surface::ptr taxon
     return value;
 }
 
-inline IFCAPI_OWNED ifcopenshell::geometry::taxonomy::boolean_result::ptr taxonomy_create_boolean_result(int operation) {
+inline ifcopenshell::geometry::taxonomy::boolean_result::ptr taxonomy_create_boolean_result(int operation) {
     if (operation < 0 || operation > 2) {
         throw std::runtime_error("Boolean operation must be 0 (UNION), 1 (SUBTRACTION), or 2 (INTERSECTION)");
     }
@@ -221,7 +228,7 @@ inline IFCAPI_OWNED ifcopenshell::geometry::taxonomy::boolean_result::ptr taxono
     return value;
 }
 
-inline IFCAPI_OWNED ifcopenshell::geometry::taxonomy::offset_curve::ptr taxonomy_create_offset_curve(
+inline ifcopenshell::geometry::taxonomy::offset_curve::ptr taxonomy_create_offset_curve(
     const ifcopenshell::geometry::taxonomy::item::ptr& basis,
     const ifcopenshell::geometry::taxonomy::direction3::ptr& reference,
     double offset
@@ -233,7 +240,7 @@ inline IFCAPI_OWNED ifcopenshell::geometry::taxonomy::offset_curve::ptr taxonomy
     return value;
 }
 
-inline IFCAPI_OWNED ifcopenshell::geometry::taxonomy::line::ptr taxonomy_create_line(
+inline ifcopenshell::geometry::taxonomy::line::ptr taxonomy_create_line(
     double origin_x,
     double origin_y,
     double origin_z,
@@ -251,7 +258,7 @@ inline IFCAPI_OWNED ifcopenshell::geometry::taxonomy::line::ptr taxonomy_create_
     return value;
 }
 
-inline IFCAPI_OWNED ifcopenshell::geometry::taxonomy::circle::ptr taxonomy_create_circle(
+inline ifcopenshell::geometry::taxonomy::circle::ptr taxonomy_create_circle(
     double origin_x,
     double origin_y,
     double origin_z,
@@ -274,7 +281,7 @@ inline IFCAPI_OWNED ifcopenshell::geometry::taxonomy::circle::ptr taxonomy_creat
     return value;
 }
 
-inline IFCAPI_OWNED ifcopenshell::geometry::taxonomy::ellipse::ptr taxonomy_create_ellipse(
+inline ifcopenshell::geometry::taxonomy::ellipse::ptr taxonomy_create_ellipse(
     double origin_x,
     double origin_y,
     double origin_z,
@@ -299,7 +306,7 @@ inline IFCAPI_OWNED ifcopenshell::geometry::taxonomy::ellipse::ptr taxonomy_crea
     return value;
 }
 
-inline IFCAPI_OWNED ifcopenshell::geometry::taxonomy::plane::ptr taxonomy_create_plane(
+inline ifcopenshell::geometry::taxonomy::plane::ptr taxonomy_create_plane(
     double origin_x,
     double origin_y,
     double origin_z,
@@ -317,7 +324,7 @@ inline IFCAPI_OWNED ifcopenshell::geometry::taxonomy::plane::ptr taxonomy_create
     return value;
 }
 
-inline IFCAPI_OWNED ifcopenshell::geometry::taxonomy::cylinder::ptr taxonomy_create_cylinder(
+inline ifcopenshell::geometry::taxonomy::cylinder::ptr taxonomy_create_cylinder(
     double origin_x,
     double origin_y,
     double origin_z,
@@ -340,7 +347,7 @@ inline IFCAPI_OWNED ifcopenshell::geometry::taxonomy::cylinder::ptr taxonomy_cre
     return value;
 }
 
-inline IFCAPI_OWNED ifcopenshell::geometry::taxonomy::sphere::ptr taxonomy_create_sphere(
+inline ifcopenshell::geometry::taxonomy::sphere::ptr taxonomy_create_sphere(
     double origin_x,
     double origin_y,
     double origin_z,
@@ -363,7 +370,7 @@ inline IFCAPI_OWNED ifcopenshell::geometry::taxonomy::sphere::ptr taxonomy_creat
     return value;
 }
 
-inline IFCAPI_OWNED ifcopenshell::geometry::taxonomy::torus::ptr taxonomy_create_torus(
+inline ifcopenshell::geometry::taxonomy::torus::ptr taxonomy_create_torus(
     double origin_x,
     double origin_y,
     double origin_z,
@@ -388,7 +395,7 @@ inline IFCAPI_OWNED ifcopenshell::geometry::taxonomy::torus::ptr taxonomy_create
     return value;
 }
 
-inline IFCAPI_OWNED ifcopenshell::geometry::taxonomy::solid::ptr taxonomy_create_box(
+inline ifcopenshell::geometry::taxonomy::solid::ptr taxonomy_create_box(
     double dx,
     double dy,
     double dz
@@ -399,7 +406,7 @@ inline IFCAPI_OWNED ifcopenshell::geometry::taxonomy::solid::ptr taxonomy_create
     return ifcopenshell::geometry::create_box(dx, dy, dz);
 }
 
-inline IFCAPI_OWNED ifcopenshell::geometry::taxonomy::extrusion::ptr taxonomy_create_extrusion(
+inline ifcopenshell::geometry::taxonomy::extrusion::ptr taxonomy_create_extrusion(
     const ifcopenshell::geometry::taxonomy::item::ptr& basis_cpp,
     const ifcopenshell::geometry::taxonomy::direction3::ptr& direction_cpp,
     double depth
@@ -420,7 +427,7 @@ inline IFCAPI_OWNED ifcopenshell::geometry::taxonomy::extrusion::ptr taxonomy_cr
     return value;
 }
 
-inline IFCAPI_OWNED ifcopenshell::geometry::taxonomy::revolve::ptr taxonomy_create_revolve(
+inline ifcopenshell::geometry::taxonomy::revolve::ptr taxonomy_create_revolve(
     const ifcopenshell::geometry::taxonomy::item::ptr& basis_cpp,
     const ifcopenshell::geometry::taxonomy::point3::ptr& axis_origin_cpp,
     const ifcopenshell::geometry::taxonomy::direction3::ptr& direction_cpp,
@@ -440,7 +447,7 @@ inline IFCAPI_OWNED ifcopenshell::geometry::taxonomy::revolve::ptr taxonomy_crea
     return value;
 }
 
-inline IFCAPI_OWNED ifcopenshell::geometry::taxonomy::sweep_along_curve::ptr taxonomy_create_sweep_along_curve(
+inline ifcopenshell::geometry::taxonomy::sweep_along_curve::ptr taxonomy_create_sweep_along_curve(
     const ifcopenshell::geometry::taxonomy::face::ptr& basis_face_cpp,
     const ifcopenshell::geometry::taxonomy::item::ptr& directrix_cpp,
     const ifcopenshell::geometry::taxonomy::direction3::ptr& reference_direction_cpp
@@ -458,7 +465,7 @@ inline IFCAPI_OWNED ifcopenshell::geometry::taxonomy::sweep_along_curve::ptr tax
     return value;
 }
 
-inline IFCAPI_OWNED IfcGeom::Element* create_shape(
+inline std::unique_ptr<IfcGeom::Element> create_shape(
     ifcopenshell::geometry::Settings* settings_cpp,
     express::Base* instance_cpp,
     std::optional<express::Base> representation,
@@ -545,23 +552,20 @@ inline IFCAPI_OWNED IfcGeom::Element* create_shape(
         }
 
         auto rep_entity = ifc_representation.as<express::Entity>();
-        IfcGeom::BRepElement* brep = kernel.create_brep_for_representation_and_product(rep_entity, entity);
+        std::unique_ptr<IfcGeom::BRepElement> brep(
+            kernel.create_brep_for_representation_and_product(rep_entity, entity));
         if (!brep) {
             throw ifcopenshell::exception("Failed to process shape");
         }
 
         auto output_type = settings_cpp->get<ifcopenshell::geometry::settings::IteratorOutput>().get();
         if (output_type == ifcopenshell::geometry::settings::SERIALIZED) {
-            IfcGeom::Element* result = new IfcGeom::SerializedElement(*brep);
-            delete brep;
-            return result;
+            return std::make_unique<IfcGeom::SerializedElement>(*brep);
         }
         if (output_type == ifcopenshell::geometry::settings::TRIANGULATED) {
-            IfcGeom::Element* result = new IfcGeom::TriangulationElement(*brep);
-            delete brep;
-            return result;
+            return std::make_unique<IfcGeom::TriangulationElement>(*brep);
         }
-        return static_cast<IfcGeom::Element*>(brep);
+        return brep;
     } else if (
         entity.declaration().is("IfcRepresentationItem") ||
         entity.declaration().is("IfcRepresentation") ||
@@ -588,7 +592,7 @@ inline IFCAPI_OWNED IfcGeom::Element* create_shape(
         auto output_type = settings_cpp->get<ifcopenshell::geometry::settings::IteratorOutput>().get();
         auto identity = ifcopenshell::geometry::taxonomy::make<ifcopenshell::geometry::taxonomy::matrix4>();
         express::Entity null_product;
-        auto* brep_elem = new IfcGeom::BRepElement(
+        auto brep_elem = std::make_unique<IfcGeom::BRepElement>(
             entity.id(),
             -1,
             entity.declaration().name(),
@@ -600,22 +604,18 @@ inline IFCAPI_OWNED IfcGeom::Element* create_shape(
             null_product
         );
         if (output_type == ifcopenshell::geometry::settings::SERIALIZED) {
-            IfcGeom::Element* result = new IfcGeom::SerializedElement(*brep_elem);
-            delete brep_elem;
-            return result;
+            return std::make_unique<IfcGeom::SerializedElement>(*brep_elem);
         }
         if (output_type == ifcopenshell::geometry::settings::TRIANGULATED) {
-            IfcGeom::Element* result = new IfcGeom::TriangulationElement(*brep_elem);
-            delete brep_elem;
-            return result;
+            return std::make_unique<IfcGeom::TriangulationElement>(*brep_elem);
         }
-        return static_cast<IfcGeom::Element*>(brep_elem);
+        return brep_elem;
     }
 
     throw ifcopenshell::exception("Unsupported instance type for create_shape. Use map_shape for placements.");
 }
 
-inline IFCAPI_OWNED ifcopenshell::geometry::taxonomy::item::ptr map_shape(
+inline ifcopenshell::geometry::taxonomy::item::ptr map_shape(
     ifcopenshell::geometry::Settings* settings_cpp,
     express::Base* instance_cpp
 ) {
@@ -628,48 +628,48 @@ inline IFCAPI_OWNED ifcopenshell::geometry::taxonomy::item::ptr map_shape(
     return mapping->map(*instance_cpp);
 }
 
-inline IFCAPI_OWNED IfcGeom::OpaqueNumber* create_epeck_from_int(int value) {
-    return new IfcGeom::NumberNativeDouble(value);
+inline std::unique_ptr<IfcGeom::OpaqueNumber> create_epeck_from_int(int value) {
+    return std::make_unique<IfcGeom::NumberNativeDouble>(value);
 }
 
-inline IFCAPI_OWNED IfcGeom::OpaqueNumber* create_epeck_from_double(double value) {
-    return new IfcGeom::NumberNativeDouble(value);
+inline std::unique_ptr<IfcGeom::OpaqueNumber> create_epeck_from_double(double value) {
+    return std::make_unique<IfcGeom::NumberNativeDouble>(value);
 }
 
-inline IFCAPI_OWNED IfcGeom::OpaqueNumber* create_epeck_from_string(const std::string& value_cpp) {
-    return new IfcGeom::NumberNativeDouble(std::stod(value_cpp));
+inline std::unique_ptr<IfcGeom::OpaqueNumber> create_epeck_from_string(const std::string& value_cpp) {
+    return std::make_unique<IfcGeom::NumberNativeDouble>(std::stod(value_cpp));
 }
 
-inline IFCAPI_OWNED IfcGeom::OpaqueNumber* add(
+inline std::unique_ptr<IfcGeom::OpaqueNumber> add(
     IfcGeom::OpaqueNumber* self,
     IfcGeom::OpaqueNumber* other
 ) {
-    return (*self) + other;
+    return std::unique_ptr<IfcGeom::OpaqueNumber>((*self) + other);
 }
 
-inline IFCAPI_OWNED IfcGeom::OpaqueNumber* subtract(
+inline std::unique_ptr<IfcGeom::OpaqueNumber> subtract(
     IfcGeom::OpaqueNumber* self,
     IfcGeom::OpaqueNumber* other
 ) {
-    return (*self) - other;
+    return std::unique_ptr<IfcGeom::OpaqueNumber>((*self) - other);
 }
 
-inline IFCAPI_OWNED IfcGeom::OpaqueNumber* multiply(
+inline std::unique_ptr<IfcGeom::OpaqueNumber> multiply(
     IfcGeom::OpaqueNumber* self,
     IfcGeom::OpaqueNumber* other
 ) {
-    return (*self) * other;
+    return std::unique_ptr<IfcGeom::OpaqueNumber>((*self) * other);
 }
 
-inline IFCAPI_OWNED IfcGeom::OpaqueNumber* divide(
+inline std::unique_ptr<IfcGeom::OpaqueNumber> divide(
     IfcGeom::OpaqueNumber* self,
     IfcGeom::OpaqueNumber* other
 ) {
-    return (*self) / other;
+    return std::unique_ptr<IfcGeom::OpaqueNumber>((*self) / other);
 }
 
-inline IFCAPI_OWNED IfcGeom::OpaqueNumber* negate(IfcGeom::OpaqueNumber* self) {
-    return -(*self);
+inline std::unique_ptr<IfcGeom::OpaqueNumber> negate(IfcGeom::OpaqueNumber* self) {
+    return std::unique_ptr<IfcGeom::OpaqueNumber>(-(*self));
 }
 
 inline bool equals(IfcGeom::OpaqueNumber* self, IfcGeom::OpaqueNumber* other) {
@@ -680,10 +680,119 @@ inline bool less_than(IfcGeom::OpaqueNumber* self, IfcGeom::OpaqueNumber* other)
     return (*self) < other;
 }
 
-inline IFCAPI_OWNED IfcGeom::ConversionResultShape* nary_union(
+inline std::unique_ptr<IfcGeom::OpaqueNumber> clone(IfcGeom::OpaqueNumber* self) {
+    return std::unique_ptr<IfcGeom::OpaqueNumber>(self->clone());
+}
+
+inline std::unique_ptr<IfcGeom::ConversionResultShape> solid(
+    IfcGeom::ConversionResultShape* self
+) {
+    return std::unique_ptr<IfcGeom::ConversionResultShape>(self->solid());
+}
+
+inline std::unique_ptr<IfcGeom::ConversionResultShape> solid_mt(
+    IfcGeom::ConversionResultShape* self
+) {
+    return std::unique_ptr<IfcGeom::ConversionResultShape>(self->solid());
+}
+
+inline std::unique_ptr<IfcGeom::ConversionResultShape> add(
+    IfcGeom::ConversionResultShape* self,
+    IfcGeom::ConversionResultShape* arg_0
+) {
+    return std::unique_ptr<IfcGeom::ConversionResultShape>(self->add(arg_0));
+}
+
+inline std::unique_ptr<IfcGeom::ConversionResultShape> subtract(
+    IfcGeom::ConversionResultShape* self,
+    IfcGeom::ConversionResultShape* arg_0
+) {
+    return std::unique_ptr<IfcGeom::ConversionResultShape>(self->subtract(arg_0));
+}
+
+inline std::unique_ptr<IfcGeom::ConversionResultShape> intersect(
+    IfcGeom::ConversionResultShape* self,
+    IfcGeom::ConversionResultShape* arg_0
+) {
+    return std::unique_ptr<IfcGeom::ConversionResultShape>(self->intersect(arg_0));
+}
+
+inline std::unique_ptr<IfcGeom::ConversionResultShape> concat(
+    IfcGeom::ConversionResultShape* self,
+    IfcGeom::ConversionResultShape* arg_0
+) {
+    return std::unique_ptr<IfcGeom::ConversionResultShape>(self->concat(arg_0));
+}
+
+inline std::unique_ptr<IfcGeom::ConversionResultShape> halfspaces(
+    IfcGeom::ConversionResultShape* self
+) {
+    return std::unique_ptr<IfcGeom::ConversionResultShape>(self->halfspaces());
+}
+
+inline std::unique_ptr<IfcGeom::ConversionResultShape> box(
+    IfcGeom::ConversionResultShape* self
+) {
+    return std::unique_ptr<IfcGeom::ConversionResultShape>(self->box());
+}
+
+inline std::unique_ptr<IfcGeom::ConversionResultShape> wrap_in_compound(
+    IfcGeom::ConversionResultShape* self
+) {
+    return std::unique_ptr<IfcGeom::ConversionResultShape>(self->wrap_in_compound());
+}
+
+inline std::unique_ptr<IfcGeom::ConversionResultShape> moved(
+    IfcGeom::ConversionResultShape* self,
+    ifcopenshell::geometry::taxonomy::matrix4::ptr arg_0
+) {
+    return std::unique_ptr<IfcGeom::ConversionResultShape>(self->moved(std::move(arg_0)));
+}
+
+namespace detail {
+    inline std::vector<std::unique_ptr<IfcGeom::ConversionResultShape>> adopt_shapes(
+        std::vector<IfcGeom::ConversionResultShape*> shapes
+    ) {
+        struct cleanup_guard {
+            std::vector<IfcGeom::ConversionResultShape*>& shapes;
+            ~cleanup_guard() {
+                for (auto* shape : shapes) {
+                    delete shape;
+                }
+            }
+        } guard{shapes};
+        std::vector<std::unique_ptr<IfcGeom::ConversionResultShape>> result;
+        result.reserve(shapes.size());
+        for (auto*& shape : shapes) {
+            result.emplace_back(shape);
+            shape = nullptr;
+        }
+        return result;
+    }
+}
+
+inline std::vector<std::unique_ptr<IfcGeom::ConversionResultShape>> vertices(
+    IfcGeom::ConversionResultShape* self
+) {
+    return detail::adopt_shapes(self->vertices());
+}
+
+inline std::vector<std::unique_ptr<IfcGeom::ConversionResultShape>> edges(
+    IfcGeom::ConversionResultShape* self
+) {
+    return detail::adopt_shapes(self->edges());
+}
+
+inline std::vector<std::unique_ptr<IfcGeom::ConversionResultShape>> facets(
+    IfcGeom::ConversionResultShape* self
+) {
+    return detail::adopt_shapes(self->facets());
+}
+
+inline std::unique_ptr<IfcGeom::ConversionResultShape> nary_union(
     const std::vector<const IfcGeom::ConversionResultShape*>& shapes_cpp
 ) {
-    IfcGeom::ConversionResultShape* result = nullptr;
+    std::unique_ptr<IfcGeom::ConversionResultShape> result;
     std::string backend_id;
     auto identity = ifcopenshell::geometry::taxonomy::make<ifcopenshell::geometry::taxonomy::matrix4>();
     for (auto* shape : shapes_cpp) {
@@ -692,20 +801,17 @@ inline IFCAPI_OWNED IfcGeom::ConversionResultShape* nary_union(
         }
         const auto element_backend_id = std::string(shape->backend_id());
         if (!result) {
-            result = shape->moved(identity);
+            result.reset(shape->moved(identity));
             backend_id = element_backend_id;
         } else {
             if (element_backend_id != backend_id) {
-                delete result;
                 throw std::runtime_error("nary_union requires shapes from the same geometry backend");
             }
             auto* next = result->add(const_cast<IfcGeom::ConversionResultShape*>(shape));
             if (!next) {
-                delete result;
                 throw std::runtime_error("nary_union failed for backend " + backend_id);
             }
-            delete result;
-            result = next;
+            result.reset(next);
         }
     }
     if (!result) {
@@ -714,7 +820,7 @@ inline IFCAPI_OWNED IfcGeom::ConversionResultShape* nary_union(
     return result;
 }
 
-inline IFCAPI_OWNED std::string svg_to_line_segments(
+inline std::string svg_to_line_segments(
     const std::string& svg_data_cpp,
     std::optional<std::string> class_name
 ) {
@@ -744,7 +850,7 @@ inline IFCAPI_OWNED std::string svg_to_line_segments(
 #endif
 }
 
-inline IFCAPI_OWNED std::vector<const svgfill::polygon_2*> svg_to_polygons(
+inline std::vector<std::unique_ptr<svgfill::polygon_2>> svg_to_polygons(
     const std::string& svg_data_cpp,
     std::optional<std::string> class_name
 ) {
@@ -753,9 +859,9 @@ inline IFCAPI_OWNED std::vector<const svgfill::polygon_2*> svg_to_polygons(
     if (!svgfill::svg_to_polygons(std::string(svg_data_cpp), class_name, polygons)) {
         throw std::runtime_error("Failed to read SVG");
     }
-    std::vector<const svgfill::polygon_2*> result;
+    std::vector<std::unique_ptr<svgfill::polygon_2>> result;
     for (auto& p : polygons) {
-        result.push_back(new svgfill::polygon_2(p));
+        result.push_back(std::make_unique<svgfill::polygon_2>(p));
     }
     return result;
 #else
@@ -765,7 +871,7 @@ inline IFCAPI_OWNED std::vector<const svgfill::polygon_2*> svg_to_polygons(
 #endif
 }
 
-inline IFCAPI_OWNED std::vector<const svgfill::polygon_2*> arrange_polygons(
+inline std::vector<std::unique_ptr<svgfill::polygon_2>> arrange_polygons(
     const std::vector<const svgfill::polygon_2*>& polygons_cpp
 ) {
 #ifdef IFOPSH_WITH_CGAL
@@ -777,9 +883,9 @@ inline IFCAPI_OWNED std::vector<const svgfill::polygon_2*> arrange_polygons(
     if (!svgfill::arrange_polygons(svgfill::arrange_polygon_settings(), input, arranged)) {
         throw std::runtime_error("Failed to arrange polygons");
     }
-    std::vector<const svgfill::polygon_2*> result;
+    std::vector<std::unique_ptr<svgfill::polygon_2>> result;
     for (auto& p : arranged) {
-        result.push_back(new svgfill::polygon_2(p));
+        result.push_back(std::make_unique<svgfill::polygon_2>(p));
     }
     return result;
 #else
@@ -788,7 +894,7 @@ inline IFCAPI_OWNED std::vector<const svgfill::polygon_2*> arrange_polygons(
 #endif
 }
 
-inline IFCAPI_OWNED std::vector<const svgfill::polygon_2*> line_segments_to_polygons(
+inline std::vector<std::unique_ptr<svgfill::polygon_2>> line_segments_to_polygons(
     int solver,
     double eps,
     const std::string& segments_json_cpp
@@ -835,10 +941,10 @@ inline IFCAPI_OWNED std::vector<const svgfill::polygon_2*> line_segments_to_poly
     if (!svgfill::line_segments_to_polygons(static_cast<svgfill::solver>(solver), eps, segments, polygon_groups)) {
         throw std::runtime_error("Failed to process line segments");
     }
-    std::vector<const svgfill::polygon_2*> result;
+    std::vector<std::unique_ptr<svgfill::polygon_2>> result;
     for (auto& group : polygon_groups) {
         for (auto& p : group) {
-            result.push_back(new svgfill::polygon_2(p));
+            result.push_back(std::make_unique<svgfill::polygon_2>(p));
         }
     }
     return result;
@@ -850,7 +956,7 @@ inline IFCAPI_OWNED std::vector<const svgfill::polygon_2*> line_segments_to_poly
 #endif
 }
 
-inline IFCAPI_OWNED ifcopenshell::geometry::taxonomy::item::ptr convert_loop_to_function_item(
+inline ifcopenshell::geometry::taxonomy::item::ptr convert_loop_to_function_item(
     const ifcopenshell::geometry::taxonomy::item::ptr& loop_item_cpp
 ) {
     auto loop = ifcopenshell::geometry::taxonomy::dcast<ifcopenshell::geometry::taxonomy::loop>(loop_item_cpp);
@@ -864,7 +970,7 @@ inline IFCAPI_OWNED ifcopenshell::geometry::taxonomy::item::ptr convert_loop_to_
     return result;
 }
 
-inline IFCAPI_OWNED ifcopenshell::geometry::function_item_evaluator* create_function_item_evaluator(
+inline std::unique_ptr<ifcopenshell::geometry::function_item_evaluator> create_function_item_evaluator(
     ifcopenshell::geometry::Settings* settings_cpp,
     const ifcopenshell::geometry::taxonomy::item::ptr& fn_item_cpp
 ) {
@@ -872,7 +978,7 @@ inline IFCAPI_OWNED ifcopenshell::geometry::function_item_evaluator* create_func
     if (!fn) {
         throw std::runtime_error("Input is not a taxonomy function_item");
     }
-    return new ifcopenshell::geometry::function_item_evaluator(*settings_cpp, fn);
+    return std::make_unique<ifcopenshell::geometry::function_item_evaluator>(*settings_cpp, fn);
 }
 
 inline double taxonomy_function_item_start(const ifcopenshell::geometry::taxonomy::item::ptr& item_cpp) {
@@ -891,7 +997,7 @@ inline double taxonomy_function_item_end(const ifcopenshell::geometry::taxonomy:
     return fn->end();
 }
 
-inline IFCAPI_OWNED std::vector<express::Base> select_element(
+inline std::vector<express::Base> select_element(
     IfcGeom::tree* self,
     express::Base* instance,
     bool completely_within,
@@ -904,7 +1010,7 @@ inline IFCAPI_OWNED std::vector<express::Base> select_element(
     return to_base_vector(self->select(entity, completely_within, extend));
 }
 
-inline IFCAPI_OWNED std::vector<express::Base> select_point(
+inline std::vector<express::Base> select_point(
     IfcGeom::tree* self,
     double x,
     double y,
@@ -914,7 +1020,7 @@ inline IFCAPI_OWNED std::vector<express::Base> select_point(
     return to_base_vector(self->select(IfcGeom::tree_point{x, y, z}, extend));
 }
 
-inline IFCAPI_OWNED std::vector<express::Base> select_brep_element(
+inline std::vector<express::Base> select_brep_element(
     IfcGeom::tree* self,
     const IfcGeom::BRepElement* element,
     bool completely_within,
@@ -923,7 +1029,7 @@ inline IFCAPI_OWNED std::vector<express::Base> select_brep_element(
     return to_base_vector(self->select(element, completely_within, extend));
 }
 
-inline IFCAPI_OWNED std::vector<express::Base> select_box_point(
+inline std::vector<express::Base> select_box_point(
     IfcGeom::tree* self,
     double x,
     double y,
@@ -934,7 +1040,7 @@ inline IFCAPI_OWNED std::vector<express::Base> select_box_point(
     return to_base_vector(self->select_box(IfcGeom::tree_point{x, y, z}));
 }
 
-inline IFCAPI_OWNED std::vector<express::Base> select_box_element(
+inline std::vector<express::Base> select_box_element(
     IfcGeom::tree* self,
     express::Base* instance,
     bool completely_within,
@@ -947,7 +1053,7 @@ inline IFCAPI_OWNED std::vector<express::Base> select_box_element(
     return to_base_vector(self->select_box(entity, completely_within, extend));
 }
 
-inline IFCAPI_OWNED std::vector<express::Base> select_box_bounds(
+inline std::vector<express::Base> select_box_bounds(
     IfcGeom::tree* self,
     double xmin,
     double ymin,
@@ -961,7 +1067,7 @@ inline IFCAPI_OWNED std::vector<express::Base> select_box_bounds(
         self->select_box(IfcGeom::tree_box{{IfcGeom::tree_point{xmin, ymin, zmin}, IfcGeom::tree_point{xmax, ymax, zmax}}}, completely_within));
 }
 
-inline IFCAPI_OWNED std::vector<IfcGeom::ray_intersection_result>* select_ray(
+inline std::vector<IfcGeom::ray_intersection_result> select_ray(
     IfcGeom::tree* self,
     double origin_x,
     double origin_y,
@@ -971,11 +1077,10 @@ inline IFCAPI_OWNED std::vector<IfcGeom::ray_intersection_result>* select_ray(
     double dir_z,
     double length
 ) {
-    return new std::vector<IfcGeom::ray_intersection_result>(
-        self->select_ray(
-            IfcGeom::tree_point{origin_x, origin_y, origin_z},
-            IfcGeom::tree_point{dir_x, dir_y, dir_z},
-            length));
+    return self->select_ray(
+        IfcGeom::tree_point{origin_x, origin_y, origin_z},
+        IfcGeom::tree_point{dir_x, dir_y, dir_z},
+        length);
 }
 
 inline express::Base instance(IfcGeom::ray_intersection_result* self) {
@@ -1037,11 +1142,12 @@ inline double calc_surface_area(const IfcGeom::BRepElement* self) {
     return std::numeric_limits<double>::quiet_NaN();
 }
 
-inline IFCAPI_OWNED IfcGeom::ConversionResultShape* as_compound(
+inline std::unique_ptr<IfcGeom::ConversionResultShape> as_compound(
     const IfcGeom::Representation::BRep* self,
     bool force_meters
 ) {
-    return self->as_compound(force_meters);
+    return std::unique_ptr<IfcGeom::ConversionResultShape>(
+        self->as_compound(force_meters));
 }
 
 inline std::string serialize(IfcGeom::ConversionResultShape* self) {
@@ -1376,26 +1482,26 @@ inline bool plugin_load(const std::string& kind, const std::string& id) {
     return false;
 }
 
-inline IFCAPI_OWNED GeometrySerializer* create_geometry_serializer_by_path(
+inline std::unique_ptr<GeometrySerializer> create_geometry_serializer_by_path(
     const std::string& format,
     const std::string& output_filename,
     const std::string& output_temp_filename,
     ifcopenshell::geometry::Settings* geometry_settings,
     ifcopenshell::geometry::SerializerSettings* serializer_settings
 ) {
-    return new ifcopenshell::serializers::PluginGeometrySerializer(
+    return std::make_unique<ifcopenshell::serializers::PluginGeometrySerializer>(
         format, output_filename, output_temp_filename, *geometry_settings, *serializer_settings
     );
 }
 
-inline IFCAPI_OWNED GeometrySerializer* create_geometry_serializer_by_stream(
+inline std::unique_ptr<GeometrySerializer> create_geometry_serializer_by_stream(
     const std::string& format,
     stream_or_filename* output,
     stream_or_filename* output_temp,
     ifcopenshell::geometry::Settings* geometry_settings,
     ifcopenshell::geometry::SerializerSettings* serializer_settings
 ) {
-    return new ifcopenshell::serializers::PluginGeometrySerializer(
+    return std::make_unique<ifcopenshell::serializers::PluginGeometrySerializer>(
         format, *output, *output_temp, *geometry_settings, *serializer_settings
     );
 }

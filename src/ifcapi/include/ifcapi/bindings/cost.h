@@ -334,7 +334,7 @@ IFCAPI_BINDING void cost_assign_cost_value(
  * @param cost_item IfcCostItem to copy.
  * @return List of newly created IfcCostItem entities, with the root first.
  */
-IFCAPI_BINDING IFCAPI_OWNED std::vector<express::Base> cost_copy_cost_item(
+IFCAPI_BINDING std::vector<express::Base> cost_copy_cost_item(
     ifcopenshell::file* file,
     express::Base* cost_item);
 
