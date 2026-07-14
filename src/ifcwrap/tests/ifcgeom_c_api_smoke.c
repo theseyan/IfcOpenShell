@@ -612,89 +612,78 @@ static void test_triangulation_element(void) {
     printf("  Normals: %zu floats (%zu vectors)\n", normals.size, normals.size / 3);
     ifcopenshell_double_list_destroy(&normals);
     
-    /* Test owner-backed buffer access methods */
-    ifcopenshell_double_list_t verts_buffer = {0};
+    /* Test borrowed pointer+size buffer access methods */
+    const double* verts_buffer = NULL;
     size_t verts_count = 0;
     ok = ifcopenshell_geom_triangulation_verts_buffer(geom, &verts_buffer);
     expect_ok(ok);
     ok = ifcopenshell_geom_triangulation_verts_buffer_size(geom, &verts_count);
     expect_ok(ok);
-    expect_true(verts_buffer.items != NULL || verts_count == 0, "verts_buffer should return valid pointer if count > 0");
-    expect_true(verts_buffer.size == verts_count, "verts_buffer size should match");
-    printf("  Verts buffer: %zu doubles at %p\n", verts_count, (void*)verts_buffer.items);
+    expect_true(verts_buffer != NULL || verts_count == 0, "verts_buffer should return valid pointer if count > 0");
+    printf("  Verts buffer: %zu doubles at %p\n", verts_count, (void*)verts_buffer);
 
-    ifcopenshell_int32_list_t faces_buffer = {0};
+    const int32_t* faces_buffer = NULL;
     size_t faces_count = 0;
     ok = ifcopenshell_geom_triangulation_faces_buffer(geom, &faces_buffer);
     expect_ok(ok);
     ok = ifcopenshell_geom_triangulation_faces_buffer_size(geom, &faces_count);
     expect_ok(ok);
-    expect_true(faces_buffer.items != NULL || faces_count == 0, "faces_buffer should return valid pointer if count > 0");
-    expect_true(faces_buffer.size == faces_count, "faces_buffer size should match");
-    printf("  Faces buffer: %zu ints at %p\n", faces_count, (void*)faces_buffer.items);
+    expect_true(faces_buffer != NULL || faces_count == 0, "faces_buffer should return valid pointer if count > 0");
+    printf("  Faces buffer: %zu ints at %p\n", faces_count, (void*)faces_buffer);
 
-    ifcopenshell_double_list_t normals_buffer = {0};
+    const double* normals_buffer = NULL;
     size_t normals_count = 0;
     ok = ifcopenshell_geom_triangulation_normals_buffer(geom, &normals_buffer);
     expect_ok(ok);
     ok = ifcopenshell_geom_triangulation_normals_buffer_size(geom, &normals_count);
     expect_ok(ok);
-    expect_true(normals_buffer.size == normals_count, "normals_buffer size should match");
-    printf("  Normals buffer: %zu doubles at %p\n", normals_count, (void*)normals_buffer.items);
+    expect_true(normals_buffer != NULL || normals_count == 0, "normals_buffer should return valid pointer if count > 0");
+    printf("  Normals buffer: %zu doubles at %p\n", normals_count, (void*)normals_buffer);
 
-    ifcopenshell_int32_list_t edges_buffer = {0};
+    const int32_t* edges_buffer = NULL;
     size_t edges_count = 0;
     ok = ifcopenshell_geom_triangulation_edges_buffer(geom, &edges_buffer);
     expect_ok(ok);
     ok = ifcopenshell_geom_triangulation_edges_buffer_size(geom, &edges_count);
     expect_ok(ok);
-    expect_true(edges_buffer.size == edges_count, "edges_buffer size should match");
-    printf("  Edges buffer: %zu ints at %p\n", edges_count, (void*)edges_buffer.items);
+    expect_true(edges_buffer != NULL || edges_count == 0, "edges_buffer should return valid pointer if count > 0");
+    printf("  Edges buffer: %zu ints at %p\n", edges_count, (void*)edges_buffer);
 
-    ifcopenshell_double_list_t uvs_buffer = {0};
+    const double* uvs_buffer = NULL;
     size_t uvs_count = 0;
     ok = ifcopenshell_geom_triangulation_uvs_buffer(geom, &uvs_buffer);
     expect_ok(ok);
     ok = ifcopenshell_geom_triangulation_uvs_buffer_size(geom, &uvs_count);
     expect_ok(ok);
-    expect_true(uvs_buffer.size == uvs_count, "uvs_buffer size should match");
-    printf("  UVs buffer: %zu doubles at %p\n", uvs_count, (void*)uvs_buffer.items);
+    expect_true(uvs_buffer != NULL || uvs_count == 0, "uvs_buffer should return valid pointer if count > 0");
+    printf("  UVs buffer: %zu doubles at %p\n", uvs_count, (void*)uvs_buffer);
 
-    ifcopenshell_int32_list_t mat_ids_buffer = {0};
+    const int32_t* mat_ids_buffer = NULL;
     size_t mat_ids_count = 0;
     ok = ifcopenshell_geom_triangulation_material_ids_buffer(geom, &mat_ids_buffer);
     expect_ok(ok);
     ok = ifcopenshell_geom_triangulation_material_ids_buffer_size(geom, &mat_ids_count);
     expect_ok(ok);
-    expect_true(mat_ids_buffer.size == mat_ids_count, "material_ids_buffer size should match");
-    printf("  Material IDs buffer: %zu ints at %p\n", mat_ids_count, (void*)mat_ids_buffer.items);
+    expect_true(mat_ids_buffer != NULL || mat_ids_count == 0, "material_ids_buffer should return valid pointer if count > 0");
+    printf("  Material IDs buffer: %zu ints at %p\n", mat_ids_count, (void*)mat_ids_buffer);
 
-    ifcopenshell_int32_list_t item_ids_buffer = {0};
+    const int32_t* item_ids_buffer = NULL;
     size_t item_ids_count = 0;
     ok = ifcopenshell_geom_triangulation_item_ids_buffer(geom, &item_ids_buffer);
     expect_ok(ok);
     ok = ifcopenshell_geom_triangulation_item_ids_buffer_size(geom, &item_ids_count);
     expect_ok(ok);
-    expect_true(item_ids_buffer.size == item_ids_count, "item_ids_buffer size should match");
-    printf("  Item IDs buffer: %zu ints at %p\n", item_ids_count, (void*)item_ids_buffer.items);
+    expect_true(item_ids_buffer != NULL || item_ids_count == 0, "item_ids_buffer should return valid pointer if count > 0");
+    printf("  Item IDs buffer: %zu ints at %p\n", item_ids_count, (void*)item_ids_buffer);
 
-    ifcopenshell_int32_list_t edge_item_ids_buffer = {0};
+    const int32_t* edge_item_ids_buffer = NULL;
     size_t edge_item_ids_count = 0;
     ok = ifcopenshell_geom_triangulation_edges_item_ids_buffer(geom, &edge_item_ids_buffer);
     expect_ok(ok);
     ok = ifcopenshell_geom_triangulation_edges_item_ids_buffer_size(geom, &edge_item_ids_count);
     expect_ok(ok);
-    expect_true(edge_item_ids_buffer.size == edge_item_ids_count, "edges_item_ids_buffer size should match");
-    printf("  Edge item IDs buffer: %zu ints at %p\n", edge_item_ids_count, (void*)edge_item_ids_buffer.items);
-
-    ifcopenshell_double_list_destroy(&verts_buffer);
-    ifcopenshell_int32_list_destroy(&faces_buffer);
-    ifcopenshell_double_list_destroy(&normals_buffer);
-    ifcopenshell_int32_list_destroy(&edges_buffer);
-    ifcopenshell_double_list_destroy(&uvs_buffer);
-    ifcopenshell_int32_list_destroy(&mat_ids_buffer);
-    ifcopenshell_int32_list_destroy(&item_ids_buffer);
-    ifcopenshell_int32_list_destroy(&edge_item_ids_buffer);
+    expect_true(edge_item_ids_buffer != NULL || edge_item_ids_count == 0, "edges_item_ids_buffer should return valid pointer if count > 0");
+    printf("  Edge item IDs buffer: %zu ints at %p\n", edge_item_ids_count, (void*)edge_item_ids_buffer);
     
     /* Geometry and tri_elem are borrowed - don't destroy */
     
@@ -775,18 +764,17 @@ static void test_extended_geometry_apis(void) {
     expect_ok(ifcopenshell_geom_transformation_matrix(trsf, &matrix));
     expect_true(matrix.size == 16, "transformation matrix should have 16 elements");
 
-    ifcopenshell_double_list_t matrix_buffer = {0};
+    const double* matrix_buffer = NULL;
     size_t matrix_buffer_size = 0;
     expect_ok(ifcopenshell_geom_element_transformation_buffer(elem, &matrix_buffer));
     expect_ok(ifcopenshell_geom_element_transformation_buffer_size(elem, &matrix_buffer_size));
-    expect_true(matrix_buffer.items != NULL, "transformation buffer should be non-null");
+    expect_true(matrix_buffer != NULL, "transformation buffer should be non-null");
     expect_true(matrix_buffer_size == 16, "transformation buffer size should be 16");
     expect_true(matrix.size == matrix_buffer_size, "transformation matrix and buffer sizes should match");
     if (matrix.size > 0) {
-        expect_true(isfinite(matrix_buffer.items[0]), "transformation buffer values should be finite");
+        expect_true(isfinite(matrix_buffer[0]), "transformation buffer values should be finite");
     }
     ifcopenshell_double_list_destroy(&matrix);
-    ifcopenshell_double_list_destroy(&matrix_buffer);
 
     ifcopenshell_instance_t* product = NULL;
     expect_ok(ifcopenshell_geom_element_product(elem, &product));

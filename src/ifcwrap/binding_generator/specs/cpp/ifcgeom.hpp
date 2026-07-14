@@ -1118,9 +1118,8 @@ inline bool next(IfcGeom::Iterator* self) {
     return static_cast<bool>(self->next());
 }
 
-inline std::vector<double> transformation_buffer(const IfcGeom::Element* self) {
-    const auto& components = self->transformation().data()->ccomponents();
-    return std::vector<double>(components.data(), components.data() + 16);
+inline const double* transformation_buffer(const IfcGeom::Element* self) {
+    return self->transformation().data()->ccomponents().data();
 }
 
 inline std::size_t transformation_buffer_size(const IfcGeom::Element* self) {
@@ -1211,35 +1210,35 @@ inline double length(IfcGeom::ConversionResultShape* self) {
     return val;
 }
 
-inline std::vector<double> verts_buffer(const IfcGeom::Representation::Triangulation* self) {
+inline const std::vector<double>& verts_buffer(const IfcGeom::Representation::Triangulation* self) {
     return self->verts();
 }
 
-inline std::vector<int> faces_buffer(const IfcGeom::Representation::Triangulation* self) {
+inline const std::vector<int>& faces_buffer(const IfcGeom::Representation::Triangulation* self) {
     return self->faces();
 }
 
-inline std::vector<double> normals_buffer(const IfcGeom::Representation::Triangulation* self) {
+inline const std::vector<double>& normals_buffer(const IfcGeom::Representation::Triangulation* self) {
     return self->normals();
 }
 
-inline std::vector<int> edges_buffer(const IfcGeom::Representation::Triangulation* self) {
+inline const std::vector<int>& edges_buffer(const IfcGeom::Representation::Triangulation* self) {
     return self->edges();
 }
 
-inline std::vector<int> material_ids_buffer(const IfcGeom::Representation::Triangulation* self) {
+inline const std::vector<int>& material_ids_buffer(const IfcGeom::Representation::Triangulation* self) {
     return self->material_ids();
 }
 
-inline std::vector<int> item_ids_buffer(const IfcGeom::Representation::Triangulation* self) {
+inline const std::vector<int>& item_ids_buffer(const IfcGeom::Representation::Triangulation* self) {
     return self->item_ids();
 }
 
-inline std::vector<int> edges_item_ids_buffer(const IfcGeom::Representation::Triangulation* self) {
+inline const std::vector<int>& edges_item_ids_buffer(const IfcGeom::Representation::Triangulation* self) {
     return self->edges_item_ids();
 }
 
-inline std::vector<double> uvs_buffer(const IfcGeom::Representation::Triangulation* self) {
+inline const std::vector<double>& uvs_buffer(const IfcGeom::Representation::Triangulation* self) {
     return self->uvs();
 }
 

@@ -1,11 +1,10 @@
 import functools
+import gc
 import itertools
 import multiprocessing
 import operator
 import os
 from typing import get_args
-
-import pytest
 
 import ifcopenshell
 import ifcopenshell.api.context
@@ -14,10 +13,14 @@ import ifcopenshell.api.project
 import ifcopenshell.api.root
 import ifcopenshell.api.unit
 import ifcopenshell.geom
+import ifcopenshell.guid
 import ifcopenshell.ifcopenshell_wrapper as W
 import ifcopenshell.util.shape
-import test.bootstrap
+import numpy as np
+import pytest
 from ifcopenshell.util.shape_builder import ShapeBuilder
+
+import test.bootstrap
 
 fn = os.path.join(os.path.dirname(__file__), "fixtures/ColumnPSetsOfSets.ifc")
 
@@ -240,6 +243,44 @@ def test_iterator():
                 pargs.append(a)
         iterator = ifcopenshell.geom.iterator(settings, *pargs, **kwargs)
         assert iterator.initialize()
+
+
+def test_iterator_numeric_buffers_are_detached_read_only_snapshots():
+    ifc_file = ifcopenshell.open(fn)
+    column = ifc_file.by_type("IfcColumn")[0]
+    ifc_file.create_entity(
+        "IfcColumn",
+        GlobalId=ifcopenshell.guid.new(),
+        ObjectPlacement=column.ObjectPlacement,
+        Representation=column.Representation,
+    )
+    iterator = ifcopenshell.geom.iterator(ifcopenshell.geom.settings(), ifc_file)
+    assert iterator.initialize()
+    element = iterator.get()
+
+    buffers = {
+        "verts": element.geometry.verts_buffer,
+        "faces": element.geometry.faces_buffer,
+        "normals": element.geometry.normals_buffer,
+        "edges": element.geometry.edges_buffer,
+        "material_ids": element.geometry.material_ids_buffer,
+        "item_ids": element.geometry.item_ids_buffer,
+        "edges_item_ids": element.geometry.edges_item_ids_buffer,
+        "uvs": element.geometry.uvs_buffer,
+        "colors": element.geometry.colors,
+        "transformation": element.transformation_buffer,
+    }
+    expected = {name: values.copy() for name, values in buffers.items()}
+    assert all(not values.flags.writeable for values in buffers.values())
+    assert type(buffers["verts"].base).__name__ == "OwnedBuffer"
+
+    assert iterator.next()
+    iterator.get()
+    del element, iterator
+    gc.collect()
+
+    for name, values in buffers.items():
+        np.testing.assert_array_equal(values, expected[name])
 
 
 if __name__ == "__main__":

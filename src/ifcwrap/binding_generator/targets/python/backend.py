@@ -6,7 +6,7 @@ import re
 from pathlib import Path
 
 from ...abi_ir import BindingABI, CFunctionIR, COptionIR, CParamIR, CTypeIR
-from .._shared import _method_name, _snake_name, _type_name
+from .._shared import _buffer_size_function, _method_name, _snake_name, _type_name
 
 _SCALAR_DECLS = {
     "bool": ("int", "p", "PyBool_FromLong({name})"),
@@ -54,10 +54,15 @@ typedef struct {
     Py_ssize_t length;
     Py_ssize_t itemsize;
     const char *format;
+    int python_owned;
 } IfcOpenShellOwnedBufferObject;
 
 static void IfcOpenShellOwnedBuffer_dealloc(IfcOpenShellOwnedBufferObject *self) {
-    ifcopenshell_buffer_owner_destroy(&self->owner);
+    if (self->python_owned) {
+        PyMem_Free(self->data);
+    } else {
+        ifcopenshell_buffer_owner_destroy(&self->owner);
+    }
     Py_TYPE(self)->tp_free((PyObject *)self);
 }
 
@@ -222,6 +227,42 @@ static PyObject *make_owned_buffer(
     exporter->length = (Py_ssize_t)length;
     exporter->itemsize = itemsize;
     exporter->format = format;
+    exporter->python_owned = 0;
+    return (PyObject *)exporter;
+}
+
+static PyObject *make_snapshot_buffer(
+    const void *data,
+    size_t length,
+    Py_ssize_t itemsize,
+    const char *format
+) {
+    if (length > (size_t)PY_SSIZE_T_MAX ||
+        (length != 0 && (size_t)itemsize > (size_t)PY_SSIZE_T_MAX / length)) {
+        PyErr_SetString(PyExc_OverflowError, "native buffer is too large");
+        return NULL;
+    }
+    if (length != 0 && data == NULL) {
+        PyErr_SetString(PyExc_RuntimeError, "native buffer has no data");
+        return NULL;
+    }
+    const size_t byte_length = length * (size_t)itemsize;
+    void *snapshot = PyMem_Malloc(byte_length == 0 ? 1 : byte_length);
+    if (!snapshot) return PyErr_NoMemory();
+    if (byte_length != 0) memcpy(snapshot, data, byte_length);
+    IfcOpenShellOwnedBufferObject *exporter =
+        (IfcOpenShellOwnedBufferObject *)IfcOpenShellOwnedBufferType.tp_alloc(
+            &IfcOpenShellOwnedBufferType, 0);
+    if (!exporter) {
+        PyMem_Free(snapshot);
+        return NULL;
+    }
+    exporter->owner = NULL;
+    exporter->data = snapshot;
+    exporter->length = (Py_ssize_t)length;
+    exporter->itemsize = itemsize;
+    exporter->format = format;
+    exporter->python_owned = 1;
     return (PyObject *)exporter;
 }
 '''
@@ -1213,6 +1254,7 @@ def _render_function_wrapper(
         format_parts.append(fmt)
         cleanup.extend(clean)
         setup.extend(param_setup)
+    input_call_args = tuple(call_args)
     null_result_check = ""
     if out_param is not None:
         out_base, out_depth = _base_pointer_type(out_param.c_type)
@@ -1235,10 +1277,37 @@ def _render_function_wrapper(
 """
     out_decl = ""
     result_assign = ""
+    buffer_size_call = ""
     # Every successful result envelope is allocated by the C ABI for this call.
     # The envelope's internal owned flag controls only pointee destruction.
     owned = 1
-    if len(out_params) > 1:
+    if function.returns.kind in {"double_buffer", "int32_buffer"}:
+        if len(out_params) != 1:
+            raise ValueError(
+                f"Typed buffer {function.c_name} must have exactly one out result"
+            )
+        size_function = _buffer_size_function(function, metadata)
+        element_type, itemsize, format_char = (
+            ("double", "sizeof(double)", "d")
+            if function.returns.kind == "double_buffer"
+            else ("int32_t", "sizeof(int32_t)", "i")
+        )
+        out_decl = (
+            f"    const {element_type} *result = NULL;\n"
+            "    size_t result_size = 0;"
+        )
+        call_args.append("&result")
+        size_args = ", ".join((*input_call_args, "&result_size"))
+        buffer_size_call = f"""    ok = {size_function.c_name}({size_args});
+    if (!ok) {{
+        raise_last_error("{size_function.c_name} failed");
+        goto __cleanup;
+    }}
+"""
+        result_assign = (
+            f'    __py_result = make_snapshot_buffer(result, result_size, {itemsize}, "{format_char}");'
+        )
+    elif len(out_params) > 1:
         out_decls = []
         result_items = []
         for i, op in enumerate(out_params):
@@ -1346,7 +1415,7 @@ static PyObject *{_wrapper_name(function.c_name)}(PyObject *self, PyObject *args
         raise_last_error("{function.c_name} failed");
         goto __cleanup;
     }}
-{status_error_check}{null_result_check}{result_assign}
+{buffer_size_call}{status_error_check}{null_result_check}{result_assign}
 __cleanup:
 {cleanup_block}    return __py_result;
 }}

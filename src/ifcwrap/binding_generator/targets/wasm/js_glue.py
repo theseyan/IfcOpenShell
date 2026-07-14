@@ -8,6 +8,7 @@ from ...abi_ir import BindingABI, CFunctionIR, COptionIR, CParamIR, CTypeIR
 from ...binding_model import TypeSpec
 from .._shared import (
     _INTERNAL_C_FUNCTIONS,
+    _buffer_size_function,
     _camel_name,
     _method_name,
     _public_module_member,
@@ -15,6 +16,7 @@ from .._shared import (
     _public_params,
     _snake_name,
     _type_name,
+    _typed_buffer_element,
 )
 
 _POINTER_SIZE = 4
@@ -313,7 +315,10 @@ def _render_handle_classes(metadata: BindingABI) -> str:
             if function.c_name == handle.destroy_function:
                 continue
             method = _public_name(function, metadata.c_prefix)
-            params = ", ".join(param.name for param in _public_params(function))
+            param_names = [param.name for param in _public_params(function)]
+            if _typed_buffer_element(function, metadata) is not None:
+                param_names.append("arrayType")
+            params = ", ".join(param_names)
             methods.append(
                 f"    {method}({params}) {{\n"
                 f"        return invoke_{function.c_name}(this.#module, this{', ' if params else ''}{params});\n"
@@ -376,6 +381,9 @@ def _render_wrapper(function: CFunctionIR, metadata: BindingABI) -> str:
     if function.receiver is not None:
         signature_names.append("self")
     signature_names.extend(param.name for param in public_params)
+    buffer_element = _typed_buffer_element(function, metadata)
+    if buffer_element is not None:
+        signature_names.append("arrayType")
 
     marshalling_lines: list[str] = []
     cleanup_lines: list[str] = []
@@ -410,9 +418,21 @@ def _render_wrapper(function: CFunctionIR, metadata: BindingABI) -> str:
     destroy_line = _destroy_out_result(function, metadata)
     return_body = []
     if function.returns.kind != "void":
-        return_body.append(
-            "    const result = " + _return_expr(function, metadata) + ";"
-        )
+        if function.returns.kind in {"double_buffer", "int32_buffer"}:
+            return_expr = (
+                f"_copyNumericBuffer(module, module.getValue(outResultPtr, '*'), "
+                f"module.getValue(outSizePtr, 'i32') >>> 0, {json.dumps(buffer_element)}, arrayType)"
+            )
+        elif buffer_element is not None:
+            return_expr = (
+                _read_value_type_expr(
+                    function.returns, metadata, "outResultPtr"
+                ).removesuffix(")")
+                + ", true, arrayType)"
+            )
+        else:
+            return_expr = _return_expr(function, metadata)
+        return_body.append("    const result = " + return_expr + ";")
         if destroy_line:
             return_body.append(destroy_line)
             return_body.append("    outResultNeedsDestroy = false;")
@@ -424,6 +444,19 @@ def _render_wrapper(function: CFunctionIR, metadata: BindingABI) -> str:
     cleanup_block = "\n".join(cleanup_lines + ([out_free.rstrip()] if out_free else []))
     if cleanup_block:
         cleanup_block = cleanup_block + "\n"
+
+    size_alloc = ""
+    size_free = ""
+    size_call = ""
+    if function.returns.kind in {"double_buffer", "int32_buffer"}:
+        size_function = _buffer_size_function(function, metadata)
+        size_alloc = "    outSizePtr = module._malloc(4);\n"
+        size_free = "        if (outSizePtr) module._free(outSizePtr);\n"
+        size_args = ", ".join((*arg_exprs, "outSizePtr"))
+        size_call = (
+            f"    const sizeOk = module._{size_function.c_name}({size_args});\n"
+            f"    if (!sizeOk) throw new Error(_lastErrorMessage(module, '{size_function.c_name} failed'));\n"
+        )
 
     if function.restype == "void":
         call_block = f"    module._{function.c_name}({call_args});\n"
@@ -437,11 +470,14 @@ def _render_wrapper(function: CFunctionIR, metadata: BindingABI) -> str:
         f"function invoke_{function.c_name}({', '.join(signature_names)}) {{\n"
         f"    module._{metadata.error_functions['clear_error']}();\n"
         "    let outResultPtr = 0;\n"
-        "    let outResultNeedsDestroy = false;\n"
+        + ("    let outSizePtr = 0;\n" if size_alloc else "")
+        + "    let outResultNeedsDestroy = false;\n"
         "    try {\n"
         + ("\n".join(marshalling_lines) + ("\n" if marshalling_lines else ""))
         + out_alloc
+        + size_alloc
         + call_block
+        + size_call
         + ("    outResultNeedsDestroy = true;\n" if destroy_line else "")
         + return_statement
         + "    } finally {\n"
@@ -451,6 +487,7 @@ def _render_wrapper(function: CFunctionIR, metadata: BindingABI) -> str:
             else ""
         )
         + cleanup_block
+        + size_free
         + "    }\n"
         + "}"
     )
@@ -468,7 +505,10 @@ def _render_module_factory(metadata: BindingABI) -> str:
         if function.c_name in _INTERNAL_C_FUNCTIONS:
             continue
         name = _public_name(function, metadata.c_prefix)
-        params = ", ".join(param.name for param in _public_params(function))
+        param_names = [param.name for param in _public_params(function)]
+        if _typed_buffer_element(function, metadata) is not None:
+            param_names.append("arrayType")
+        params = ", ".join(param_names)
         call = f"({params}) => invoke_{function.c_name}(module{', ' if params else ''}{params})"
         module_member = _public_module_member(function, metadata.c_prefix)
         if module_member is not None:
@@ -807,12 +847,54 @@ def render_js_glue(
             "    return dataPtr ? module.UTF8ToString(dataPtr) : null;",
             "}",
             "",
-            "function _readSequenceValue(module, ptr, metadata) {",
+            "function _numericArrayType(cType) {",
+            "    switch (_normalizeCType(cType)) {",
+            "        case 'double': return Float64Array;",
+            "        case 'int32_t': return Int32Array;",
+            "        case 'uint32_t': return Uint32Array;",
+            "        case 'uint8_t': return Uint8Array;",
+            "        default: throw new TypeError(`Unsupported numeric buffer element type ${cType}`);",
+            "    }",
+            "}",
+            "",
+            "const _NUMERIC_ARRAY_TYPES = new Set([",
+            "    Int8Array, Uint8Array, Uint8ClampedArray, Int16Array, Uint16Array,",
+            "    Int32Array, Uint32Array, Float32Array, Float64Array,",
+            "]);",
+            "",
+            "function _copyNumericBuffer(module, ptr, size, cType, arrayType = null) {",
+            "    if (!Number.isSafeInteger(size) || size < 0) {",
+            "        throw new RangeError(`Invalid numeric buffer size ${size}`);",
+            "    }",
+            "    const NativeArray = _numericArrayType(cType);",
+            "    const TargetArray = arrayType ?? NativeArray;",
+            "    if (!_NUMERIC_ARRAY_TYPES.has(TargetArray)) {",
+            "        throw new TypeError('Expected a numeric typed-array constructor');",
+            "    }",
+            "    if (size !== 0 && !ptr) throw new Error('Numeric buffer returned a null pointer with a non-zero size');",
+            "    const memory = module.HEAPU32.buffer;",
+            "    const byteLength = size * NativeArray.BYTES_PER_ELEMENT;",
+            "    if (!Number.isSafeInteger(byteLength) || ptr < 0 || ptr + byteLength > memory.byteLength) {",
+            "        throw new RangeError('Numeric buffer lies outside WASM memory');",
+            "    }",
+            "    if (ptr % NativeArray.BYTES_PER_ELEMENT !== 0) {",
+            "        throw new RangeError('Numeric buffer pointer is misaligned');",
+            "    }",
+            "    const source = new NativeArray(memory, size === 0 ? 0 : ptr, size);",
+            "    const result = new TargetArray(source);",
+            "    if (module.HEAPU32.buffer !== memory) {",
+            "        throw new Error('WASM memory grew during numeric buffer snapshot');",
+            "    }",
+            "    return result;",
+            "}",
+            "",
+            "function _readSequenceValue(module, ptr, metadata, typedSnapshot = false, arrayType = null) {",
             "    const layout = _getStructLayout(metadata);",
             "    const itemsField = layout.fields.find((field) => field.name === 'items');",
             "    const sizeField = layout.fields.find((field) => field.name === 'size');",
             "    const itemsPtr = module.getValue(ptr + itemsField.offset, '*');",
-            "    const size = module.getValue(ptr + sizeField.offset, 'i32');",
+            "    const size = module.getValue(ptr + sizeField.offset, 'i32') >>> 0;",
+            "    if (typedSnapshot) return _copyNumericBuffer(module, itemsPtr, size, metadata.elementType, arrayType);",
             "    if (!itemsPtr || size === 0) return [];",
             "    const elementType = metadata.elementType;",
             "    if (!elementType) return [];",
@@ -881,11 +963,11 @@ def render_js_glue(
             "    return _normalizeCType(valueField.cType) === 'bool' ? value !== 0 : value;",
             "}",
             "",
-            "function _readValueType(module, ptr, metadata) {",
+            "function _readValueType(module, ptr, metadata, typedSnapshot = false, arrayType = null) {",
             "    switch (metadata.kind) {",
             "        case 'string': return _readStringValue(module, ptr);",
             "        case 'sequence':",
-            "        case 'handle_sequence': return _readSequenceValue(module, ptr, metadata);",
+            "        case 'handle_sequence': return _readSequenceValue(module, ptr, metadata, typedSnapshot, arrayType);",
             "        case 'result_struct': return _readStructValue(module, ptr, metadata);",
             "        case 'optional_result_struct': return _readOptionalResultStruct(module, ptr, metadata);",
             "        case 'variant': return _readVariantValue(module, ptr, metadata);",

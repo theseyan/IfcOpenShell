@@ -54,6 +54,12 @@ describeOrSkip('GeomIterator', () => {
     expect(mesh!.transform[7]).toBe(0);
     expect(mesh!.transform[11]).toBe(0);
     expect(mesh!.transform[15]).toBe(1);
+    expect(mesh!.vertices.length).toBeGreaterThan(0);
+    const retainedVertices = mesh!.vertices;
+    const expectedVertices = retainedVertices.slice();
+    await iterator.next();
+    await iterator.dispose();
+    expect(retainedVertices).toEqual(expectedVertices);
   });
 
   it('disposes settings it creates for file.meshes()', async () => {

@@ -121,6 +121,12 @@ def _compute_out_c_type(type_spec: TypeSpec, handle_c_type_map: dict[str, str]) 
         return "int32_t*"
     elif kind == "int64":
         return "int64_t*"
+    elif kind == "size":
+        return "size_t*"
+    elif kind == "double_buffer":
+        return "const double**"
+    elif kind == "int32_buffer":
+        return "const int32_t**"
     elif kind == "string":
         return "ifcopenshell_string_t*"
     elif type_spec.sequence_depth:
@@ -795,6 +801,38 @@ class TestOutputHandling:
         assert ".tp_as_sequence = &IfcOpenShellOwnedBuffer_sequence_methods" in code
         assert ".tp_as_mapping = &IfcOpenShellOwnedBuffer_mapping_methods" in code
         assert ".tp_as_buffer = &IfcOpenShellOwnedBuffer_buffer_procs" in code
+
+    def test_borrowed_numeric_buffers_become_detached_python_snapshots(self):
+        meta = _make_metadata(
+            handles={"mesh": _make_handle("mesh", "ifcopenshell_demo_mesh_t")},
+            functions={
+                "ifcopenshell_demo_mesh_verts_buffer": _make_function(
+                    c_name="ifcopenshell_demo_mesh_verts_buffer",
+                    returns=TypeSpec(kind="double_buffer"),
+                    receiver="mesh",
+                ),
+                "ifcopenshell_demo_mesh_verts_buffer_size": _make_function(
+                    c_name="ifcopenshell_demo_mesh_verts_buffer_size",
+                    returns=TypeSpec(kind="size"),
+                    receiver="mesh",
+                ),
+            },
+        )
+
+        code = render_python_extension(meta)
+
+        assert "const double *result = NULL;" in code
+        assert "size_t result_size = 0;" in code
+        assert (
+            "ifcopenshell_demo_mesh_verts_buffer_size(arg_self, &result_size)"
+            in code
+        )
+        assert (
+            'make_snapshot_buffer(result, result_size, sizeof(double), "d")'
+            in code
+        )
+        assert "memcpy(snapshot, data, byte_length);" in code
+        assert "PyMem_Free(self->data);" in code
 
     def test_handle_sequence_transfers_envelopes_before_container_cleanup(self):
         meta = _make_metadata(

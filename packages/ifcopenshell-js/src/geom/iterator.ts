@@ -4,7 +4,6 @@ import type {
   IfcOpenshellGeomElement,
   IfcOpenshellGeomIterator,
   IfcOpenshellGeomTaxonomyPoint3,
-  IfcOpenshellGeomTransformation,
   IfcOpenshellGeomTriangulation,
   IfcOpenshellGeomTriangulationElement,
 } from '@ifcopenshell-js/wasm/api';
@@ -298,7 +297,6 @@ function extractMesh(iter: IfcOpenshellGeomIterator): Mesh | null {
   let tri: IfcOpenshellGeomTriangulationElement | null = null;
   let geom: IfcOpenshellGeomTriangulation | null = null;
   let element: IfcOpenshellGeomElement | null = null;
-  let transform: IfcOpenshellGeomTransformation | null = null;
   try {
     tri = iter.getAsTriangulationElement();
     if (!tri || tri.ptr === 0) return null;
@@ -306,26 +304,24 @@ function extractMesh(iter: IfcOpenshellGeomIterator): Mesh | null {
     if (!geom || geom.ptr === 0) return null;
     element = iter.get();
     if (!element || element.ptr === 0) return null;
-    transform = element.transformation();
-    const normals = geom.normals();
+    const normals = geom.normalsBuffer(Float32Array);
     return {
       id: element.id(),
       guid: element.guid(),
       type: element.type(),
       name: element.name(),
-      vertices: new Float32Array(geom.verts() ?? []),
-      faces: new Uint32Array(geom.faces() ?? []),
-      normals: normals && normals.length > 0 ? new Float32Array(normals) : null,
-      transform: toColumnMajorMatrix4(transform ? transform.matrix() : []),
-      edges: new Uint32Array(geom.edges() ?? []),
-      materialIds: new Int32Array(geom.materialIds() ?? []),
-      itemIds: new Int32Array(geom.itemIds() ?? []),
-      edgeItemIds: new Int32Array(geom.edgesItemIds() ?? []),
-      uvs: new Float32Array(geom.uvs() ?? []),
-      colors: new Float32Array(geom.colorsBuffer() ?? []),
+      vertices: geom.vertsBuffer(Float32Array),
+      faces: geom.facesBuffer(Uint32Array),
+      normals: normals.length > 0 ? normals : null,
+      transform: toColumnMajorMatrix4(element.transformationBuffer(Float64Array)),
+      edges: geom.edgesBuffer(Uint32Array),
+      materialIds: geom.materialIdsBuffer(Int32Array),
+      itemIds: geom.itemIdsBuffer(Int32Array),
+      edgeItemIds: geom.edgesItemIdsBuffer(Int32Array),
+      uvs: geom.uvsBuffer(Float32Array),
+      colors: geom.colorsBuffer(Float32Array),
     };
   } finally {
-    release(transform);
     release(element);
     release(geom);
     release(tri);

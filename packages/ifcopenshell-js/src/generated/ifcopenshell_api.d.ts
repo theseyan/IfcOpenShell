@@ -2,6 +2,11 @@
 
 declare module 'ifcopenshell-api' {
   export type IfcOpenshellRawValue = null | boolean | number | bigint | string | object | IfcOpenshellRawValue[];
+  export type IfcOpenshellNumericTypedArray = Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array;
+  export interface IfcOpenshellNumericArrayConstructor<T extends IfcOpenshellNumericTypedArray> {
+    readonly BYTES_PER_ELEMENT: number;
+    new (arrayLike: ArrayLike<number>): T;
+  }
 
   export interface IfcOpenshellSequenceDuplicateTaskResult {
     current: IfcOpenshellParseInstanceList;
@@ -1225,7 +1230,8 @@ declare module 'ifcopenshell-api' {
     parents(): IfcOpenshellGeomElement[];
     product(): IfcOpenshellInstance;
     transformation(): IfcOpenshellGeomTransformation;
-    transformationBuffer(): number[];
+    transformationBuffer(): Float64Array;
+    transformationBuffer<T extends IfcOpenshellNumericTypedArray>(arrayType: IfcOpenshellNumericArrayConstructor<T>): T;
     transformationBufferSize(): number;
     type(): string;
     uniqueId(): string;
@@ -1948,36 +1954,45 @@ declare module 'ifcopenshell-api' {
   export class IfcOpenshellGeomTriangulation {
     readonly ptr: number;
     destroy(): void;
-    colorsBuffer(): number[];
+    colorsBuffer(): Float64Array;
+    colorsBuffer<T extends IfcOpenshellNumericTypedArray>(arrayType: IfcOpenshellNumericArrayConstructor<T>): T;
     colorsBufferSize(): number;
     edges(): number[];
-    edgesBuffer(): number[];
+    edgesBuffer(): Int32Array;
+    edgesBuffer<T extends IfcOpenshellNumericTypedArray>(arrayType: IfcOpenshellNumericArrayConstructor<T>): T;
     edgesBufferSize(): number;
     edgesItemIds(): number[];
-    edgesItemIdsBuffer(): number[];
+    edgesItemIdsBuffer(): Int32Array;
+    edgesItemIdsBuffer<T extends IfcOpenshellNumericTypedArray>(arrayType: IfcOpenshellNumericArrayConstructor<T>): T;
     edgesItemIdsBufferSize(): number;
     faces(): number[];
-    facesBuffer(): number[];
+    facesBuffer(): Int32Array;
+    facesBuffer<T extends IfcOpenshellNumericTypedArray>(arrayType: IfcOpenshellNumericArrayConstructor<T>): T;
     facesBufferSize(): number;
     itemIds(): number[];
-    itemIdsBuffer(): number[];
+    itemIdsBuffer(): Int32Array;
+    itemIdsBuffer<T extends IfcOpenshellNumericTypedArray>(arrayType: IfcOpenshellNumericArrayConstructor<T>): T;
     itemIdsBufferSize(): number;
     materialAt(index: number): IfcOpenshellGeomTaxonomyStyle;
     materialCount(): number;
     materialIds(): number[];
-    materialIdsBuffer(): number[];
+    materialIdsBuffer(): Int32Array;
+    materialIdsBuffer<T extends IfcOpenshellNumericTypedArray>(arrayType: IfcOpenshellNumericArrayConstructor<T>): T;
     materialIdsBufferSize(): number;
     materials(): IfcOpenshellGeomTaxonomyStyle[];
     normals(): number[];
-    normalsBuffer(): number[];
+    normalsBuffer(): Float64Array;
+    normalsBuffer<T extends IfcOpenshellNumericTypedArray>(arrayType: IfcOpenshellNumericArrayConstructor<T>): T;
     normalsBufferSize(): number;
     polyhedralFacesWithHoles(): number[][][];
     polyhedralFacesWithoutHoles(): number[][];
     uvs(): number[];
-    uvsBuffer(): number[];
+    uvsBuffer(): Float64Array;
+    uvsBuffer<T extends IfcOpenshellNumericTypedArray>(arrayType: IfcOpenshellNumericArrayConstructor<T>): T;
     uvsBufferSize(): number;
     verts(): number[];
-    vertsBuffer(): number[];
+    vertsBuffer(): Float64Array;
+    vertsBuffer<T extends IfcOpenshellNumericTypedArray>(arrayType: IfcOpenshellNumericArrayConstructor<T>): T;
     vertsBufferSize(): number;
   }
 

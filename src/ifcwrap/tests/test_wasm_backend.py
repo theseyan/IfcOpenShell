@@ -92,11 +92,15 @@ def _make_function(
             "bool": "bool*",
             "double": "double*",
             "int32": "int32_t*",
+            "uint32": "uint32_t*",
+            "size": "size_t*",
             "int64": "int64_t*",
             "string": "ifcopenshell_string_t*",
             "handle": f"ifcopenshell_demo_{returns.handle}_t**",
             "struct": "void*",
             "variant": "void*",
+            "double_buffer": "const double**",
+            "int32_buffer": "const int32_t**",
         }[returns.kind]
         full_params.append(
             CParamIR(
@@ -195,6 +199,32 @@ class TestWasmTypescript:
         code = render_typescript_declarations(metadata)
         assert "openFile(path: string): IfcOpenshellDemoFile;" in code
         assert "setFlag(flag: boolean): void;" in code
+
+    def test_generates_typed_array_buffer_overloads(self):
+        metadata = _make_metadata(
+            handles={"mesh": _make_handle("ifcopenshell_demo_mesh_t")},
+            functions={
+                "ifcopenshell_demo_mesh_verts_buffer": _make_function(
+                    c_name="ifcopenshell_demo_mesh_verts_buffer",
+                    receiver="mesh",
+                    returns=TypeSpec(kind="double_buffer"),
+                ),
+                "ifcopenshell_demo_mesh_verts_buffer_size": _make_function(
+                    c_name="ifcopenshell_demo_mesh_verts_buffer_size",
+                    receiver="mesh",
+                    returns=TypeSpec(kind="size"),
+                ),
+            },
+        )
+
+        code = render_typescript_declarations(metadata)
+
+        assert "export type IfcOpenshellNumericTypedArray" in code
+        assert "vertsBuffer(): Float64Array;" in code
+        assert (
+            "vertsBuffer<T extends IfcOpenshellNumericTypedArray>(arrayType: "
+            "IfcOpenshellNumericArrayConstructor<T>): T;"
+        ) in code
 
     def test_generates_nested_module_interfaces(self):
         metadata = BindingABI(
@@ -669,6 +699,72 @@ class TestWasmJsGlue:
         assert (
             "invoke_ifcopenshell_demo_file_set_name(this.#module, this, name)" in code
         )
+
+    def test_snapshots_borrowed_buffers_directly_into_typed_arrays(self):
+        metadata = _make_metadata(
+            handles={"mesh": _make_handle("ifcopenshell_demo_mesh_t")},
+            functions={
+                "ifcopenshell_demo_mesh_verts_buffer": _make_function(
+                    c_name="ifcopenshell_demo_mesh_verts_buffer",
+                    receiver="mesh",
+                    returns=TypeSpec(kind="double_buffer"),
+                ),
+                "ifcopenshell_demo_mesh_verts_buffer_size": _make_function(
+                    c_name="ifcopenshell_demo_mesh_verts_buffer_size",
+                    receiver="mesh",
+                    returns=TypeSpec(kind="size"),
+                ),
+            },
+        )
+
+        code = render_js_glue(metadata)
+
+        assert "vertsBuffer(arrayType)" in code
+        assert "let outSizePtr = 0;" in code
+        assert (
+            "module._ifcopenshell_demo_mesh_verts_buffer_size(self.ptr, outSizePtr)"
+            in code
+        )
+        assert "_copyNumericBuffer(module, module.getValue(outResultPtr, '*')" in code
+        assert "_NUMERIC_ARRAY_TYPES.has(TargetArray)" in code
+        assert "const result = new TargetArray(source);" in code
+        assert "WASM memory grew during numeric buffer snapshot" in code
+
+    def test_snapshots_owner_backed_numeric_sequences_without_number_arrays(self):
+        metadata = _make_metadata(
+            handles={"mesh": _make_handle("ifcopenshell_demo_mesh_t")},
+            value_types={
+                "double_list": CTypeIR(
+                    c_type="ifcopenshell_double_list_t",
+                    kind="sequence",
+                    fields=(
+                        CFieldIR("items", "double*"),
+                        CFieldIR("size", "size_t"),
+                        CFieldIR("owner", "void*"),
+                    ),
+                    destroy_function="ifcopenshell_double_list_destroy",
+                    element_type="double",
+                    sequence_depth=1,
+                )
+            },
+            functions={
+                "ifcopenshell_demo_mesh_colors_buffer": _make_function(
+                    c_name="ifcopenshell_demo_mesh_colors_buffer",
+                    receiver="mesh",
+                    returns=TypeSpec(kind="double", sequence_depth=1),
+                ),
+            },
+        )
+
+        code = render_js_glue(metadata)
+
+        assert "colorsBuffer(arrayType)" in code
+        assert (
+            '_readValueType(module, outResultPtr, _VALUE_TYPES["ifcopenshell_double_list_t"], true, arrayType)'
+            in code
+        )
+        assert "if (typedSnapshot) return _copyNumericBuffer" in code
+        assert "module._ifcopenshell_double_list_destroy(outResultPtr);" in code
 
     def test_reads_int64_from_heap32_and_marshals_scalar_sequences(self):
         metadata = _make_metadata(

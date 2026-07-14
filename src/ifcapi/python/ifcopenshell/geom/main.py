@@ -10,7 +10,6 @@ the legacy ``ifcopenshell_wrapper`` extension.
 from __future__ import annotations
 
 import os
-import ctypes
 from collections.abc import Iterable
 from typing import Any, Literal, Optional, Union
 
@@ -315,31 +314,15 @@ def _take_handle_list(lst, wrap_cls):
     return [wrap_cls(handle) if handle else wrap_cls(None) for handle in lst]
 
 
-def _to_numpy(data, dtype):
-    """Convert a list to numpy array if numpy is available."""
-    if not data:
-        if np is not None:
+def _numeric_buffer(data, dtype):
+    """Expose a native numeric buffer without another Python-side copy."""
+    if np is not None:
+        if data is None:
             return np.empty(0, dtype=dtype)
+        return np.frombuffer(data, dtype=dtype)
+    if not data:
         return []
-    if np is not None:
-        return np.asarray(data, dtype=dtype)
     return list(data)
-
-
-def _capsule_double_array(data, size: int):
-    get_pointer = ctypes.pythonapi.PyCapsule_GetPointer
-    get_pointer.restype = ctypes.c_void_p
-    get_pointer.argtypes = [ctypes.py_object, ctypes.c_char_p]
-    ptr = get_pointer(data, None)
-    if not ptr:
-        if np is not None:
-            return np.empty(0, dtype=np.float64)
-        return []
-    array_type = ctypes.c_double * size
-    values = array_type.from_address(ptr)
-    if np is not None:
-        return np.ctypeslib.as_array(values)
-    return list(values)
 
 
 class Transformation(_OwnedHandle):
@@ -484,7 +467,10 @@ class Triangulation(_OwnedHandle):
 
     @property
     def verts_buffer(self):
-        return _to_numpy(_capi.triangulation_verts(self._h), np.float64 if np is not None else None)
+        return _numeric_buffer(
+            _capi.triangulation_verts_buffer(self._h),
+            np.float64 if np is not None else None,
+        )
 
     @property
     def verts(self):
@@ -492,7 +478,10 @@ class Triangulation(_OwnedHandle):
 
     @property
     def faces_buffer(self):
-        return _to_numpy(_capi.triangulation_faces(self._h), np.int32 if np is not None else None)
+        return _numeric_buffer(
+            _capi.triangulation_faces_buffer(self._h),
+            np.int32 if np is not None else None,
+        )
 
     @property
     def faces(self):
@@ -503,7 +492,10 @@ class Triangulation(_OwnedHandle):
 
     @property
     def normals_buffer(self):
-        return _to_numpy(_capi.triangulation_normals(self._h), np.float64 if np is not None else None)
+        return _numeric_buffer(
+            _capi.triangulation_normals_buffer(self._h),
+            np.float64 if np is not None else None,
+        )
 
     @property
     def normals(self):
@@ -511,7 +503,10 @@ class Triangulation(_OwnedHandle):
 
     @property
     def edges_buffer(self):
-        return _to_numpy(_capi.triangulation_edges(self._h), np.int32 if np is not None else None)
+        return _numeric_buffer(
+            _capi.triangulation_edges_buffer(self._h),
+            np.int32 if np is not None else None,
+        )
 
     @property
     def edges(self):
@@ -519,7 +514,10 @@ class Triangulation(_OwnedHandle):
 
     @property
     def material_ids_buffer(self):
-        return _to_numpy(_capi.triangulation_material_ids(self._h), np.int32 if np is not None else None)
+        return _numeric_buffer(
+            _capi.triangulation_material_ids_buffer(self._h),
+            np.int32 if np is not None else None,
+        )
 
     @property
     def material_ids(self):
@@ -527,15 +525,24 @@ class Triangulation(_OwnedHandle):
 
     @property
     def item_ids_buffer(self):
-        return _to_numpy(_capi.triangulation_item_ids(self._h), np.int32 if np is not None else None)
+        return _numeric_buffer(
+            _capi.triangulation_item_ids_buffer(self._h),
+            np.int32 if np is not None else None,
+        )
 
     @property
     def uvs_buffer(self):
-        return _to_numpy(_capi.triangulation_uvs(self._h), np.float64 if np is not None else None)
+        return _numeric_buffer(
+            _capi.triangulation_uvs_buffer(self._h),
+            np.float64 if np is not None else None,
+        )
 
     @property
     def edges_item_ids_buffer(self):
-        return _to_numpy(_capi.triangulation_edges_item_ids(self._h), np.int32 if np is not None else None)
+        return _numeric_buffer(
+            _capi.triangulation_edges_item_ids_buffer(self._h),
+            np.int32 if np is not None else None,
+        )
 
     @property
     def edges_item_ids(self):
@@ -551,12 +558,10 @@ class Triangulation(_OwnedHandle):
 
     @property
     def colors(self):
-        data = _capi.triangulation_colors_buffer(self._h)
-        if not data:
-            return [] if np is None else np.empty(0, dtype=np.float64)
-        if np is not None:
-            return np.asarray(data, dtype=np.float64)
-        return data
+        return _numeric_buffer(
+            _capi.triangulation_colors_buffer(self._h),
+            np.float64 if np is not None else None,
+        )
 
     # ---- materials ---------------------------------------------------
 
@@ -703,17 +708,13 @@ class Element(_OwnedHandle):
     @property
     def transformation_buffer(self):
         """Direct access to the row-major transformation matrix as numpy array."""
-        data = _capi.element_transformation_buffer(self._h)
-        if not data:
-            if np is not None:
-                return np.empty(0, dtype=np.float64)
-            return []
-        if type(data).__name__ == "PyCapsule":
-            return _capsule_double_array(data, 16)
-        if np is not None:
-            arr = np.asarray(data, dtype=np.float64)
-            return arr.reshape(4, 4) if arr.size == 16 else arr
-        return data
+        result = _numeric_buffer(
+            _capi.element_transformation_buffer(self._h),
+            np.float64 if np is not None else None,
+        )
+        if np is not None and result.size == 16:
+            return result.reshape(4, 4)
+        return result
 
     @property
     def product(self):

@@ -15,6 +15,7 @@ from .._shared import (
     _public_params,
     _snake_name,
     _type_name,
+    _typed_buffer_element,
 )
 
 
@@ -114,6 +115,15 @@ def _sequence_ts_type(struct: CTypeIR, metadata: BindingABI) -> str:
     if nested is not None and nested.kind in {"sequence", "handle_sequence"}:
         return f"{_sequence_ts_type(nested, metadata)}[]"
     return "IfcOpenshellRawValue[]"
+
+
+def _native_typed_array(element_type: str) -> str:
+    return {
+        "double": "Float64Array",
+        "int32_t": "Int32Array",
+        "uint32_t": "Uint32Array",
+        "uint8_t": "Uint8Array",
+    }[element_type]
 
 
 def _ts_type(type_spec: TypeSpec, metadata: BindingABI) -> str:
@@ -226,7 +236,16 @@ def _render_function_signature(
         )
         for param in _public_params(function)
     )
-    signature = f"    {name}({params}): {_ts_type(function.returns, metadata)};"
+    buffer_element = _typed_buffer_element(function, metadata)
+    if buffer_element is not None:
+        generic_params = f"{params}, " if params else ""
+        signature = (
+            f"    {name}({params}): {_native_typed_array(buffer_element)};\n"
+            f"    {name}<T extends IfcOpenshellNumericTypedArray>({generic_params}arrayType: "
+            "IfcOpenshellNumericArrayConstructor<T>): T;"
+        )
+    else:
+        signature = f"    {name}({params}): {_ts_type(function.returns, metadata)};"
     if not function.doc:
         return signature
     return _render_doc_comment(function.doc, "    ") + "\n" + signature
@@ -324,6 +343,11 @@ def render_typescript_declarations(
         "",
         "declare module 'ifcopenshell-api' {",
         "  export type IfcOpenshellRawValue = null | boolean | number | bigint | string | object | IfcOpenshellRawValue[];",
+        "  export type IfcOpenshellNumericTypedArray = Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array;",
+        "  export interface IfcOpenshellNumericArrayConstructor<T extends IfcOpenshellNumericTypedArray> {",
+        "    readonly BYTES_PER_ELEMENT: number;",
+        "    new (arrayLike: ArrayLike<number>): T;",
+        "  }",
         "",
     ]
     if struct_interfaces:
