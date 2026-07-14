@@ -258,6 +258,9 @@ class TestDependencyBuildConfiguration(unittest.TestCase):
         )
         self.assertIn("-DBUILD_LIBRARY_TYPE=Static", cmake_command)
         self.assertIn("-DBUILD_MODULE_DETools=OFF", cmake_command)
+        self.assertIn("-DCMAKE_BUILD_TYPE=Release", cmake_command)
+        self.assertIn("-DCMAKE_C_FLAGS_RELEASE=-Oz -DNDEBUG", cmake_command)
+        self.assertIn("-DCMAKE_CXX_FLAGS_RELEASE=-Oz -DNDEBUG", cmake_command)
 
     def test_set_build_root(self):
         """set_build_root updates BUILD_ROOT for intermediate build dirs."""

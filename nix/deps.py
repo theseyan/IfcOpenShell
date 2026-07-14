@@ -161,14 +161,12 @@ def build_json(src: Path, prefix: Path, env) -> None:
 
 
 def build_occt(
-    src: Path, prefix: Path, env, *, build_type: str = "RelWithDebInfo"
+    src: Path, prefix: Path, env, *, build_type: str = "Release"
 ) -> None:
     """Build OpenCASCADE for WASM with -fwasm-exceptions.
 
-    Uses RelWithDebInfo so that the installed CMake config files contain
-    IMPORTED_LOCATION for the matching configuration.  The actual size
-    optimisation comes from -Oz in the IfcOpenShell link flags, not from
-    the OCCT build type.
+    OCCT 7.8 exports package metadata for Release, Debug, and RelWithDebInfo,
+    but not MinSizeRel. Use Release metadata with explicit size flags.
     """
     if (prefix / "lib" / "cmake" / "opencascade").exists():
         core.logger.info("OCCT already built at %s", prefix)
@@ -192,6 +190,8 @@ def build_occt(
             "-DBUILD_MODULE_DETools=OFF",
             "-DBUILD_RELEASE_DISABLE_EXCEPTIONS=Off",
             "-DCMAKE_CXX_FLAGS=-fwasm-exceptions -sSUPPORT_LONGJMP=wasm",
+            "-DCMAKE_C_FLAGS_RELEASE=-Oz -DNDEBUG",
+            "-DCMAKE_CXX_FLAGS_RELEASE=-Oz -DNDEBUG",
             "-DUSE_XLIB=OFF",
             "-DUSE_FREETYPE=OFF",
             "-DUSE_OPENGL=OFF",
