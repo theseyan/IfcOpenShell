@@ -102,7 +102,6 @@ def test_unified_orchestrator_emits_complete_artifact_set(
         "c-internal-header",
         "python-source",
         "python-utility",
-        "wasm-javascript",
         "wasm-module",
         "wasm-exports",
         "wasm-declarations",

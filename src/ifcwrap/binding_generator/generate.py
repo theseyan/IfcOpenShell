@@ -150,7 +150,6 @@ def generate_all(config: GenerationConfig) -> tuple[Artifact, ...]:
             "python-source", python_dir / "ifcopenshell_capi_py.cpp", python_extension
         ),
         Artifact("python-utility", config.python_utils_out, python_utils),
-        Artifact("wasm-javascript", wasm_dir / "ifcopenshell_api.js", javascript),
         Artifact("wasm-module", wasm_dir / "ifcopenshell_api.mjs", javascript),
         Artifact("wasm-exports", wasm_dir / "ifcopenshell_exports.txt", exports),
         Artifact("wasm-declarations", wasm_dir / "ifcopenshell_api.d.ts", declarations),

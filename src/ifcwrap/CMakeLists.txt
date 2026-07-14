@@ -42,7 +42,6 @@ if(BUILD_IFCAPI)
     set(UNIFIED_CAPI_PYTHON_UTILS "${CMAKE_CURRENT_SOURCE_DIR}/../ifcapi/python/ifcopenshell/_capi_utils.py")
 
     set(IFCOPENSHELL_WASM_OUTPUT_DIR "${CMAKE_CURRENT_BINARY_DIR}/wasm")
-    set(IFCOPENSHELL_WASM_API_JS "${IFCOPENSHELL_WASM_OUTPUT_DIR}/ifcopenshell_api.js")
     set(IFCOPENSHELL_WASM_API_MJS "${IFCOPENSHELL_WASM_OUTPUT_DIR}/ifcopenshell_api.mjs")
     set(IFCOPENSHELL_WASM_EXPORTS "${IFCOPENSHELL_WASM_OUTPUT_DIR}/ifcopenshell_exports.txt")
     set(IFCOPENSHELL_WASM_D_TS "${IFCOPENSHELL_WASM_OUTPUT_DIR}/ifcopenshell_api.d.ts")
@@ -203,7 +202,6 @@ if(BUILD_IFCAPI)
                 "${UNIFIED_CAPI_INTERNAL_HEADER}"
                 "${UNIFIED_CAPI_PYTHON_EXTENSION}"
                 "${UNIFIED_CAPI_PYTHON_UTILS}"
-                "${IFCOPENSHELL_WASM_API_JS}"
                 "${IFCOPENSHELL_WASM_API_MJS}"
                 "${IFCOPENSHELL_WASM_EXPORTS}"
                 "${IFCOPENSHELL_WASM_D_TS}"
