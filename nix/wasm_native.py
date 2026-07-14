@@ -63,83 +63,95 @@ logger = logging.getLogger("wasm-native")
 PROFILES: Dict[str, Dict[str, Any]] = {
     "minimal": {
         "description": "Passthrough kernel only (current working state)",
-        "enabled_kernels": ["passthrough"],
         "dependencies": ["boost", "eigen", "nlohmann_json"],
         "cmake_flags": {
             "WITH_OPENCASCADE": "OFF",
             "WITH_CGAL": "OFF",
             "WITH_MANIFOLD": "OFF",
+            "GLTF_SUPPORT": "OFF",
         },
-        "test_expectations": {
-            "schema_plugins": ["ifc2x3", "ifc4", "ifc4x3_add2"],
-            "kernel_plugins": ["passthrough"],
-            "mapping_plugins": ["ifc2x3", "ifc4", "ifc4x3_add2"],
-            "geometry_serializer_plugins": ["obj"],
-            "document_serializer_plugins": [],
+        "plugins": {
+            "schema": ["ifc2x3", "ifc4", "ifc4x3_add2"],
+            "kernel": ["passthrough"],
+            "tree": [],
+            "mapping": ["ifc2x3", "ifc4", "ifc4x3_add2"],
+            "document": [
+                "xml.ifc2x3",
+                "xml.ifc4",
+                "xml.ifc4x3_add2",
+            ],
+            "geometry_serializer": ["ttl", "obj"],
         },
     },
     "manifold": {
         "description": "Manifold geometry kernel",
-        "enabled_kernels": ["passthrough", "manifold"],
         "dependencies": ["boost", "eigen", "nlohmann_json", "manifold"],
         "cmake_flags": {
             "WITH_OPENCASCADE": "OFF",
             "WITH_CGAL": "OFF",
             "WITH_MANIFOLD": "ON",
+            "GLTF_SUPPORT": "OFF",
         },
-        "test_expectations": {
-            "schema_plugins": ["ifc2x3", "ifc4", "ifc4x3_add2"],
-            "kernel_plugins": ["passthrough", "manifold"],
-            "mapping_plugins": ["ifc2x3", "ifc4", "ifc4x3_add2"],
-            "geometry_serializer_plugins": ["obj"],
-            "document_serializer_plugins": [],
+        "plugins": {
+            "schema": ["ifc2x3", "ifc4", "ifc4x3_add2"],
+            "kernel": ["passthrough", "manifold"],
+            "tree": [],
+            "mapping": ["ifc2x3", "ifc4", "ifc4x3_add2"],
+            "document": [
+                "xml.ifc2x3",
+                "xml.ifc4",
+                "xml.ifc4x3_add2",
+            ],
+            "geometry_serializer": ["ttl", "obj"],
         },
     },
     "cgal": {
         "description": "CGAL geometry kernel with GMP/MPFR",
-        "enabled_kernels": ["passthrough", "cgal", "cgalsimple"],
         "dependencies": ["boost", "eigen", "nlohmann_json", "gmp", "mpfr", "cgal"],
         "cmake_flags": {
             "WITH_OPENCASCADE": "OFF",
             "WITH_CGAL": "ON",
             "WITH_MANIFOLD": "OFF",
             "CGAL_WITH_GMPXX": "Off",
+            "GLTF_SUPPORT": "OFF",
         },
-        "test_expectations": {
-            "schema_plugins": ["ifc2x3", "ifc4", "ifc4x3_add2"],
-            "kernel_plugins": ["passthrough", "cgal", "cgalsimple"],
-            "mapping_plugins": ["ifc2x3", "ifc4", "ifc4x3_add2"],
-            "geometry_serializer_plugins": ["obj"],
-            "document_serializer_plugins": [],
+        "plugins": {
+            "schema": ["ifc2x3", "ifc4", "ifc4x3_add2"],
+            "kernel": ["passthrough", "cgal", "cgalsimple"],
+            "tree": [],
+            "mapping": ["ifc2x3", "ifc4", "ifc4x3_add2"],
+            "document": [
+                "xml.ifc2x3",
+                "xml.ifc4",
+                "xml.ifc4x3_add2",
+            ],
+            "geometry_serializer": ["ttl", "obj"],
         },
     },
     "occt": {
         "description": "OpenCASCADE geometry kernel",
-        "enabled_kernels": ["passthrough", "opencascade"],
         "dependencies": ["boost", "eigen", "nlohmann_json", "occt"],
         "cmake_flags": {
             "WITH_OPENCASCADE": "ON",
             "WITH_CGAL": "OFF",
             "WITH_MANIFOLD": "OFF",
+            "GLTF_SUPPORT": "OFF",
         },
-        "test_expectations": {
-            "schema_plugins": ["ifc2x3", "ifc4", "ifc4x3_add2"],
-            "kernel_plugins": ["passthrough", "opencascade"],
-            "tree_plugins": ["opencascade.brep", "opencascade.trianglebvh"],
-            "mapping_plugins": ["ifc2x3", "ifc4", "ifc4x3_add2"],
-            "geometry_serializer_plugins": ["obj"],
-            "document_serializer_plugins": [],
+        "plugins": {
+            "schema": ["ifc2x3", "ifc4", "ifc4x3_add2"],
+            "kernel": ["passthrough", "opencascade"],
+            "tree": ["opencascade.brep", "opencascade.trianglebvh"],
+            "mapping": ["ifc2x3", "ifc4", "ifc4x3_add2"],
+            "document": [
+                "xml.ifc2x3",
+                "xml.ifc4",
+                "xml.ifc4x3_add2",
+            ],
+            "geometry_serializer": ["ttl", "obj", "stp", "igs", "svg"],
         },
     },
     "full": {
         "description": "All three geometry kernels",
-        "enabled_kernels": [
-            "passthrough",
-            "opencascade",
-            "cgal",
-            "cgalsimple",
-            "manifold",
-        ],
         "dependencies": [
             "boost",
             "eigen",
@@ -155,20 +167,35 @@ PROFILES: Dict[str, Dict[str, Any]] = {
             "WITH_CGAL": "ON",
             "WITH_MANIFOLD": "ON",
             "CGAL_WITH_GMPXX": "Off",
+            "GLTF_SUPPORT": "ON",
         },
-        "test_expectations": {
-            "schema_plugins": ["ifc2x3", "ifc4", "ifc4x3_add2"],
-            "kernel_plugins": [
+        "plugins": {
+            "schema": ["ifc2x3", "ifc4", "ifc4x3_add2"],
+            "kernel": [
                 "passthrough",
                 "opencascade",
                 "cgal",
                 "cgalsimple",
                 "manifold",
             ],
-            "tree_plugins": ["opencascade.brep", "opencascade.trianglebvh"],
-            "mapping_plugins": ["ifc2x3", "ifc4", "ifc4x3_add2"],
-            "geometry_serializer_plugins": ["obj"],
-            "document_serializer_plugins": [],
+            "tree": ["opencascade.brep", "opencascade.trianglebvh"],
+            "mapping": ["ifc2x3", "ifc4", "ifc4x3_add2"],
+            "document": [
+                "xml.ifc2x3",
+                "json.ifc2x3",
+                "xml.ifc4",
+                "json.ifc4",
+                "xml.ifc4x3_add2",
+                "json.ifc4x3_add2",
+            ],
+            "geometry_serializer": [
+                "ttl",
+                "obj",
+                "glb",
+                "stp",
+                "igs",
+                "svg",
+            ],
         },
     },
 }
@@ -180,11 +207,6 @@ def get_profile(name: str) -> Dict[str, Any]:
         available = ", ".join(sorted(PROFILES.keys()))
         raise ValueError(f"Unknown profile '{name}'. Available: {available}")
     return PROFILES[name]
-
-
-def load_profiles() -> Dict[str, Dict[str, Any]]:
-    """Return all profile definitions (inline)."""
-    return PROFILES
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -216,8 +238,8 @@ def ifcopenshell_build_dir(profile: str) -> Path:
     return BUILD_ROOT / "ifcopenshell" / profile
 
 
-def dist_dir() -> Path:
-    return BUILD_ROOT / "dist"
+def dist_dir(profile: str) -> Path:
+    return BUILD_ROOT / "dist" / profile
 
 
 def _resolved_toolchain_dir() -> Path:
@@ -481,12 +503,65 @@ def cmd_build(args: argparse.Namespace) -> int:
     nproc = core.build_jobs()
     logger.info("Building IfcOpenShell WASM (profile=%s, jobs=%d)...", profile, nproc)
     core.run(
-        ["cmake", "--build", str(build_dir), "--parallel", str(nproc)],
+        [
+            "cmake",
+            "--build",
+            str(build_dir),
+            "--target",
+            "ifcopenshell_wasm",
+            "ifcopenshell_wasm_node",
+            "--parallel",
+            str(nproc),
+        ],
         env=env,
     )
 
     logger.info("Build complete.")
     return 0
+
+
+_PLUGIN_KINDS = {
+    "schema",
+    "kernel",
+    "tree",
+    "mapping",
+    "document",
+    "geometry_serializer",
+}
+
+
+def _manifest_plugin_ids(manifest: Dict[str, Any]) -> Dict[str, List[str]]:
+    return {kind: list(entries) for kind, entries in manifest.items()}
+
+
+def _profile_manifest_errors(
+    profile: Dict[str, Any], manifest: Dict[str, Any]
+) -> List[str]:
+    expectations = profile["plugins"]
+    errors = []
+    unexpected_kinds = set(manifest) - _PLUGIN_KINDS
+    for kind in sorted(unexpected_kinds):
+        errors.append(f"Unexpected plugin kind: {kind}")
+
+    for kind in sorted(_PLUGIN_KINDS):
+        expected = set(expectations[kind])
+        actual = set(manifest.get(kind, {}))
+        for plugin_id in sorted(expected - actual):
+            errors.append(f"Missing {kind} plugin: {plugin_id}")
+        for plugin_id in sorted(actual - expected):
+            errors.append(f"Unexpected {kind} plugin: {plugin_id}")
+    return errors
+
+
+def _manifest_plugin_paths(manifest: Dict[str, Any]) -> List[Path]:
+    paths = []
+    for entries in manifest.values():
+        for entry in entries.values():
+            path = Path(entry["wasm"])
+            if path.is_absolute() or ".." in path.parts:
+                raise ValueError(f"Invalid plugin path in manifest: {path}")
+            paths.append(path)
+    return paths
 
 
 def cmd_test(args: argparse.Namespace) -> int:
@@ -505,43 +580,7 @@ def cmd_test(args: argparse.Namespace) -> int:
     with open(plugins_json) as f:
         manifest = json.load(f)
 
-    expectations = profile.get("test_expectations", {})
-    errors = []
-
-    # Verify kernel plugins
-    expected_kernels = expectations.get("kernel_plugins", [])
-    actual_kernels = list(manifest.get("kernel", {}).keys())
-    for k in expected_kernels:
-        if k not in actual_kernels:
-            errors.append(f"Missing kernel plugin: {k}")
-
-    # Verify schema plugins
-    expected_schemas = expectations.get("schema_plugins", [])
-    actual_schemas = list(manifest.get("schema", {}).keys())
-    for s in expected_schemas:
-        if s not in actual_schemas:
-            errors.append(f"Missing schema plugin: {s}")
-
-    # Verify mapping plugins
-    expected_mappings = expectations.get("mapping_plugins", [])
-    actual_mappings = list(manifest.get("mapping", {}).keys())
-    for m in expected_mappings:
-        if m not in actual_mappings:
-            errors.append(f"Missing mapping plugin: {m}")
-
-    # Verify geometry serializer plugins
-    expected_serializers = expectations.get("geometry_serializer_plugins", [])
-    actual_serializers = list(manifest.get("geometry_serializer", {}).keys())
-    for s in expected_serializers:
-        if s not in actual_serializers:
-            errors.append(f"Missing geometry_serializer plugin: {s}")
-
-    # Verify tree plugins
-    expected_trees = expectations.get("tree_plugins", [])
-    actual_trees = list(manifest.get("tree", {}).keys())
-    for t in expected_trees:
-        if t not in actual_trees:
-            errors.append(f"Missing tree plugin: {t}")
+    errors = _profile_manifest_errors(profile, manifest)
 
     if errors:
         logger.error("Test failures:")
@@ -553,6 +592,7 @@ def cmd_test(args: argparse.Namespace) -> int:
     artifacts = [
         "ifcopenshell_wasm.wasm",
         "ifcopenshell_wasm.mjs",
+        "ifcopenshell_wasm.node.mjs",
         "ifcopenshell_api.mjs",
         "ifcopenshell_api.d.ts",
         "ifcopenshell_plugins.json",
@@ -565,8 +605,16 @@ def cmd_test(args: argparse.Namespace) -> int:
     # Verify plugin .wasm files exist
     plugins_dir = wasm_dir / "plugins"
     if plugins_dir.exists():
-        plugin_files = list(plugins_dir.glob("*.wasm"))
-        logger.info("Found %d plugin .wasm files", len(plugin_files))
+        expected_files = {
+            (wasm_dir / path).resolve() for path in _manifest_plugin_paths(manifest)
+        }
+        actual_files = {path.resolve() for path in plugins_dir.glob("*.wasm")}
+        if actual_files != expected_files:
+            for path in sorted(expected_files - actual_files):
+                errors.append(f"Missing plugin artifact: {path.name}")
+            for path in sorted(actual_files - expected_files):
+                errors.append(f"Unexpected plugin artifact: {path.name}")
+        logger.info("Found %d plugin .wasm files", len(actual_files))
     else:
         errors.append("plugins/ directory missing")
 
@@ -585,19 +633,29 @@ def cmd_package(args: argparse.Namespace) -> int:
     profile = args.profile
     build_dir = ifcopenshell_build_dir(profile)
     wasm_dir = build_dir / "ifcwrap" / "wasm"
-    out = dist_dir()
+    out = dist_dir(profile)
     artifacts = [
         "ifcopenshell_wasm.wasm",
         "ifcopenshell_wasm.mjs",
+        "ifcopenshell_wasm.node.mjs",
         "ifcopenshell_api.mjs",
         "ifcopenshell_api.d.ts",
         "ifcopenshell_plugins.json",
     ]
 
     missing = [name for name in artifacts if not (wasm_dir / name).is_file()]
-    plugins_dir = wasm_dir / "plugins"
-    if not plugins_dir.is_dir() or not any(plugins_dir.glob("*.wasm")):
-        missing.append("plugins/*.wasm")
+    manifest = {}
+    plugin_paths = []
+    if not missing:
+        with open(wasm_dir / "ifcopenshell_plugins.json") as f:
+            manifest = json.load(f)
+        manifest_errors = _profile_manifest_errors(get_profile(profile), manifest)
+        if manifest_errors:
+            raise ValueError("Profile manifest mismatch: " + "; ".join(manifest_errors))
+        plugin_paths = _manifest_plugin_paths(manifest)
+        missing.extend(
+            str(path) for path in plugin_paths if not (wasm_dir / path).is_file()
+        )
     if missing:
         raise FileNotFoundError(
             f"Cannot package incomplete WASM build; missing: {', '.join(missing)}"
@@ -612,9 +670,20 @@ def cmd_package(args: argparse.Namespace) -> int:
         shutil.copy2(src, out / name)
         logger.info("Copied: %s", name)
 
-    dest_plugins = out / "plugins"
-    shutil.copytree(plugins_dir, dest_plugins)
-    logger.info("Copied: plugins/")
+    for path in plugin_paths:
+        destination = out / path
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(wasm_dir / path, destination)
+    logger.info("Copied: %d manifest plugin(s)", len(plugin_paths))
+
+    metadata = {
+        "profile": profile,
+        "description": get_profile(profile)["description"],
+        "plugins": _manifest_plugin_ids(manifest),
+    }
+    (out / "ifcopenshell_profile.json").write_text(
+        json.dumps(metadata, indent=2) + "\n", encoding="utf-8"
+    )
 
     logger.info("Package written to %s", out)
     return 0

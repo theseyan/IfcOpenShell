@@ -1,7 +1,7 @@
-
-import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { transform } from 'esbuild';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PACKAGE_ROOT = resolve(__dirname, '..');
@@ -10,6 +10,7 @@ const DEST = join(PACKAGE_ROOT, 'wasm');
 
 const DEFAULT_SOURCES = [
   process.env.IFCOPENSHELL_WASM_DIR,
+  resolve(REPO_ROOT, 'build', 'wasm-native', 'dist', 'full'),
   resolve(REPO_ROOT, 'build', 'wasm-native', 'ifcopenshell', 'full', 'ifcwrap', 'wasm'),
   resolve(REPO_ROOT, 'build-wasm', 'ifcwrap', 'wasm'),
 ].filter(Boolean);
@@ -19,21 +20,9 @@ const REQUIRED = [
   'ifcopenshell_wasm.node.mjs',
   'ifcopenshell_wasm.wasm',
   'ifcopenshell_api.mjs',
+  'ifcopenshell_api.d.ts',
   'ifcopenshell_plugins.json',
 ];
-
-function copyDir(src, dest) {
-  mkdirSync(dest, { recursive: true });
-  for (const entry of readdirSync(src)) {
-    const from = join(src, entry);
-    const to = join(dest, entry);
-    if (statSync(from).isDirectory()) {
-      copyDir(from, to);
-    } else {
-      cpSync(from, to);
-    }
-  }
-}
 
 function resolveSource() {
   for (const candidate of DEFAULT_SOURCES) {
@@ -42,6 +31,43 @@ function resolveSource() {
     }
   }
   return null;
+}
+
+function copyRequiredArtifacts(source) {
+  mkdirSync(DEST, { recursive: true });
+  for (const name of REQUIRED) {
+    cpSync(join(source, name), join(DEST, name));
+  }
+  const profileMetadata = join(source, 'ifcopenshell_profile.json');
+  if (existsSync(profileMetadata)) {
+    cpSync(profileMetadata, join(DEST, 'ifcopenshell_profile.json'));
+  }
+
+  const manifest = JSON.parse(readFileSync(join(source, 'ifcopenshell_plugins.json'), 'utf8'));
+  for (const entries of Object.values(manifest)) {
+    for (const entry of Object.values(entries)) {
+      const relativePath = toPosixPath(entry.wasm);
+      const from = join(source, relativePath);
+      if (!existsSync(from)) {
+        throw new Error(`WASM plugin listed in the manifest is missing: ${from}`);
+      }
+      const to = join(DEST, relativePath);
+      mkdirSync(dirname(to), { recursive: true });
+      cpSync(from, to);
+    }
+  }
+}
+
+async function minifyModule(name) {
+  const path = join(DEST, name);
+  const source = readFileSync(path, 'utf8');
+  const result = await transform(source, {
+    format: 'esm',
+    legalComments: 'inline',
+    minify: true,
+    target: 'es2022',
+  });
+  writeFileSync(path, result.code);
 }
 
 function toPosixPath(path) {
@@ -93,7 +119,11 @@ if (!source) {
 }
 
 rmSync(DEST, { recursive: true, force: true });
-copyDir(source, DEST);
-rmSync(join(DEST, 'ifcopenshell_wasm.node.wasm'), { force: true });
+copyRequiredArtifacts(source);
+await Promise.all([
+  minifyModule('ifcopenshell_api.mjs'),
+  minifyModule('ifcopenshell_wasm.mjs'),
+  minifyModule('ifcopenshell_wasm.node.mjs'),
+]);
 writeAssetManifest();
 console.log(`Staged IfcOpenShell WASM assets from ${source} -> ${DEST}`);

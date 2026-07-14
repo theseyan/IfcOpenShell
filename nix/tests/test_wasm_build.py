@@ -15,6 +15,7 @@ Covers:
 """
 
 import hashlib
+import json
 import os
 import subprocess
 import sys
@@ -154,13 +155,9 @@ class TestProfileResolution(unittest.TestCase):
         """Test getting a valid profile."""
         profile = wasm_native.get_profile("minimal")
         self.assertIsInstance(profile, dict)
-        # `enabled_kernels` is the legacy field name from profiles.json; we keep
-        # it on the inline profiles. `dependencies` and `cmake_flags` are the
-        # fields actually consumed by the build pipeline.
-        self.assertIn("enabled_kernels", profile)
         self.assertIn("dependencies", profile)
         self.assertIn("cmake_flags", profile)
-        self.assertIn("test_expectations", profile)
+        self.assertIn("plugins", profile)
 
     def test_get_profile_invalid(self):
         """Test getting an invalid profile raises error."""
@@ -178,6 +175,23 @@ class TestProfileResolution(unittest.TestCase):
                     lock,
                     f"Profile '{name}' references dependency '{dep}' not in lockfile",
                 )
+
+    def test_profile_manifests_cover_every_plugin_kind(self):
+        for name, profile in wasm_native.PROFILES.items():
+            with self.subTest(profile=name):
+                self.assertEqual(set(profile["plugins"]), wasm_native._PLUGIN_KINDS)
+
+    def test_manifest_contract_rejects_unexpected_plugins(self):
+        profile = wasm_native.get_profile("minimal")
+        manifest = {
+            kind: {plugin_id: {} for plugin_id in profile["plugins"][kind]}
+            for kind in wasm_native._PLUGIN_KINDS
+        }
+        manifest["kernel"]["opencascade"] = {}
+        self.assertEqual(
+            wasm_native._profile_manifest_errors(profile, manifest),
+            ["Unexpected kernel plugin: opencascade"],
+        )
 
 
 class TestCMakeFlagGeneration(unittest.TestCase):
@@ -304,6 +318,50 @@ class TestPackageCommand(unittest.TestCase):
                 with self.assertRaisesRegex(FileNotFoundError, "incomplete WASM build"):
                     wasm_native.cmd_package(SimpleNamespace(profile="minimal"))
             self.assertEqual(marker.read_text(), "existing")
+
+    def test_package_is_profile_scoped_and_copies_only_manifest_plugins(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            build = root / "build"
+            wasm = build / "ifcwrap" / "wasm"
+            plugins = wasm / "plugins"
+            plugins.mkdir(parents=True)
+            profile = wasm_native.get_profile("minimal")
+            manifest = {
+                kind: {
+                    plugin_id: {
+                        "wasm": f"plugins/{kind}.{plugin_id}.wasm"
+                    }
+                    for plugin_id in profile["plugins"][kind]
+                }
+                for kind in wasm_native._PLUGIN_KINDS
+                if profile["plugins"][kind]
+            }
+            for entries in manifest.values():
+                for entry in entries.values():
+                    (wasm / entry["wasm"]).write_bytes(b"wasm")
+            for name in (
+                "ifcopenshell_wasm.wasm",
+                "ifcopenshell_wasm.mjs",
+                "ifcopenshell_wasm.node.mjs",
+                "ifcopenshell_api.mjs",
+                "ifcopenshell_api.d.ts",
+            ):
+                (wasm / name).write_text(name)
+            (wasm / "ifcopenshell_plugins.json").write_text(json.dumps(manifest))
+            (plugins / "stale.wasm").write_bytes(b"stale")
+
+            with (
+                patch("nix.wasm_native.ifcopenshell_build_dir", return_value=build),
+                patch.object(wasm_native, "BUILD_ROOT", root),
+            ):
+                wasm_native.cmd_package(SimpleNamespace(profile="minimal"))
+
+            output = root / "dist" / "minimal"
+            self.assertTrue((output / "ifcopenshell_wasm.node.mjs").is_file())
+            self.assertFalse((output / "plugins" / "stale.wasm").exists())
+            metadata = json.loads((output / "ifcopenshell_profile.json").read_text())
+            self.assertEqual(metadata["profile"], "minimal")
 
 
 class TestRunUtility(unittest.TestCase):
