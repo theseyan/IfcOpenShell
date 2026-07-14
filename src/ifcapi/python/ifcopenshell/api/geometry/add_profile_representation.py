@@ -18,10 +18,10 @@
 
 from typing import Any, Literal, Optional, Union, get_args
 
-import ifcopenshell.util.element
-import ifcopenshell.util.unit
-from ifcopenshell import _ifcopenshell_capi as _capi
+import ifcopenshell
 from ifcopenshell.util.data import Clipping
+
+from . import _capi
 
 VECTOR_3D = tuple[float, float, float]
 CardinalPointNumeric = Literal[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]
@@ -74,103 +74,37 @@ def add_profile_representation(
         The first vector is the Z axis, the second vector is the X axis.
     :return: IfcShapeRepresentation.
     """
-    usecase = Usecase()
-    usecase.file = file
-    clippings = clippings if clippings is not None else []
-    return usecase.execute(context, profile, depth, cardinal_point, clippings, placement_zx_axes)
+    if isinstance(cardinal_point, int):
+        cardinal_point = CARDINAL_POINT_VALUES[cardinal_point - 1]
 
+    clipping_kinds: list[int] = []
+    clipping_locations: list[tuple[float, float, float]] = []
+    clipping_normals: list[tuple[float, float, float]] = []
+    clipping_entities: list[ifcopenshell.entity_instance] = []
+    for clipping in clippings if clippings is not None else []:
+        parsed = Clipping.parse(clipping)
+        if isinstance(parsed, ifcopenshell.entity_instance):
+            clipping_kinds.append(1)
+            clipping_entities.append(parsed)
+        else:
+            clipping_kinds.append(0)
+            clipping_locations.append(parsed.location)
+            clipping_normals.append(parsed.normal)
 
-class Usecase:
-    file: ifcopenshell.file
-    clippings: list[Clipping]
-
-    def execute(
-        self,
-        context: ifcopenshell.entity_instance,
-        profile: ifcopenshell.entity_instance,
-        depth: float,
-        cardinal_point: Union[CardinalPoint, None],
-        clippings: list[Union[Clipping, dict[str, Any]]],
-        placement_zx_axes: tuple[Union[VECTOR_3D, None], Union[VECTOR_3D, None]],
-    ) -> ifcopenshell.entity_instance:
-        if isinstance(cardinal_point, int):
-            cardinal_point = CARDINAL_POINT_VALUES[cardinal_point - 1]
-
-        self.cardinal_point = cardinal_point
-        self.profile = profile
-        self.clippings = [Clipping.parse(c) for c in clippings]
-        self.depth = depth
-        self.placement_zx_axes = placement_zx_axes
-        self.unit_scale = ifcopenshell.util.unit.calculate_unit_scale(self.file)
-        self.profile_extents = self.get_profile_extents()
-        return self.file.create_entity(
-            "IfcShapeRepresentation",
-            context,
-            context.ContextIdentifier,
-            "Clipping" if self.clippings else "SweptSolid",
-            [self.create_item()],
-        )
-
-    def create_item(self) -> ifcopenshell.entity_instance:
-        point = self.get_point()
-        placement = self.file.createIfcAxis2Placement3D(
-            point,
-            self.file.create_entity("IfcDirection", self.placement_zx_axes[0] or (0.0, 0.0, 1.0)),
-            self.file.create_entity("IfcDirection", self.placement_zx_axes[1] or (1.0, 0.0, 0.0)),
-        )
-        extrusion = self.file.create_entity(
-            "IfcExtrudedAreaSolid",
-            self.profile,
-            placement,
-            self.file.createIfcDirection((0.0, 0.0, 1.0)),
-            self.convert_si_to_unit(self.depth),
-        )
-        if self.clippings:
-            return self.apply_clippings(extrusion)
-        return extrusion
-
-    def apply_clippings(self, first_operand: ifcopenshell.entity_instance) -> ifcopenshell.entity_instance:
-        while self.clippings:
-            clipping = self.clippings.pop()
-            if isinstance(clipping, ifcopenshell.entity_instance):
-                new = ifcopenshell.util.element.copy(self.file, clipping)
-                new.FirstOperand = first_operand
-                first_operand = new
-            else:  # Clipping
-                first_operand = clipping.apply(self.file, first_operand, self.unit_scale)
-        return first_operand
-
-    def convert_si_to_unit(self, co: float) -> float:
-        return co / self.unit_scale
-
-    def get_point(self) -> ifcopenshell.entity_instance:
-        if not self.cardinal_point:
-            return self.file.createIfcCartesianPoint((0.0, 0.0, 0.0))
-        x, y = self.profile_extents
-        if self.cardinal_point == "bottom left":
-            return self.file.createIfcCartesianPoint((-x / 2, y / 2, 0.0))
-        elif self.cardinal_point == "bottom centre":
-            return self.file.createIfcCartesianPoint((0.0, y / 2, 0.0))
-        elif self.cardinal_point == "bottom right":
-            return self.file.createIfcCartesianPoint((x / 2, y / 2, 0.0))
-        elif self.cardinal_point == "mid-depth left":
-            return self.file.createIfcCartesianPoint((-x / 2, 0.0, 0.0))
-        elif self.cardinal_point == "mid-depth centre":
-            return self.file.createIfcCartesianPoint((0.0, 0.0, 0.0))
-        elif self.cardinal_point == "mid-depth right":
-            return self.file.createIfcCartesianPoint((x / 2, 0.0, 0.0))
-        elif self.cardinal_point == "top left":
-            return self.file.createIfcCartesianPoint((-x / 2, -y / 2, 0.0))
-        elif self.cardinal_point == "top centre":
-            return self.file.createIfcCartesianPoint((0.0, -y / 2, 0.0))
-        elif self.cardinal_point == "top right":
-            return self.file.createIfcCartesianPoint((x / 2, -y / 2, 0.0))
-        # TODO other cardinal points
-        return self.file.createIfcCartesianPoint((0.0, 0.0, 0.0))
-
-    def get_profile_extents(self) -> tuple[float, float]:
-        extents = _capi.geometry_profile_extents(
-            self.file._handle,
-            self.profile._handle,
-        )
-        return extents[0], extents[1]
+    return _capi.call_handle(
+        file,
+        "geometry_add_profile_representation",
+        _capi.file_handle(file),
+        {
+            "context": _capi.instance_handle(context),
+            "profile": _capi.instance_handle(profile),
+            "depth": depth,
+            "cardinal_point": cardinal_point,
+            "placement_z_axis": placement_zx_axes[0],
+            "placement_x_axis": placement_zx_axes[1],
+            "clipping_kinds": clipping_kinds,
+            "clipping_locations": clipping_locations,
+            "clipping_normals": clipping_normals,
+            "clipping_entities": _capi.instance_list(clipping_entities),
+        },
+    )

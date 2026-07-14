@@ -626,6 +626,22 @@ typedef struct ifcopenshell_geometry_add_mesh_representation_options_t {
     bool has_force_faceted_brep;
 } ifcopenshell_geometry_add_mesh_representation_options_t;
 
+typedef struct ifcopenshell_geometry_add_profile_representation_options_t {
+    ifcopenshell_instance_t* context;
+    ifcopenshell_instance_t* profile;
+    double depth;
+    const char* cardinal_point;
+    bool has_cardinal_point;
+    const ifcopenshell_double_list_t* placement_z_axis;
+    bool has_placement_z_axis;
+    const ifcopenshell_double_list_t* placement_x_axis;
+    bool has_placement_x_axis;
+    const ifcopenshell_int32_list_t* clipping_kinds;
+    const ifcopenshell_double_list_list_t* clipping_locations;
+    const ifcopenshell_double_list_list_t* clipping_normals;
+    ifcopenshell_parse_instance_list_t* clipping_entities;
+} ifcopenshell_geometry_add_profile_representation_options_t;
+
 typedef struct ifcopenshell_geometry_add_railing_representation_options_t {
     ifcopenshell_instance_t* context;
     const ifcopenshell_double_list_list_t* railing_path;
@@ -2919,6 +2935,21 @@ bool ifcopenshell_geometry_add_footprint_representation(ifcopenshell_file_t* fil
  * @return IfcShapeRepresentation entity, or no result if creation fails.
  */
 bool ifcopenshell_geometry_add_mesh_representation(ifcopenshell_file_t* file, ifcopenshell_instance_t* context, const ifcopenshell_geometry_add_mesh_representation_options_t* options, ifcopenshell_instance_t** out_result);
+/**
+ * Create a profile-based IfcExtrudedAreaSolid representation.
+ *
+ * Depth and plane locations are supplied in SI metres and converted to project
+ * length units. Clipping kinds preserve input order but are applied from last
+ * to first; entity clippings are copied before their FirstOperand is changed.
+ * The placement defaults to Z=(0,0,1), X=(1,0,0), and the origin when no
+ * cardinal point is supplied. The result is SweptSolid without clippings and
+ * Clipping otherwise.
+ *
+ * @param file IFC file that receives the representation.
+ * @param options Context, profile, extrusion, placement, cardinal point, and clippings.
+ * @return IfcShapeRepresentation entity, or no result if creation fails.
+ */
+bool ifcopenshell_geometry_add_profile_representation(ifcopenshell_file_t* file, const ifcopenshell_geometry_add_profile_representation_options_t* options, ifcopenshell_instance_t** out_result);
 /**
  * Create a railing representation along a path.
  *

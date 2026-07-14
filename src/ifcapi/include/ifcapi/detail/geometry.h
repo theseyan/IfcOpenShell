@@ -6,10 +6,13 @@
 
 #include "ifcapi/bindings/unit.h"
 #include "ifcapi/detail/attribute.h"
+#include "ifcapi/detail/copy.h"
 #include "ifcapi/detail/vector.h"
 
 #include "ifcparse/file.h"
 
+#include <cmath>
+#include <cstdint>
 #include <vector>
 #include <stdexcept>
 
@@ -150,6 +153,126 @@ inline express::Base create_polyline_or_indexed_polycurve(
         }
     }
     return polycurve;
+}
+
+inline bool clipping_allclose3(
+    const std::vector<double>& value,
+    const std::vector<double>& expected,
+    double atol = 1e-2)
+{
+    if (value.size() != 3 || expected.size() != 3) return false;
+    for (size_t i = 0; i < 3; ++i) {
+        if (std::fabs(value[i] - expected[i]) > atol) return false;
+    }
+    return true;
+}
+
+inline std::vector<double> clipping_cross3(
+    const std::vector<double>& a,
+    const std::vector<double>& b)
+{
+    return {
+        a.at(1) * b.at(2) - a.at(2) * b.at(1),
+        a.at(2) * b.at(0) - a.at(0) * b.at(2),
+        a.at(0) * b.at(1) - a.at(1) * b.at(0),
+    };
+}
+
+inline void clipping_normalize(std::vector<double>& value) {
+    const double length = std::sqrt(value.at(0) * value.at(0) + value.at(1) * value.at(1) + value.at(2) * value.at(2));
+    for (double& component : value) {
+        component /= length;
+    }
+}
+
+inline std::vector<double> clipping_x_axis(const std::vector<double>& normal) {
+    const std::vector<double> arbitrary =
+        (clipping_allclose3(normal, {0.0, 0.0, 1.0}) || clipping_allclose3(normal, {0.0, 0.0, -1.0}))
+            ? std::vector<double>{0.0, 1.0, 0.0}
+            : std::vector<double>{0.0, 0.0, 1.0};
+    auto result = clipping_cross3(normal, arbitrary);
+    clipping_normalize(result);
+    return result;
+}
+
+inline express::Base create_clipping_plane(
+    ifcopenshell::file* file,
+    const std::vector<double>& location,
+    const std::vector<double>& normal,
+    double unit_scale)
+{
+    auto scaled_location = location;
+    for (auto& coordinate : scaled_location) coordinate /= unit_scale;
+    auto plane = file->create(file->schema()->declaration_by_name("IfcPlane"));
+    write_ref_attr(
+        plane,
+        "Position",
+        create_axis2_placement_3d(file, scaled_location, normal, clipping_x_axis(normal)));
+    return plane;
+}
+
+inline express::Base create_clipping_result(
+    ifcopenshell::file* file,
+    express::Base first_operand,
+    const std::vector<double>& location,
+    const std::vector<double>& normal,
+    double unit_scale)
+{
+    auto half_space = file->create(file->schema()->declaration_by_name("IfcHalfSpaceSolid"));
+    write_ref_attr(half_space, "BaseSurface", create_clipping_plane(file, location, normal, unit_scale));
+    entity_view(half_space).set("AgreementFlag", false);
+
+    auto result = file->create(file->schema()->declaration_by_name("IfcBooleanClippingResult"));
+    write_string_attr(result, "Operator", "DIFFERENCE");
+    write_ref_attr(result, "FirstOperand", first_operand);
+    write_ref_attr(result, "SecondOperand", half_space);
+    return result;
+}
+
+inline express::Base copy_boolean_clipping(
+    ifcopenshell::file* file,
+    express::Base clipping,
+    express::Base first_operand)
+{
+    auto copy = copy_single(file, clipping);
+    if (!copy) throw std::runtime_error("Unable to copy clipping entity");
+    write_ref_attr(copy, "FirstOperand", first_operand);
+    return copy;
+}
+
+/** Apply flattened clippings in reverse input order, copying entity clippings. */
+inline express::Base apply_ordered_clippings(
+    ifcopenshell::file* file,
+    express::Base first_operand,
+    const std::vector<int32_t>& clipping_kinds,
+    const std::vector<std::vector<double>>& clipping_locations,
+    const std::vector<std::vector<double>>& clipping_normals,
+    const std::vector<express::Base>& clipping_entities,
+    double unit_scale)
+{
+    size_t plane_cursor = clipping_locations.size();
+    size_t entity_cursor = clipping_entities.size();
+    if (clipping_locations.size() != clipping_normals.size()) {
+        throw std::runtime_error("Clipping location/normal count mismatch");
+    }
+    for (auto it = clipping_kinds.rbegin(); it != clipping_kinds.rend(); ++it) {
+        if (*it == 0) {
+            if (plane_cursor == 0) throw std::runtime_error("Missing clipping plane data");
+            --plane_cursor;
+            first_operand = create_clipping_result(
+                file, first_operand, clipping_locations[plane_cursor], clipping_normals[plane_cursor], unit_scale);
+        } else if (*it == 1) {
+            if (entity_cursor == 0) throw std::runtime_error("Missing clipping entity data");
+            --entity_cursor;
+            first_operand = copy_boolean_clipping(file, clipping_entities[entity_cursor], first_operand);
+        } else {
+            throw std::runtime_error("Unknown clipping kind");
+        }
+    }
+    if (plane_cursor != 0 || entity_cursor != 0) {
+        throw std::runtime_error("Unused clipping data");
+    }
+    return first_operand;
 }
 
 } // namespace detail

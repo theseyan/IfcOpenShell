@@ -115,6 +115,32 @@ struct GeometryAddWallRepresentationOptions {
 };
 
 /**
+ * Options for creating a profile-based swept solid representation.
+ */
+struct GeometryAddProfileRepresentationOptions {
+    /// IfcGeometricRepresentationContext for the representation.
+    express::Base context;
+    /// IfcProfileDef to extrude.
+    express::Base profile;
+    /// Extrusion depth in SI metres.
+    double depth = 1.0;
+    /// Canonical cardinal-point name; when omitted, the profile origin is used.
+    std::optional<std::string> cardinal_point;
+    /// Optional placement Z axis; defaults to (0, 0, 1) when omitted.
+    std::optional<std::vector<double>> placement_z_axis;
+    /// Optional placement X axis; defaults to (1, 0, 0) when omitted.
+    std::optional<std::vector<double>> placement_x_axis;
+    /// Clipping kinds in input order: 0 = plane, 1 = pre-existing entity.
+    std::vector<int32_t> clipping_kinds;
+    /// Plane clipping locations in SI metres, in plane-only order.
+    std::vector<std::vector<double>> clipping_locations;
+    /// Plane clipping normals, in the same order as clipping_locations.
+    std::vector<std::vector<double>> clipping_normals;
+    /// Pre-existing clipping entities, in entity-only input order; each is copied before use.
+    std::vector<express::Base> clipping_entities;
+};
+
+/**
  * Options for creating a wall from two endpoints.
  */
 struct GeometryCreate2PtWallOptions {
@@ -478,6 +504,24 @@ IFCAPI_BINDING express::Base geometry_add_topology_representation(
 IFCAPI_BINDING express::Base geometry_add_wall_representation(
     ifcopenshell::file* file,
     const GeometryAddWallRepresentationOptions& options);
+
+/**
+ * Create a profile-based IfcExtrudedAreaSolid representation.
+ *
+ * Depth and plane locations are supplied in SI metres and converted to project
+ * length units. Clipping kinds preserve input order but are applied from last
+ * to first; entity clippings are copied before their FirstOperand is changed.
+ * The placement defaults to Z=(0,0,1), X=(1,0,0), and the origin when no
+ * cardinal point is supplied. The result is SweptSolid without clippings and
+ * Clipping otherwise.
+ *
+ * @param file IFC file that receives the representation.
+ * @param options Context, profile, extrusion, placement, cardinal point, and clippings.
+ * @return IfcShapeRepresentation entity, or no result if creation fails.
+ */
+IFCAPI_BINDING express::Base geometry_add_profile_representation(
+    ifcopenshell::file* file,
+    const GeometryAddProfileRepresentationOptions& options);
 
 /**
  * Create a slab-style swept solid representation (IfcExtrudedAreaSolid).

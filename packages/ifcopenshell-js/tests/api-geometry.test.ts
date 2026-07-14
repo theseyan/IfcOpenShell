@@ -155,6 +155,30 @@ describeGeneratedOrSkip('generated geometry and presentation API', () => {
   });
 
   describe('geometry', () => {
+    it('adds profile representation through the generated API', async () => {
+      await using file = await IfcFile.createEmpty(shell, 'IFC4');
+      const context = await withBodyContext(file);
+      const profile = await shell.api.profile.addParameterizedProfile(
+        file, 'IfcRectangleProfileDef', 'AREA',
+      );
+      shell.api.profile.editProfile(profile, { XDim: 2.0, YDim: 1.0 });
+
+      const rep = await shell.api.geometry.addProfileRepresentation(file, {
+        context,
+        profile,
+        depth: 1.0,
+        cardinalPoint: 'bottom left',
+        clippingKinds: [],
+        clippingLocations: [],
+        clippingNormals: [],
+        clippingEntities: [],
+      });
+
+      expect(rep.type).toBe('IfcShapeRepresentation');
+      expect(await rep.get('RepresentationIdentifier')).toBe('Body');
+      expect(await rep.get('RepresentationType')).toBe('SweptSolid');
+    });
+
     it('adds mesh representation and assigns to product', async () => {
       await using file = await IfcFile.createEmpty(shell, 'IFC4');
       const context = await withBodyContext(file);

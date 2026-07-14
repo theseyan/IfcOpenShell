@@ -151,6 +151,7 @@ type RawApi = {
     addDoorRepresentation: (file: RawValue, options: RawValue) => RawValue;
     addFootprintRepresentation: (file: RawValue, context: RawValue, curves: RawValue) => RawValue;
     addMeshRepresentation: (file: RawValue, context: RawValue, options: RawValue) => RawValue;
+    addProfileRepresentation: (file: RawValue, options: RawValue) => RawValue;
     addRailingRepresentation: (file: RawValue, options: RawValue) => RawValue;
     addShapeAspect: (file: RawValue, options: RawValue) => RawValue;
     addSlabRepresentation: (file: RawValue, options: RawValue) => RawValue;
@@ -918,6 +919,29 @@ export interface IfcOpenShellGeometryAddMeshRepresentationOptions {
   faces: number[][][][];
   /** Force faceted BRep output instead of tessellated face sets. Defaults to false. */
   forceFacetedBrep?: boolean;
+}
+
+export interface IfcOpenShellGeometryAddProfileRepresentationOptions {
+  /** IfcGeometricRepresentationContext for the representation. */
+  context: Entity;
+  /** IfcProfileDef to extrude. */
+  profile: Entity;
+  /** Extrusion depth in SI metres. */
+  depth: number;
+  /** Canonical cardinal-point name; when omitted, the profile origin is used. */
+  cardinalPoint?: string;
+  /** Optional placement Z axis; defaults to (0, 0, 1) when omitted. */
+  placementZAxis?: number[];
+  /** Optional placement X axis; defaults to (1, 0, 0) when omitted. */
+  placementXAxis?: number[];
+  /** Clipping kinds in input order: 0 = plane, 1 = pre-existing entity. */
+  clippingKinds: number[];
+  /** Plane clipping locations in SI metres, in plane-only order. */
+  clippingLocations: number[][];
+  /** Plane clipping normals, in the same order as clipping_locations. */
+  clippingNormals: number[][];
+  /** Pre-existing clipping entities, in entity-only input order; each is copied before use. */
+  clippingEntities: Entity[];
 }
 
 export interface IfcOpenShellGeometryAddRailingRepresentationOptions {
@@ -3318,6 +3342,21 @@ export interface GeometryApi {
      * @return IfcShapeRepresentation entity, or no result if creation fails.
      */
     addMeshRepresentation(file: IfcFile, context: Entity, options: IfcOpenShellGeometryAddMeshRepresentationOptions): Entity;
+    /**
+     * Create a profile-based IfcExtrudedAreaSolid representation.
+     *
+     * Depth and plane locations are supplied in SI metres and converted to project
+     * length units. Clipping kinds preserve input order but are applied from last
+     * to first; entity clippings are copied before their FirstOperand is changed.
+     * The placement defaults to Z=(0,0,1), X=(1,0,0), and the origin when no
+     * cardinal point is supplied. The result is SweptSolid without clippings and
+     * Clipping otherwise.
+     *
+     * @param file IFC file that receives the representation.
+     * @param options Context, profile, extrusion, placement, cardinal point, and clippings.
+     * @return IfcShapeRepresentation entity, or no result if creation fails.
+     */
+    addProfileRepresentation(file: IfcFile, options: IfcOpenShellGeometryAddProfileRepresentationOptions): Entity;
     /**
      * Create a railing representation along a path.
      *
@@ -6283,7 +6322,7 @@ export function createApi(shell: IfcOpenShell): Api {
     assignObject(file: IfcFile, options: IfcOpenShellAggregateAssignObjectOptions): Entity {
       const temps: Disposable[] = [];
       try {
-        const result = raw.aggregate.assignObject(file.raw, encodeOptions(options, {"application": "application", "ownerHistory": "owner_history", "products": "products", "relatingObject": "relating_object", "user": "user"}, shell, temps));
+        const result = raw.aggregate.assignObject(file.raw, encodeOptions(options, {"application": "application", "ownerHistory": "owner_history", "products": "products", "relatingObject": "relating_object", "user": "user"}, shell, temps, [], ["products"]));
         return wrapEntity(shell, result) as Entity;
       } finally {
         disposeAll(temps);
@@ -6298,7 +6337,7 @@ export function createApi(shell: IfcOpenShell): Api {
     unassignObject(file: IfcFile, options: IfcOpenShellAggregateUnassignObjectOptions): void {
       const temps: Disposable[] = [];
       try {
-        raw.aggregate.unassignObject(file.raw, encodeOptions(options, {"application": "application", "products": "products", "user": "user"}, shell, temps));
+        raw.aggregate.unassignObject(file.raw, encodeOptions(options, {"application": "application", "products": "products", "user": "user"}, shell, temps, [], ["products"]));
       } finally {
         disposeAll(temps);
       }
@@ -6412,7 +6451,7 @@ export function createApi(shell: IfcOpenShell): Api {
     addReference(file: IfcFile, options: IfcOpenShellClassificationAddReferenceOptions): Entity {
       const temps: Disposable[] = [];
       try {
-        const result = raw.classification.addReference(file.raw, encodeOptions(options, {"application": "application", "classification": "classification", "identification": "identification", "name": "name", "ownerHistory": "owner_history", "products": "products", "reference": "reference", "user": "user"}, shell, temps));
+        const result = raw.classification.addReference(file.raw, encodeOptions(options, {"application": "application", "classification": "classification", "identification": "identification", "name": "name", "ownerHistory": "owner_history", "products": "products", "reference": "reference", "user": "user"}, shell, temps, [], ["products"]));
         return wrapEntity(shell, result) as Entity;
       } finally {
         disposeAll(temps);
@@ -6462,7 +6501,7 @@ export function createApi(shell: IfcOpenShell): Api {
     removeReference(file: IfcFile, options: IfcOpenShellClassificationRemoveReferenceOptions): void {
       const temps: Disposable[] = [];
       try {
-        raw.classification.removeReference(file.raw, encodeOptions(options, {"application": "application", "products": "products", "reference": "reference", "user": "user"}, shell, temps));
+        raw.classification.removeReference(file.raw, encodeOptions(options, {"application": "application", "products": "products", "reference": "reference", "user": "user"}, shell, temps, [], ["products"]));
       } finally {
         disposeAll(temps);
       }
@@ -6606,7 +6645,7 @@ export function createApi(shell: IfcOpenShell): Api {
     assignConstraint(file: IfcFile, options: IfcOpenShellConstraintAssignConstraintOptions): Entity {
       const temps: Disposable[] = [];
       try {
-        const result = raw.constraint.assignConstraint(file.raw, encodeOptions(options, {"application": "application", "constraint": "constraint", "ownerHistory": "owner_history", "products": "products", "user": "user"}, shell, temps));
+        const result = raw.constraint.assignConstraint(file.raw, encodeOptions(options, {"application": "application", "constraint": "constraint", "ownerHistory": "owner_history", "products": "products", "user": "user"}, shell, temps, [], ["products"]));
         return wrapEntity(shell, result) as Entity;
       } finally {
         disposeAll(temps);
@@ -6648,7 +6687,7 @@ export function createApi(shell: IfcOpenShell): Api {
     unassignConstraint(file: IfcFile, options: IfcOpenShellConstraintUnassignConstraintOptions): void {
       const temps: Disposable[] = [];
       try {
-        raw.constraint.unassignConstraint(file.raw, encodeOptions(options, {"application": "application", "constraint": "constraint", "products": "products", "user": "user"}, shell, temps));
+        raw.constraint.unassignConstraint(file.raw, encodeOptions(options, {"application": "application", "constraint": "constraint", "products": "products", "user": "user"}, shell, temps, [], ["products"]));
       } finally {
         disposeAll(temps);
       }
@@ -6716,7 +6755,7 @@ export function createApi(shell: IfcOpenShell): Api {
     assignControl(file: IfcFile, options: IfcOpenShellControlAssignControlOptions): Entity {
       const temps: Disposable[] = [];
       try {
-        const result = raw.control.assignControl(file.raw, encodeOptions(options, {"application": "application", "ownerHistory": "owner_history", "relatedObjects": "related_objects", "relatingControl": "relating_control", "user": "user"}, shell, temps));
+        const result = raw.control.assignControl(file.raw, encodeOptions(options, {"application": "application", "ownerHistory": "owner_history", "relatedObjects": "related_objects", "relatingControl": "relating_control", "user": "user"}, shell, temps, [], ["relatedObjects"]));
         return wrapEntity(shell, result) as Entity;
       } finally {
         disposeAll(temps);
@@ -6730,7 +6769,7 @@ export function createApi(shell: IfcOpenShell): Api {
     unassignControl(file: IfcFile, options: IfcOpenShellControlUnassignControlOptions): void {
       const temps: Disposable[] = [];
       try {
-        raw.control.unassignControl(file.raw, encodeOptions(options, {"application": "application", "relatedObjects": "related_objects", "relatingControl": "relating_control", "user": "user"}, shell, temps));
+        raw.control.unassignControl(file.raw, encodeOptions(options, {"application": "application", "relatedObjects": "related_objects", "relatingControl": "relating_control", "user": "user"}, shell, temps, [], ["relatedObjects"]));
       } finally {
         disposeAll(temps);
       }
@@ -7170,7 +7209,7 @@ export function createApi(shell: IfcOpenShell): Api {
     assignDocument(file: IfcFile, options: IfcOpenShellDocumentAssignDocumentOptions): Entity {
       const temps: Disposable[] = [];
       try {
-        const result = raw.document.assignDocument(file.raw, encodeOptions(options, {"application": "application", "document": "document", "ownerHistory": "owner_history", "products": "products", "user": "user"}, shell, temps));
+        const result = raw.document.assignDocument(file.raw, encodeOptions(options, {"application": "application", "document": "document", "ownerHistory": "owner_history", "products": "products", "user": "user"}, shell, temps, [], ["products"]));
         return wrapEntity(shell, result) as Entity;
       } finally {
         disposeAll(temps);
@@ -7214,7 +7253,7 @@ export function createApi(shell: IfcOpenShell): Api {
     unassignDocument(file: IfcFile, options: IfcOpenShellDocumentUnassignDocumentOptions): void {
       const temps: Disposable[] = [];
       try {
-        raw.document.unassignDocument(file.raw, encodeOptions(options, {"application": "application", "document": "document", "products": "products", "user": "user"}, shell, temps));
+        raw.document.unassignDocument(file.raw, encodeOptions(options, {"application": "application", "document": "document", "products": "products", "user": "user"}, shell, temps, [], ["products"]));
       } finally {
         disposeAll(temps);
       }
@@ -7849,7 +7888,7 @@ export function createApi(shell: IfcOpenShell): Api {
     removeDeepWithOptions(instance: Entity, options: IfcOpenShellEntityRemoveDeepOptions): void {
       const temps: Disposable[] = [];
       try {
-        raw.entity.removeDeepWithOptions(instance.raw, encodeOptions(options, {"alsoConsider": "also_consider", "doNotDelete": "do_not_delete"}, shell, temps));
+        raw.entity.removeDeepWithOptions(instance.raw, encodeOptions(options, {"alsoConsider": "also_consider", "doNotDelete": "do_not_delete"}, shell, temps, [], ["alsoConsider", "doNotDelete"]));
       } finally {
         disposeAll(temps);
       }
@@ -8023,6 +8062,29 @@ export function createApi(shell: IfcOpenShell): Api {
       }
     },
     /**
+     * Create a profile-based IfcExtrudedAreaSolid representation.
+     *
+     * Depth and plane locations are supplied in SI metres and converted to project
+     * length units. Clipping kinds preserve input order but are applied from last
+     * to first; entity clippings are copied before their FirstOperand is changed.
+     * The placement defaults to Z=(0,0,1), X=(1,0,0), and the origin when no
+     * cardinal point is supplied. The result is SweptSolid without clippings and
+     * Clipping otherwise.
+     *
+     * @param file IFC file that receives the representation.
+     * @param options Context, profile, extrusion, placement, cardinal point, and clippings.
+     * @return IfcShapeRepresentation entity, or no result if creation fails.
+     */
+    addProfileRepresentation(file: IfcFile, options: IfcOpenShellGeometryAddProfileRepresentationOptions): Entity {
+      const temps: Disposable[] = [];
+      try {
+        const result = raw.geometry.addProfileRepresentation(file.raw, encodeOptions(options, {"cardinalPoint": "cardinal_point", "clippingEntities": "clipping_entities", "clippingKinds": "clipping_kinds", "clippingLocations": "clipping_locations", "clippingNormals": "clipping_normals", "context": "context", "depth": "depth", "placementXAxis": "placement_x_axis", "placementZAxis": "placement_z_axis", "profile": "profile"}, shell, temps, [], ["clippingEntities"]));
+        return wrapEntity(shell, result) as Entity;
+      } finally {
+        disposeAll(temps);
+      }
+    },
+    /**
      * Create a railing representation along a path.
      *
      * @param file IFC file that receives the representation.
@@ -8051,7 +8113,7 @@ export function createApi(shell: IfcOpenShell): Api {
     addShapeAspect(file: IfcFile, options: IfcOpenShellGeometryAddShapeAspectOptions): Entity {
       const temps: Disposable[] = [];
       try {
-        const result = raw.geometry.addShapeAspect(file.raw, encodeOptions(options, {"description": "description", "items": "items", "name": "name", "partOfProduct": "part_of_product", "representation": "representation"}, shell, temps));
+        const result = raw.geometry.addShapeAspect(file.raw, encodeOptions(options, {"description": "description", "items": "items", "name": "name", "partOfProduct": "part_of_product", "representation": "representation"}, shell, temps, [], ["items"]));
         return wrapEntity(shell, result) as Entity;
       } finally {
         disposeAll(temps);
@@ -8067,7 +8129,7 @@ export function createApi(shell: IfcOpenShell): Api {
     addSlabRepresentation(file: IfcFile, options: IfcOpenShellGeometryAddSlabRepresentationOptions): Entity {
       const temps: Disposable[] = [];
       try {
-        const result = raw.geometry.addSlabRepresentation(file.raw, encodeOptions(options, {"clippingEntities": "clipping_entities", "clippingKinds": "clipping_kinds", "clippingLocations": "clipping_locations", "clippingNormals": "clipping_normals", "context": "context", "depth": "depth", "directionSense": "direction_sense", "offset": "offset", "polyline": "polyline", "xAngle": "x_angle"}, shell, temps));
+        const result = raw.geometry.addSlabRepresentation(file.raw, encodeOptions(options, {"clippingEntities": "clipping_entities", "clippingKinds": "clipping_kinds", "clippingLocations": "clipping_locations", "clippingNormals": "clipping_normals", "context": "context", "depth": "depth", "directionSense": "direction_sense", "offset": "offset", "polyline": "polyline", "xAngle": "x_angle"}, shell, temps, [], ["clippingEntities"]));
         return wrapEntity(shell, result) as Entity;
       } finally {
         disposeAll(temps);
@@ -8099,7 +8161,7 @@ export function createApi(shell: IfcOpenShell): Api {
     addWallRepresentation(file: IfcFile, options: IfcOpenShellGeometryAddWallRepresentationOptions): Entity {
       const temps: Disposable[] = [];
       try {
-        const result = raw.geometry.addWallRepresentation(file.raw, encodeOptions(options, {"booleans": "booleans", "clippingEntities": "clipping_entities", "clippingKinds": "clipping_kinds", "clippingLocations": "clipping_locations", "clippingNormals": "clipping_normals", "context": "context", "directionSense": "direction_sense", "height": "height", "length": "length", "offset": "offset", "thickness": "thickness", "xAngle": "x_angle"}, shell, temps));
+        const result = raw.geometry.addWallRepresentation(file.raw, encodeOptions(options, {"booleans": "booleans", "clippingEntities": "clipping_entities", "clippingKinds": "clipping_kinds", "clippingLocations": "clipping_locations", "clippingNormals": "clipping_normals", "context": "context", "directionSense": "direction_sense", "height": "height", "length": "length", "offset": "offset", "thickness": "thickness", "xAngle": "x_angle"}, shell, temps, [], ["booleans", "clippingEntities"]));
         return wrapEntity(shell, result) as Entity;
       } finally {
         disposeAll(temps);
@@ -8657,7 +8719,7 @@ export function createApi(shell: IfcOpenShell): Api {
     assignGroup(file: IfcFile, options: IfcOpenShellGroupAssignGroupOptions): Entity {
       const temps: Disposable[] = [];
       try {
-        const result = raw.group.assignGroup(file.raw, encodeOptions(options, {"application": "application", "group": "group", "ownerHistory": "owner_history", "products": "products", "user": "user"}, shell, temps));
+        const result = raw.group.assignGroup(file.raw, encodeOptions(options, {"application": "application", "group": "group", "ownerHistory": "owner_history", "products": "products", "user": "user"}, shell, temps, [], ["products"]));
         return wrapEntity(shell, result) as Entity;
       } finally {
         disposeAll(temps);
@@ -8686,7 +8748,7 @@ export function createApi(shell: IfcOpenShell): Api {
     unassignGroup(file: IfcFile, options: IfcOpenShellGroupUnassignGroupOptions): void {
       const temps: Disposable[] = [];
       try {
-        raw.group.unassignGroup(file.raw, encodeOptions(options, {"application": "application", "group": "group", "products": "products", "user": "user"}, shell, temps));
+        raw.group.unassignGroup(file.raw, encodeOptions(options, {"application": "application", "group": "group", "products": "products", "user": "user"}, shell, temps, [], ["products"]));
       } finally {
         disposeAll(temps);
       }
@@ -8701,7 +8763,7 @@ export function createApi(shell: IfcOpenShell): Api {
     updateGroupProducts(file: IfcFile, options: IfcOpenShellGroupUpdateGroupProductsOptions): Entity {
       const temps: Disposable[] = [];
       try {
-        const result = raw.group.updateGroupProducts(file.raw, encodeOptions(options, {"application": "application", "group": "group", "ownerHistory": "owner_history", "products": "products", "user": "user"}, shell, temps));
+        const result = raw.group.updateGroupProducts(file.raw, encodeOptions(options, {"application": "application", "group": "group", "ownerHistory": "owner_history", "products": "products", "user": "user"}, shell, temps, [], ["products"]));
         return wrapEntity(shell, result) as Entity;
       } finally {
         disposeAll(temps);
@@ -8765,7 +8827,7 @@ export function createApi(shell: IfcOpenShell): Api {
     addLayerWithStyle(file: IfcFile, name: string, options: IfcOpenShellLayerAddLayerWithStyleOptions): Entity {
       const temps: Disposable[] = [];
       try {
-        const result = raw.layer.addLayerWithStyle(file.raw, name, encodeOptions(options, {"blocked": "blocked", "frozen": "frozen", "on": "on", "styles": "styles"}, shell, temps));
+        const result = raw.layer.addLayerWithStyle(file.raw, name, encodeOptions(options, {"blocked": "blocked", "frozen": "frozen", "on": "on", "styles": "styles"}, shell, temps, [], ["styles"]));
         return wrapEntity(shell, result) as Entity;
       } finally {
         disposeAll(temps);
@@ -8857,7 +8919,7 @@ export function createApi(shell: IfcOpenShell): Api {
     assignReference(file: IfcFile, options: IfcOpenShellLibraryAssignReferenceOptions): Entity {
       const temps: Disposable[] = [];
       try {
-        const result = raw.library.assignReference(file.raw, encodeOptions(options, {"application": "application", "ownerHistory": "owner_history", "products": "products", "reference": "reference", "user": "user"}, shell, temps));
+        const result = raw.library.assignReference(file.raw, encodeOptions(options, {"application": "application", "ownerHistory": "owner_history", "products": "products", "reference": "reference", "user": "user"}, shell, temps, [], ["products"]));
         return wrapEntity(shell, result) as Entity;
       } finally {
         disposeAll(temps);
@@ -8899,7 +8961,7 @@ export function createApi(shell: IfcOpenShell): Api {
     unassignReference(file: IfcFile, options: IfcOpenShellLibraryUnassignReferenceOptions): void {
       const temps: Disposable[] = [];
       try {
-        raw.library.unassignReference(file.raw, encodeOptions(options, {"application": "application", "products": "products", "reference": "reference", "user": "user"}, shell, temps));
+        raw.library.unassignReference(file.raw, encodeOptions(options, {"application": "application", "products": "products", "reference": "reference", "user": "user"}, shell, temps, [], ["products"]));
       } finally {
         disposeAll(temps);
       }
@@ -9152,7 +9214,7 @@ export function createApi(shell: IfcOpenShell): Api {
     assignObject(file: IfcFile, options: IfcOpenShellNestAssignObjectOptions): Entity {
       const temps: Disposable[] = [];
       try {
-        const result = raw.nest.assignObject(file.raw, encodeOptions(options, {"application": "application", "ownerHistory": "owner_history", "products": "products", "relatingObject": "relating_object", "user": "user"}, shell, temps));
+        const result = raw.nest.assignObject(file.raw, encodeOptions(options, {"application": "application", "ownerHistory": "owner_history", "products": "products", "relatingObject": "relating_object", "user": "user"}, shell, temps, [], ["products"]));
         return wrapEntity(shell, result) as Entity;
       } finally {
         disposeAll(temps);
@@ -9167,7 +9229,7 @@ export function createApi(shell: IfcOpenShell): Api {
     unassignObject(file: IfcFile, options: IfcOpenShellNestUnassignObjectOptions): void {
       const temps: Disposable[] = [];
       try {
-        raw.nest.unassignObject(file.raw, encodeOptions(options, {"application": "application", "products": "products", "user": "user"}, shell, temps));
+        raw.nest.unassignObject(file.raw, encodeOptions(options, {"application": "application", "products": "products", "user": "user"}, shell, temps, [], ["products"]));
       } finally {
         disposeAll(temps);
       }
@@ -9750,7 +9812,7 @@ export function createApi(shell: IfcOpenShell): Api {
     assignDeclaration(file: IfcFile, options: IfcOpenShellProjectAssignDeclarationOptions): Entity {
       const temps: Disposable[] = [];
       try {
-        const result = raw.project.assignDeclaration(file.raw, encodeOptions(options, {"application": "application", "definitions": "definitions", "ownerHistory": "owner_history", "relatingContext": "relating_context", "user": "user"}, shell, temps));
+        const result = raw.project.assignDeclaration(file.raw, encodeOptions(options, {"application": "application", "definitions": "definitions", "ownerHistory": "owner_history", "relatingContext": "relating_context", "user": "user"}, shell, temps, [], ["definitions"]));
         return wrapEntity(shell, result) as Entity;
       } finally {
         disposeAll(temps);
@@ -9765,7 +9827,7 @@ export function createApi(shell: IfcOpenShell): Api {
     unassignDeclaration(file: IfcFile, options: IfcOpenShellProjectUnassignDeclarationOptions): void {
       const temps: Disposable[] = [];
       try {
-        raw.project.unassignDeclaration(file.raw, encodeOptions(options, {"application": "application", "definitions": "definitions", "relatingContext": "relating_context", "user": "user"}, shell, temps));
+        raw.project.unassignDeclaration(file.raw, encodeOptions(options, {"application": "application", "definitions": "definitions", "relatingContext": "relating_context", "user": "user"}, shell, temps, [], ["definitions"]));
       } finally {
         disposeAll(temps);
       }
@@ -9819,7 +9881,7 @@ export function createApi(shell: IfcOpenShell): Api {
     assignPset(file: IfcFile, options: IfcOpenShellPsetAssignPsetOptions): Entity {
       const temps: Disposable[] = [];
       try {
-        const result = raw.pset.assignPset(file.raw, encodeOptions(options, {"application": "application", "ownerHistory": "owner_history", "products": "products", "pset": "pset", "user": "user"}, shell, temps));
+        const result = raw.pset.assignPset(file.raw, encodeOptions(options, {"application": "application", "ownerHistory": "owner_history", "products": "products", "pset": "pset", "user": "user"}, shell, temps, [], ["products"]));
         return wrapEntity(shell, result) as Entity;
       } finally {
         disposeAll(temps);
@@ -10079,7 +10141,7 @@ export function createApi(shell: IfcOpenShell): Api {
     unsharePset(file: IfcFile, options: IfcOpenShellPsetUnsharePsetOptions): Entity[] {
       const temps: Disposable[] = [];
       try {
-        const result = raw.pset.unsharePset(file.raw, encodeOptions(options, {"application": "application", "ownerHistory": "owner_history", "products": "products", "pset": "pset", "user": "user"}, shell, temps));
+        const result = raw.pset.unsharePset(file.raw, encodeOptions(options, {"application": "application", "ownerHistory": "owner_history", "products": "products", "pset": "pset", "user": "user"}, shell, temps, [], ["products"]));
         return wrapEntities(shell, result as never) as Entity[];
       } finally {
         disposeAll(temps);
@@ -11547,7 +11609,7 @@ export function createApi(shell: IfcOpenShell): Api {
     builderProfile(file: IfcFile, options: IfcOpenShellShapeBuilderProfileOptions): Entity {
       const temps: Disposable[] = [];
       try {
-        const result = raw.shape.builderProfile(file.raw, encodeOptions(options, {"innerCurves": "inner_curves", "name": "name", "outerCurve": "outer_curve", "profileType": "profile_type"}, shell, temps));
+        const result = raw.shape.builderProfile(file.raw, encodeOptions(options, {"innerCurves": "inner_curves", "name": "name", "outerCurve": "outer_curve", "profileType": "profile_type"}, shell, temps, [], ["innerCurves"]));
         return wrapEntity(shell, result) as Entity;
       } finally {
         disposeAll(temps);
@@ -11567,7 +11629,7 @@ export function createApi(shell: IfcOpenShell): Api {
     builderRepresentation(file: IfcFile, options: IfcOpenShellShapeBuilderRepresentationOptions): Entity {
       const temps: Disposable[] = [];
       try {
-        const result = raw.shape.builderRepresentation(file.raw, encodeOptions(options, {"context": "context", "items": "items", "representationType": "representation_type"}, shell, temps));
+        const result = raw.shape.builderRepresentation(file.raw, encodeOptions(options, {"context": "context", "items": "items", "representationType": "representation_type"}, shell, temps, [], ["items"]));
         return wrapEntity(shell, result) as Entity;
       } finally {
         disposeAll(temps);
@@ -11730,7 +11792,7 @@ export function createApi(shell: IfcOpenShell): Api {
     assignContainer(file: IfcFile, options: IfcOpenShellSpatialAssignContainerOptions): Entity {
       const temps: Disposable[] = [];
       try {
-        const result = raw.spatial.assignContainer(file.raw, encodeOptions(options, {"application": "application", "ownerHistory": "owner_history", "products": "products", "relatingStructure": "relating_structure", "user": "user"}, shell, temps));
+        const result = raw.spatial.assignContainer(file.raw, encodeOptions(options, {"application": "application", "ownerHistory": "owner_history", "products": "products", "relatingStructure": "relating_structure", "user": "user"}, shell, temps, [], ["products"]));
         return wrapEntity(shell, result) as Entity;
       } finally {
         disposeAll(temps);
@@ -11745,7 +11807,7 @@ export function createApi(shell: IfcOpenShell): Api {
     dereferenceStructure(file: IfcFile, options: IfcOpenShellSpatialDereferenceStructureOptions): void {
       const temps: Disposable[] = [];
       try {
-        raw.spatial.dereferenceStructure(file.raw, encodeOptions(options, {"application": "application", "products": "products", "relatingStructure": "relating_structure", "user": "user"}, shell, temps));
+        raw.spatial.dereferenceStructure(file.raw, encodeOptions(options, {"application": "application", "products": "products", "relatingStructure": "relating_structure", "user": "user"}, shell, temps, [], ["products"]));
       } finally {
         disposeAll(temps);
       }
@@ -11759,7 +11821,7 @@ export function createApi(shell: IfcOpenShell): Api {
     referenceStructure(file: IfcFile, options: IfcOpenShellSpatialReferenceStructureOptions): Entity {
       const temps: Disposable[] = [];
       try {
-        const result = raw.spatial.referenceStructure(file.raw, encodeOptions(options, {"application": "application", "ownerHistory": "owner_history", "products": "products", "relatingStructure": "relating_structure", "user": "user"}, shell, temps));
+        const result = raw.spatial.referenceStructure(file.raw, encodeOptions(options, {"application": "application", "ownerHistory": "owner_history", "products": "products", "relatingStructure": "relating_structure", "user": "user"}, shell, temps, [], ["products"]));
         return wrapEntity(shell, result) as Entity;
       } finally {
         disposeAll(temps);
@@ -11773,7 +11835,7 @@ export function createApi(shell: IfcOpenShell): Api {
     unassignContainer(file: IfcFile, options: IfcOpenShellSpatialUnassignContainerOptions): void {
       const temps: Disposable[] = [];
       try {
-        raw.spatial.unassignContainer(file.raw, encodeOptions(options, {"application": "application", "products": "products", "user": "user"}, shell, temps));
+        raw.spatial.unassignContainer(file.raw, encodeOptions(options, {"application": "application", "products": "products", "user": "user"}, shell, temps, [], ["products"]));
       } finally {
         disposeAll(temps);
       }
@@ -12428,7 +12490,7 @@ export function createApi(shell: IfcOpenShell): Api {
     assignSystem(file: IfcFile, options: IfcOpenShellSystemAssignSystemOptions): Entity {
       const temps: Disposable[] = [];
       try {
-        const result = raw.system.assignSystem(file.raw, encodeOptions(options, {"application": "application", "ownerHistory": "owner_history", "products": "products", "system": "system", "user": "user"}, shell, temps));
+        const result = raw.system.assignSystem(file.raw, encodeOptions(options, {"application": "application", "ownerHistory": "owner_history", "products": "products", "system": "system", "user": "user"}, shell, temps, [], ["products"]));
         return wrapEntity(shell, result) as Entity;
       } finally {
         disposeAll(temps);
@@ -12511,7 +12573,7 @@ export function createApi(shell: IfcOpenShell): Api {
     unassignSystem(file: IfcFile, options: IfcOpenShellSystemUnassignSystemOptions): void {
       const temps: Disposable[] = [];
       try {
-        raw.system.unassignSystem(file.raw, encodeOptions(options, {"application": "application", "products": "products", "system": "system", "user": "user"}, shell, temps));
+        raw.system.unassignSystem(file.raw, encodeOptions(options, {"application": "application", "products": "products", "system": "system", "user": "user"}, shell, temps, [], ["products"]));
       } finally {
         disposeAll(temps);
       }
@@ -12531,7 +12593,7 @@ export function createApi(shell: IfcOpenShell): Api {
     assignType(file: IfcFile, options: IfcOpenShellTypeAssignTypeOptions): Entity {
       const temps: Disposable[] = [];
       try {
-        const result = raw.type.assignType(file.raw, encodeOptions(options, {"application": "application", "objects": "objects", "ownerHistory": "owner_history", "relatingType": "relating_type", "shouldMapRepresentations": "should_map_representations", "user": "user"}, shell, temps));
+        const result = raw.type.assignType(file.raw, encodeOptions(options, {"application": "application", "objects": "objects", "ownerHistory": "owner_history", "relatingType": "relating_type", "shouldMapRepresentations": "should_map_representations", "user": "user"}, shell, temps, [], ["objects"]));
         return wrapEntity(shell, result) as Entity;
       } finally {
         disposeAll(temps);
@@ -12562,7 +12624,7 @@ export function createApi(shell: IfcOpenShell): Api {
     unassignType(file: IfcFile, options: IfcOpenShellTypeUnassignTypeOptions): void {
       const temps: Disposable[] = [];
       try {
-        raw.type.unassignType(file.raw, encodeOptions(options, {"application": "application", "objects": "objects", "user": "user"}, shell, temps));
+        raw.type.unassignType(file.raw, encodeOptions(options, {"application": "application", "objects": "objects", "user": "user"}, shell, temps, [], ["objects"]));
       } finally {
         disposeAll(temps);
       }
@@ -13146,13 +13208,15 @@ function encodeOptions(
   shell: IfcOpenShell,
   temps: Disposable[],
   psetFields?: string[],
+  entityListFields?: string[],
 ): Record<string, RawValue> {
   const data = value as Record<string, ApiInput | undefined>;
   const psetFieldSet = psetFields ? new Set(psetFields) : undefined;
+  const entityListFieldSet = entityListFields ? new Set(entityListFields) : undefined;
   return Object.fromEntries(
     Object.entries(fields)
       .filter(([publicName]) => data[publicName] !== undefined)
-      .map(([publicName, nativeName]) => [nativeName, encodeOptionValue(publicName, data[publicName] as ApiInput, shell, temps, psetFieldSet)]),
+      .map(([publicName, nativeName]) => [nativeName, encodeOptionValue(publicName, data[publicName] as ApiInput, shell, temps, psetFieldSet, entityListFieldSet)]),
   ) as Record<string, RawValue>;
 }
 
@@ -13185,9 +13249,19 @@ function toRaw(value: ApiInput, shell: IfcOpenShell, temps: Disposable[]): RawVa
   return value;
 }
 
-function encodeOptionValue(publicName: string, value: ApiInput, shell: IfcOpenShell, temps: Disposable[], psetFields?: Set<string>): RawValue {
+function toRawEntityList(value: ApiInput, shell: IfcOpenShell, temps: Disposable[]): RawValue {
+  if (!Array.isArray(value)) throw new TypeError('Expected an entity array.');
+  const raw = shell.raw.parse.instanceListCreateFromHandles(value.map((item) => (item as Entity).raw));
+  temps.push(raw);
+  return raw;
+}
+
+function encodeOptionValue(publicName: string, value: ApiInput, shell: IfcOpenShell, temps: Disposable[], psetFields?: Set<string>, entityListFields?: Set<string>): RawValue {
   if (psetFields?.has(publicName)) {
     return toRawPsetProperties(shell, value as PsetProperties | PsetInput, temps);
+  }
+  if (entityListFields?.has(publicName)) {
+    return toRawEntityList(value, shell, temps);
   }
   return toRaw(value, shell, temps);
 }
@@ -13228,7 +13302,7 @@ function isRawValue(value: RawValue): boolean {
 }
 
 function isEntityArray(value: ApiInput): value is Entity[] {
-  return Array.isArray(value) && value.every((item) => item instanceof Entity);
+  return Array.isArray(value) && value.length > 0 && value.every((item) => item instanceof Entity);
 }
 
 function isPlainObject(value: RawValue): value is Record<string, ApiInput> {

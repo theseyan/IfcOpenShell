@@ -268,6 +268,19 @@ declare module 'ifcopenshell-api' {
     force_faceted_brep?: boolean;
   }
 
+  export interface IfcOpenshellGeometryAddProfileRepresentationOptions {
+    context: IfcOpenshellInstance;
+    profile: IfcOpenshellInstance;
+    depth: number;
+    cardinal_point?: string;
+    placement_z_axis?: number[];
+    placement_x_axis?: number[];
+    clipping_kinds: number[];
+    clipping_locations: number[][];
+    clipping_normals: number[][];
+    clipping_entities: IfcOpenshellParseInstanceList;
+  }
+
   export interface IfcOpenshellGeometryAddRailingRepresentationOptions {
     context: IfcOpenshellInstance;
     railing_path: number[][];
@@ -3099,6 +3112,21 @@ declare module 'ifcopenshell-api' {
      * @return IfcShapeRepresentation entity, or no result if creation fails.
      */
     addMeshRepresentation(file: IfcOpenshellFile, context: IfcOpenshellInstance, options: IfcOpenshellGeometryAddMeshRepresentationOptions): IfcOpenshellInstance;
+    /**
+     * Create a profile-based IfcExtrudedAreaSolid representation.
+     *
+     * Depth and plane locations are supplied in SI metres and converted to project
+     * length units. Clipping kinds preserve input order but are applied from last
+     * to first; entity clippings are copied before their FirstOperand is changed.
+     * The placement defaults to Z=(0,0,1), X=(1,0,0), and the origin when no
+     * cardinal point is supplied. The result is SweptSolid without clippings and
+     * Clipping otherwise.
+     *
+     * @param file IFC file that receives the representation.
+     * @param options Context, profile, extrusion, placement, cardinal point, and clippings.
+     * @return IfcShapeRepresentation entity, or no result if creation fails.
+     */
+    addProfileRepresentation(file: IfcOpenshellFile, options: IfcOpenshellGeometryAddProfileRepresentationOptions): IfcOpenshellInstance;
     /**
      * Create a railing representation along a path.
      *

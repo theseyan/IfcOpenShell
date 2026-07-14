@@ -6571,6 +6571,55 @@ bool ifcopenshell_geometry_add_mesh_representation(ifcopenshell_file_t* file, if
     }
 }
 
+bool ifcopenshell_geometry_add_profile_representation(ifcopenshell_file_t* file, const ifcopenshell_geometry_add_profile_representation_options_t* options, ifcopenshell_instance_t** out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::GeometryAddProfileRepresentationOptions options_cpp{};
+    if (options->context == nullptr) { throw std::runtime_error("Options field \"context\" must not be null"); }
+    options_cpp.context = options->context->value;
+    if (options->profile == nullptr) { throw std::runtime_error("Options field \"profile\" must not be null"); }
+    options_cpp.profile = options->profile->value;
+    options_cpp.depth = static_cast<double>(options->depth);
+    if (options->has_cardinal_point) {
+        if (options->cardinal_point == nullptr) { throw std::runtime_error("Options field \"cardinal_point\" must not be null"); }
+        options_cpp.cardinal_point = std::string(options->cardinal_point);
+    }
+    if (options->has_placement_z_axis) {
+        if (options->placement_z_axis == nullptr) { throw std::runtime_error("Options field \"placement_z_axis\" must not be null"); }
+        options_cpp.placement_z_axis = to_cpp_double_list(options->placement_z_axis);
+    }
+    if (options->has_placement_x_axis) {
+        if (options->placement_x_axis == nullptr) { throw std::runtime_error("Options field \"placement_x_axis\" must not be null"); }
+        options_cpp.placement_x_axis = to_cpp_double_list(options->placement_x_axis);
+    }
+    if (options->clipping_kinds == nullptr) { throw std::runtime_error("Options field \"clipping_kinds\" must not be null"); }
+    options_cpp.clipping_kinds = to_cpp_int32_list(options->clipping_kinds);
+    if (options->clipping_locations == nullptr) { throw std::runtime_error("Options field \"clipping_locations\" must not be null"); }
+    options_cpp.clipping_locations = to_cpp_double_list_list(options->clipping_locations);
+    if (options->clipping_normals == nullptr) { throw std::runtime_error("Options field \"clipping_normals\" must not be null"); }
+    options_cpp.clipping_normals = to_cpp_double_list_list(options->clipping_normals);
+    if (options->clipping_entities == nullptr) { throw std::runtime_error("Options field \"clipping_entities\" must not be null"); }
+    options_cpp.clipping_entities = options->clipping_entities->value;
+        auto result_value = ifcapi::bindings::geometry_add_profile_representation(file_cpp, options_cpp);
+        if (!static_cast<bool>(result_value)) {
+            *out_result = nullptr;
+        } else {
+            *out_result = new ifcopenshell_instance_t{std::move(result_value)};
+        }
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
 bool ifcopenshell_geometry_add_railing_representation(ifcopenshell_file_t* file, const ifcopenshell_geometry_add_railing_representation_options_t* options, ifcopenshell_instance_t** out_result) {
     try {
         ifcopenshell_clear_error();

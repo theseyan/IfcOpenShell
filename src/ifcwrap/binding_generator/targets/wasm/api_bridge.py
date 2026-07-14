@@ -324,6 +324,14 @@ def _pset_props_field_names(option: COptionIR) -> set[str]:
     }
 
 
+def _entity_list_field_names(option: COptionIR, metadata: BindingABI) -> set[str]:
+    return {
+        _camel_name(field.name)
+        for field in option.fields
+        if _is_instance_list_handle(_handle_kind_from_type(field.type))
+    }
+
+
 def _is_property_map_param(param: CParamIR) -> bool:
     return param.semantic == "property_map"
 
@@ -491,7 +499,13 @@ def _param_expr(
     if option is not None:
         fields = {_camel_name(field.name): field.name for field in option.fields}
         pset_fields = sorted(_pset_props_field_names(option))
-        return f"encodeOptions({param.name}, {json.dumps(fields, sort_keys=True)}, shell, temps{', ' + json.dumps(pset_fields) if pset_fields else ''})"
+        entity_list_fields = sorted(_entity_list_field_names(option, metadata))
+        extra_args = ""
+        if pset_fields or entity_list_fields:
+            extra_args += ", " + json.dumps(pset_fields)
+        if entity_list_fields:
+            extra_args += ", " + json.dumps(entity_list_fields)
+        return f"encodeOptions({param.name}, {json.dumps(fields, sort_keys=True)}, shell, temps{extra_args})"
     return param.name
 
 
@@ -762,13 +776,15 @@ def render_api_direct(metadata: BindingABI) -> str:
             "  shell: IfcOpenShell,",
             "  temps: Disposable[],",
             "  psetFields?: string[],",
+            "  entityListFields?: string[],",
             "): Record<string, RawValue> {",
             "  const data = value as Record<string, ApiInput | undefined>;",
             "  const psetFieldSet = psetFields ? new Set(psetFields) : undefined;",
+            "  const entityListFieldSet = entityListFields ? new Set(entityListFields) : undefined;",
             "  return Object.fromEntries(",
             "    Object.entries(fields)",
             "      .filter(([publicName]) => data[publicName] !== undefined)",
-            "      .map(([publicName, nativeName]) => [nativeName, encodeOptionValue(publicName, data[publicName] as ApiInput, shell, temps, psetFieldSet)]),",
+            "      .map(([publicName, nativeName]) => [nativeName, encodeOptionValue(publicName, data[publicName] as ApiInput, shell, temps, psetFieldSet, entityListFieldSet)]),",
             "  ) as Record<string, RawValue>;",
             "}",
             "",
@@ -801,9 +817,19 @@ def render_api_direct(metadata: BindingABI) -> str:
             "  return value;",
             "}",
             "",
-            "function encodeOptionValue(publicName: string, value: ApiInput, shell: IfcOpenShell, temps: Disposable[], psetFields?: Set<string>): RawValue {",
+            "function toRawEntityList(value: ApiInput, shell: IfcOpenShell, temps: Disposable[]): RawValue {",
+            "  if (!Array.isArray(value)) throw new TypeError('Expected an entity array.');",
+            "  const raw = shell.raw.parse.instanceListCreateFromHandles(value.map((item) => (item as Entity).raw));",
+            "  temps.push(raw);",
+            "  return raw;",
+            "}",
+            "",
+            "function encodeOptionValue(publicName: string, value: ApiInput, shell: IfcOpenShell, temps: Disposable[], psetFields?: Set<string>, entityListFields?: Set<string>): RawValue {",
             "  if (psetFields?.has(publicName)) {",
             "    return toRawPsetProperties(shell, value as PsetProperties | PsetInput, temps);",
+            "  }",
+            "  if (entityListFields?.has(publicName)) {",
+            "    return toRawEntityList(value, shell, temps);",
             "  }",
             "  return toRaw(value, shell, temps);",
             "}",
@@ -844,7 +870,7 @@ def render_api_direct(metadata: BindingABI) -> str:
             "}",
             "",
             "function isEntityArray(value: ApiInput): value is Entity[] {",
-            "  return Array.isArray(value) && value.every((item) => item instanceof Entity);",
+            "  return Array.isArray(value) && value.length > 0 && value.every((item) => item instanceof Entity);",
             "}",
             "",
             "function isPlainObject(value: RawValue): value is Record<string, ApiInput> {",

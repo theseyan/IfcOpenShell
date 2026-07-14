@@ -452,29 +452,6 @@ express::Base make_axis2_placement_3d(ifcopenshell::file* file) {
     return p;
 }
 
-bool allclose3(const std::vector<double>& value, const std::vector<double>& expected, double atol = 1e-2) {
-    if (value.size() != 3 || expected.size() != 3) return false;
-    for (size_t i = 0; i < 3; ++i) {
-        if (std::fabs(value[i] - expected[i]) > atol) return false;
-    }
-    return true;
-}
-
-std::vector<double> cross3(const std::vector<double>& a, const std::vector<double>& b) {
-    return {
-        a.at(1) * b.at(2) - a.at(2) * b.at(1),
-        a.at(2) * b.at(0) - a.at(0) * b.at(2),
-        a.at(0) * b.at(1) - a.at(1) * b.at(0),
-    };
-}
-
-void normalize_in_place(std::vector<double>& value) {
-    double length = std::sqrt(value.at(0) * value.at(0) + value.at(1) * value.at(1) + value.at(2) * value.at(2));
-    for (double& component : value) {
-        component /= length;
-    }
-}
-
 express::Base make_axis2_placement_3d(
     ifcopenshell::file* file,
     const std::vector<double>& location,
@@ -495,92 +472,6 @@ express::Base make_axis2_placement_3d_location_only(
     auto placement = file->create(file->schema()->declaration_by_name("IfcAxis2Placement3D"));
     write_ref(placement, "Location", ifcapi::detail::create_cartesian_point(file, location));
     return placement;
-}
-
-std::vector<double> clipping_x_axis(const std::vector<double>& normal) {
-    std::vector<double> arbitrary =
-        (allclose3(normal, {0.0, 0.0, 1.0}) || allclose3(normal, {0.0, 0.0, -1.0}))
-            ? std::vector<double>{0.0, 1.0, 0.0}
-            : std::vector<double>{0.0, 0.0, 1.0};
-    auto result = cross3(normal, arbitrary);
-    normalize_in_place(result);
-    return result;
-}
-
-express::Base make_clipping_plane(
-    ifcopenshell::file* file,
-    const std::vector<double>& location,
-    const std::vector<double>& normal,
-    double unit_scale)
-{
-    auto scaled_location = location;
-    for (auto& coordinate : scaled_location) coordinate /= unit_scale;
-    auto plane = file->create(file->schema()->declaration_by_name("IfcPlane"));
-    write_ref(plane, "Position", make_axis2_placement_3d(file, scaled_location, normal, clipping_x_axis(normal)));
-    return plane;
-}
-
-express::Base make_clipping_result(
-    ifcopenshell::file* file,
-    express::Base first_operand,
-    const std::vector<double>& location,
-    const std::vector<double>& normal,
-    double unit_scale)
-{
-    auto half_space = file->create(file->schema()->declaration_by_name("IfcHalfSpaceSolid"));
-    write_ref(half_space, "BaseSurface", make_clipping_plane(file, location, normal, unit_scale));
-    write_bool(half_space, "AgreementFlag", false);
-
-    auto result = file->create(file->schema()->declaration_by_name("IfcBooleanClippingResult"));
-    write_string(result, "Operator", "DIFFERENCE");
-    write_ref(result, "FirstOperand", first_operand);
-    write_ref(result, "SecondOperand", half_space);
-    return result;
-}
-
-express::Base copy_boolean_clipping(
-    ifcopenshell::file* file,
-    express::Base clipping,
-    express::Base first_operand)
-{
-    auto copy = ifcapi::detail::copy_single(file, clipping);
-    if (!copy) throw std::runtime_error("Unable to copy clipping entity");
-    write_ref(copy, "FirstOperand", first_operand);
-    return copy;
-}
-
-express::Base apply_ordered_clippings(
-    ifcopenshell::file* file,
-    express::Base first_operand,
-    const std::vector<int32_t>& clipping_kinds,
-    const std::vector<std::vector<double>>& clipping_locations,
-    const std::vector<std::vector<double>>& clipping_normals,
-    const std::vector<express::Base>& clipping_entities,
-    double unit_scale)
-{
-    size_t plane_cursor = clipping_locations.size();
-    size_t entity_cursor = clipping_entities.size();
-    if (clipping_locations.size() != clipping_normals.size()) {
-        throw std::runtime_error("Clipping location/normal count mismatch");
-    }
-    for (auto it = clipping_kinds.rbegin(); it != clipping_kinds.rend(); ++it) {
-        if (*it == 0) {
-            if (plane_cursor == 0) throw std::runtime_error("Missing clipping plane data");
-            --plane_cursor;
-            first_operand = make_clipping_result(
-                file, first_operand, clipping_locations[plane_cursor], clipping_normals[plane_cursor], unit_scale);
-        } else if (*it == 1) {
-            if (entity_cursor == 0) throw std::runtime_error("Missing clipping entity data");
-            --entity_cursor;
-            first_operand = copy_boolean_clipping(file, clipping_entities[entity_cursor], first_operand);
-        } else {
-            throw std::runtime_error("Unknown clipping kind");
-        }
-    }
-    if (plane_cursor != 0 || entity_cursor != 0) {
-        throw std::runtime_error("Unused clipping data");
-    }
-    return first_operand;
 }
 
 express::Base make_closed_profile(ifcopenshell::file* file, express::Base curve) {
@@ -2224,7 +2115,8 @@ express::Base geometry_add_wall_representation(
             write_ref(boolean, "FirstOperand", item);
             item = boolean;
         }
-        item = apply_ordered_clippings(file, item, clipping_kinds, clipping_locations, clipping_normals, clipping_entities, unit_scale);
+        item = ifcapi::detail::apply_ordered_clippings(
+            file, item, clipping_kinds, clipping_locations, clipping_normals, clipping_entities, unit_scale);
         return make_shape_representation(
             file, context, (!clipping_kinds.empty() || !booleans.empty()) ? "Clipping" : "SweptSolid", item);
     } catch (const std::exception& e) {
@@ -2301,7 +2193,8 @@ express::Base geometry_add_slab_representation(
             extrusion.set_attribute_value(static_cast<size_t>(depth_idx), perpendicular_depth);
         }
 
-        auto item = apply_ordered_clippings(file, extrusion, clipping_kinds, clipping_locations, clipping_normals, clipping_entities, unit_scale);
+        auto item = ifcapi::detail::apply_ordered_clippings(
+            file, extrusion, clipping_kinds, clipping_locations, clipping_normals, clipping_entities, unit_scale);
         return make_shape_representation(file, context, clipping_kinds.empty() ? "SweptSolid" : "Clipping", item);
     } catch (const std::exception& e) {
         set_error(e.what());
@@ -2441,7 +2334,7 @@ express::Base geometry_clip_solid(
     try {
         double unit_scale = ifcapi::bindings::unit_calculate_unit_scale(file, "LENGTHUNIT");
         auto half_space = file->create(file->schema()->declaration_by_name("IfcHalfSpaceSolid"));
-        write_ref(half_space, "BaseSurface", make_clipping_plane(file, location, normal, unit_scale));
+        write_ref(half_space, "BaseSurface", ifcapi::detail::create_clipping_plane(file, location, normal, unit_scale));
         write_bool(half_space, "AgreementFlag", false);
 
         auto result = file->create(file->schema()->declaration_by_name("IfcBooleanClippingResult"));
@@ -2495,7 +2388,7 @@ express::Base geometry_clip_solid_bounded(
         write_ref_list(boundary, "Points", ifc_points);
 
         auto half_space = file->create(file->schema()->declaration_by_name("IfcPolygonalBoundedHalfSpace"));
-        write_ref(half_space, "BaseSurface", make_clipping_plane(file, location, normal, unit_scale));
+        write_ref(half_space, "BaseSurface", ifcapi::detail::create_clipping_plane(file, location, normal, unit_scale));
         write_bool(half_space, "AgreementFlag", false);
         write_ref(half_space, "Position", make_axis2_placement_3d_location_only(file, scaled_boundary_position));
         write_ref(half_space, "PolygonalBoundary", boundary);

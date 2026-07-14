@@ -71,6 +71,7 @@ set(IFCAPI_SOURCES
     src/api/system/system.cpp
     src/api/unit/unit.cpp
     src/api/geometry/placement.cpp
+    src/api/geometry/profile_representation.cpp
     src/api/geometry/shape_builder.cpp
     src/api/geometry/door.cpp
     src/api/geometry/railing.cpp

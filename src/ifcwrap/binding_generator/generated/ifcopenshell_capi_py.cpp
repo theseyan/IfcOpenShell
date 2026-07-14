@@ -9213,6 +9213,179 @@ static int fill_input_geometry_add_mesh_representation_options(PyObject *obj, if
 }
 
 
+static void free_input_geometry_add_profile_representation_options(ifcopenshell_geometry_add_profile_representation_options_t *value) {
+    if (value->placement_z_axis) {
+        free_input_double_list((ifcopenshell_double_list_t *)value->placement_z_axis);
+        PyMem_Free((void *)value->placement_z_axis);
+        value->placement_z_axis = NULL;
+    }
+    if (value->placement_x_axis) {
+        free_input_double_list((ifcopenshell_double_list_t *)value->placement_x_axis);
+        PyMem_Free((void *)value->placement_x_axis);
+        value->placement_x_axis = NULL;
+    }
+    if (value->clipping_kinds) {
+        free_input_int32_list((ifcopenshell_int32_list_t *)value->clipping_kinds);
+        PyMem_Free((void *)value->clipping_kinds);
+        value->clipping_kinds = NULL;
+    }
+    if (value->clipping_locations) {
+        free_input_double_list_list((ifcopenshell_double_list_list_t *)value->clipping_locations);
+        PyMem_Free((void *)value->clipping_locations);
+        value->clipping_locations = NULL;
+    }
+    if (value->clipping_normals) {
+        free_input_double_list_list((ifcopenshell_double_list_list_t *)value->clipping_normals);
+        PyMem_Free((void *)value->clipping_normals);
+        value->clipping_normals = NULL;
+    }
+    if (value->clipping_entities) {
+        ifcopenshell_parse_instance_list_destroy(value->clipping_entities);
+        value->clipping_entities = NULL;
+    }
+}
+
+static int fill_input_geometry_add_profile_representation_options(PyObject *obj, ifcopenshell_geometry_add_profile_representation_options_t *out, PyObject **refs) {
+    if (!PyMapping_Check(obj)) {
+        PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
+        return 0;
+    }
+    PyObject *field_0 = get_option_field(obj, "context", 1);
+    if (!field_0) {
+        return 0;
+    }
+    refs[0] = field_0;
+    if (!extract_handle(field_0, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->context, 0)) {
+        return 0;
+    }
+    PyObject *field_1 = get_option_field(obj, "profile", 1);
+    if (!field_1) {
+        return 0;
+    }
+    refs[1] = field_1;
+    if (!extract_handle(field_1, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->profile, 0)) {
+        return 0;
+    }
+    PyObject *field_2 = get_option_field(obj, "depth", 1);
+    if (!field_2) {
+        return 0;
+    }
+    refs[2] = field_2;
+    out->depth = PyFloat_AsDouble(field_2);
+    if (PyErr_Occurred()) return 0;
+    PyObject *field_3 = get_option_field(obj, "cardinal_point", 0);
+    if (!field_3) {
+        if (PyErr_Occurred()) return 0;
+    } else {
+        refs[3] = field_3;
+        if (field_3 != Py_None) {
+            out->cardinal_point = PyUnicode_AsUTF8(field_3);
+            if (!out->cardinal_point) return 0;
+        out->has_cardinal_point = true;
+        }
+    }
+    PyObject *field_4 = get_option_field(obj, "placement_z_axis", 0);
+    if (!field_4) {
+        if (PyErr_Occurred()) return 0;
+    } else {
+        refs[4] = field_4;
+        if (field_4 != Py_None) {
+            ifcopenshell_double_list_t *sequence_4 = (ifcopenshell_double_list_t *)PyMem_Calloc(1, sizeof(ifcopenshell_double_list_t));
+            if (!sequence_4) {
+                PyErr_NoMemory();
+                return 0;
+            }
+            if (!make_input_double_list(field_4, sequence_4)) {
+                PyMem_Free(sequence_4);
+                return 0;
+            }
+            out->placement_z_axis = sequence_4;
+        out->has_placement_z_axis = true;
+        }
+    }
+    PyObject *field_5 = get_option_field(obj, "placement_x_axis", 0);
+    if (!field_5) {
+        if (PyErr_Occurred()) return 0;
+    } else {
+        refs[5] = field_5;
+        if (field_5 != Py_None) {
+            ifcopenshell_double_list_t *sequence_5 = (ifcopenshell_double_list_t *)PyMem_Calloc(1, sizeof(ifcopenshell_double_list_t));
+            if (!sequence_5) {
+                PyErr_NoMemory();
+                return 0;
+            }
+            if (!make_input_double_list(field_5, sequence_5)) {
+                PyMem_Free(sequence_5);
+                return 0;
+            }
+            out->placement_x_axis = sequence_5;
+        out->has_placement_x_axis = true;
+        }
+    }
+    PyObject *field_6 = get_option_field(obj, "clipping_kinds", 1);
+    if (!field_6) {
+        return 0;
+    }
+    refs[6] = field_6;
+    ifcopenshell_int32_list_t *sequence_6 = (ifcopenshell_int32_list_t *)PyMem_Calloc(1, sizeof(ifcopenshell_int32_list_t));
+    if (!sequence_6) {
+        PyErr_NoMemory();
+        return 0;
+    }
+    if (!make_input_int32_list(field_6, sequence_6)) {
+        PyMem_Free(sequence_6);
+        return 0;
+    }
+    out->clipping_kinds = sequence_6;
+    PyObject *field_7 = get_option_field(obj, "clipping_locations", 1);
+    if (!field_7) {
+        return 0;
+    }
+    refs[7] = field_7;
+    ifcopenshell_double_list_list_t *sequence_7 = (ifcopenshell_double_list_list_t *)PyMem_Calloc(1, sizeof(ifcopenshell_double_list_list_t));
+    if (!sequence_7) {
+        PyErr_NoMemory();
+        return 0;
+    }
+    if (!make_input_double_list_list(field_7, sequence_7)) {
+        PyMem_Free(sequence_7);
+        return 0;
+    }
+    out->clipping_locations = sequence_7;
+    PyObject *field_8 = get_option_field(obj, "clipping_normals", 1);
+    if (!field_8) {
+        return 0;
+    }
+    refs[8] = field_8;
+    ifcopenshell_double_list_list_t *sequence_8 = (ifcopenshell_double_list_list_t *)PyMem_Calloc(1, sizeof(ifcopenshell_double_list_list_t));
+    if (!sequence_8) {
+        PyErr_NoMemory();
+        return 0;
+    }
+    if (!make_input_double_list_list(field_8, sequence_8)) {
+        PyMem_Free(sequence_8);
+        return 0;
+    }
+    out->clipping_normals = sequence_8;
+    PyObject *field_9 = get_option_field(obj, "clipping_entities", 1);
+    if (!field_9) {
+        return 0;
+    }
+    refs[9] = field_9;
+    ifcopenshell_instance_list_t clipping_entities_items_9 = {0};
+    if (!make_input_instance_list(field_9, &clipping_entities_items_9)) {
+        return 0;
+    }
+    if (!ifcopenshell_parse_instance_list_create_from_handles(&clipping_entities_items_9, &out->clipping_entities)) {
+        free_input_instance_list(&clipping_entities_items_9);
+        raise_last_error("ifcopenshell_parse_instance_list_create_from_handles failed");
+        return 0;
+    }
+    free_input_instance_list(&clipping_entities_items_9);
+    return 1;
+}
+
+
 static void free_input_geometry_add_railing_representation_options(ifcopenshell_geometry_add_railing_representation_options_t *value) {
     if (value->railing_path) {
         free_input_double_list_list((ifcopenshell_double_list_list_t *)value->railing_path);
@@ -33545,6 +33718,41 @@ __cleanup:
     return __py_result;
 }
 
+static PyObject *py_ifcopenshell_geometry_add_profile_representation(PyObject *self, PyObject *args) {
+    PyObject *__py_result = NULL;
+    bool ok = false;
+    PyObject *arg_file_obj = NULL;
+    ifcopenshell_file_t *arg_file = NULL;
+    PyObject *arg_options_obj = NULL;
+    ifcopenshell_geometry_add_profile_representation_options_t arg_options = {0};
+    PyObject *arg_options_refs[10] = {0};
+    ifcopenshell_instance_t *result = NULL;
+    if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_options_obj)) return NULL;
+
+    if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
+        goto __cleanup;
+    }
+    if (!fill_input_geometry_add_profile_representation_options(arg_options_obj, &arg_options, arg_options_refs)) {
+        goto __cleanup;
+    }
+
+    ifcopenshell_clear_error();
+    ok = ifcopenshell_geometry_add_profile_representation(arg_file, &arg_options, &result);
+    if (!ok) {
+        raise_last_error("ifcopenshell_geometry_add_profile_representation failed");
+        goto __cleanup;
+    }
+    if (result == nullptr && ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_geometry_add_profile_representation failed");
+        goto __cleanup;
+    }
+    __py_result = wrap_instance(result, 1);
+__cleanup:
+        release_option_refs(arg_options_refs, 10);
+        free_input_geometry_add_profile_representation_options(&arg_options);
+    return __py_result;
+}
+
 static PyObject *py_ifcopenshell_geometry_add_railing_representation(PyObject *self, PyObject *args) {
     PyObject *__py_result = NULL;
     bool ok = false;
@@ -49372,6 +49580,7 @@ static PyMethodDef module_methods[] = {
     {"geometry_add_door_representation", py_ifcopenshell_geometry_add_door_representation, METH_VARARGS, "Wrap ifcopenshell_geometry_add_door_representation"},
     {"geometry_add_footprint_representation", py_ifcopenshell_geometry_add_footprint_representation, METH_VARARGS, "Wrap ifcopenshell_geometry_add_footprint_representation"},
     {"geometry_add_mesh_representation", py_ifcopenshell_geometry_add_mesh_representation, METH_VARARGS, "Wrap ifcopenshell_geometry_add_mesh_representation"},
+    {"geometry_add_profile_representation", py_ifcopenshell_geometry_add_profile_representation, METH_VARARGS, "Wrap ifcopenshell_geometry_add_profile_representation"},
     {"geometry_add_railing_representation", py_ifcopenshell_geometry_add_railing_representation, METH_VARARGS, "Wrap ifcopenshell_geometry_add_railing_representation"},
     {"geometry_add_shape_aspect", py_ifcopenshell_geometry_add_shape_aspect, METH_VARARGS, "Wrap ifcopenshell_geometry_add_shape_aspect"},
     {"geometry_add_slab_representation", py_ifcopenshell_geometry_add_slab_representation, METH_VARARGS, "Wrap ifcopenshell_geometry_add_slab_representation"},
@@ -50441,6 +50650,7 @@ static PyMethodDef module_methods[] = {
     {"ifcopenshell_geometry_add_door_representation", py_ifcopenshell_geometry_add_door_representation, METH_VARARGS, "Wrap ifcopenshell_geometry_add_door_representation"},
     {"ifcopenshell_geometry_add_footprint_representation", py_ifcopenshell_geometry_add_footprint_representation, METH_VARARGS, "Wrap ifcopenshell_geometry_add_footprint_representation"},
     {"ifcopenshell_geometry_add_mesh_representation", py_ifcopenshell_geometry_add_mesh_representation, METH_VARARGS, "Wrap ifcopenshell_geometry_add_mesh_representation"},
+    {"ifcopenshell_geometry_add_profile_representation", py_ifcopenshell_geometry_add_profile_representation, METH_VARARGS, "Wrap ifcopenshell_geometry_add_profile_representation"},
     {"ifcopenshell_geometry_add_railing_representation", py_ifcopenshell_geometry_add_railing_representation, METH_VARARGS, "Wrap ifcopenshell_geometry_add_railing_representation"},
     {"ifcopenshell_geometry_add_shape_aspect", py_ifcopenshell_geometry_add_shape_aspect, METH_VARARGS, "Wrap ifcopenshell_geometry_add_shape_aspect"},
     {"ifcopenshell_geometry_add_slab_representation", py_ifcopenshell_geometry_add_slab_representation, METH_VARARGS, "Wrap ifcopenshell_geometry_add_slab_representation"},
