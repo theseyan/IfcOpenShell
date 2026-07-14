@@ -63,6 +63,7 @@ def _render_common_type_decls(sequence_kinds: tuple[str, ...]) -> str:
     char* data;
     size_t size;
     bool owned;
+    void* owner;
 } ifcopenshell_string_t;""",
         """typedef enum ifcopenshell_logical_t {
     IFCOPENSHELL_LOGICAL_UNKNOWN = -1,
@@ -75,9 +76,13 @@ def _render_common_type_decls(sequence_kinds: tuple[str, ...]) -> str:
             f"""typedef struct {_sequence_c_type(kind)} {{
     {_sequence_items_c_type(kind)}* items;
     size_t size;
+    void* owner;
 }} {_sequence_c_type(kind)};"""
         )
-    decls = ["void ifcopenshell_string_destroy(ifcopenshell_string_t* value);"]
+    decls = [
+        "void ifcopenshell_buffer_owner_destroy(void** owner);",
+        "void ifcopenshell_string_destroy(ifcopenshell_string_t* value);",
+    ]
     decls.extend(
         f"void {_sequence_destroy_name(kind)}({_sequence_c_type(kind)}* value);"
         for kind in sequence_kinds
@@ -87,25 +92,26 @@ def _render_common_type_decls(sequence_kinds: tuple[str, ...]) -> str:
 
 def _render_sequence_destroy_impl(kind: str) -> str:
     leaf, depth = _sequence_kind_parts(kind) or ("", 0)
-    if depth == 1 and leaf != "string":
-        body = "    delete[] value->items;"
+    if depth == 1:
+        body = ""
     else:
-        child_destroy = (
-            "ifcopenshell_string_destroy"
-            if depth == 1 and leaf == "string"
-            else _sequence_destroy_name(_sequence_prev_kind(kind))
-        )
+        child_destroy = _sequence_destroy_name(_sequence_prev_kind(kind))
         body = (
             "    for (size_t i = 0; i < value->size; ++i) {\n"
             f"        {child_destroy}(&value->items[i]);\n"
-            "    }\n"
-            "    delete[] value->items;"
+            "    }"
         )
     return f"""void {_sequence_destroy_name(kind)}({_sequence_c_type(kind)}* value) {{
-    if (value == nullptr || value->items == nullptr) {{
+    if (value == nullptr) {{
+        return;
+    }}
+    if (value->owner == nullptr) {{
+        value->items = nullptr;
+        value->size = 0;
         return;
     }}
 {body}
+    ifcopenshell_buffer_owner_destroy(&value->owner);
     value->items = nullptr;
     value->size = 0;
 }}"""
@@ -113,16 +119,27 @@ def _render_sequence_destroy_impl(kind: str) -> str:
 
 def _render_common_type_impls(sequence_kinds: tuple[str, ...]) -> str:
     impls = [
-        """void ifcopenshell_string_destroy(ifcopenshell_string_t* value) {
+        """void ifcopenshell_buffer_owner_destroy(void** owner) {
+    if (owner == nullptr || *owner == nullptr) {
+        return;
+    }
+    delete static_cast<capi_buffer_owner*>(*owner);
+    *owner = nullptr;
+}
+
+void ifcopenshell_string_destroy(ifcopenshell_string_t* value) {
     if (value == nullptr) {
         return;
     }
-    if (value->owned && value->data != nullptr) {
+    if (value->owner != nullptr) {
+        ifcopenshell_buffer_owner_destroy(&value->owner);
+    } else if (value->owned && value->data != nullptr) {
         delete[] value->data;
     }
     value->data = nullptr;
     value->size = 0;
     value->owned = false;
+    value->owner = nullptr;
 }"""
     ]
     impls.extend(_render_sequence_destroy_impl(kind) for kind in sequence_kinds)
@@ -135,44 +152,63 @@ def _render_sequence_make_impl(kind: str) -> str:
     c_type = _sequence_c_type(kind)
     if depth == 1:
         if leaf == "string":
-            item_init = "        items[i] = make_string(values[i]);"
-            return f"""static {c_type} {_sequence_make_name(kind)}(const {cpp_type}& values) {{
-    auto* items = values.empty() ? nullptr : new {_sequence_items_c_type(kind)}[values.size()];
-    size_t initialized = 0;
-    try {{
-        for (size_t i = 0; i < values.size(); ++i) {{
-{item_init}
-            ++initialized;
+            return f"""static {c_type} {_sequence_make_name(kind)}({cpp_type} values) {{
+    struct owner_type final : capi_buffer_owner {{
+        explicit owner_type({cpp_type} source) : values(std::move(source)) {{
+            items.reserve(values.size());
+            for (auto& value : values) {{
+                items.push_back(ifcopenshell_string_t{{value.data(), value.size(), false, nullptr}});
+            }}
         }}
-    }} catch (...) {{
-        for (size_t j = 0; j < initialized; ++j) {{
-            delete[] items[j].data;
-        }}
-        delete[] items;
-        throw;
-    }}
-    return {c_type}{{items, values.size()}};
+        {cpp_type} values;
+        std::vector<ifcopenshell_string_t> items;
+    }};
+    auto owner = std::make_unique<owner_type>(std::move(values));
+    auto* items = owner->items.empty() ? nullptr : owner->items.data();
+    const auto size = owner->items.size();
+    return {c_type}{{items, size, owner.release()}};
 }}"""
-        if leaf == "int32":
-            item_init = "        items[i] = static_cast<int32_t>(values[i]);"
-        elif leaf == "uint32":
-            item_init = "        items[i] = static_cast<uint32_t>(values[i]);"
-        else:
-            item_init = "        items[i] = values[i];"
-        return f"""static {c_type} {_sequence_make_name(kind)}(const {cpp_type}& values) {{
-    auto* items = values.empty() ? nullptr : new {_sequence_items_c_type(kind)}[values.size()];
+        if leaf == "bool":
+            return f"""static {c_type} {_sequence_make_name(kind)}({cpp_type} values) {{
+    auto owner = std::make_unique<capi_array_owner<bool>>(values.size());
     for (size_t i = 0; i < values.size(); ++i) {{
-{item_init}
+        owner->values[i] = values[i];
     }}
-    return {c_type}{{items, values.size()}};
+    auto* items = owner->values.get();
+    const auto size = values.size();
+    return {c_type}{{items, size, owner.release()}};
+}}"""
+        cast = (
+            f"reinterpret_cast<{_sequence_items_c_type(kind)}*>(stored.data())"
+            if leaf in {"int32", "uint32"}
+            else "stored.data()"
+        )
+        return f"""static {c_type} {_sequence_make_name(kind)}({cpp_type} values) {{
+    auto owner = std::make_unique<capi_value_owner<{cpp_type}>>(std::move(values));
+    auto& stored = owner->value;
+    auto* items = stored.empty() ? nullptr : {cast};
+    const auto size = stored.size();
+    return {c_type}{{items, size, owner.release()}};
 }}"""
     prev_kind = _sequence_prev_kind(kind)
-    return f"""static {c_type} {_sequence_make_name(kind)}(const {cpp_type}& values) {{
-    auto* items = values.empty() ? nullptr : new {_sequence_items_c_type(kind)}[values.size()];
-    for (size_t i = 0; i < values.size(); ++i) {{
-        items[i] = {_sequence_make_name(prev_kind)}(values[i]);
+    items_type = _sequence_items_c_type(kind)
+    return f"""static {c_type} {_sequence_make_name(kind)}({cpp_type} values) {{
+    auto owner = std::make_unique<capi_value_owner<std::vector<{items_type}>>>(std::vector<{items_type}>{{}});
+    auto& items = owner->value;
+    items.reserve(values.size());
+    try {{
+        for (auto& value : values) {{
+            items.push_back({_sequence_make_name(prev_kind)}(std::move(value)));
+        }}
+    }} catch (...) {{
+        for (auto& item : items) {{
+            {_sequence_destroy_name(prev_kind)}(&item);
+        }}
+        throw;
     }}
-    return {c_type}{{items, values.size()}};
+    auto* data = items.empty() ? nullptr : items.data();
+    const auto size = items.size();
+    return {c_type}{{data, size, owner.release()}};
 }}"""
 
 

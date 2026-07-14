@@ -29,6 +29,186 @@ typedef struct {
 
 static PyObject *SimpleNamespaceType = NULL;
 
+\
+typedef struct {
+    PyObject_HEAD
+    void *owner;
+    void *data;
+    Py_ssize_t length;
+    Py_ssize_t itemsize;
+    const char *format;
+} IfcOpenShellOwnedBufferObject;
+
+static void IfcOpenShellOwnedBuffer_dealloc(IfcOpenShellOwnedBufferObject *self) {
+    ifcopenshell_buffer_owner_destroy(&self->owner);
+    Py_TYPE(self)->tp_free((PyObject *)self);
+}
+
+static int IfcOpenShellOwnedBuffer_getbuffer(
+    PyObject *self_obj,
+    Py_buffer *view,
+    int flags
+) {
+    IfcOpenShellOwnedBufferObject *self = (IfcOpenShellOwnedBufferObject *)self_obj;
+    if ((flags & PyBUF_WRITABLE) == PyBUF_WRITABLE) {
+        PyErr_SetString(PyExc_BufferError, "IfcOpenShell buffers are read-only");
+        return -1;
+    }
+    view->obj = self_obj;
+    Py_INCREF(self_obj);
+    view->buf = self->data;
+    view->len = self->length * self->itemsize;
+    view->readonly = 1;
+    view->itemsize = self->itemsize;
+    view->format = (flags & PyBUF_FORMAT) ? (char *)self->format : NULL;
+    view->ndim = 1;
+    view->shape = (flags & PyBUF_ND) ? &self->length : NULL;
+    view->strides = (flags & PyBUF_STRIDES) ? &self->itemsize : NULL;
+    view->suboffsets = NULL;
+    view->internal = NULL;
+    return 0;
+}
+
+static Py_ssize_t IfcOpenShellOwnedBuffer_len(PyObject *self_obj) {
+    return ((IfcOpenShellOwnedBufferObject *)self_obj)->length;
+}
+
+static PyObject *IfcOpenShellOwnedBuffer_item(PyObject *self_obj, Py_ssize_t index) {
+    IfcOpenShellOwnedBufferObject *self = (IfcOpenShellOwnedBufferObject *)self_obj;
+    if (index < 0) index += self->length;
+    if (index < 0 || index >= self->length) {
+        PyErr_SetString(PyExc_IndexError, "buffer index out of range");
+        return NULL;
+    }
+    if (self->format[0] == 'd') return PyFloat_FromDouble(((double *)self->data)[index]);
+    if (self->format[0] == 'i') return PyLong_FromLong(((int32_t *)self->data)[index]);
+    if (self->format[0] == 'q') return PyLong_FromLongLong(((int64_t *)self->data)[index]);
+    if (self->format[0] == 'I') return PyLong_FromUnsignedLong(((uint32_t *)self->data)[index]);
+    PyErr_SetString(PyExc_TypeError, "unsupported native buffer format");
+    return NULL;
+}
+
+static PyObject *IfcOpenShellOwnedBuffer_as_tuple(IfcOpenShellOwnedBufferObject *self) {
+    PyObject *result = PyTuple_New(self->length);
+    if (!result) return NULL;
+    for (Py_ssize_t index = 0; index < self->length; ++index) {
+        PyObject *item = IfcOpenShellOwnedBuffer_item((PyObject *)self, index);
+        if (!item) {
+            Py_DECREF(result);
+            return NULL;
+        }
+        PyTuple_SET_ITEM(result, index, item);
+    }
+    return result;
+}
+
+static PyObject *IfcOpenShellOwnedBuffer_subscript(PyObject *self_obj, PyObject *key) {
+    if (PyIndex_Check(key)) {
+        Py_ssize_t index = PyNumber_AsSsize_t(key, PyExc_IndexError);
+        if (index == -1 && PyErr_Occurred()) return NULL;
+        return IfcOpenShellOwnedBuffer_item(self_obj, index);
+    }
+    if (PySlice_Check(key)) {
+        PyObject *tuple = IfcOpenShellOwnedBuffer_as_tuple(
+            (IfcOpenShellOwnedBufferObject *)self_obj);
+        if (!tuple) return NULL;
+        PyObject *result = PyObject_GetItem(tuple, key);
+        Py_DECREF(tuple);
+        return result;
+    }
+    PyErr_SetString(PyExc_TypeError, "buffer indices must be integers or slices");
+    return NULL;
+}
+
+static PyObject *IfcOpenShellOwnedBuffer_tolist(
+    IfcOpenShellOwnedBufferObject *self,
+    PyObject *args
+) {
+    (void)args;
+    PyObject *tuple = IfcOpenShellOwnedBuffer_as_tuple(self);
+    if (!tuple) return NULL;
+    PyObject *result = PySequence_List(tuple);
+    Py_DECREF(tuple);
+    return result;
+}
+
+static PyObject *IfcOpenShellOwnedBuffer_richcompare(
+    PyObject *self_obj,
+    PyObject *other,
+    int operation
+) {
+    if (operation != Py_EQ && operation != Py_NE) Py_RETURN_NOTIMPLEMENTED;
+    PyObject *tuple = IfcOpenShellOwnedBuffer_as_tuple(
+        (IfcOpenShellOwnedBufferObject *)self_obj);
+    if (!tuple) return NULL;
+    PyObject *result = PyObject_RichCompare(tuple, other, operation);
+    Py_DECREF(tuple);
+    return result;
+}
+
+static PySequenceMethods IfcOpenShellOwnedBuffer_sequence_methods = {
+    .sq_length = IfcOpenShellOwnedBuffer_len,
+    .sq_item = IfcOpenShellOwnedBuffer_item,
+};
+
+static PyMappingMethods IfcOpenShellOwnedBuffer_mapping_methods = {
+    .mp_length = IfcOpenShellOwnedBuffer_len,
+    .mp_subscript = IfcOpenShellOwnedBuffer_subscript,
+};
+
+static PyMethodDef IfcOpenShellOwnedBuffer_methods[] = {
+    {"tolist", (PyCFunction)IfcOpenShellOwnedBuffer_tolist, METH_NOARGS,
+        "Return a Python list snapshot"},
+    {NULL, NULL, 0, NULL},
+};
+
+static PyBufferProcs IfcOpenShellOwnedBuffer_buffer_procs = {
+    .bf_getbuffer = IfcOpenShellOwnedBuffer_getbuffer,
+    .bf_releasebuffer = NULL,
+};
+
+static PyTypeObject IfcOpenShellOwnedBufferType = {
+    PyVarObject_HEAD_INIT(NULL, 0)
+    .tp_name = "ifcopenshell._ifcopenshell_capi.OwnedBuffer",
+    .tp_basicsize = sizeof(IfcOpenShellOwnedBufferObject),
+    .tp_dealloc = (destructor)IfcOpenShellOwnedBuffer_dealloc,
+    .tp_as_sequence = &IfcOpenShellOwnedBuffer_sequence_methods,
+    .tp_as_mapping = &IfcOpenShellOwnedBuffer_mapping_methods,
+    .tp_as_buffer = &IfcOpenShellOwnedBuffer_buffer_procs,
+    .tp_flags = Py_TPFLAGS_DEFAULT,
+    .tp_richcompare = IfcOpenShellOwnedBuffer_richcompare,
+    .tp_methods = IfcOpenShellOwnedBuffer_methods,
+};
+
+static PyObject *make_owned_buffer(
+    void *data,
+    size_t length,
+    Py_ssize_t itemsize,
+    const char *format,
+    void **owner
+) {
+    if (owner == NULL || *owner == NULL) {
+        PyErr_SetString(PyExc_RuntimeError, "native buffer has no lifetime owner");
+        return NULL;
+    }
+    if (length > (size_t)PY_SSIZE_T_MAX) {
+        PyErr_SetString(PyExc_OverflowError, "native buffer is too large");
+        return NULL;
+    }
+    IfcOpenShellOwnedBufferObject *exporter =
+        (IfcOpenShellOwnedBufferObject *)IfcOpenShellOwnedBufferType.tp_alloc(
+            &IfcOpenShellOwnedBufferType, 0);
+    if (!exporter) return NULL;
+    exporter->owner = *owner;
+    *owner = NULL;
+    exporter->data = data;
+    exporter->length = (Py_ssize_t)length;
+    exporter->itemsize = itemsize;
+    exporter->format = format;
+    return (PyObject *)exporter;
+}
+
+
 typedef struct {
     PyObject_HEAD
     void *handle;
@@ -16288,20 +16468,9 @@ static PyObject *convert_string(ifcopenshell_string_t *value) {
 }
 
 static PyObject *convert_double_list(ifcopenshell_double_list_t *value, int owned) {
-    PyObject *result = PyTuple_New((Py_ssize_t)value->size);
-    if (!result) {
-        ifcopenshell_double_list_destroy(value);
-        return NULL;
-    }
-    for (size_t i = 0; i < value->size; ++i) {
-        PyObject *item = PyFloat_FromDouble(value->items[i]);
-        if (!item) {
-            Py_DECREF(result);
-            ifcopenshell_double_list_destroy(value);
-            return NULL;
-        }
-        PyTuple_SET_ITEM(result, (Py_ssize_t)i, item);
-    }
+    (void)owned;
+    PyObject *result = make_owned_buffer(
+        value->items, value->size, sizeof(double), "d", &value->owner);
     ifcopenshell_double_list_destroy(value);
     return result;
 }
@@ -16326,39 +16495,17 @@ static PyObject *convert_string_list(ifcopenshell_string_list_t *value, int owne
 }
 
 static PyObject *convert_int64_list(ifcopenshell_int64_list_t *value, int owned) {
-    PyObject *result = PyTuple_New((Py_ssize_t)value->size);
-    if (!result) {
-        ifcopenshell_int64_list_destroy(value);
-        return NULL;
-    }
-    for (size_t i = 0; i < value->size; ++i) {
-        PyObject *item = PyLong_FromLongLong(value->items[i]);
-        if (!item) {
-            Py_DECREF(result);
-            ifcopenshell_int64_list_destroy(value);
-            return NULL;
-        }
-        PyTuple_SET_ITEM(result, (Py_ssize_t)i, item);
-    }
+    (void)owned;
+    PyObject *result = make_owned_buffer(
+        value->items, value->size, sizeof(int64_t), "q", &value->owner);
     ifcopenshell_int64_list_destroy(value);
     return result;
 }
 
 static PyObject *convert_int32_list(ifcopenshell_int32_list_t *value, int owned) {
-    PyObject *result = PyTuple_New((Py_ssize_t)value->size);
-    if (!result) {
-        ifcopenshell_int32_list_destroy(value);
-        return NULL;
-    }
-    for (size_t i = 0; i < value->size; ++i) {
-        PyObject *item = PyLong_FromLong(value->items[i]);
-        if (!item) {
-            Py_DECREF(result);
-            ifcopenshell_int32_list_destroy(value);
-            return NULL;
-        }
-        PyTuple_SET_ITEM(result, (Py_ssize_t)i, item);
-    }
+    (void)owned;
+    PyObject *result = make_owned_buffer(
+        value->items, value->size, sizeof(int32_t), "i", &value->owner);
     ifcopenshell_int32_list_destroy(value);
     return result;
 }
@@ -16383,20 +16530,9 @@ static PyObject *convert_bool_list(ifcopenshell_bool_list_t *value, int owned) {
 }
 
 static PyObject *convert_uint32_list(ifcopenshell_uint32_list_t *value, int owned) {
-    PyObject *result = PyTuple_New((Py_ssize_t)value->size);
-    if (!result) {
-        ifcopenshell_uint32_list_destroy(value);
-        return NULL;
-    }
-    for (size_t i = 0; i < value->size; ++i) {
-        PyObject *item = PyLong_FromUnsignedLong(value->items[i]);
-        if (!item) {
-            Py_DECREF(result);
-            ifcopenshell_uint32_list_destroy(value);
-            return NULL;
-        }
-        PyTuple_SET_ITEM(result, (Py_ssize_t)i, item);
-    }
+    (void)owned;
+    PyObject *result = make_owned_buffer(
+        value->items, value->size, sizeof(uint32_t), "I", &value->owner);
     ifcopenshell_uint32_list_destroy(value);
     return result;
 }
@@ -25358,7 +25494,7 @@ static PyObject *py_ifcopenshell_geom_element_transformation_buffer(PyObject *se
     bool ok = false;
     PyObject *arg_self_obj = NULL;
     ifcopenshell_geom_element_t *arg_self = NULL;
-    const double *result = NULL;
+    ifcopenshell_double_list_t result = {0};
     if (!PyArg_ParseTuple(args, "O", &arg_self_obj)) return NULL;
 
     if (!extract_handle(arg_self_obj, &IfcOpenshellGeomElementType, "IfcOpenshellGeomElement", (void **)&arg_self, 0)) {
@@ -25371,11 +25507,7 @@ static PyObject *py_ifcopenshell_geom_element_transformation_buffer(PyObject *se
         raise_last_error("ifcopenshell_geom_element_transformation_buffer failed");
         goto __cleanup;
     }
-    if (result == nullptr && ifcopenshell_last_error_kind() != 0) {
-        raise_last_error("ifcopenshell_geom_element_transformation_buffer failed");
-        goto __cleanup;
-    }
-    __py_result = PyCapsule_New((void *)result, NULL, NULL);
+    __py_result = convert_double_list(&result, 1);
 __cleanup:
     return __py_result;
 }
@@ -32424,7 +32556,7 @@ static PyObject *py_ifcopenshell_geom_triangulation_edges_buffer(PyObject *self,
     bool ok = false;
     PyObject *arg_self_obj = NULL;
     ifcopenshell_geom_triangulation_t *arg_self = NULL;
-    const int32_t *result = NULL;
+    ifcopenshell_int32_list_t result = {0};
     if (!PyArg_ParseTuple(args, "O", &arg_self_obj)) return NULL;
 
     if (!extract_handle(arg_self_obj, &IfcOpenshellGeomTriangulationType, "IfcOpenshellGeomTriangulation", (void **)&arg_self, 0)) {
@@ -32437,11 +32569,7 @@ static PyObject *py_ifcopenshell_geom_triangulation_edges_buffer(PyObject *self,
         raise_last_error("ifcopenshell_geom_triangulation_edges_buffer failed");
         goto __cleanup;
     }
-    if (result == nullptr && ifcopenshell_last_error_kind() != 0) {
-        raise_last_error("ifcopenshell_geom_triangulation_edges_buffer failed");
-        goto __cleanup;
-    }
-    __py_result = PyCapsule_New((void *)result, NULL, NULL);
+    __py_result = convert_int32_list(&result, 1);
 __cleanup:
     return __py_result;
 }
@@ -32497,7 +32625,7 @@ static PyObject *py_ifcopenshell_geom_triangulation_edges_item_ids_buffer(PyObje
     bool ok = false;
     PyObject *arg_self_obj = NULL;
     ifcopenshell_geom_triangulation_t *arg_self = NULL;
-    const int32_t *result = NULL;
+    ifcopenshell_int32_list_t result = {0};
     if (!PyArg_ParseTuple(args, "O", &arg_self_obj)) return NULL;
 
     if (!extract_handle(arg_self_obj, &IfcOpenshellGeomTriangulationType, "IfcOpenshellGeomTriangulation", (void **)&arg_self, 0)) {
@@ -32510,11 +32638,7 @@ static PyObject *py_ifcopenshell_geom_triangulation_edges_item_ids_buffer(PyObje
         raise_last_error("ifcopenshell_geom_triangulation_edges_item_ids_buffer failed");
         goto __cleanup;
     }
-    if (result == nullptr && ifcopenshell_last_error_kind() != 0) {
-        raise_last_error("ifcopenshell_geom_triangulation_edges_item_ids_buffer failed");
-        goto __cleanup;
-    }
-    __py_result = PyCapsule_New((void *)result, NULL, NULL);
+    __py_result = convert_int32_list(&result, 1);
 __cleanup:
     return __py_result;
 }
@@ -32597,7 +32721,7 @@ static PyObject *py_ifcopenshell_geom_triangulation_faces_buffer(PyObject *self,
     bool ok = false;
     PyObject *arg_self_obj = NULL;
     ifcopenshell_geom_triangulation_t *arg_self = NULL;
-    const int32_t *result = NULL;
+    ifcopenshell_int32_list_t result = {0};
     if (!PyArg_ParseTuple(args, "O", &arg_self_obj)) return NULL;
 
     if (!extract_handle(arg_self_obj, &IfcOpenshellGeomTriangulationType, "IfcOpenshellGeomTriangulation", (void **)&arg_self, 0)) {
@@ -32610,11 +32734,7 @@ static PyObject *py_ifcopenshell_geom_triangulation_faces_buffer(PyObject *self,
         raise_last_error("ifcopenshell_geom_triangulation_faces_buffer failed");
         goto __cleanup;
     }
-    if (result == nullptr && ifcopenshell_last_error_kind() != 0) {
-        raise_last_error("ifcopenshell_geom_triangulation_faces_buffer failed");
-        goto __cleanup;
-    }
-    __py_result = PyCapsule_New((void *)result, NULL, NULL);
+    __py_result = convert_int32_list(&result, 1);
 __cleanup:
     return __py_result;
 }
@@ -32670,7 +32790,7 @@ static PyObject *py_ifcopenshell_geom_triangulation_item_ids_buffer(PyObject *se
     bool ok = false;
     PyObject *arg_self_obj = NULL;
     ifcopenshell_geom_triangulation_t *arg_self = NULL;
-    const int32_t *result = NULL;
+    ifcopenshell_int32_list_t result = {0};
     if (!PyArg_ParseTuple(args, "O", &arg_self_obj)) return NULL;
 
     if (!extract_handle(arg_self_obj, &IfcOpenshellGeomTriangulationType, "IfcOpenshellGeomTriangulation", (void **)&arg_self, 0)) {
@@ -32683,11 +32803,7 @@ static PyObject *py_ifcopenshell_geom_triangulation_item_ids_buffer(PyObject *se
         raise_last_error("ifcopenshell_geom_triangulation_item_ids_buffer failed");
         goto __cleanup;
     }
-    if (result == nullptr && ifcopenshell_last_error_kind() != 0) {
-        raise_last_error("ifcopenshell_geom_triangulation_item_ids_buffer failed");
-        goto __cleanup;
-    }
-    __py_result = PyCapsule_New((void *)result, NULL, NULL);
+    __py_result = convert_int32_list(&result, 1);
 __cleanup:
     return __py_result;
 }
@@ -32794,7 +32910,7 @@ static PyObject *py_ifcopenshell_geom_triangulation_material_ids_buffer(PyObject
     bool ok = false;
     PyObject *arg_self_obj = NULL;
     ifcopenshell_geom_triangulation_t *arg_self = NULL;
-    const int32_t *result = NULL;
+    ifcopenshell_int32_list_t result = {0};
     if (!PyArg_ParseTuple(args, "O", &arg_self_obj)) return NULL;
 
     if (!extract_handle(arg_self_obj, &IfcOpenshellGeomTriangulationType, "IfcOpenshellGeomTriangulation", (void **)&arg_self, 0)) {
@@ -32807,11 +32923,7 @@ static PyObject *py_ifcopenshell_geom_triangulation_material_ids_buffer(PyObject
         raise_last_error("ifcopenshell_geom_triangulation_material_ids_buffer failed");
         goto __cleanup;
     }
-    if (result == nullptr && ifcopenshell_last_error_kind() != 0) {
-        raise_last_error("ifcopenshell_geom_triangulation_material_ids_buffer failed");
-        goto __cleanup;
-    }
-    __py_result = PyCapsule_New((void *)result, NULL, NULL);
+    __py_result = convert_int32_list(&result, 1);
 __cleanup:
     return __py_result;
 }
@@ -32890,7 +33002,7 @@ static PyObject *py_ifcopenshell_geom_triangulation_normals_buffer(PyObject *sel
     bool ok = false;
     PyObject *arg_self_obj = NULL;
     ifcopenshell_geom_triangulation_t *arg_self = NULL;
-    const double *result = NULL;
+    ifcopenshell_double_list_t result = {0};
     if (!PyArg_ParseTuple(args, "O", &arg_self_obj)) return NULL;
 
     if (!extract_handle(arg_self_obj, &IfcOpenshellGeomTriangulationType, "IfcOpenshellGeomTriangulation", (void **)&arg_self, 0)) {
@@ -32903,11 +33015,7 @@ static PyObject *py_ifcopenshell_geom_triangulation_normals_buffer(PyObject *sel
         raise_last_error("ifcopenshell_geom_triangulation_normals_buffer failed");
         goto __cleanup;
     }
-    if (result == nullptr && ifcopenshell_last_error_kind() != 0) {
-        raise_last_error("ifcopenshell_geom_triangulation_normals_buffer failed");
-        goto __cleanup;
-    }
-    __py_result = PyCapsule_New((void *)result, NULL, NULL);
+    __py_result = convert_double_list(&result, 1);
 __cleanup:
     return __py_result;
 }
@@ -33009,7 +33117,7 @@ static PyObject *py_ifcopenshell_geom_triangulation_uvs_buffer(PyObject *self, P
     bool ok = false;
     PyObject *arg_self_obj = NULL;
     ifcopenshell_geom_triangulation_t *arg_self = NULL;
-    const double *result = NULL;
+    ifcopenshell_double_list_t result = {0};
     if (!PyArg_ParseTuple(args, "O", &arg_self_obj)) return NULL;
 
     if (!extract_handle(arg_self_obj, &IfcOpenshellGeomTriangulationType, "IfcOpenshellGeomTriangulation", (void **)&arg_self, 0)) {
@@ -33022,11 +33130,7 @@ static PyObject *py_ifcopenshell_geom_triangulation_uvs_buffer(PyObject *self, P
         raise_last_error("ifcopenshell_geom_triangulation_uvs_buffer failed");
         goto __cleanup;
     }
-    if (result == nullptr && ifcopenshell_last_error_kind() != 0) {
-        raise_last_error("ifcopenshell_geom_triangulation_uvs_buffer failed");
-        goto __cleanup;
-    }
-    __py_result = PyCapsule_New((void *)result, NULL, NULL);
+    __py_result = convert_double_list(&result, 1);
 __cleanup:
     return __py_result;
 }
@@ -33082,7 +33186,7 @@ static PyObject *py_ifcopenshell_geom_triangulation_verts_buffer(PyObject *self,
     bool ok = false;
     PyObject *arg_self_obj = NULL;
     ifcopenshell_geom_triangulation_t *arg_self = NULL;
-    const double *result = NULL;
+    ifcopenshell_double_list_t result = {0};
     if (!PyArg_ParseTuple(args, "O", &arg_self_obj)) return NULL;
 
     if (!extract_handle(arg_self_obj, &IfcOpenshellGeomTriangulationType, "IfcOpenshellGeomTriangulation", (void **)&arg_self, 0)) {
@@ -33095,11 +33199,7 @@ static PyObject *py_ifcopenshell_geom_triangulation_verts_buffer(PyObject *self,
         raise_last_error("ifcopenshell_geom_triangulation_verts_buffer failed");
         goto __cleanup;
     }
-    if (result == nullptr && ifcopenshell_last_error_kind() != 0) {
-        raise_last_error("ifcopenshell_geom_triangulation_verts_buffer failed");
-        goto __cleanup;
-    }
-    __py_result = PyCapsule_New((void *)result, NULL, NULL);
+    __py_result = convert_double_list(&result, 1);
 __cleanup:
     return __py_result;
 }
@@ -50710,6 +50810,7 @@ static struct PyModuleDef moduledef = {
 };
 
 PyMODINIT_FUNC PyInit__ifcopenshell_capi(void) {
+    if (PyType_Ready(&IfcOpenShellOwnedBufferType) < 0) return NULL;
     if (PyType_Ready(&IfcOpenshellAggregationTypeType) < 0) return NULL;
     if (PyType_Ready(&IfcOpenshellAttributeType) < 0) return NULL;
     if (PyType_Ready(&IfcOpenshellDeclarationType) < 0) return NULL;

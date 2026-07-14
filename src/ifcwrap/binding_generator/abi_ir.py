@@ -407,6 +407,7 @@ def _finalize_value_types(ir: BindingIR) -> dict[str, CTypeIR]:
                 CFieldIR("data", "char*"),
                 CFieldIR("size", "size_t"),
                 CFieldIR("owned", "bool"),
+                CFieldIR("owner", "void*"),
             ),
             destroy_function="ifcopenshell_string_destroy",
         )
@@ -418,6 +419,7 @@ def _finalize_value_types(ir: BindingIR) -> dict[str, CTypeIR]:
             fields=(
                 CFieldIR("items", f"{_sequence_items_c_type(kind)}*"),
                 CFieldIR("size", "size_t"),
+                CFieldIR("owner", "void*"),
             ),
             destroy_function=_sequence_destroy_name(kind),
             element_type=_sequence_items_c_type(kind),

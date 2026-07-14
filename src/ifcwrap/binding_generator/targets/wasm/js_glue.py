@@ -635,6 +635,11 @@ def _render_value_type_metadata(metadata: BindingABI) -> str:
             "destroyFunction": value.destroy_function,
             "elementType": value.element_type,
             "sequenceDepth": value.sequence_depth,
+            "bufferMode": (
+                "snapshot"
+                if value.kind in {"string", "sequence"}
+                else None
+            ),
             "fields": [
                 {"name": field.name, "cType": field.c_type} for field in value.fields
             ],
@@ -921,6 +926,8 @@ def render_js_glue(
             "    const itemsPtr = value.length ? module._malloc(stringLayout.size * value.length) : 0;",
             "    const dataPtrs = [];",
             "    try {",
+            "        _zeroMemory(module, structPtr, listLayout.size);",
+            "        if (itemsPtr) _zeroMemory(module, itemsPtr, stringLayout.size * value.length);",
             "        for (let index = 0; index < value.length; index += 1) {",
             "            const itemPtr = itemsPtr + index * stringLayout.size;",
             "            const dataPtr = _allocString(module, value[index]);",
@@ -1010,6 +1017,7 @@ def render_js_glue(
             "    const layout = _getStructLayout(metadata);",
             "    const structPtr = module._malloc(layout.size);",
             "    try {",
+            "        _zeroMemory(module, structPtr, layout.size);",
             "        _writeInputSequence(module, structPtr, value, metadata);",
             "        return structPtr;",
             "    } catch (error) {",
@@ -1032,6 +1040,7 @@ def render_js_glue(
             "    const elementInfo = scalarElement ? _nativeTypeInfo(elementType) : _getStructLayout(elementMetadata);",
             "    const itemsPtr = value.length ? module._malloc(elementInfo.size * value.length) : 0;",
             "    try {",
+            "        if (itemsPtr) _zeroMemory(module, itemsPtr, elementInfo.size * value.length);",
             "        for (let index = 0; index < value.length; index += 1) {",
             "            const itemPtr = itemsPtr + index * elementInfo.size;",
             "            if (scalarElement) _setValue(module, itemPtr, elementType, value[index]);",

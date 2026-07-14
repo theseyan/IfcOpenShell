@@ -33,6 +33,23 @@ namespace {{
 using ifcopenshell::capi::g_last_error;
 using ifcopenshell::capi::set_last_error;
 
+struct capi_buffer_owner {{
+    virtual ~capi_buffer_owner() = default;
+}};
+
+template <typename T>
+struct capi_value_owner final : capi_buffer_owner {{
+    explicit capi_value_owner(T value) : value(std::move(value)) {{}}
+    T value;
+}};
+
+template <typename T>
+struct capi_array_owner final : capi_buffer_owner {{
+    explicit capi_array_owner(size_t size)
+        : values(size == 0 ? nullptr : std::make_unique<T[]>(size)) {{}}
+    std::unique_ptr<T[]> values;
+}};
+
 bool feature_use_attribute_value_derived = false;
 std::stringstream ifcopenshell_log_stream;
 bool g_log_stream_initialized = false;
@@ -313,17 +330,17 @@ std::string instance_stream_read_instance_json(ifcopenshell::instance_streamer<>
     return out.str();
 }}
 
-ifcopenshell_string_t make_string(const std::string& value) {{
-    char* data = new char[value.size() + 1];
-    std::memcpy(data, value.c_str(), value.size() + 1);
-    return ifcopenshell_string_t{{data, value.size(), true}};
+ifcopenshell_string_t make_string(std::string value) {{
+    auto owner = std::make_unique<capi_value_owner<std::string>>(std::move(value));
+    auto& stored = owner->value;
+    return ifcopenshell_string_t{{stored.data(), stored.size(), false, owner.release()}};
 }}
 
 ifcopenshell_string_t make_static_string(const char* value) {{
     if (value == nullptr) {{
-        return ifcopenshell_string_t{{nullptr, 0, false}};
+        return ifcopenshell_string_t{{nullptr, 0, false, nullptr}};
     }}
-    return ifcopenshell_string_t{{const_cast<char*>(value), std::strlen(value), false}};
+    return ifcopenshell_string_t{{const_cast<char*>(value), std::strlen(value), false, nullptr}};
 }}
 
 template <typename T>

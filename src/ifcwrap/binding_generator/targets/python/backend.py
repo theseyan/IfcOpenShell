@@ -37,6 +37,195 @@ _LEAF_READERS = {
     "uint32_t": "(uint32_t)PyLong_AsUnsignedLong({obj})",
 }
 
+_BUFFER_FORMATS = {
+    "double": ("d", "sizeof(double)"),
+    "int32_t": ("i", "sizeof(int32_t)"),
+    "int64_t": ("q", "sizeof(int64_t)"),
+    "uint32_t": ("I", "sizeof(uint32_t)"),
+}
+
+
+def _render_owned_buffer_type() -> str:
+    return r'''\
+typedef struct {
+    PyObject_HEAD
+    void *owner;
+    void *data;
+    Py_ssize_t length;
+    Py_ssize_t itemsize;
+    const char *format;
+} IfcOpenShellOwnedBufferObject;
+
+static void IfcOpenShellOwnedBuffer_dealloc(IfcOpenShellOwnedBufferObject *self) {
+    ifcopenshell_buffer_owner_destroy(&self->owner);
+    Py_TYPE(self)->tp_free((PyObject *)self);
+}
+
+static int IfcOpenShellOwnedBuffer_getbuffer(
+    PyObject *self_obj,
+    Py_buffer *view,
+    int flags
+) {
+    IfcOpenShellOwnedBufferObject *self = (IfcOpenShellOwnedBufferObject *)self_obj;
+    if ((flags & PyBUF_WRITABLE) == PyBUF_WRITABLE) {
+        PyErr_SetString(PyExc_BufferError, "IfcOpenShell buffers are read-only");
+        return -1;
+    }
+    view->obj = self_obj;
+    Py_INCREF(self_obj);
+    view->buf = self->data;
+    view->len = self->length * self->itemsize;
+    view->readonly = 1;
+    view->itemsize = self->itemsize;
+    view->format = (flags & PyBUF_FORMAT) ? (char *)self->format : NULL;
+    view->ndim = 1;
+    view->shape = (flags & PyBUF_ND) ? &self->length : NULL;
+    view->strides = (flags & PyBUF_STRIDES) ? &self->itemsize : NULL;
+    view->suboffsets = NULL;
+    view->internal = NULL;
+    return 0;
+}
+
+static Py_ssize_t IfcOpenShellOwnedBuffer_len(PyObject *self_obj) {
+    return ((IfcOpenShellOwnedBufferObject *)self_obj)->length;
+}
+
+static PyObject *IfcOpenShellOwnedBuffer_item(PyObject *self_obj, Py_ssize_t index) {
+    IfcOpenShellOwnedBufferObject *self = (IfcOpenShellOwnedBufferObject *)self_obj;
+    if (index < 0) index += self->length;
+    if (index < 0 || index >= self->length) {
+        PyErr_SetString(PyExc_IndexError, "buffer index out of range");
+        return NULL;
+    }
+    if (self->format[0] == 'd') return PyFloat_FromDouble(((double *)self->data)[index]);
+    if (self->format[0] == 'i') return PyLong_FromLong(((int32_t *)self->data)[index]);
+    if (self->format[0] == 'q') return PyLong_FromLongLong(((int64_t *)self->data)[index]);
+    if (self->format[0] == 'I') return PyLong_FromUnsignedLong(((uint32_t *)self->data)[index]);
+    PyErr_SetString(PyExc_TypeError, "unsupported native buffer format");
+    return NULL;
+}
+
+static PyObject *IfcOpenShellOwnedBuffer_as_tuple(IfcOpenShellOwnedBufferObject *self) {
+    PyObject *result = PyTuple_New(self->length);
+    if (!result) return NULL;
+    for (Py_ssize_t index = 0; index < self->length; ++index) {
+        PyObject *item = IfcOpenShellOwnedBuffer_item((PyObject *)self, index);
+        if (!item) {
+            Py_DECREF(result);
+            return NULL;
+        }
+        PyTuple_SET_ITEM(result, index, item);
+    }
+    return result;
+}
+
+static PyObject *IfcOpenShellOwnedBuffer_subscript(PyObject *self_obj, PyObject *key) {
+    if (PyIndex_Check(key)) {
+        Py_ssize_t index = PyNumber_AsSsize_t(key, PyExc_IndexError);
+        if (index == -1 && PyErr_Occurred()) return NULL;
+        return IfcOpenShellOwnedBuffer_item(self_obj, index);
+    }
+    if (PySlice_Check(key)) {
+        PyObject *tuple = IfcOpenShellOwnedBuffer_as_tuple(
+            (IfcOpenShellOwnedBufferObject *)self_obj);
+        if (!tuple) return NULL;
+        PyObject *result = PyObject_GetItem(tuple, key);
+        Py_DECREF(tuple);
+        return result;
+    }
+    PyErr_SetString(PyExc_TypeError, "buffer indices must be integers or slices");
+    return NULL;
+}
+
+static PyObject *IfcOpenShellOwnedBuffer_tolist(
+    IfcOpenShellOwnedBufferObject *self,
+    PyObject *args
+) {
+    (void)args;
+    PyObject *tuple = IfcOpenShellOwnedBuffer_as_tuple(self);
+    if (!tuple) return NULL;
+    PyObject *result = PySequence_List(tuple);
+    Py_DECREF(tuple);
+    return result;
+}
+
+static PyObject *IfcOpenShellOwnedBuffer_richcompare(
+    PyObject *self_obj,
+    PyObject *other,
+    int operation
+) {
+    if (operation != Py_EQ && operation != Py_NE) Py_RETURN_NOTIMPLEMENTED;
+    PyObject *tuple = IfcOpenShellOwnedBuffer_as_tuple(
+        (IfcOpenShellOwnedBufferObject *)self_obj);
+    if (!tuple) return NULL;
+    PyObject *result = PyObject_RichCompare(tuple, other, operation);
+    Py_DECREF(tuple);
+    return result;
+}
+
+static PySequenceMethods IfcOpenShellOwnedBuffer_sequence_methods = {
+    .sq_length = IfcOpenShellOwnedBuffer_len,
+    .sq_item = IfcOpenShellOwnedBuffer_item,
+};
+
+static PyMappingMethods IfcOpenShellOwnedBuffer_mapping_methods = {
+    .mp_length = IfcOpenShellOwnedBuffer_len,
+    .mp_subscript = IfcOpenShellOwnedBuffer_subscript,
+};
+
+static PyMethodDef IfcOpenShellOwnedBuffer_methods[] = {
+    {"tolist", (PyCFunction)IfcOpenShellOwnedBuffer_tolist, METH_NOARGS,
+        "Return a Python list snapshot"},
+    {NULL, NULL, 0, NULL},
+};
+
+static PyBufferProcs IfcOpenShellOwnedBuffer_buffer_procs = {
+    .bf_getbuffer = IfcOpenShellOwnedBuffer_getbuffer,
+    .bf_releasebuffer = NULL,
+};
+
+static PyTypeObject IfcOpenShellOwnedBufferType = {
+    PyVarObject_HEAD_INIT(NULL, 0)
+    .tp_name = "ifcopenshell._ifcopenshell_capi.OwnedBuffer",
+    .tp_basicsize = sizeof(IfcOpenShellOwnedBufferObject),
+    .tp_dealloc = (destructor)IfcOpenShellOwnedBuffer_dealloc,
+    .tp_as_sequence = &IfcOpenShellOwnedBuffer_sequence_methods,
+    .tp_as_mapping = &IfcOpenShellOwnedBuffer_mapping_methods,
+    .tp_as_buffer = &IfcOpenShellOwnedBuffer_buffer_procs,
+    .tp_flags = Py_TPFLAGS_DEFAULT,
+    .tp_richcompare = IfcOpenShellOwnedBuffer_richcompare,
+    .tp_methods = IfcOpenShellOwnedBuffer_methods,
+};
+
+static PyObject *make_owned_buffer(
+    void *data,
+    size_t length,
+    Py_ssize_t itemsize,
+    const char *format,
+    void **owner
+) {
+    if (owner == NULL || *owner == NULL) {
+        PyErr_SetString(PyExc_RuntimeError, "native buffer has no lifetime owner");
+        return NULL;
+    }
+    if (length > (size_t)PY_SSIZE_T_MAX) {
+        PyErr_SetString(PyExc_OverflowError, "native buffer is too large");
+        return NULL;
+    }
+    IfcOpenShellOwnedBufferObject *exporter =
+        (IfcOpenShellOwnedBufferObject *)IfcOpenShellOwnedBufferType.tp_alloc(
+            &IfcOpenShellOwnedBufferType, 0);
+    if (!exporter) return NULL;
+    exporter->owner = *owner;
+    *owner = NULL;
+    exporter->data = data;
+    exporter->length = (Py_ssize_t)length;
+    exporter->itemsize = itemsize;
+    exporter->format = format;
+    return (PyObject *)exporter;
+}
+'''
+
 
 def _normalize_c_type(c_type: str) -> str:
     return " ".join(c_type.replace(" *", "*").split())
@@ -297,6 +486,17 @@ def _render_sequence_converter(struct: CTypeIR) -> str:
         else:
             item = f"convert_{_snake_name(elem)}(&value->items[i], owned)"
             null_item = ""
+    elif elem in _BUFFER_FORMATS:
+        format_char, itemsize = _BUFFER_FORMATS[elem]
+        return f"""\
+static PyObject *convert_{name}({c_type} *value, int owned) {{
+    (void)owned;
+    PyObject *result = make_owned_buffer(
+        value->items, value->size, {itemsize}, "{format_char}", &value->owner);
+    {destroy}(value);
+    return result;
+}}
+"""
     elif elem == "uint8_t":
         return f"""\
 static PyObject *convert_{name}({c_type} *value, int owned) {{
@@ -1161,6 +1361,7 @@ def render_python_extension(metadata: BindingABI) -> str:
     handle_decls = "\n".join(
         _render_handle_type_decl(handle) for handle in sorted_handles
     )
+    owned_buffer_type = _render_owned_buffer_type()
     destroy_wrappers = "\n".join(
         _render_destroy_wrapper(handle) for handle in sorted_handles
     )
@@ -1186,8 +1387,11 @@ def render_python_extension(metadata: BindingABI) -> str:
         ]
     )
     type_ready = "\n".join(
-        f"    if (PyType_Ready(&{_py_type_name(h.c_type)}Type) < 0) return NULL;"
-        for h in sorted_handles
+        ["    if (PyType_Ready(&IfcOpenShellOwnedBufferType) < 0) return NULL;"]
+        + [
+            f"    if (PyType_Ready(&{_py_type_name(h.c_type)}Type) < 0) return NULL;"
+            for h in sorted_handles
+        ]
     )
     add_types = "\n".join(
         f"    Py_INCREF(&{_py_type_name(h.c_type)}Type);\n"
@@ -1228,6 +1432,8 @@ typedef struct {{
 }} IfcOpenshellGenericHandleObject;
 
 static PyObject *SimpleNamespaceType = NULL;
+
+{owned_buffer_type}
 
 {handle_decls}
 

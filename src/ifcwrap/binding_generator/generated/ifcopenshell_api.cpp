@@ -44,6 +44,23 @@ namespace {
 using ifcopenshell::capi::g_last_error;
 using ifcopenshell::capi::set_last_error;
 
+struct capi_buffer_owner {
+    virtual ~capi_buffer_owner() = default;
+};
+
+template <typename T>
+struct capi_value_owner final : capi_buffer_owner {
+    explicit capi_value_owner(T value) : value(std::move(value)) {}
+    T value;
+};
+
+template <typename T>
+struct capi_array_owner final : capi_buffer_owner {
+    explicit capi_array_owner(size_t size)
+        : values(size == 0 ? nullptr : std::make_unique<T[]>(size)) {}
+    std::unique_ptr<T[]> values;
+};
+
 bool feature_use_attribute_value_derived = false;
 std::stringstream ifcopenshell_log_stream;
 bool g_log_stream_initialized = false;
@@ -324,17 +341,17 @@ std::string instance_stream_read_instance_json(ifcopenshell::instance_streamer<>
     return out.str();
 }
 
-ifcopenshell_string_t make_string(const std::string& value) {
-    char* data = new char[value.size() + 1];
-    std::memcpy(data, value.c_str(), value.size() + 1);
-    return ifcopenshell_string_t{data, value.size(), true};
+ifcopenshell_string_t make_string(std::string value) {
+    auto owner = std::make_unique<capi_value_owner<std::string>>(std::move(value));
+    auto& stored = owner->value;
+    return ifcopenshell_string_t{stored.data(), stored.size(), false, owner.release()};
 }
 
 ifcopenshell_string_t make_static_string(const char* value) {
     if (value == nullptr) {
-        return ifcopenshell_string_t{nullptr, 0, false};
+        return ifcopenshell_string_t{nullptr, 0, false, nullptr};
     }
-    return ifcopenshell_string_t{const_cast<char*>(value), std::strlen(value), false};
+    return ifcopenshell_string_t{const_cast<char*>(value), std::strlen(value), false, nullptr};
 }
 
 template <typename T>
@@ -1714,150 +1731,225 @@ static std::vector<std::vector<const IfcGeom::Element*>> to_cpp_geom_element_lis
     return result;
 }
 
+void ifcopenshell_buffer_owner_destroy(void** owner) {
+    if (owner == nullptr || *owner == nullptr) {
+        return;
+    }
+    delete static_cast<capi_buffer_owner*>(*owner);
+    *owner = nullptr;
+}
+
 void ifcopenshell_string_destroy(ifcopenshell_string_t* value) {
     if (value == nullptr) {
         return;
     }
-    if (value->owned && value->data != nullptr) {
+    if (value->owner != nullptr) {
+        ifcopenshell_buffer_owner_destroy(&value->owner);
+    } else if (value->owned && value->data != nullptr) {
         delete[] value->data;
     }
     value->data = nullptr;
     value->size = 0;
     value->owned = false;
+    value->owner = nullptr;
 }
 
 void ifcopenshell_double_list_destroy(ifcopenshell_double_list_t* value) {
-    if (value == nullptr || value->items == nullptr) {
+    if (value == nullptr) {
         return;
     }
-    delete[] value->items;
+    if (value->owner == nullptr) {
+        value->items = nullptr;
+        value->size = 0;
+        return;
+    }
+
+    ifcopenshell_buffer_owner_destroy(&value->owner);
     value->items = nullptr;
     value->size = 0;
 }
 
 void ifcopenshell_string_list_destroy(ifcopenshell_string_list_t* value) {
-    if (value == nullptr || value->items == nullptr) {
+    if (value == nullptr) {
         return;
     }
-    for (size_t i = 0; i < value->size; ++i) {
-        ifcopenshell_string_destroy(&value->items[i]);
+    if (value->owner == nullptr) {
+        value->items = nullptr;
+        value->size = 0;
+        return;
     }
-    delete[] value->items;
+
+    ifcopenshell_buffer_owner_destroy(&value->owner);
     value->items = nullptr;
     value->size = 0;
 }
 
 void ifcopenshell_double_list_list_destroy(ifcopenshell_double_list_list_t* value) {
-    if (value == nullptr || value->items == nullptr) {
+    if (value == nullptr) {
+        return;
+    }
+    if (value->owner == nullptr) {
+        value->items = nullptr;
+        value->size = 0;
         return;
     }
     for (size_t i = 0; i < value->size; ++i) {
         ifcopenshell_double_list_destroy(&value->items[i]);
     }
-    delete[] value->items;
+    ifcopenshell_buffer_owner_destroy(&value->owner);
     value->items = nullptr;
     value->size = 0;
 }
 
 void ifcopenshell_int64_list_destroy(ifcopenshell_int64_list_t* value) {
-    if (value == nullptr || value->items == nullptr) {
+    if (value == nullptr) {
         return;
     }
-    delete[] value->items;
+    if (value->owner == nullptr) {
+        value->items = nullptr;
+        value->size = 0;
+        return;
+    }
+
+    ifcopenshell_buffer_owner_destroy(&value->owner);
     value->items = nullptr;
     value->size = 0;
 }
 
 void ifcopenshell_int32_list_destroy(ifcopenshell_int32_list_t* value) {
-    if (value == nullptr || value->items == nullptr) {
+    if (value == nullptr) {
         return;
     }
-    delete[] value->items;
+    if (value->owner == nullptr) {
+        value->items = nullptr;
+        value->size = 0;
+        return;
+    }
+
+    ifcopenshell_buffer_owner_destroy(&value->owner);
     value->items = nullptr;
     value->size = 0;
 }
 
 void ifcopenshell_int32_list_list_destroy(ifcopenshell_int32_list_list_t* value) {
-    if (value == nullptr || value->items == nullptr) {
+    if (value == nullptr) {
+        return;
+    }
+    if (value->owner == nullptr) {
+        value->items = nullptr;
+        value->size = 0;
         return;
     }
     for (size_t i = 0; i < value->size; ++i) {
         ifcopenshell_int32_list_destroy(&value->items[i]);
     }
-    delete[] value->items;
+    ifcopenshell_buffer_owner_destroy(&value->owner);
     value->items = nullptr;
     value->size = 0;
 }
 
 void ifcopenshell_int32_list_list_list_destroy(ifcopenshell_int32_list_list_list_t* value) {
-    if (value == nullptr || value->items == nullptr) {
+    if (value == nullptr) {
+        return;
+    }
+    if (value->owner == nullptr) {
+        value->items = nullptr;
+        value->size = 0;
         return;
     }
     for (size_t i = 0; i < value->size; ++i) {
         ifcopenshell_int32_list_list_destroy(&value->items[i]);
     }
-    delete[] value->items;
+    ifcopenshell_buffer_owner_destroy(&value->owner);
     value->items = nullptr;
     value->size = 0;
 }
 
 void ifcopenshell_bool_list_destroy(ifcopenshell_bool_list_t* value) {
-    if (value == nullptr || value->items == nullptr) {
+    if (value == nullptr) {
         return;
     }
-    delete[] value->items;
+    if (value->owner == nullptr) {
+        value->items = nullptr;
+        value->size = 0;
+        return;
+    }
+
+    ifcopenshell_buffer_owner_destroy(&value->owner);
     value->items = nullptr;
     value->size = 0;
 }
 
 void ifcopenshell_uint32_list_destroy(ifcopenshell_uint32_list_t* value) {
-    if (value == nullptr || value->items == nullptr) {
+    if (value == nullptr) {
         return;
     }
-    delete[] value->items;
+    if (value->owner == nullptr) {
+        value->items = nullptr;
+        value->size = 0;
+        return;
+    }
+
+    ifcopenshell_buffer_owner_destroy(&value->owner);
     value->items = nullptr;
     value->size = 0;
 }
 
 void ifcopenshell_uint8_list_destroy(ifcopenshell_uint8_list_t* value) {
-    if (value == nullptr || value->items == nullptr) {
+    if (value == nullptr) {
         return;
     }
-    delete[] value->items;
+    if (value->owner == nullptr) {
+        value->items = nullptr;
+        value->size = 0;
+        return;
+    }
+
+    ifcopenshell_buffer_owner_destroy(&value->owner);
     value->items = nullptr;
     value->size = 0;
 }
 
 void ifcopenshell_double_list_list_list_destroy(ifcopenshell_double_list_list_list_t* value) {
-    if (value == nullptr || value->items == nullptr) {
+    if (value == nullptr) {
+        return;
+    }
+    if (value->owner == nullptr) {
+        value->items = nullptr;
+        value->size = 0;
         return;
     }
     for (size_t i = 0; i < value->size; ++i) {
         ifcopenshell_double_list_list_destroy(&value->items[i]);
     }
-    delete[] value->items;
+    ifcopenshell_buffer_owner_destroy(&value->owner);
     value->items = nullptr;
     value->size = 0;
 }
 
 void ifcopenshell_int32_list_list_list_list_destroy(ifcopenshell_int32_list_list_list_list_t* value) {
-    if (value == nullptr || value->items == nullptr) {
+    if (value == nullptr) {
+        return;
+    }
+    if (value->owner == nullptr) {
+        value->items = nullptr;
+        value->size = 0;
         return;
     }
     for (size_t i = 0; i < value->size; ++i) {
         ifcopenshell_int32_list_list_list_destroy(&value->items[i]);
     }
-    delete[] value->items;
+    ifcopenshell_buffer_owner_destroy(&value->owner);
     value->items = nullptr;
     value->size = 0;
 }
 
-static ifcopenshell_double_list_t make_double_list(const std::vector<double>& values) {
-    auto* items = values.empty() ? nullptr : new double[values.size()];
-    for (size_t i = 0; i < values.size(); ++i) {
-        items[i] = values[i];
-    }
-    return ifcopenshell_double_list_t{items, values.size()};
+static ifcopenshell_double_list_t make_double_list(std::vector<double> values) {
+    auto owner = std::make_unique<capi_value_owner<std::vector<double>>>(std::move(values));
+    auto& stored = owner->value;
+    auto* items = stored.empty() ? nullptr : stored.data();
+    const auto size = stored.size();
+    return ifcopenshell_double_list_t{items, size, owner.release()};
 }
 
 static std::vector<double> to_cpp_double_list(const ifcopenshell_double_list_t* value) {
@@ -1868,22 +1960,21 @@ static std::vector<double> to_cpp_double_list(const ifcopenshell_double_list_t* 
     return std::vector<double>(value->items, value->items + value->size);
 }
 
-static ifcopenshell_string_list_t make_string_list(const std::vector<std::string>& values) {
-    auto* items = values.empty() ? nullptr : new ifcopenshell_string_t[values.size()];
-    size_t initialized = 0;
-    try {
-        for (size_t i = 0; i < values.size(); ++i) {
-        items[i] = make_string(values[i]);
-            ++initialized;
+static ifcopenshell_string_list_t make_string_list(std::vector<std::string> values) {
+    struct owner_type final : capi_buffer_owner {
+        explicit owner_type(std::vector<std::string> source) : values(std::move(source)) {
+            items.reserve(values.size());
+            for (auto& value : values) {
+                items.push_back(ifcopenshell_string_t{value.data(), value.size(), false, nullptr});
+            }
         }
-    } catch (...) {
-        for (size_t j = 0; j < initialized; ++j) {
-            delete[] items[j].data;
-        }
-        delete[] items;
-        throw;
-    }
-    return ifcopenshell_string_list_t{items, values.size()};
+        std::vector<std::string> values;
+        std::vector<ifcopenshell_string_t> items;
+    };
+    auto owner = std::make_unique<owner_type>(std::move(values));
+    auto* items = owner->items.empty() ? nullptr : owner->items.data();
+    const auto size = owner->items.size();
+    return ifcopenshell_string_list_t{items, size, owner.release()};
 }
 
 static std::vector<std::string> to_cpp_string_list(const ifcopenshell_string_list_t* value) {
@@ -1900,12 +1991,23 @@ static std::vector<std::string> to_cpp_string_list(const ifcopenshell_string_lis
     return result;
 }
 
-static ifcopenshell_double_list_list_t make_double_list_list(const std::vector<std::vector<double>>& values) {
-    auto* items = values.empty() ? nullptr : new ifcopenshell_double_list_t[values.size()];
-    for (size_t i = 0; i < values.size(); ++i) {
-        items[i] = make_double_list(values[i]);
+static ifcopenshell_double_list_list_t make_double_list_list(std::vector<std::vector<double>> values) {
+    auto owner = std::make_unique<capi_value_owner<std::vector<ifcopenshell_double_list_t>>>(std::vector<ifcopenshell_double_list_t>{});
+    auto& items = owner->value;
+    items.reserve(values.size());
+    try {
+        for (auto& value : values) {
+            items.push_back(make_double_list(std::move(value)));
+        }
+    } catch (...) {
+        for (auto& item : items) {
+            ifcopenshell_double_list_destroy(&item);
+        }
+        throw;
     }
-    return ifcopenshell_double_list_list_t{items, values.size()};
+    auto* data = items.empty() ? nullptr : items.data();
+    const auto size = items.size();
+    return ifcopenshell_double_list_list_t{data, size, owner.release()};
 }
 
 static std::vector<std::vector<double>> to_cpp_double_list_list(const ifcopenshell_double_list_list_t* value) {
@@ -1918,12 +2020,12 @@ static std::vector<std::vector<double>> to_cpp_double_list_list(const ifcopenshe
     return result;
 }
 
-static ifcopenshell_int64_list_t make_int64_list(const std::vector<int64_t>& values) {
-    auto* items = values.empty() ? nullptr : new int64_t[values.size()];
-    for (size_t i = 0; i < values.size(); ++i) {
-        items[i] = values[i];
-    }
-    return ifcopenshell_int64_list_t{items, values.size()};
+static ifcopenshell_int64_list_t make_int64_list(std::vector<int64_t> values) {
+    auto owner = std::make_unique<capi_value_owner<std::vector<int64_t>>>(std::move(values));
+    auto& stored = owner->value;
+    auto* items = stored.empty() ? nullptr : stored.data();
+    const auto size = stored.size();
+    return ifcopenshell_int64_list_t{items, size, owner.release()};
 }
 
 static std::vector<int64_t> to_cpp_int64_list(const ifcopenshell_int64_list_t* value) {
@@ -1934,12 +2036,12 @@ static std::vector<int64_t> to_cpp_int64_list(const ifcopenshell_int64_list_t* v
     return std::vector<int64_t>(value->items, value->items + value->size);
 }
 
-static ifcopenshell_int32_list_t make_int32_list(const std::vector<int>& values) {
-    auto* items = values.empty() ? nullptr : new int32_t[values.size()];
-    for (size_t i = 0; i < values.size(); ++i) {
-        items[i] = static_cast<int32_t>(values[i]);
-    }
-    return ifcopenshell_int32_list_t{items, values.size()};
+static ifcopenshell_int32_list_t make_int32_list(std::vector<int> values) {
+    auto owner = std::make_unique<capi_value_owner<std::vector<int>>>(std::move(values));
+    auto& stored = owner->value;
+    auto* items = stored.empty() ? nullptr : reinterpret_cast<int32_t*>(stored.data());
+    const auto size = stored.size();
+    return ifcopenshell_int32_list_t{items, size, owner.release()};
 }
 
 static std::vector<int> to_cpp_int32_list(const ifcopenshell_int32_list_t* value) {
@@ -1950,12 +2052,23 @@ static std::vector<int> to_cpp_int32_list(const ifcopenshell_int32_list_t* value
     return std::vector<int>(value->items, value->items + value->size);
 }
 
-static ifcopenshell_int32_list_list_t make_int32_list_list(const std::vector<std::vector<int>>& values) {
-    auto* items = values.empty() ? nullptr : new ifcopenshell_int32_list_t[values.size()];
-    for (size_t i = 0; i < values.size(); ++i) {
-        items[i] = make_int32_list(values[i]);
+static ifcopenshell_int32_list_list_t make_int32_list_list(std::vector<std::vector<int>> values) {
+    auto owner = std::make_unique<capi_value_owner<std::vector<ifcopenshell_int32_list_t>>>(std::vector<ifcopenshell_int32_list_t>{});
+    auto& items = owner->value;
+    items.reserve(values.size());
+    try {
+        for (auto& value : values) {
+            items.push_back(make_int32_list(std::move(value)));
+        }
+    } catch (...) {
+        for (auto& item : items) {
+            ifcopenshell_int32_list_destroy(&item);
+        }
+        throw;
     }
-    return ifcopenshell_int32_list_list_t{items, values.size()};
+    auto* data = items.empty() ? nullptr : items.data();
+    const auto size = items.size();
+    return ifcopenshell_int32_list_list_t{data, size, owner.release()};
 }
 
 static std::vector<std::vector<int>> to_cpp_int32_list_list(const ifcopenshell_int32_list_list_t* value) {
@@ -1968,12 +2081,23 @@ static std::vector<std::vector<int>> to_cpp_int32_list_list(const ifcopenshell_i
     return result;
 }
 
-static ifcopenshell_int32_list_list_list_t make_int32_list_list_list(const std::vector<std::vector<std::vector<int>>>& values) {
-    auto* items = values.empty() ? nullptr : new ifcopenshell_int32_list_list_t[values.size()];
-    for (size_t i = 0; i < values.size(); ++i) {
-        items[i] = make_int32_list_list(values[i]);
+static ifcopenshell_int32_list_list_list_t make_int32_list_list_list(std::vector<std::vector<std::vector<int>>> values) {
+    auto owner = std::make_unique<capi_value_owner<std::vector<ifcopenshell_int32_list_list_t>>>(std::vector<ifcopenshell_int32_list_list_t>{});
+    auto& items = owner->value;
+    items.reserve(values.size());
+    try {
+        for (auto& value : values) {
+            items.push_back(make_int32_list_list(std::move(value)));
+        }
+    } catch (...) {
+        for (auto& item : items) {
+            ifcopenshell_int32_list_list_destroy(&item);
+        }
+        throw;
     }
-    return ifcopenshell_int32_list_list_list_t{items, values.size()};
+    auto* data = items.empty() ? nullptr : items.data();
+    const auto size = items.size();
+    return ifcopenshell_int32_list_list_list_t{data, size, owner.release()};
 }
 
 static std::vector<std::vector<std::vector<int>>> to_cpp_int32_list_list_list(const ifcopenshell_int32_list_list_list_t* value) {
@@ -1986,12 +2110,14 @@ static std::vector<std::vector<std::vector<int>>> to_cpp_int32_list_list_list(co
     return result;
 }
 
-static ifcopenshell_bool_list_t make_bool_list(const std::vector<bool>& values) {
-    auto* items = values.empty() ? nullptr : new bool[values.size()];
+static ifcopenshell_bool_list_t make_bool_list(std::vector<bool> values) {
+    auto owner = std::make_unique<capi_array_owner<bool>>(values.size());
     for (size_t i = 0; i < values.size(); ++i) {
-        items[i] = values[i];
+        owner->values[i] = values[i];
     }
-    return ifcopenshell_bool_list_t{items, values.size()};
+    auto* items = owner->values.get();
+    const auto size = values.size();
+    return ifcopenshell_bool_list_t{items, size, owner.release()};
 }
 
 static std::vector<bool> to_cpp_bool_list(const ifcopenshell_bool_list_t* value) {
@@ -2004,12 +2130,12 @@ static std::vector<bool> to_cpp_bool_list(const ifcopenshell_bool_list_t* value)
     return result;
 }
 
-static ifcopenshell_uint32_list_t make_uint32_list(const std::vector<unsigned int>& values) {
-    auto* items = values.empty() ? nullptr : new uint32_t[values.size()];
-    for (size_t i = 0; i < values.size(); ++i) {
-        items[i] = static_cast<uint32_t>(values[i]);
-    }
-    return ifcopenshell_uint32_list_t{items, values.size()};
+static ifcopenshell_uint32_list_t make_uint32_list(std::vector<unsigned int> values) {
+    auto owner = std::make_unique<capi_value_owner<std::vector<unsigned int>>>(std::move(values));
+    auto& stored = owner->value;
+    auto* items = stored.empty() ? nullptr : reinterpret_cast<uint32_t*>(stored.data());
+    const auto size = stored.size();
+    return ifcopenshell_uint32_list_t{items, size, owner.release()};
 }
 
 static std::vector<unsigned int> to_cpp_uint32_list(const ifcopenshell_uint32_list_t* value) {
@@ -2020,12 +2146,12 @@ static std::vector<unsigned int> to_cpp_uint32_list(const ifcopenshell_uint32_li
     return std::vector<unsigned int>(value->items, value->items + value->size);
 }
 
-static ifcopenshell_uint8_list_t make_uint8_list(const std::vector<uint8_t>& values) {
-    auto* items = values.empty() ? nullptr : new uint8_t[values.size()];
-    for (size_t i = 0; i < values.size(); ++i) {
-        items[i] = values[i];
-    }
-    return ifcopenshell_uint8_list_t{items, values.size()};
+static ifcopenshell_uint8_list_t make_uint8_list(std::vector<uint8_t> values) {
+    auto owner = std::make_unique<capi_value_owner<std::vector<uint8_t>>>(std::move(values));
+    auto& stored = owner->value;
+    auto* items = stored.empty() ? nullptr : stored.data();
+    const auto size = stored.size();
+    return ifcopenshell_uint8_list_t{items, size, owner.release()};
 }
 
 static std::vector<uint8_t> to_cpp_uint8_list(const ifcopenshell_uint8_list_t* value) {
@@ -2036,12 +2162,23 @@ static std::vector<uint8_t> to_cpp_uint8_list(const ifcopenshell_uint8_list_t* v
     return std::vector<uint8_t>(value->items, value->items + value->size);
 }
 
-static ifcopenshell_double_list_list_list_t make_double_list_list_list(const std::vector<std::vector<std::vector<double>>>& values) {
-    auto* items = values.empty() ? nullptr : new ifcopenshell_double_list_list_t[values.size()];
-    for (size_t i = 0; i < values.size(); ++i) {
-        items[i] = make_double_list_list(values[i]);
+static ifcopenshell_double_list_list_list_t make_double_list_list_list(std::vector<std::vector<std::vector<double>>> values) {
+    auto owner = std::make_unique<capi_value_owner<std::vector<ifcopenshell_double_list_list_t>>>(std::vector<ifcopenshell_double_list_list_t>{});
+    auto& items = owner->value;
+    items.reserve(values.size());
+    try {
+        for (auto& value : values) {
+            items.push_back(make_double_list_list(std::move(value)));
+        }
+    } catch (...) {
+        for (auto& item : items) {
+            ifcopenshell_double_list_list_destroy(&item);
+        }
+        throw;
     }
-    return ifcopenshell_double_list_list_list_t{items, values.size()};
+    auto* data = items.empty() ? nullptr : items.data();
+    const auto size = items.size();
+    return ifcopenshell_double_list_list_list_t{data, size, owner.release()};
 }
 
 static std::vector<std::vector<std::vector<double>>> to_cpp_double_list_list_list(const ifcopenshell_double_list_list_list_t* value) {
@@ -2054,12 +2191,23 @@ static std::vector<std::vector<std::vector<double>>> to_cpp_double_list_list_lis
     return result;
 }
 
-static ifcopenshell_int32_list_list_list_list_t make_int32_list_list_list_list(const std::vector<std::vector<std::vector<std::vector<int>>>>& values) {
-    auto* items = values.empty() ? nullptr : new ifcopenshell_int32_list_list_list_t[values.size()];
-    for (size_t i = 0; i < values.size(); ++i) {
-        items[i] = make_int32_list_list_list(values[i]);
+static ifcopenshell_int32_list_list_list_list_t make_int32_list_list_list_list(std::vector<std::vector<std::vector<std::vector<int>>>> values) {
+    auto owner = std::make_unique<capi_value_owner<std::vector<ifcopenshell_int32_list_list_list_t>>>(std::vector<ifcopenshell_int32_list_list_list_t>{});
+    auto& items = owner->value;
+    items.reserve(values.size());
+    try {
+        for (auto& value : values) {
+            items.push_back(make_int32_list_list_list(std::move(value)));
+        }
+    } catch (...) {
+        for (auto& item : items) {
+            ifcopenshell_int32_list_list_list_destroy(&item);
+        }
+        throw;
     }
-    return ifcopenshell_int32_list_list_list_list_t{items, values.size()};
+    auto* data = items.empty() ? nullptr : items.data();
+    const auto size = items.size();
+    return ifcopenshell_int32_list_list_list_list_t{data, size, owner.release()};
 }
 
 static std::vector<std::vector<std::vector<std::vector<int>>>> to_cpp_int32_list_list_list_list(const ifcopenshell_int32_list_list_list_list_t* value) {
@@ -10543,9 +10691,9 @@ bool ifcopenshell_selector_format(ifcopenshell_file_t* file, ifcopenshell_instan
         auto result_value = ifcapi::bindings::selector_format(file_cpp, instance_cpp, query_cpp);
         if (!result_value) {
             if (!g_last_error.empty()) { return false; }
-            *out_result = ifcopenshell_string_t{nullptr, 0, false};
+            *out_result = ifcopenshell_string_t{nullptr, 0, false, nullptr};
         } else {
-            *out_result = make_string(*result_value);
+            *out_result = make_string(std::move(*result_value));
         }
         return true;
     } catch (const std::exception& e) {
@@ -10848,7 +10996,7 @@ bool ifcopenshell_sequence_add_date_time(ifcopenshell_file_t* file, const char* 
                 }
         else if (std::holds_alternative<std::string>(result_value)) {
                     out_result->kind = 1;
-                    out_result->value_1 = make_string(std::get<std::string>(result_value));
+                    out_result->value_1 = make_string(std::move(std::get<std::string>(result_value)));
                 }
         else { throw std::runtime_error("Unsupported variant alternative"); }
         return true;
@@ -12519,7 +12667,7 @@ bool ifcopenshell_shape_builder_mep_transition_shape(ifcopenshell_file_t* file, 
                 result_value_c.value.start_length = static_cast<double>((*result_value).start_length);
                 result_value_c.value.end_length = static_cast<double>((*result_value).end_length);
                 result_value_c.value.angle = static_cast<double>((*result_value).angle);
-                result_value_c.value.profile_offset = make_double_list((*result_value).profile_offset);
+                result_value_c.value.profile_offset = make_double_list(std::move((*result_value).profile_offset));
                 result_value_c.value.transition_length = static_cast<double>((*result_value).transition_length);
                 result_value_c.value.full_transition_length = static_cast<double>((*result_value).full_transition_length);
             }
@@ -25282,13 +25430,13 @@ bool ifcopenshell_geom_conversion_result_shape_edges(ifcopenshell_geom_conversio
     }
 }
 
-bool ifcopenshell_geom_triangulation_edges_buffer(ifcopenshell_geom_triangulation_t* self, const int32_t** out_result) {
+bool ifcopenshell_geom_triangulation_edges_buffer(ifcopenshell_geom_triangulation_t* self, ifcopenshell_int32_list_t* out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
-        *out_result = (ifcgeom::bindings::edges_buffer(self_cpp)).data();
+        *out_result = make_int32_list(ifcgeom::bindings::edges_buffer(self_cpp));
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -25299,13 +25447,13 @@ bool ifcopenshell_geom_triangulation_edges_buffer(ifcopenshell_geom_triangulatio
     }
 }
 
-bool ifcopenshell_geom_triangulation_edges_item_ids_buffer(ifcopenshell_geom_triangulation_t* self, const int32_t** out_result) {
+bool ifcopenshell_geom_triangulation_edges_item_ids_buffer(ifcopenshell_geom_triangulation_t* self, ifcopenshell_int32_list_t* out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
-        *out_result = (ifcgeom::bindings::edges_item_ids_buffer(self_cpp)).data();
+        *out_result = make_int32_list(ifcgeom::bindings::edges_item_ids_buffer(self_cpp));
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -25353,13 +25501,13 @@ bool ifcopenshell_geom_function_item_evaluator_evaluate_at(ifcopenshell_geom_fun
     }
 }
 
-bool ifcopenshell_geom_triangulation_faces_buffer(ifcopenshell_geom_triangulation_t* self, const int32_t** out_result) {
+bool ifcopenshell_geom_triangulation_faces_buffer(ifcopenshell_geom_triangulation_t* self, ifcopenshell_int32_list_t* out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
-        *out_result = (ifcgeom::bindings::faces_buffer(self_cpp)).data();
+        *out_result = make_int32_list(ifcgeom::bindings::faces_buffer(self_cpp));
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -25609,13 +25757,13 @@ bool ifcopenshell_geom_conversion_result_shape_intersect(ifcopenshell_geom_conve
     }
 }
 
-bool ifcopenshell_geom_triangulation_item_ids_buffer(ifcopenshell_geom_triangulation_t* self, const int32_t** out_result) {
+bool ifcopenshell_geom_triangulation_item_ids_buffer(ifcopenshell_geom_triangulation_t* self, ifcopenshell_int32_list_t* out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
-        *out_result = (ifcgeom::bindings::item_ids_buffer(self_cpp)).data();
+        *out_result = make_int32_list(ifcgeom::bindings::item_ids_buffer(self_cpp));
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -25662,13 +25810,13 @@ bool ifcopenshell_geom_opaque_number_less_than(ifcopenshell_geom_opaque_number_t
     }
 }
 
-bool ifcopenshell_geom_triangulation_material_ids_buffer(ifcopenshell_geom_triangulation_t* self, const int32_t** out_result) {
+bool ifcopenshell_geom_triangulation_material_ids_buffer(ifcopenshell_geom_triangulation_t* self, ifcopenshell_int32_list_t* out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
-        *out_result = (ifcgeom::bindings::material_ids_buffer(self_cpp)).data();
+        *out_result = make_int32_list(ifcgeom::bindings::material_ids_buffer(self_cpp));
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -25766,13 +25914,13 @@ bool ifcopenshell_geom_iterator_next(ifcopenshell_geom_iterator_t* self, bool* o
     }
 }
 
-bool ifcopenshell_geom_triangulation_normals_buffer(ifcopenshell_geom_triangulation_t* self, const double** out_result) {
+bool ifcopenshell_geom_triangulation_normals_buffer(ifcopenshell_geom_triangulation_t* self, ifcopenshell_double_list_t* out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
-        *out_result = (ifcgeom::bindings::normals_buffer(self_cpp)).data();
+        *out_result = make_double_list(ifcgeom::bindings::normals_buffer(self_cpp));
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -26079,13 +26227,13 @@ bool ifcopenshell_geom_conversion_result_shape_subtract(ifcopenshell_geom_conver
     }
 }
 
-bool ifcopenshell_geom_element_transformation_buffer(ifcopenshell_geom_element_t* self, const double** out_result) {
+bool ifcopenshell_geom_element_transformation_buffer(ifcopenshell_geom_element_t* self, ifcopenshell_double_list_t* out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
-        *out_result = ifcgeom::bindings::transformation_buffer(self_cpp);
+        *out_result = make_double_list(ifcgeom::bindings::transformation_buffer(self_cpp));
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -26113,13 +26261,13 @@ bool ifcopenshell_geom_element_transformation_buffer_size(ifcopenshell_geom_elem
     }
 }
 
-bool ifcopenshell_geom_triangulation_uvs_buffer(ifcopenshell_geom_triangulation_t* self, const double** out_result) {
+bool ifcopenshell_geom_triangulation_uvs_buffer(ifcopenshell_geom_triangulation_t* self, ifcopenshell_double_list_t* out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
-        *out_result = (ifcgeom::bindings::uvs_buffer(self_cpp)).data();
+        *out_result = make_double_list(ifcgeom::bindings::uvs_buffer(self_cpp));
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -26147,13 +26295,13 @@ bool ifcopenshell_geom_conversion_result_shape_vertices(ifcopenshell_geom_conver
     }
 }
 
-bool ifcopenshell_geom_triangulation_verts_buffer(ifcopenshell_geom_triangulation_t* self, const double** out_result) {
+bool ifcopenshell_geom_triangulation_verts_buffer(ifcopenshell_geom_triangulation_t* self, ifcopenshell_double_list_t* out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
-        *out_result = (ifcgeom::bindings::verts_buffer(self_cpp)).data();
+        *out_result = make_double_list(ifcgeom::bindings::verts_buffer(self_cpp));
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());

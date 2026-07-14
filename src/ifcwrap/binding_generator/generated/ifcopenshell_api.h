@@ -17,6 +17,7 @@ typedef struct ifcopenshell_string_t {
     char* data;
     size_t size;
     bool owned;
+    void* owner;
 } ifcopenshell_string_t;
 
 typedef enum ifcopenshell_logical_t {
@@ -28,62 +29,76 @@ typedef enum ifcopenshell_logical_t {
 typedef struct ifcopenshell_double_list_t {
     double* items;
     size_t size;
+    void* owner;
 } ifcopenshell_double_list_t;
 
 typedef struct ifcopenshell_string_list_t {
     ifcopenshell_string_t* items;
     size_t size;
+    void* owner;
 } ifcopenshell_string_list_t;
 
 typedef struct ifcopenshell_double_list_list_t {
     ifcopenshell_double_list_t* items;
     size_t size;
+    void* owner;
 } ifcopenshell_double_list_list_t;
 
 typedef struct ifcopenshell_int64_list_t {
     int64_t* items;
     size_t size;
+    void* owner;
 } ifcopenshell_int64_list_t;
 
 typedef struct ifcopenshell_int32_list_t {
     int32_t* items;
     size_t size;
+    void* owner;
 } ifcopenshell_int32_list_t;
 
 typedef struct ifcopenshell_int32_list_list_t {
     ifcopenshell_int32_list_t* items;
     size_t size;
+    void* owner;
 } ifcopenshell_int32_list_list_t;
 
 typedef struct ifcopenshell_int32_list_list_list_t {
     ifcopenshell_int32_list_list_t* items;
     size_t size;
+    void* owner;
 } ifcopenshell_int32_list_list_list_t;
 
 typedef struct ifcopenshell_bool_list_t {
     bool* items;
     size_t size;
+    void* owner;
 } ifcopenshell_bool_list_t;
 
 typedef struct ifcopenshell_uint32_list_t {
     uint32_t* items;
     size_t size;
+    void* owner;
 } ifcopenshell_uint32_list_t;
 
 typedef struct ifcopenshell_uint8_list_t {
     uint8_t* items;
     size_t size;
+    void* owner;
 } ifcopenshell_uint8_list_t;
 
 typedef struct ifcopenshell_double_list_list_list_t {
     ifcopenshell_double_list_list_t* items;
     size_t size;
+    void* owner;
 } ifcopenshell_double_list_list_list_t;
 
 typedef struct ifcopenshell_int32_list_list_list_list_t {
     ifcopenshell_int32_list_list_list_t* items;
     size_t size;
+    void* owner;
 } ifcopenshell_int32_list_list_list_list_t;
+
+void ifcopenshell_buffer_owner_destroy(void** owner);
 
 void ifcopenshell_string_destroy(ifcopenshell_string_t* value);
 
@@ -6600,11 +6615,11 @@ bool ifcopenshell_geom_taxonomy_bspline_surface_control_point_row_count(ifcopens
 bool ifcopenshell_geom_conversion_result_shape_convex_tag(ifcopenshell_geom_conversion_result_shape_t* self, bool value);
 bool ifcopenshell_geom_opaque_number_divide(ifcopenshell_geom_opaque_number_t* self, ifcopenshell_geom_opaque_number_t* other, ifcopenshell_geom_opaque_number_t** out_result);
 bool ifcopenshell_geom_conversion_result_shape_edges(ifcopenshell_geom_conversion_result_shape_t* self, ifcopenshell_geom_conversion_result_shape_list_t* out_result);
-bool ifcopenshell_geom_triangulation_edges_buffer(ifcopenshell_geom_triangulation_t* self, const int32_t** out_result);
-bool ifcopenshell_geom_triangulation_edges_item_ids_buffer(ifcopenshell_geom_triangulation_t* self, const int32_t** out_result);
+bool ifcopenshell_geom_triangulation_edges_buffer(ifcopenshell_geom_triangulation_t* self, ifcopenshell_int32_list_t* out_result);
+bool ifcopenshell_geom_triangulation_edges_item_ids_buffer(ifcopenshell_geom_triangulation_t* self, ifcopenshell_int32_list_t* out_result);
 bool ifcopenshell_geom_opaque_number_equals(ifcopenshell_geom_opaque_number_t* self, ifcopenshell_geom_opaque_number_t* other, bool* out_result);
 bool ifcopenshell_geom_function_item_evaluator_evaluate_at(ifcopenshell_geom_function_item_evaluator_t* self, double u, ifcopenshell_double_list_t* out_result);
-bool ifcopenshell_geom_triangulation_faces_buffer(ifcopenshell_geom_triangulation_t* self, const int32_t** out_result);
+bool ifcopenshell_geom_triangulation_faces_buffer(ifcopenshell_geom_triangulation_t* self, ifcopenshell_int32_list_t* out_result);
 bool ifcopenshell_geom_conversion_result_shape_facets(ifcopenshell_geom_conversion_result_shape_t* self, ifcopenshell_geom_conversion_result_shape_list_t* out_result);
 bool ifcopenshell_geom_iterator_get_as_brep_element(ifcopenshell_geom_iterator_t* self, ifcopenshell_geom_brep_element_t** out_result);
 bool ifcopenshell_geom_iterator_get_as_serialized_element(ifcopenshell_geom_iterator_t* self, ifcopenshell_geom_serialized_element_t** out_result);
@@ -6617,15 +6632,15 @@ bool ifcopenshell_geom_svgfill_polygon_inner_boundary_size(ifcopenshell_geom_svg
 bool ifcopenshell_geom_tree_ray_intersection_instance(ifcopenshell_geom_tree_ray_intersection_t* self, ifcopenshell_instance_t** out_result);
 bool ifcopenshell_geom_taxonomy_style_instance_id(ifcopenshell_geom_taxonomy_style_t* self, size_t* out_result);
 bool ifcopenshell_geom_conversion_result_shape_intersect(ifcopenshell_geom_conversion_result_shape_t* self, ifcopenshell_geom_conversion_result_shape_t* arg_0, ifcopenshell_geom_conversion_result_shape_t** out_result);
-bool ifcopenshell_geom_triangulation_item_ids_buffer(ifcopenshell_geom_triangulation_t* self, const int32_t** out_result);
+bool ifcopenshell_geom_triangulation_item_ids_buffer(ifcopenshell_geom_triangulation_t* self, ifcopenshell_int32_list_t* out_result);
 bool ifcopenshell_geom_conversion_result_shape_length(ifcopenshell_geom_conversion_result_shape_t* self, double* out_result);
 bool ifcopenshell_geom_opaque_number_less_than(ifcopenshell_geom_opaque_number_t* self, ifcopenshell_geom_opaque_number_t* other, bool* out_result);
-bool ifcopenshell_geom_triangulation_material_ids_buffer(ifcopenshell_geom_triangulation_t* self, const int32_t** out_result);
+bool ifcopenshell_geom_triangulation_material_ids_buffer(ifcopenshell_geom_triangulation_t* self, ifcopenshell_int32_list_t* out_result);
 bool ifcopenshell_geom_conversion_result_shape_moved(ifcopenshell_geom_conversion_result_shape_t* self, ifcopenshell_geom_taxonomy_matrix4_t* arg_0, ifcopenshell_geom_conversion_result_shape_t** out_result);
 bool ifcopenshell_geom_opaque_number_multiply(ifcopenshell_geom_opaque_number_t* self, ifcopenshell_geom_opaque_number_t* other, ifcopenshell_geom_opaque_number_t** out_result);
 bool ifcopenshell_geom_opaque_number_negate(ifcopenshell_geom_opaque_number_t* self, ifcopenshell_geom_opaque_number_t** out_result);
 bool ifcopenshell_geom_iterator_next(ifcopenshell_geom_iterator_t* self, bool* out_result);
-bool ifcopenshell_geom_triangulation_normals_buffer(ifcopenshell_geom_triangulation_t* self, const double** out_result);
+bool ifcopenshell_geom_triangulation_normals_buffer(ifcopenshell_geom_triangulation_t* self, ifcopenshell_double_list_t* out_result);
 bool ifcopenshell_geom_svgfill_polygon_point_inside(ifcopenshell_geom_svgfill_polygon_t* self, ifcopenshell_double_list_t* out_result);
 bool ifcopenshell_geom_tree_select_box_bounds(ifcopenshell_geom_tree_t* self, double xmin, double ymin, double zmin, double xmax, double ymax, double zmax, bool completely_within, ifcopenshell_parse_instance_list_t** out_result);
 bool ifcopenshell_geom_tree_select_box_element(ifcopenshell_geom_tree_t* self, ifcopenshell_instance_t* instance, bool completely_within, double extend, ifcopenshell_parse_instance_list_t** out_result);
@@ -6640,11 +6655,11 @@ bool ifcopenshell_geom_conversion_result_shape_solid(ifcopenshell_geom_conversio
 bool ifcopenshell_geom_conversion_result_shape_solid_mt(ifcopenshell_geom_conversion_result_shape_t* self, ifcopenshell_geom_conversion_result_shape_t** out_result);
 bool ifcopenshell_geom_opaque_number_subtract(ifcopenshell_geom_opaque_number_t* self, ifcopenshell_geom_opaque_number_t* other, ifcopenshell_geom_opaque_number_t** out_result);
 bool ifcopenshell_geom_conversion_result_shape_subtract(ifcopenshell_geom_conversion_result_shape_t* self, ifcopenshell_geom_conversion_result_shape_t* arg_0, ifcopenshell_geom_conversion_result_shape_t** out_result);
-bool ifcopenshell_geom_element_transformation_buffer(ifcopenshell_geom_element_t* self, const double** out_result);
+bool ifcopenshell_geom_element_transformation_buffer(ifcopenshell_geom_element_t* self, ifcopenshell_double_list_t* out_result);
 bool ifcopenshell_geom_element_transformation_buffer_size(ifcopenshell_geom_element_t* self, size_t* out_result);
-bool ifcopenshell_geom_triangulation_uvs_buffer(ifcopenshell_geom_triangulation_t* self, const double** out_result);
+bool ifcopenshell_geom_triangulation_uvs_buffer(ifcopenshell_geom_triangulation_t* self, ifcopenshell_double_list_t* out_result);
 bool ifcopenshell_geom_conversion_result_shape_vertices(ifcopenshell_geom_conversion_result_shape_t* self, ifcopenshell_geom_conversion_result_shape_list_t* out_result);
-bool ifcopenshell_geom_triangulation_verts_buffer(ifcopenshell_geom_triangulation_t* self, const double** out_result);
+bool ifcopenshell_geom_triangulation_verts_buffer(ifcopenshell_geom_triangulation_t* self, ifcopenshell_double_list_t* out_result);
 bool ifcopenshell_geom_conversion_result_shape_volume(ifcopenshell_geom_conversion_result_shape_t* self, double* out_result);
 bool ifcopenshell_geom_taxonomy_bspline_surface_weight_at(ifcopenshell_geom_taxonomy_bspline_surface_t* self, size_t row, size_t col, double* out_result);
 bool ifcopenshell_geom_taxonomy_bspline_surface_weight_col_count_at(ifcopenshell_geom_taxonomy_bspline_surface_t* self, size_t row, size_t* out_result);

@@ -535,6 +535,7 @@ class TestWasmJsGlue:
                         CFieldIR("data", "char*"),
                         CFieldIR("size", "size_t"),
                         CFieldIR("owned", "bool"),
+                        CFieldIR("owner", "void*"),
                     ),
                     destroy_function="ifcopenshell_string_destroy",
                 ),
@@ -688,6 +689,7 @@ class TestWasmJsGlue:
                     fields=(
                         CFieldIR("items", "int32_t*"),
                         CFieldIR("size", "size_t"),
+                        CFieldIR("owner", "void*"),
                     ),
                     destroy_function="ifcopenshell_int32_list_destroy",
                     element_type="int32_t",
@@ -699,6 +701,7 @@ class TestWasmJsGlue:
                     fields=(
                         CFieldIR("items", "ifcopenshell_string_t*"),
                         CFieldIR("size", "size_t"),
+                        CFieldIR("owner", "void*"),
                     ),
                     destroy_function="ifcopenshell_string_list_destroy",
                     element_type="ifcopenshell_string_t",
@@ -739,6 +742,12 @@ class TestWasmJsGlue:
             in code
         )
         assert "module._ifcopenshell_string_list_destroy(outResultPtr);" in code
+        assert '"bufferMode": "snapshot"' in code
+        assert "_zeroMemory(module, structPtr, layout.size);" in code
+        assert (
+            "if (itemsPtr) _zeroMemory(module, itemsPtr, elementInfo.size * value.length);"
+            in code
+        )
 
     def test_marshals_handle_sequence_parameters(self):
         metadata = _make_metadata(

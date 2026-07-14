@@ -110,7 +110,10 @@ def _render_result_struct_field_assignments(
         field_type = field.type
         field_sequence_kind = _type_spec_sequence_kind(field_type)
         if field_sequence_kind is not None:
-            assignment = f"{_sequence_make_helper(field_sequence_kind)}({field_expr})"
+            assignment = (
+                f"{_sequence_make_helper(field_sequence_kind)}"
+                f"(std::move({field_expr}))"
+            )
             assignments.append(f"{indent}{target_field} = {assignment};")
         elif field_type.kind in _SCALAR_PARAM_TYPES:
             c_type = _finalized_result_field_c_type(spec, struct.name, field.name)
@@ -123,7 +126,12 @@ def _render_result_struct_field_assignments(
                 if field_type.ownership == "static"
                 else "make_string"
             )
-            assignments.append(f"{indent}{target_field} = {helper}({field_expr});")
+            value_expr = (
+                field_expr
+                if field_type.ownership == "static"
+                else f"std::move({field_expr})"
+            )
+            assignments.append(f"{indent}{target_field} = {helper}({value_expr});")
         elif field_type.kind == "handle":
             if field_type.sequence_depth == 1:
                 assignment = (
@@ -221,9 +229,9 @@ def _render_result_assignment(call: CallIR, spec: BindingIR, expr: str) -> str:
                 f"auto result_value = {expr};\n"
                 f"        if (!result_value) {{\n"
                 f"            if (!g_last_error.empty()) {{ return false; }}\n"
-                f"            *out_result = ifcopenshell_string_t{{nullptr, 0, false}};\n"
+                f"            *out_result = ifcopenshell_string_t{{nullptr, 0, false, nullptr}};\n"
                 f"        }} else {{\n"
-                f"            *out_result = {helper}(*result_value);\n"
+                f"            *out_result = {helper}(std::move(*result_value));\n"
                 f"        }}"
             )
         return f"*out_result = {helper}({expr});"
@@ -395,7 +403,10 @@ def _render_result_assignment(call: CallIR, spec: BindingIR, expr: str) -> str:
             alt_expr = f"std::get<{alt_cpp_type}>(result_value)"
             alt_sequence_kind = _type_spec_sequence_kind(alt)
             if alt_sequence_kind is not None:
-                assignment = f"{_sequence_make_helper(alt_sequence_kind)}({alt_expr})"
+                assignment = (
+                    f"{_sequence_make_helper(alt_sequence_kind)}"
+                    f"(std::move({alt_expr}))"
+                )
             elif alt.kind in _SCALAR_PARAM_TYPES:
                 c_type = _finalized_variant_field_c_type(spec, type_spec, index)
                 assignment = f"static_cast<{c_type}>({alt_expr})"
@@ -403,7 +414,11 @@ def _render_result_assignment(call: CallIR, spec: BindingIR, expr: str) -> str:
                 helper = (
                     "make_static_string" if alt.ownership == "static" else "make_string"
                 )
-                assignment = f"{helper}({alt_expr})"
+                assignment = (
+                    f"{helper}({alt_expr})"
+                    if alt.ownership == "static"
+                    else f"{helper}(std::move({alt_expr}))"
+                )
             elif alt.kind == "handle":
                 if alt.sequence_depth == 1:
                     assignment = f"{_handle_list_helper_name(spec.handles[alt.handle])}({alt_expr})"

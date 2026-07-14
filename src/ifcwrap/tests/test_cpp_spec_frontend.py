@@ -30,7 +30,10 @@ from src.ifcwrap.binding_generator.c_backend import _render_cpp
 from src.ifcwrap.binding_generator.c_handle_rendering import _destroy_body
 from src.ifcwrap.binding_generator.c_header_rendering import _render_header
 from src.ifcwrap.binding_generator.c_sequence_helpers import (
+    _render_common_type_decls,
+    _render_common_type_impls,
     _render_handle_list_destroy_impl,
+    _render_sequence_helpers,
 )
 from src.ifcwrap.binding_generator.c_value_rendering import (
     _render_result_struct_destroy,
@@ -725,6 +728,95 @@ int main() {{
 """
     source = tmp_path / "cleanup_fixture.cpp"
     executable = tmp_path / "cleanup_fixture"
+    source.write_text(fixture, encoding="utf-8")
+    subprocess.run(
+        [compiler, "-std=c++17", "-O0", str(source), "-o", str(executable)],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    subprocess.run([str(executable)], check=True, capture_output=True, text=True)
+
+
+def test_owner_backed_numeric_sequences_move_storage_and_destroy_once(
+    tmp_path: Path,
+) -> None:
+    compiler = shutil.which("clang++")
+    if compiler is None:
+        pytest.skip("clang++ is not available")
+
+    kinds = ("double_list", "double_list_list")
+    fixture = f"""
+#include <cassert>
+#include <cstddef>
+#include <cstdint>
+#include <memory>
+#include <string>
+#include <utility>
+#include <vector>
+
+{_render_common_type_decls(kinds)}
+
+static int owner_destructions = 0;
+
+struct capi_buffer_owner {{
+    virtual ~capi_buffer_owner() {{ ++owner_destructions; }}
+}};
+
+template <typename T>
+struct capi_value_owner final : capi_buffer_owner {{
+    explicit capi_value_owner(T value) : value(std::move(value)) {{}}
+    T value;
+}};
+
+template <typename T>
+struct capi_array_owner final : capi_buffer_owner {{
+    explicit capi_array_owner(size_t size)
+        : values(size == 0 ? nullptr : std::make_unique<T[]>(size)) {{}}
+    std::unique_ptr<T[]> values;
+}};
+
+void validate_list_items(const char*, const void* items, size_t size) {{
+    assert(size == 0 || items != nullptr);
+}}
+
+{_render_common_type_impls(kinds)}
+{_render_sequence_helpers(kinds)}
+
+int main() {{
+    std::vector<double> values{{1.0, 2.0, 3.0}};
+    auto* original_data = values.data();
+    auto flat = make_double_list(std::move(values));
+    assert(flat.owner != nullptr);
+    assert(flat.items == original_data);
+    flat.items[1] = 8.0;
+    assert(flat.items[1] == 8.0);
+    ifcopenshell_double_list_destroy(&flat);
+    assert(owner_destructions == 1);
+    ifcopenshell_double_list_destroy(&flat);
+    assert(owner_destructions == 1);
+
+    std::vector<std::vector<double>> nested_values{{{{4.0, 5.0}}, {{6.0}}}};
+    auto* first_row_data = nested_values[0].data();
+    auto* second_row_data = nested_values[1].data();
+    auto nested = make_double_list_list(std::move(nested_values));
+    assert(nested.owner != nullptr);
+    assert(nested.items[0].items == first_row_data);
+    assert(nested.items[1].items == second_row_data);
+    ifcopenshell_double_list_list_destroy(&nested);
+    assert(owner_destructions == 4);
+    ifcopenshell_double_list_list_destroy(&nested);
+    assert(owner_destructions == 4);
+
+    double caller_items[] = {{10.0, 11.0}};
+    ifcopenshell_double_list_t borrowed{{caller_items, 2, nullptr}};
+    ifcopenshell_double_list_destroy(&borrowed);
+    assert(owner_destructions == 4);
+    assert(caller_items[0] == 10.0);
+}}
+"""
+    source = tmp_path / "owner_backed_buffer_fixture.cpp"
+    executable = tmp_path / "owner_backed_buffer_fixture"
     source.write_text(fixture, encoding="utf-8")
     subprocess.run(
         [compiler, "-std=c++17", "-O0", str(source), "-o", str(executable)],

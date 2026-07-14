@@ -761,6 +761,41 @@ class TestOutputHandling:
 
         assert "wrap_demo_value(result, 1)" in code
 
+    def test_numeric_sequences_export_owner_retaining_read_only_buffers(self):
+        meta = _make_metadata(
+            value_types={
+                "double_list": CTypeIR(
+                    c_type="ifcopenshell_double_list_t",
+                    kind="sequence",
+                    fields=(
+                        CFieldIR("items", "double*"),
+                        CFieldIR("size", "size_t"),
+                        CFieldIR("owner", "void*"),
+                    ),
+                    destroy_function="ifcopenshell_double_list_destroy",
+                    element_type="double",
+                    sequence_depth=1,
+                )
+            },
+            functions={
+                "ifcopenshell_demo_values": _make_function(
+                    c_name="ifcopenshell_demo_values",
+                    returns=TypeSpec(kind="double", sequence_depth=1),
+                )
+            },
+        )
+
+        code = render_python_extension(meta)
+
+        assert "IfcOpenShellOwnedBuffer_getbuffer" in code
+        assert "IfcOpenShell buffers are read-only" in code
+        assert "ifcopenshell_buffer_owner_destroy(&self->owner);" in code
+        assert "make_owned_buffer(" in code
+        assert "value->items, value->size, sizeof(double), \"d\", &value->owner" in code
+        assert ".tp_as_sequence = &IfcOpenShellOwnedBuffer_sequence_methods" in code
+        assert ".tp_as_mapping = &IfcOpenShellOwnedBuffer_mapping_methods" in code
+        assert ".tp_as_buffer = &IfcOpenShellOwnedBuffer_buffer_procs" in code
+
     def test_handle_sequence_transfers_envelopes_before_container_cleanup(self):
         meta = _make_metadata(
             handles={"item": _make_handle("item", "ifcopenshell_demo_item_t")},

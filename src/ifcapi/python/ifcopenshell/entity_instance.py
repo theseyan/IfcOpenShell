@@ -75,9 +75,9 @@ def _attribute_value_to_python(av, file_obj):
     if value_type == "DOUBLE":
         return float(_capi.attribute_value_as_double(av))
     if value_type == "AGGREGATE OF INT":
-        return _capi.attribute_value_as_int32_list(av)
+        return tuple(_capi.attribute_value_as_int32_list(av))
     if value_type == "AGGREGATE OF DOUBLE":
-        return _capi.attribute_value_as_double_list(av)
+        return tuple(_capi.attribute_value_as_double_list(av))
     if value_type == "AGGREGATE OF ENTITY INSTANCE":
         return tuple(entity_instance(file_obj, item) for item in _capi.attribute_value_as_instance_list(av))
     if value_type in ("AGGREGATE OF STRING", "AGGREGATE OF BINARY"):
@@ -481,17 +481,17 @@ class entity_instance:
         # Read using the actual stored aggregate type first, then fall back to
         # the schema-declared primitive for the element type.
         if value_type == "AGGREGATE OF INT":
-            return _capi.attribute_value_as_int32_list(av)
+            return tuple(_capi.attribute_value_as_int32_list(av))
         if value_type == "AGGREGATE OF DOUBLE":
-            return _capi.attribute_value_as_double_list(av)
+            return tuple(_capi.attribute_value_as_double_list(av))
         if value_type == "AGGREGATE OF ENTITY INSTANCE":
             return tuple(entity_instance(self._file, item) for item in _capi.attribute_value_as_instance_list(av))
         if value_type in ("AGGREGATE OF STRING", "AGGREGATE OF BINARY"):
             return _capi.attribute_value_as_string_list(av)
         if primitive == "integer":
-            return _capi.attribute_value_as_int32_list(av)
+            return tuple(_capi.attribute_value_as_int32_list(av))
         if primitive == "float":
-            return _capi.attribute_value_as_double_list(av)
+            return tuple(_capi.attribute_value_as_double_list(av))
         if primitive == "entity":
             return tuple(entity_instance(self._file, item) for item in _capi.attribute_value_as_instance_list(av))
         if primitive in ("string", "binary", "enum"):
@@ -716,7 +716,7 @@ class entity_instance:
         if not av:
             return None
         try:
-            return _capi.attribute_value_as_int32_list_list(av)
+            return tuple(tuple(row) for row in _capi.attribute_value_as_int32_list_list(av))
         finally:
             _capi.attribute_value_destroy(av)
 
@@ -729,7 +729,7 @@ class entity_instance:
         if not av:
             return None
         try:
-            return _capi.attribute_value_as_double_list_list(av)
+            return tuple(tuple(row) for row in _capi.attribute_value_as_double_list_list(av))
         finally:
             _capi.attribute_value_destroy(av)
 
