@@ -700,6 +700,62 @@ class TestWasmJsGlue:
             "invoke_ifcopenshell_demo_file_set_name(this.#module, this, name)" in code
         )
 
+    def test_dispatches_receiver_overloads_by_argument_count(self):
+        metadata = _make_metadata(
+            handles={"file": _make_handle("ifcopenshell_demo_file_t")},
+            functions={
+                "ifcopenshell_demo_file_build_inverses": _make_function(
+                    c_name="ifcopenshell_demo_file_build_inverses",
+                    receiver="file",
+                ),
+                "ifcopenshell_demo_file_build_inverses_": _make_function(
+                    c_name="ifcopenshell_demo_file_build_inverses_",
+                    receiver="file",
+                    params=(
+                        CParamIR(
+                            "entity",
+                            "ifcopenshell_demo_file_t*",
+                            "param",
+                            "handle",
+                        ),
+                    ),
+                ),
+            },
+        )
+
+        code = render_js_glue(metadata)
+
+        assert code.count("    buildInverses(") == 1
+        assert "buildInverses(...args)" in code
+        assert (
+            "case 0: return invoke_ifcopenshell_demo_file_build_inverses(this.#module, this, ...args);"
+            in code
+        )
+        assert (
+            "case 1: return invoke_ifcopenshell_demo_file_build_inverses_(this.#module, this, ...args);"
+            in code
+        )
+
+    def test_rejects_ambiguous_receiver_overloads(self):
+        metadata = _make_metadata(
+            handles={"file": _make_handle("ifcopenshell_demo_file_t")},
+            functions={
+                "ifcopenshell_demo_file_find": _make_function(
+                    c_name="ifcopenshell_demo_file_find",
+                    receiver="file",
+                    params=(CParamIR("name", "const char*", "param", "string"),),
+                ),
+                "ifcopenshell_demo_file_find_": _make_function(
+                    c_name="ifcopenshell_demo_file_find_",
+                    receiver="file",
+                    params=(CParamIR("id", "int32_t", "param", "int32"),),
+                ),
+            },
+        )
+
+        with pytest.raises(ValueError, match="both take 1 arguments"):
+            render_js_glue(metadata)
+
     def test_snapshots_borrowed_buffers_directly_into_typed_arrays(self):
         metadata = _make_metadata(
             handles={"mesh": _make_handle("ifcopenshell_demo_mesh_t")},

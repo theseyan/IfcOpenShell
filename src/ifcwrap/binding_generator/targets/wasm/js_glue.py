@@ -308,7 +308,7 @@ def _render_handle_classes(metadata: BindingABI) -> str:
     chunks: list[str] = []
     for handle_name, handle in sorted(metadata.handles.items()):
         type_name = _type_name(handle.c_type)
-        methods = []
+        method_groups: dict[str, list[tuple[CFunctionIR, list[str]]]] = {}
         for function in sorted(
             receiver_groups.get(handle_name, []), key=lambda item: item.c_name
         ):
@@ -318,12 +318,11 @@ def _render_handle_classes(metadata: BindingABI) -> str:
             param_names = [param.name for param in _public_params(function)]
             if _typed_buffer_element(function, metadata) is not None:
                 param_names.append("arrayType")
-            params = ", ".join(param_names)
-            methods.append(
-                f"    {method}({params}) {{\n"
-                f"        return invoke_{function.c_name}(this.#module, this{', ' if params else ''}{params});\n"
-                "    }"
-            )
+            method_groups.setdefault(method, []).append((function, param_names))
+        methods = [
+            _render_handle_method(method, overloads)
+            for method, overloads in method_groups.items()
+        ]
         method_block = "\n\n".join(methods)
         destroy = (
             handle.destroy_function
@@ -354,6 +353,43 @@ def _render_handle_classes(metadata: BindingABI) -> str:
             "}"
         )
     return "\n\n".join(chunks)
+
+
+def _render_handle_method(
+    method: str, overloads: list[tuple[CFunctionIR, list[str]]]
+) -> str:
+    if len(overloads) == 1:
+        function, param_names = overloads[0]
+        params = ", ".join(param_names)
+        return (
+            f"    {method}({params}) {{\n"
+            f"        return invoke_{function.c_name}(this.#module, this{', ' if params else ''}{params});\n"
+            "    }"
+        )
+
+    by_arity: dict[int, CFunctionIR] = {}
+    for function, param_names in overloads:
+        arity = len(param_names)
+        if arity in by_arity:
+            raise ValueError(
+                f"Cannot render overloaded JavaScript method {method!r}: "
+                f"{by_arity[arity].c_name} and {function.c_name} both take {arity} arguments"
+            )
+        by_arity[arity] = function
+
+    cases = "\n".join(
+        f"            case {arity}: return invoke_{function.c_name}(this.#module, this, ...args);"
+        for arity, function in sorted(by_arity.items())
+    )
+    expected = ", ".join(str(arity) for arity in sorted(by_arity))
+    return (
+        f"    {method}(...args) {{\n"
+        "        switch (args.length) {\n"
+        f"{cases}\n"
+        f"            default: throw new TypeError({method!r} + ' expects {expected} arguments');\n"
+        "        }\n"
+        "    }"
+    )
 
 
 def _render_handle_wrapper_switch(metadata: BindingABI) -> str:
