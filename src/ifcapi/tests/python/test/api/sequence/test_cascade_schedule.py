@@ -21,6 +21,7 @@ import datetime
 import pytest
 
 import ifcopenshell.api.sequence
+from ifcopenshell import _ifcopenshell_capi as _capi
 import test.bootstrap
 
 
@@ -62,9 +63,11 @@ class TestCascadeSchedule(test.bootstrap.IFC4):
         task = self._create_task("P1D")
         task2 = self._create_task("P2D")
         self._create_sequence(task, task2, "FINISH_START")
-        with pytest.raises(RecursionError):
+        with pytest.raises(RecursionError) as error:
             self._create_sequence(task2, task, "FINISH_START")
             ifcopenshell.api.sequence.cascade_schedule(self.file, task=task)
+        assert error.value.kind == _capi.IFCOPENSHELL_ERROR_RECURSION
+        assert error.value.code == _capi.IFCOPENSHELL_ERROR_CODE_RECURSIVE_SCHEDULE_CASCADE
 
     def test_cascading_finish_to_start(self):
         task = self._create_task("P1D")

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from .abi_ir import (
+    ErrorCatalogEntryIR,
     _handle_destroy_name,
     _option_list_c_type,
     _result_record_list_c_type,
@@ -35,6 +36,15 @@ from .debug import debug_log
 
 def _render_handle_destroy_decl(handle: HandleSpec) -> str:
     return f"void {_handle_destroy_name(handle)}({handle.c_type}* handle);"
+
+
+def _render_error_enum(
+    entries: tuple[ErrorCatalogEntryIR, ...], prefix: str, c_type: str
+) -> str:
+    values = ",\n".join(
+        f"    {prefix}{entry.name} = {entry.value}" for entry in entries
+    )
+    return f"typedef enum {{\n{values}\n}} {c_type};"
 
 
 def _render_header(spec: BindingIR) -> str:
@@ -71,10 +81,7 @@ def _render_header(spec: BindingIR) -> str:
         if struct.name in result_record_lists:
             list_type = _result_record_list_c_type(struct)
             result_decl_blocks.append(
-                f"typedef struct {list_type} {{\n"
-                f"    {struct.c_type}* items;\n"
-                f"    size_t size;\n"
-                f"}} {list_type};"
+                f"typedef struct {list_type} {{\n    {struct.c_type}* items;\n    size_t size;\n}} {list_type};"
             )
     result_struct_decls = "\n\n".join(result_decl_blocks)
     optional_result_struct_decls = "\n\n".join(
@@ -117,13 +124,22 @@ def _render_header(spec: BindingIR) -> str:
     variant_destroy_decls = _render_variant_destroy_decls(spec)
     result_struct_destroy_decls = _render_result_struct_destroy_decls(spec.abi)
     result_record_list_destroy_decls = "\n".join(
-        f"void {_result_record_list_destroy_name(struct)}("
-        f"{_result_record_list_c_type(struct)}* value);"
+        f"void {_result_record_list_destroy_name(struct)}({_result_record_list_c_type(struct)}* value);"
         for struct in _used_result_record_lists(spec)
     )
     call_decls = "\n".join(_render_call_decl(call, spec) for call in spec.calls)
     sequence_kinds = _used_scalar_sequence_kinds(spec)
     common_type_decls = _render_common_type_decls(sequence_kinds)
+    error_kind_decl = _render_error_enum(
+        spec.abi.error_catalog.kinds,
+        "IFCOPENSHELL_ERROR_",
+        "ifcopenshell_error_kind_t",
+    )
+    error_code_decl = _render_error_enum(
+        spec.abi.error_catalog.codes,
+        "IFCOPENSHELL_ERROR_CODE_",
+        "ifcopenshell_error_code_t",
+    )
 
     rendered = f"""#ifndef {guard}
 #define {guard}
@@ -159,18 +175,22 @@ extern "C" {{
 
 {variant_decls}
 
-typedef enum {{
-    IFCOPENSHELL_ERROR_NONE = 0,
-    IFCOPENSHELL_ERROR_RUNTIME = 1,
-    IFCOPENSHELL_ERROR_VALUE = 2,
-    IFCOPENSHELL_ERROR_TYPE = 3,
-    IFCOPENSHELL_ERROR_NOT_IMPLEMENTED = 4,
-    IFCOPENSHELL_ERROR_KEY = 5
-}} ifcopenshell_error_kind_t;
+{error_kind_decl}
 
+{error_code_decl}
+
+/*
+ * Error state is thread-local. Kinds and codes are stable programmatic
+ * identifiers; messages are diagnostics and must not be parsed. Every
+ * generated call clears the state before execution. A nullable result is a
+ * successful absence only when the kind remains IFCOPENSHELL_ERROR_NONE.
+ * Returned message storage remains valid until the next error or clear on
+ * the calling thread.
+ */
 void {spec.c_prefix}_clear_error(void);
 const char* {spec.c_prefix}_last_error_message(void);
 int {spec.c_prefix}_last_error_kind(void);
+int {spec.c_prefix}_last_error_code(void);
 
 {destroy_decls}
 {handle_list_destroy_decls}

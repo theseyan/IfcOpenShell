@@ -77,30 +77,34 @@ express::Base first_item(express::Base annotation) {
     return items.empty() ? express::Base() : items.front();
 }
 
+ifcapi::detail::Error invalid_bearing_error() {
+    return {ifcapi::detail::ERROR_VALUE, ifcapi::detail::ERROR_CODE_INVALID_QUADRANT_BEARING, "Invalid bearing string"};
+}
+
 int parse_integer_token(const std::string& token) {
-    if (token.empty()) throw std::invalid_argument("Invalid bearing string");
+    if (token.empty()) throw invalid_bearing_error();
     size_t consumed = 0;
     int value = 0;
     try {
         value = std::stoi(token, &consumed);
     } catch (...) {
-        throw std::invalid_argument("Invalid bearing string");
+        throw invalid_bearing_error();
     }
-    if (consumed != token.size()) throw std::invalid_argument("Invalid bearing string");
+    if (consumed != token.size()) throw invalid_bearing_error();
     return value;
 }
 
 double parse_seconds_token(const std::string& token) {
-    if (token.empty()) throw std::invalid_argument("Invalid bearing string");
+    if (token.empty()) throw invalid_bearing_error();
     size_t consumed = 0;
     double value = 0.0;
     try {
         value = std::stod(token, &consumed);
     } catch (...) {
-        throw std::invalid_argument("Invalid bearing string");
+        throw invalid_bearing_error();
     }
     if (consumed != token.size() || !std::isfinite(value)) {
-        throw std::invalid_argument("Invalid bearing string");
+        throw invalid_bearing_error();
     }
     return value;
 }
@@ -112,13 +116,13 @@ double cogo_bearing2dd(const std::string& bearing) {
     std::vector<std::string> parts;
     for (std::string part; input >> part;) parts.push_back(part);
     if (parts.size() < 3 || parts.size() > 5 || parts.front().size() != 1 || parts.back().size() != 1) {
-        throw std::invalid_argument("Invalid bearing string");
+        throw invalid_bearing_error();
     }
 
     const char north_south = static_cast<char>(std::toupper(static_cast<unsigned char>(parts.front()[0])));
     const char east_west = static_cast<char>(std::toupper(static_cast<unsigned char>(parts.back()[0])));
     if ((north_south != 'N' && north_south != 'S') || (east_west != 'E' && east_west != 'W')) {
-        throw std::invalid_argument("Invalid bearing string");
+        throw invalid_bearing_error();
     }
 
     const int degrees = parse_integer_token(parts[1]);
@@ -127,13 +131,13 @@ double cogo_bearing2dd(const std::string& bearing) {
     const int seconds = static_cast<int>(seconds_value);
     const double hundredths = 100.0 * (seconds_value - seconds);
     if (degrees < 0 || minutes < 0 || minutes >= 60 || seconds_value < 0.0 || seconds >= 60 || hundredths < 0.0) {
-        throw std::invalid_argument("Invalid bearing string");
+        throw invalid_bearing_error();
     }
 
     const double quadrant = static_cast<double>(degrees) + static_cast<double>(minutes) / 60.0
         + static_cast<double>(seconds) / 3600.0 + hundredths / 3600000.0;
     if (!std::isfinite(quadrant) || quadrant > 90.0) {
-        throw std::invalid_argument("Invalid bearing string");
+        throw invalid_bearing_error();
     }
 
     double angle = north_south == 'N' ? 90.0 : 270.0;
@@ -189,7 +193,7 @@ express::Base cogo_add_survey_point(
         });
         return annotation;
     } catch (const std::exception& e) {
-        set_error(e.what());
+        ifcapi::detail::set_error(e);
         return {};
     }
 }
@@ -210,7 +214,7 @@ void cogo_assign_survey_point(express::Base* annotation, express::Base* survey_p
         }
         ifcapi::detail::write_ref_aggregate(representation, "Items", {survey_point_value});
     } catch (const std::exception& e) {
-        set_error(e.what());
+        ifcapi::detail::set_error(e);
     }
 }
 
@@ -234,7 +238,7 @@ void cogo_edit_survey_point(express::Base* annotation, double x, double y, doubl
             ifcapi::detail::write_double_aggregate(survey_point, "Coordinates", {x, y, z});
         }
     } catch (const std::exception& e) {
-        set_error(e.what());
+        ifcapi::detail::set_error(e);
     }
 }
 

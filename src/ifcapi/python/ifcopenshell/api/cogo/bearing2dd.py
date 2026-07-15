@@ -34,9 +34,4 @@ def bearing2dd(bearing: str) -> float:
     :param str: the bearing string
     :return: Angle in radian
     """
-    try:
-        return _capi.cogo_bearing2dd(bearing)
-    except RuntimeError as error:
-        if str(error) == "Invalid bearing string":
-            raise ValueError("Invalid bearing string") from None
-        raise
+    return _capi.cogo_bearing2dd(bearing)

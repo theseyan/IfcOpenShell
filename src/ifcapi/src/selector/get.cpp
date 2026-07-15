@@ -2,6 +2,7 @@
 
 #include "selector/internal.h"
 #include "ifcapi/express_rules.h"
+#include "ifcapi/detail/error.h"
 
 namespace ifcapi {
 namespace bindings {
@@ -30,7 +31,7 @@ std::optional<ifcopenshell_selector_value_t*> selector_get_element_value(
     try {
         return get_element_value_impl(file.value_or(nullptr), element, keys);
     } catch (const std::exception& ex) {
-        ifcopenshell::capi::set_last_error(ex.what());
+        ifcapi::detail::set_error(ex);
         return {};
     } catch (...) {
         ifcopenshell::capi::set_last_error("get_element_value: unknown exception");

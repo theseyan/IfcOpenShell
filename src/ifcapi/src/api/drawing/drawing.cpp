@@ -128,7 +128,7 @@ express::Base drawing_assign_product(
             user_value,
             application_value);
     } catch (const std::exception& e) {
-        set_error(e.what());
+        ifcapi::detail::set_error(e);
         return {};
     }
 }
@@ -164,7 +164,7 @@ void drawing_unassign_product(
             ifcapi::detail::update_owner_history(file, rel, user_value, application_value);
         }
     } catch (const std::exception& e) {
-        set_error(e.what());
+        ifcapi::detail::set_error(e);
     }
 }
 

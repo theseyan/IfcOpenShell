@@ -199,7 +199,7 @@ express::Base nest_assign_object(
             return rel;
         }
     } catch (const std::exception& e) {
-        ifcopenshell::capi::set_last_error(e.what());
+        ifcapi::detail::set_error(e);
         throw;
     }
 }
@@ -247,7 +247,7 @@ void nest_unassign_object(
             }
         }
     } catch (const std::exception& e) {
-        ifcopenshell::capi::set_last_error(e.what());
+        ifcapi::detail::set_error(e);
         throw;
     }
 }
@@ -287,7 +287,7 @@ void nest_change_nest(ifcopenshell::file* file, const NestChangeNestOptions& opt
             throw std::runtime_error(message && *message ? message : "Failed to assign new nest");
         }
     } catch (const std::exception& e) {
-        ifcopenshell::capi::set_last_error(e.what());
+        ifcapi::detail::set_error(e);
         throw;
     }
 }
@@ -326,7 +326,7 @@ void nest_reorder_nesting(ifcopenshell::file* file, const NestReorderNestingOpti
         write_ref_aggregate(rel, "RelatedObjects", items);
         update_owner_history(file, rel, options.user.value_or(express::Base()), options.application.value_or(express::Base()));
     } catch (const std::exception& e) {
-        ifcopenshell::capi::set_last_error(e.what());
+        ifcapi::detail::set_error(e);
         throw;
     }
 }

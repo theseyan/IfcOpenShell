@@ -4,7 +4,14 @@ from __future__ import annotations
 
 import json
 
-from ...abi_ir import BindingABI, CFunctionIR, COptionIR, CParamIR, CTypeIR
+from ...abi_ir import (
+    BindingABI,
+    CFunctionIR,
+    COptionIR,
+    CParamIR,
+    CTypeIR,
+    ErrorCatalogEntryIR,
+)
 from ...binding_model import TypeSpec
 from .._shared import (
     _INTERNAL_C_FUNCTIONS,
@@ -491,15 +498,19 @@ def _render_wrapper(function: CFunctionIR, metadata: BindingABI) -> str:
         size_args = ", ".join((*arg_exprs, "outSizePtr"))
         size_call = (
             f"    const sizeOk = module._{size_function.c_name}({size_args});\n"
-            f"    if (!sizeOk) throw new Error(_lastErrorMessage(module, '{size_function.c_name} failed'));\n"
+            f"    if (!sizeOk) throw _lastError(module, '{size_function.c_name} failed');\n"
         )
 
     if function.restype == "void":
-        call_block = f"    module._{function.c_name}({call_args});\n"
+        call_block = (
+            f"    module._{function.c_name}({call_args});\n"
+            + f"    if (module._{metadata.error_functions['last_error_kind']}() !== 0) "
+            + f"throw _lastError(module, '{error_name} failed');\n"
+        )
     else:
         call_block = (
             f"    const ok = module._{function.c_name}({call_args});\n"
-            + f"    if (!ok) throw new Error(_lastErrorMessage(module, '{error_name} failed'));\n"
+            + f"    if (!ok) throw _lastError(module, '{error_name} failed');\n"
         )
 
     return (
@@ -546,7 +557,9 @@ def _render_module_factory(metadata: BindingABI) -> str:
             param_names.append("arrayType")
         params = ", ".join(param_names)
         call = f"({params}) => invoke_{function.c_name}(module{', ' if params else ''}{params})"
-        module_members_for_function = _public_module_members(function, metadata.c_prefix)
+        module_members_for_function = _public_module_members(
+            function, metadata.c_prefix
+        )
         if module_members_for_function:
             for module_name, member_name in module_members_for_function:
                 module_members.setdefault(module_name, []).append(
@@ -560,8 +573,7 @@ def _render_module_factory(metadata: BindingABI) -> str:
         members.append(
             f"        {module_name}: Object.freeze({{\n"
             + "\n".join(nested_members)
-            + "\n"
-            "        }),"
+            + "\n        }),"
         )
     joined = "\n".join(members)
     return (
@@ -752,6 +764,11 @@ def _render_option_type_metadata(metadata: BindingABI) -> str:
     return json.dumps(payload, indent=4, sort_keys=True)
 
 
+def _render_error_object(name: str, entries: tuple[ErrorCatalogEntryIR, ...]) -> str:
+    values = "\n".join(f"    {entry.name}: {entry.value}," for entry in entries)
+    return f"export const {name} = Object.freeze({{\n{values}\n}});"
+
+
 def render_js_glue(
     metadata: BindingABI, handles: dict[str, CTypeIR] | None = None
 ) -> str:
@@ -767,9 +784,59 @@ def render_js_glue(
     factory = _render_module_factory(metadata)
     value_types = _render_value_type_metadata(metadata)
     option_types = _render_option_type_metadata(metadata)
+    error_kinds = _render_error_object(
+        "IfcOpenShellErrorKind", metadata.error_catalog.kinds
+    )
+    error_codes = _render_error_object(
+        "IfcOpenShellErrorCode", metadata.error_catalog.codes
+    )
     return "\n".join(
         [
             "// This file was generated with the assistance of an AI coding tool.",
+            "",
+            "const _IFCOPENSHELL_ERROR_BRAND = Symbol.for('org.ifcopenshell.error');",
+            "",
+            error_kinds,
+            "",
+            error_codes,
+            "",
+            "/** Typed cross-target error. Inspect kind/code; never parse message. */",
+            "export class IfcOpenShellError extends Error {",
+            "    constructor(kindOrMessage, codeOrCause, message, cause) {",
+            "        let kind;",
+            "        let code;",
+            "        if (typeof kindOrMessage === 'string') {",
+            "            message = kindOrMessage;",
+            "            cause = codeOrCause;",
+            "            if (cause instanceof IfcOpenShellError) {",
+            "                kind = cause.kind;",
+            "                code = cause.code;",
+            "            } else {",
+            "                kind = IfcOpenShellErrorKind.RUNTIME;",
+            "                code = IfcOpenShellErrorCode.UNSPECIFIED;",
+            "            }",
+            "        } else {",
+            "            kind = kindOrMessage;",
+            "            code = codeOrCause;",
+            "        }",
+            "        super(message, cause !== undefined ? { cause } : undefined);",
+            "        this.name = kind === IfcOpenShellErrorKind.CANCELLED ? 'AbortError' : 'IfcOpenShellError';",
+            "        this.kind = kind;",
+            "        this.code = code;",
+            "        Object.defineProperty(this, _IFCOPENSHELL_ERROR_BRAND, { value: true });",
+            "    }",
+            "    static [Symbol.hasInstance](value) {",
+            "        return Boolean(value && value[_IFCOPENSHELL_ERROR_BRAND] === true);",
+            "    }",
+            "}",
+            "",
+            "export function abortError(message = 'IfcOpenShell operation was cancelled', cause) {",
+            "    return new IfcOpenShellError(IfcOpenShellErrorKind.CANCELLED, IfcOpenShellErrorCode.OPERATION_CANCELLED, message, cause);",
+            "}",
+            "",
+            "export function isIfcOpenShellAbortError(error) {",
+            "    return error instanceof IfcOpenShellError && error.code === IfcOpenShellErrorCode.OPERATION_CANCELLED;",
+            "}",
             "",
             "const POINTER_SIZE = 4;",
             f"const _VALUE_TYPES = {value_types};",
@@ -847,9 +914,12 @@ def render_js_glue(
             "    return ptr;",
             "}",
             "",
-            "function _lastErrorMessage(module, fallbackMessage) {",
+            "function _lastError(module, fallbackMessage) {",
             f"    const errorPtr = module._{metadata.error_functions['last_error_message']}();",
-            "    return errorPtr ? module.UTF8ToString(errorPtr) : fallbackMessage;",
+            f"    const kind = module._{metadata.error_functions['last_error_kind']}();",
+            f"    const code = module._{metadata.error_functions['last_error_code']}();",
+            "    const message = errorPtr ? module.UTF8ToString(errorPtr) : fallbackMessage;",
+            "    return new IfcOpenShellError(kind || IfcOpenShellErrorKind.RUNTIME, code || IfcOpenShellErrorCode.UNSPECIFIED, message);",
             "}",
             "",
             "function _getValue(module, ptr, cType) {",

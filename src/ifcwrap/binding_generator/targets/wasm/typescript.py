@@ -4,7 +4,13 @@ from __future__ import annotations
 
 import re
 
-from ...abi_ir import BindingABI, CFunctionIR, CParamIR, CTypeIR
+from ...abi_ir import (
+    BindingABI,
+    CFunctionIR,
+    CParamIR,
+    CTypeIR,
+    ErrorCatalogEntryIR,
+)
 from ...binding_model import TypeSpec
 from .._shared import (
     _INTERNAL_C_FUNCTIONS,
@@ -19,6 +25,16 @@ from .._shared import (
 )
 
 _HIDDEN_FUNCTIONS = frozenset({"ifcopenshell_project_append_asset_cache_free"})
+
+
+def _render_error_declaration(
+    name: str, entries: tuple[ErrorCatalogEntryIR, ...]
+) -> list[str]:
+    return [
+        f"  export const {name}: {{",
+        *(f"    readonly {entry.name}: {entry.value};" for entry in entries),
+        "  };",
+    ]
 
 
 def _interface_name(name: str) -> str:
@@ -318,7 +334,9 @@ def _collect_module_members(metadata: BindingABI) -> dict[str, list[str]]:
             or function.c_name in _HIDDEN_FUNCTIONS
         ):
             continue
-        module_members_for_function = _public_module_members(function, metadata.c_prefix)
+        module_members_for_function = _public_module_members(
+            function, metadata.c_prefix
+        )
         if not module_members_for_function:
             continue
         for module_name, member_name in module_members_for_function:
@@ -391,6 +409,23 @@ def render_typescript_declarations(
         "",
         "declare module 'ifcopenshell-api' {",
         "  export type IfcOpenshellRawValue = null | boolean | number | bigint | string | object | IfcOpenshellRawValue[];",
+        *_render_error_declaration(
+            "IfcOpenShellErrorKind", metadata.error_catalog.kinds
+        ),
+        "  export type IfcOpenShellErrorKind = typeof IfcOpenShellErrorKind[keyof typeof IfcOpenShellErrorKind];",
+        *_render_error_declaration(
+            "IfcOpenShellErrorCode", metadata.error_catalog.codes
+        ),
+        "  export type IfcOpenShellErrorCode = typeof IfcOpenShellErrorCode[keyof typeof IfcOpenShellErrorCode];",
+        "  /** Kinds and codes are stable identifiers. Message is diagnostic only. */",
+        "  export class IfcOpenShellError extends Error {",
+        "    readonly kind: IfcOpenShellErrorKind;",
+        "    readonly code: IfcOpenShellErrorCode;",
+        "    constructor(message: string, cause?: unknown);",
+        "    constructor(kind: IfcOpenShellErrorKind, code: IfcOpenShellErrorCode, message: string, cause?: unknown);",
+        "  }",
+        "  export function abortError(message?: string, cause?: unknown): IfcOpenShellError;",
+        "  export function isIfcOpenShellAbortError(error: unknown): error is IfcOpenShellError;",
         "  export type IfcOpenshellNumericTypedArray = Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array;",
         "  export interface IfcOpenshellNumericArrayConstructor<T extends IfcOpenshellNumericTypedArray> {",
         "    readonly BYTES_PER_ELEMENT: number;",

@@ -93,7 +93,7 @@ express::Base group_add_group(
         }
         return group;
     } catch (const std::exception& e) {
-        set_error(e.what());
+        ifcapi::detail::set_error(e);
         return {};
     }
 }
@@ -146,7 +146,7 @@ express::Base group_update_group_products(
         update_owner_history(file, rel, user, application);
         return rel;
     } catch (const std::exception& e) {
-        set_error(e.what());
+        ifcapi::detail::set_error(e);
         return {};
     }
 }
@@ -213,7 +213,7 @@ express::Base group_assign_group(
         update_owner_history(file, existing_rel, user, application);
         return existing_rel;
     } catch (const std::exception& e) {
-        set_error(e.what());
+        ifcapi::detail::set_error(e);
         return {};
     }
 }

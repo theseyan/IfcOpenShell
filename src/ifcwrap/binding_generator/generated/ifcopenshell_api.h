@@ -2079,12 +2079,36 @@ typedef enum {
     IFCOPENSHELL_ERROR_VALUE = 2,
     IFCOPENSHELL_ERROR_TYPE = 3,
     IFCOPENSHELL_ERROR_NOT_IMPLEMENTED = 4,
-    IFCOPENSHELL_ERROR_KEY = 5
+    IFCOPENSHELL_ERROR_KEY = 5,
+    IFCOPENSHELL_ERROR_RECURSION = 6,
+    IFCOPENSHELL_ERROR_CANCELLED = 7
 } ifcopenshell_error_kind_t;
 
+typedef enum {
+    IFCOPENSHELL_ERROR_CODE_NONE = 0,
+    IFCOPENSHELL_ERROR_CODE_UNSPECIFIED = 1,
+    IFCOPENSHELL_ERROR_CODE_INVALID_ARGUMENT = 2,
+    IFCOPENSHELL_ERROR_CODE_DOMAIN_ERROR = 3,
+    IFCOPENSHELL_ERROR_CODE_INVALID_QUADRANT_BEARING = 100,
+    IFCOPENSHELL_ERROR_CODE_UNSUPPORTED_RESOURCE_QUANTITY = 101,
+    IFCOPENSHELL_ERROR_CODE_INVALID_RESOURCE_QUANTITY_CLASS = 102,
+    IFCOPENSHELL_ERROR_CODE_RECURSIVE_SCHEDULE_CASCADE = 103,
+    IFCOPENSHELL_ERROR_CODE_CYCLIC_TASK_GRAPH = 104,
+    IFCOPENSHELL_ERROR_CODE_OPERATION_CANCELLED = 105
+} ifcopenshell_error_code_t;
+
+/*
+ * Error state is thread-local. Kinds and codes are stable programmatic
+ * identifiers; messages are diagnostics and must not be parsed. Every
+ * generated call clears the state before execution. A nullable result is a
+ * successful absence only when the kind remains IFCOPENSHELL_ERROR_NONE.
+ * Returned message storage remains valid until the next error or clear on
+ * the calling thread.
+ */
 void ifcopenshell_clear_error(void);
 const char* ifcopenshell_last_error_message(void);
 int ifcopenshell_last_error_kind(void);
+int ifcopenshell_last_error_code(void);
 
 void ifcopenshell_file_destroy(ifcopenshell_file_t* handle);
 void ifcopenshell_instance_streamer_destroy(ifcopenshell_instance_streamer_t* handle);
@@ -2439,8 +2463,8 @@ bool ifcopenshell_cogo_assign_survey_point(ifcopenshell_instance_t* annotation, 
  * Convert a quadrant bearing to decimal degrees.
  *
  * Accepts N/S, degrees, optional minutes and decimal seconds, and E/W,
- * separated by arbitrary whitespace. Invalid input reports
- * "Invalid bearing string".
+ * separated by arbitrary whitespace. Invalid input is a value error with the
+ * stable invalid-quadrant-bearing code; its message is diagnostic only.
  */
 bool ifcopenshell_cogo_bearing2dd(const char* bearing, double* out_result);
 /**
@@ -4666,7 +4690,14 @@ bool ifcopenshell_representation_resolve(ifcopenshell_instance_t* representation
 bool ifcopenshell_representation_resolve_base_items(ifcopenshell_instance_t* representation, ifcopenshell_parse_instance_list_t** out_result);
 /** Create a construction resource, nesting it below a parent when supplied or declaring it to the first IFC4+ context. */
 bool ifcopenshell_resource_add_resource(ifcopenshell_file_t* file, const ifcopenshell_resource_add_resource_options_t* options, ifcopenshell_instance_t** out_result);
-/** Create and attach a schema-valid base quantity. Validation precedes replacement of any existing quantity. */
+/**
+ * Create and attach a schema-valid base quantity.
+ *
+ * Validation precedes replacement of any existing quantity. Matching upstream
+ * behavior, resource/quantity support is checked before schema resolution.
+ * Unsupported combinations and schema-resolution failures are value errors
+ * with distinct stable codes; diagnostic messages must not be parsed.
+ */
 bool ifcopenshell_resource_add_resource_quantity(ifcopenshell_file_t* file, ifcopenshell_instance_t* resource, const char* ifc_class, ifcopenshell_instance_t** out_result);
 /** Create an IfcResourceTime and replace the resource Usage reference. */
 bool ifcopenshell_resource_add_resource_time(ifcopenshell_file_t* file, ifcopenshell_instance_t* resource, ifcopenshell_instance_t** out_result);
@@ -5079,6 +5110,8 @@ bool ifcopenshell_sequence_assign_recurrence_pattern(ifcopenshell_file_t* file, 
  * @param related_process Successor IfcTask.
  * @param options Sequence type and ownership options.
  * @return The IfcRelSequence relationship.
+ * @throws A recursion error with the stable recursive-schedule-cascade code
+ * when the relationship exposes a cycle during cascading.
  */
 bool ifcopenshell_sequence_assign_sequence(ifcopenshell_file_t* file, ifcopenshell_instance_t* relating_process, ifcopenshell_instance_t* related_process, const ifcopenshell_sequence_assign_sequence_options_t* options, ifcopenshell_instance_t** out_result);
 /**
@@ -5115,6 +5148,7 @@ bool ifcopenshell_sequence_calculate_task_duration(ifcopenshell_file_t* file, if
  *
  * @param file File containing the task network.
  * @param task IfcTask from which to cascade.
+ * @throws A recursion error with the stable recursive-schedule-cascade code.
  */
 bool ifcopenshell_sequence_cascade_schedule(ifcopenshell_file_t* file, ifcopenshell_instance_t* task);
 /**
@@ -5244,6 +5278,7 @@ bool ifcopenshell_sequence_edit_work_time(ifcopenshell_instance_t* work_time, vo
  *
  * @param file File containing the work schedule.
  * @param work_schedule IfcWorkSchedule to recalculate.
+ * @throws A recursion error with the stable cyclic-task-graph code.
  */
 bool ifcopenshell_sequence_recalculate_schedule(ifcopenshell_file_t* file, ifcopenshell_instance_t* work_schedule);
 /**
@@ -5367,6 +5402,8 @@ bool ifcopenshell_sequence_unassign_recurrence_pattern(ifcopenshell_file_t* file
  * @param file File containing the tasks.
  * @param relating_process Predecessor IfcTask.
  * @param related_process Successor IfcTask.
+ * @throws A recursion error with the stable recursive-schedule-cascade code
+ * when the remaining graph is cyclic.
  */
 bool ifcopenshell_sequence_unassign_sequence(ifcopenshell_file_t* file, ifcopenshell_instance_t* relating_process, ifcopenshell_instance_t* related_process);
 /**

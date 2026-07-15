@@ -26,16 +26,31 @@
 namespace ifcopenshell {
 namespace capi {
 thread_local std::string g_last_error;
-thread_local int g_last_error_kind = 0;
+thread_local int g_last_error_kind = IFCOPENSHELL_ERROR_NONE;
+thread_local int g_last_error_code = IFCOPENSHELL_ERROR_CODE_NONE;
 
 void set_last_error(const std::string& message) {
-    g_last_error_kind = 1;
+    g_last_error_kind = IFCOPENSHELL_ERROR_RUNTIME;
+    g_last_error_code = IFCOPENSHELL_ERROR_CODE_UNSPECIFIED;
     g_last_error = message;
 }
 
 void set_last_error(int kind, const std::string& message) {
     g_last_error_kind = kind;
+    g_last_error_code = kind == IFCOPENSHELL_ERROR_NONE
+        ? IFCOPENSHELL_ERROR_CODE_NONE
+        : IFCOPENSHELL_ERROR_CODE_UNSPECIFIED;
     g_last_error = message;
+}
+
+void set_last_error(int kind, int code, const std::string& message) {
+    g_last_error_kind = kind;
+    g_last_error_code = code;
+    g_last_error = message;
+}
+
+int last_error_kind() {
+    return g_last_error_kind;
 }
 } // namespace capi
 } // namespace ifcopenshell
@@ -2254,8 +2269,9 @@ void ifcopenshell_geometry_railing_support_list_destroy(ifcopenshell_geometry_ra
 }
 
 void ifcopenshell_clear_error(void) {
+    ifcopenshell::capi::g_last_error_kind = IFCOPENSHELL_ERROR_NONE;
+    ifcopenshell::capi::g_last_error_code = IFCOPENSHELL_ERROR_CODE_NONE;
     ifcopenshell::capi::g_last_error.clear();
-    ifcopenshell::capi::g_last_error_kind = 0;
 }
 
 const char* ifcopenshell_last_error_message(void) {
@@ -2264,6 +2280,10 @@ const char* ifcopenshell_last_error_message(void) {
 
 int ifcopenshell_last_error_kind(void) {
     return ifcopenshell::capi::g_last_error_kind;
+}
+
+int ifcopenshell_last_error_code(void) {
+    return ifcopenshell::capi::g_last_error_code;
 }
 
 void ifcopenshell_file_destroy(ifcopenshell_file_t* handle) {
@@ -3318,12 +3338,12 @@ bool ifcopenshell_geom_create_xml_serializer(ifcopenshell_file_t* file, const ch
     std::string filename_cpp(filename);
         auto result_value = std::unique_ptr<Serializer>(static_cast<Serializer*>(new XmlSerializer(file_cpp, filename_cpp)));
         *out_result = new ifcopenshell_geom_serializer_t{result_value.release(), true};
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -3338,12 +3358,12 @@ bool ifcopenshell_geom_create_tree(ifcopenshell_geom_tree_t** out_result) {
 #else
         throw std::runtime_error("ifcopenshell_geom_create_tree requires IFOPSH_WITH_OPENCASCADE");
 #endif
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -3360,12 +3380,12 @@ bool ifcopenshell_geom_create_tree_from_file(ifcopenshell_file_t* file, ifcopens
 #else
         throw std::runtime_error("ifcopenshell_geom_create_tree_from_file requires IFOPSH_WITH_OPENCASCADE");
 #endif
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -3384,12 +3404,12 @@ bool ifcopenshell_geom_create_tree_from_file_with_settings(ifcopenshell_file_t* 
 #else
         throw std::runtime_error("ifcopenshell_geom_create_tree_from_file_with_settings requires IFOPSH_WITH_OPENCASCADE");
 #endif
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -3406,12 +3426,12 @@ bool ifcopenshell_geom_create_tree_from_iterator(ifcopenshell_geom_iterator_t* i
 #else
         throw std::runtime_error("ifcopenshell_geom_create_tree_from_iterator requires IFOPSH_WITH_OPENCASCADE");
 #endif
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -3430,12 +3450,12 @@ bool ifcopenshell_geom_create_json_serializer(ifcopenshell_file_t* file, const c
 #else
         throw std::runtime_error("JSON serializer requires GLTF support (nlohmann_json)");
 #endif
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -3454,12 +3474,12 @@ bool ifcopenshell_geom_create_rocksdb_serializer_streaming(const char* input_fil
 #else
         throw std::runtime_error("ifcopenshell_geom_create_rocksdb_serializer_streaming requires IFOPSH_WITH_ROCKSDB");
 #endif
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -3470,12 +3490,12 @@ bool ifcopenshell_geom_create_buffer(ifcopenshell_geom_buffer_t** out_result) {
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
         auto result_value = std::unique_ptr<stream_or_filename>(new stream_or_filename());
         *out_result = new ifcopenshell_geom_buffer_t{result_value.release(), true};
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -3488,12 +3508,12 @@ bool ifcopenshell_geom_create_buffer_from_filename(const char* filename, ifcopen
     std::string filename_cpp(filename);
         auto result_value = std::unique_ptr<stream_or_filename>(new stream_or_filename(filename_cpp));
         *out_result = new ifcopenshell_geom_buffer_t{result_value.release(), true};
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -3504,12 +3524,12 @@ bool ifcopenshell_geom_create_settings(ifcopenshell_geom_settings_t** out_result
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
         auto result_value = std::unique_ptr<ifcopenshell::geometry::Settings>(new ifcopenshell::geometry::Settings());
         *out_result = new ifcopenshell_geom_settings_t{result_value.release(), true};
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -3520,12 +3540,12 @@ bool ifcopenshell_geom_create_serializer_settings(ifcopenshell_geom_serializer_s
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
         auto result_value = std::unique_ptr<ifcopenshell::geometry::SerializerSettings>(new ifcopenshell::geometry::SerializerSettings());
         *out_result = new ifcopenshell_geom_serializer_settings_t{result_value.release(), true};
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -3539,12 +3559,12 @@ bool ifcopenshell_geom_helmert_curve_point(double A0, double A1, double A2, doub
     auto A2_cpp = static_cast<double>(A2);
     auto s_cpp = static_cast<double>(s);
         *out_result = make_double_list(ifcopenshell::geometry::helmert_curve_point(A0_cpp, A1_cpp, A2_cpp, s_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -3555,12 +3575,12 @@ bool ifcopenshell_parse_argument_type_to_string(int32_t type, ifcopenshell_strin
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
     auto type_cpp = static_cast<int>(type);
         *out_result = make_string(ifcparse::bindings::argument_type_to_string(type_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -3569,12 +3589,12 @@ bool ifcopenshell_parse_clear_plugin_search_paths(void) {
     try {
         ifcopenshell_clear_error();
         ifcparse::bindings::clear_plugin_search_paths();
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -3583,12 +3603,12 @@ bool ifcopenshell_parse_clear_schemas(void) {
     try {
         ifcopenshell_clear_error();
         ifcparse::bindings::clear_schemas();
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -3599,12 +3619,12 @@ bool ifcopenshell_parse_escape_xml(const char* text) {
     if (text == nullptr) { throw std::runtime_error("Parameter \"text\" must not be null"); }
     std::string text_cpp(text);
         ifcparse::bindings::escape_xml(text_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -3616,12 +3636,12 @@ bool ifcopenshell_parse_from_parameter_type(ifcopenshell_parameter_type_t* param
     if (parameter_type == nullptr || parameter_type->ptr == nullptr) { throw std::runtime_error("Handle parameter \"parameter_type\" is invalid"); }
     auto parameter_type_cpp = parameter_type->ptr;
         *out_result = static_cast<int32_t>(ifcparse::bindings::from_parameter_type(parameter_type_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -3634,12 +3654,12 @@ bool ifcopenshell_parse_general_token_ptr(size_t start, const char* token, int32
     if (token == nullptr) { throw std::runtime_error("Parameter \"token\" must not be null"); }
     std::string token_cpp(token);
         *out_result = static_cast<int32_t>(ifcparse::bindings::general_token_ptr(start_cpp, token_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -3651,12 +3671,12 @@ bool ifcopenshell_parse_get_feature(const char* name, bool* out_result) {
     if (name == nullptr) { throw std::runtime_error("Parameter \"name\" must not be null"); }
     std::string name_cpp(name);
         *out_result = ifcparse::bindings::get_feature(name_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -3669,12 +3689,12 @@ bool ifcopenshell_parse_get_info_cpp(ifcopenshell_instance_t* instance, bool inc
     const auto& instance_cpp = instance->value;
     auto include_identifier_cpp = static_cast<bool>(include_identifier);
         *out_result = make_string(ifcparse::bindings::get_info_cpp(instance_cpp, include_identifier_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -3684,12 +3704,12 @@ bool ifcopenshell_parse_get_log(ifcopenshell_string_t* out_result) {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
         *out_result = make_string(ifcparse::bindings::get_log());
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -3699,12 +3719,12 @@ bool ifcopenshell_parse_get_plugin_search_paths(ifcopenshell_string_list_t* out_
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
         *out_result = make_string_list(ifcparse::bindings::get_plugin_search_paths());
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -3716,12 +3736,12 @@ bool ifcopenshell_parse_get_si_equivalent(ifcopenshell_instance_t* named_unit, d
     if (named_unit == nullptr) { throw std::runtime_error("Handle parameter \"named_unit\" must not be null"); }
     const auto& named_unit_cpp = named_unit->value;
         *out_result = static_cast<double>(ifcparse::bindings::get_si_equivalent(named_unit_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -3733,12 +3753,12 @@ bool ifcopenshell_parse_guess_file_type(const char* path, int32_t* out_result) {
     if (path == nullptr) { throw std::runtime_error("Parameter \"path\" must not be null"); }
     std::string path_cpp(path);
         *out_result = static_cast<int32_t>(ifcparse::bindings::guess_file_type(path_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -3750,12 +3770,12 @@ bool ifcopenshell_parse_instance_list_create_from_handles(const ifcopenshell_ins
     if (instances == nullptr) { throw std::runtime_error("Parameter \"instances\" must not be null"); }
     auto instances_cpp = to_cpp_instance_list(instances);
         *out_result = new ifcopenshell_parse_instance_list_t{ifcparse::bindings::instance_list_create_from_handles(instances_cpp)};
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -3766,12 +3786,12 @@ bool ifcopenshell_parse_make_aggregate(int32_t element_type, int32_t* out_result
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
     auto element_type_cpp = static_cast<int>(element_type);
         *out_result = static_cast<int32_t>(ifcparse::bindings::make_aggregate(element_type_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -3791,12 +3811,12 @@ bool ifcopenshell_parse_new_file(const char* schema_identifier, int32_t file_typ
         } else {
             *out_result = new ifcopenshell_file_t{std::move(result_value).release(), true};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -3814,12 +3834,12 @@ bool ifcopenshell_parse_open(const char* path, bool readonly, ifcopenshell_file_
         } else {
             *out_result = new ifcopenshell_file_t{std::move(result_value).release(), true};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -3838,12 +3858,12 @@ bool ifcopenshell_parse_open_bypass(const char* path, const ifcopenshell_string_
         } else {
             *out_result = new ifcopenshell_file_t{std::move(result_value).release(), true};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -3856,12 +3876,12 @@ bool ifcopenshell_parse_operator_token_ptr(size_t start, const char* data, int32
     if (data == nullptr) { throw std::runtime_error("Parameter \"data\" must not be null"); }
     std::string data_cpp(data);
         *out_result = static_cast<int32_t>(ifcparse::bindings::operator_token_ptr(start_cpp, data_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -3879,12 +3899,12 @@ bool ifcopenshell_parse_read_memory(void* data, int32_t length, ifcopenshell_fil
         } else {
             *out_result = new ifcopenshell_file_t{std::move(result_value).release(), true};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -3895,12 +3915,12 @@ bool ifcopenshell_parse_register_schema(ifcopenshell_schema_t* schema) {
     if (schema == nullptr || schema->ptr == nullptr) { throw std::runtime_error("Handle parameter \"schema\" is invalid"); }
     auto schema_cpp = schema->ptr;
         ifcparse::bindings::register_schema(schema_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -3911,12 +3931,12 @@ bool ifcopenshell_parse_sanitate_material_name(const char* material_name) {
     if (material_name == nullptr) { throw std::runtime_error("Parameter \"material_name\" must not be null"); }
     std::string material_name_cpp(material_name);
         ifcparse::bindings::sanitate_material_name(material_name_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -3933,12 +3953,12 @@ bool ifcopenshell_parse_schema_by_name(const char* schema_name, ifcopenshell_sch
         } else {
             *out_result = new ifcopenshell_schema_t{const_cast<ifcopenshell::schema_definition*>(result_value), false};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -3948,12 +3968,12 @@ bool ifcopenshell_parse_schema_names(ifcopenshell_string_list_t* out_result) {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
         *out_result = make_string_list(ifcparse::bindings::schema_names());
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -3963,12 +3983,12 @@ bool ifcopenshell_parse_schema_plugin_registration_symbol(ifcopenshell_string_t*
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
         *out_result = make_string(ifcparse::bindings::schema_plugin_registration_symbol());
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -3980,12 +4000,12 @@ bool ifcopenshell_parse_set_feature(const char* name, bool value) {
     std::string name_cpp(name);
     auto value_cpp = static_cast<bool>(value);
         ifcparse::bindings::set_feature(name_cpp, value_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -3994,12 +4014,12 @@ bool ifcopenshell_parse_set_log_format_json(void) {
     try {
         ifcopenshell_clear_error();
         ifcparse::bindings::set_log_format_json();
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -4008,12 +4028,12 @@ bool ifcopenshell_parse_set_log_format_text(void) {
     try {
         ifcopenshell_clear_error();
         ifcparse::bindings::set_log_format_text();
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -4024,12 +4044,12 @@ bool ifcopenshell_parse_set_plugin_search_paths(const ifcopenshell_string_list_t
     if (paths == nullptr) { throw std::runtime_error("Parameter \"paths\" must not be null"); }
     auto paths_cpp = to_cpp_string_list(paths);
         ifcparse::bindings::set_plugin_search_paths(paths_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -4041,12 +4061,12 @@ bool ifcopenshell_parse_si_prefix_to_value(const char* prefix, double* out_resul
     if (prefix == nullptr) { throw std::runtime_error("Parameter \"prefix\" must not be null"); }
     std::string prefix_cpp(prefix);
         *out_result = static_cast<double>(ifcparse::bindings::si_prefix_to_value(prefix_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -4061,12 +4081,12 @@ bool ifcopenshell_parse_stream(ifcopenshell_instance_streamer_t** out_result) {
         } else {
             *out_result = new ifcopenshell_instance_streamer_t{std::move(result_value).release(), true};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -4084,12 +4104,12 @@ bool ifcopenshell_parse_stream_from_path(const char* path, bool mmap, ifcopenshe
         } else {
             *out_result = new ifcopenshell_instance_streamer_t{std::move(result_value).release(), true};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -4106,12 +4126,12 @@ bool ifcopenshell_parse_stream_from_string(const char* data, ifcopenshell_instan
         } else {
             *out_result = new ifcopenshell_instance_streamer_t{std::move(result_value).release(), true};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -4124,12 +4144,12 @@ bool ifcopenshell_parse_traverse(ifcopenshell_instance_t* instance, int32_t max_
     const auto& instance_cpp = instance->value;
     auto max_depth_cpp = static_cast<int>(max_depth);
         *out_result = new ifcopenshell_parse_instance_list_t{ifcparse::bindings::traverse(instance_cpp, max_depth_cpp)};
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -4142,12 +4162,12 @@ bool ifcopenshell_parse_traverse_breadth_first(ifcopenshell_instance_t* instance
     const auto& instance_cpp = instance->value;
     auto max_depth_cpp = static_cast<int>(max_depth);
         *out_result = new ifcopenshell_parse_instance_list_t{ifcparse::bindings::traverse_breadth_first(instance_cpp, max_depth_cpp)};
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -4156,12 +4176,12 @@ bool ifcopenshell_parse_turn_off_detailed_logging(void) {
     try {
         ifcopenshell_clear_error();
         ifcparse::bindings::turn_off_detailed_logging();
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -4170,12 +4190,12 @@ bool ifcopenshell_parse_turn_on_detailed_logging(void) {
     try {
         ifcopenshell_clear_error();
         ifcparse::bindings::turn_on_detailed_logging();
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -4186,12 +4206,12 @@ bool ifcopenshell_parse_unescape_xml(const char* text) {
     if (text == nullptr) { throw std::runtime_error("Parameter \"text\" must not be null"); }
     std::string text_cpp(text);
         ifcparse::bindings::unescape_xml(text_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -4203,12 +4223,12 @@ bool ifcopenshell_parse_valid_binary_string(const char* binary_string, bool* out
     if (binary_string == nullptr) { throw std::runtime_error("Parameter \"binary_string\" must not be null"); }
     std::string binary_string_cpp(binary_string);
         *out_result = ifcparse::bindings::valid_binary_string(binary_string_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -4218,12 +4238,12 @@ bool ifcopenshell_parse_version(ifcopenshell_string_t* out_result) {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
         *out_result = make_static_string(ifcparse::bindings::version());
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -4258,12 +4278,12 @@ bool ifcopenshell_aggregate_assign_object(ifcopenshell_file_t* file, const ifcop
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -4286,12 +4306,12 @@ bool ifcopenshell_aggregate_unassign_object(ifcopenshell_file_t* file, const ifc
         options_cpp.application = options->application->value;
     }
         ifcapi::bindings::aggregate_unassign_object(file_cpp, options_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -4318,12 +4338,12 @@ bool ifcopenshell_alignment_add_segment_to_layout(ifcopenshell_file_t* file, ifc
             ifcopenshell_alignment_create_layout_segment_result_destroy(&result_value_c);
             throw;
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -4362,12 +4382,12 @@ bool ifcopenshell_alignment_add_stationing_referent(ifcopenshell_file_t* file, c
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -4386,12 +4406,12 @@ bool ifcopenshell_alignment_add_vertical_layout(ifcopenshell_file_t* file, ifcop
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -4405,12 +4425,12 @@ bool ifcopenshell_alignment_add_zero_length_segment(ifcopenshell_file_t* file, i
     if (layout == nullptr) { throw std::runtime_error("Handle parameter \"layout\" must not be null"); }
     auto layout_cpp = layout->value;
         *out_result = ifcapi::bindings::alignment_add_zero_length_segment(file_cpp, layout_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -4447,12 +4467,12 @@ bool ifcopenshell_alignment_create(ifcopenshell_file_t* file, const ifcopenshell
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -4488,12 +4508,12 @@ bool ifcopenshell_alignment_create_as_offset_curve(ifcopenshell_file_t* file, co
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -4529,12 +4549,12 @@ bool ifcopenshell_alignment_create_as_polyline(ifcopenshell_file_t* file, const 
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -4576,12 +4596,12 @@ bool ifcopenshell_alignment_create_by_pi_method(ifcopenshell_file_t* file, const
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -4614,12 +4634,12 @@ bool ifcopenshell_alignment_create_from_csv_text(ifcopenshell_file_t* file, cons
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -4646,12 +4666,12 @@ bool ifcopenshell_alignment_create_layout_segment(ifcopenshell_file_t* file, ifc
             ifcopenshell_alignment_create_layout_segment_result_destroy(&result_value_c);
             throw;
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -4664,12 +4684,12 @@ bool ifcopenshell_alignment_create_representation(ifcopenshell_file_t* file, ifc
     if (alignment == nullptr) { throw std::runtime_error("Handle parameter \"alignment\" must not be null"); }
     auto alignment_cpp = alignment->value;
         ifcapi::bindings::alignment_create_representation(file_cpp, alignment_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -4682,12 +4702,12 @@ bool ifcopenshell_alignment_create_segment_representations(ifcopenshell_file_t* 
     if (alignment == nullptr) { throw std::runtime_error("Handle parameter \"alignment\" must not be null"); }
     auto alignment_cpp = alignment->value;
         ifcapi::bindings::alignment_create_segment_representations(file_cpp, alignment_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -4701,12 +4721,12 @@ bool ifcopenshell_alignment_default_referent_label(ifcopenshell_instance_t* prev
     std::optional<express::Base> segment_cpp;
     if (segment != nullptr) { segment_cpp = segment->value; }
         *out_result = make_string(ifcapi::bindings::alignment_default_referent_label(previous_segment_cpp, segment_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -4721,12 +4741,12 @@ bool ifcopenshell_alignment_distance_along_from_station(ifcopenshell_file_t* fil
     auto alignment_cpp = alignment->value;
     auto station_cpp = static_cast<double>(station);
         *out_result = static_cast<double>(ifcapi::bindings::alignment_distance_along_from_station(file_cpp, alignment_cpp, station_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -4748,12 +4768,12 @@ bool ifcopenshell_alignment_get_alignment(ifcopenshell_instance_t* layout, ifcop
                 *out_result = new ifcopenshell_instance_t{unwrapped_result};
             }
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -4775,12 +4795,12 @@ bool ifcopenshell_alignment_get_alignment_layout_nest(ifcopenshell_instance_t* a
                 *out_result = new ifcopenshell_instance_t{unwrapped_result};
             }
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -4792,12 +4812,12 @@ bool ifcopenshell_alignment_get_alignment_layouts(ifcopenshell_instance_t* align
     if (alignment == nullptr) { throw std::runtime_error("Handle parameter \"alignment\" must not be null"); }
     auto alignment_cpp = alignment->value;
         *out_result = new ifcopenshell_parse_instance_list_t{ifcapi::bindings::alignment_get_alignment_layouts(alignment_cpp)};
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -4819,12 +4839,12 @@ bool ifcopenshell_alignment_get_alignment_segment_nest(ifcopenshell_instance_t* 
                 *out_result = new ifcopenshell_instance_t{unwrapped_result};
             }
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -4838,12 +4858,12 @@ bool ifcopenshell_alignment_get_alignment_start_station(ifcopenshell_file_t* fil
     if (alignment == nullptr) { throw std::runtime_error("Handle parameter \"alignment\" must not be null"); }
     auto alignment_cpp = alignment->value;
         *out_result = static_cast<double>(ifcapi::bindings::alignment_get_alignment_start_station(file_cpp, alignment_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -4860,12 +4880,12 @@ bool ifcopenshell_alignment_get_axis_subcontext(ifcopenshell_file_t* file, ifcop
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -4887,12 +4907,12 @@ bool ifcopenshell_alignment_get_basis_curve(ifcopenshell_instance_t* alignment, 
                 *out_result = new ifcopenshell_instance_t{unwrapped_result};
             }
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -4914,12 +4934,12 @@ bool ifcopenshell_alignment_get_cant_layout(ifcopenshell_instance_t* alignment, 
                 *out_result = new ifcopenshell_instance_t{unwrapped_result};
             }
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -4931,12 +4951,12 @@ bool ifcopenshell_alignment_get_child_alignments(ifcopenshell_instance_t* alignm
     if (alignment == nullptr) { throw std::runtime_error("Handle parameter \"alignment\" must not be null"); }
     auto alignment_cpp = alignment->value;
         *out_result = new ifcopenshell_parse_instance_list_t{ifcapi::bindings::alignment_get_child_alignments(alignment_cpp)};
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -4958,12 +4978,12 @@ bool ifcopenshell_alignment_get_curve(ifcopenshell_instance_t* alignment, ifcope
                 *out_result = new ifcopenshell_instance_t{unwrapped_result};
             }
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -4987,12 +5007,12 @@ bool ifcopenshell_alignment_get_curve_segment(ifcopenshell_instance_t* layout, i
                 *out_result = new ifcopenshell_instance_t{unwrapped_result};
             }
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -5007,12 +5027,12 @@ bool ifcopenshell_alignment_get_curve_segment_transition_code(ifcopenshell_insta
     auto next_segment_cpp = next_segment->value;
     auto position_tolerance_cpp = static_cast<double>(position_tolerance);
         *out_result = make_string(ifcapi::bindings::alignment_get_curve_segment_transition_code(segment_cpp, next_segment_cpp, position_tolerance_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -5034,12 +5054,12 @@ bool ifcopenshell_alignment_get_horizontal_layout(ifcopenshell_instance_t* align
                 *out_result = new ifcopenshell_instance_t{unwrapped_result};
             }
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -5061,12 +5081,12 @@ bool ifcopenshell_alignment_get_layout(ifcopenshell_instance_t* segment, ifcopen
                 *out_result = new ifcopenshell_instance_t{unwrapped_result};
             }
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -5088,12 +5108,12 @@ bool ifcopenshell_alignment_get_layout_curve(ifcopenshell_instance_t* layout, if
                 *out_result = new ifcopenshell_instance_t{unwrapped_result};
             }
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -5105,12 +5125,12 @@ bool ifcopenshell_alignment_get_layout_segments(ifcopenshell_instance_t* layout,
     if (layout == nullptr) { throw std::runtime_error("Handle parameter \"layout\" must not be null"); }
     auto layout_cpp = layout->value;
         *out_result = new ifcopenshell_parse_instance_list_t{ifcapi::bindings::alignment_get_layout_segments(layout_cpp)};
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -5122,12 +5142,12 @@ bool ifcopenshell_alignment_get_mapped_segments(ifcopenshell_instance_t* layout_
     if (layout_segment == nullptr) { throw std::runtime_error("Handle parameter \"layout_segment\" must not be null"); }
     auto layout_segment_cpp = layout_segment->value;
         *out_result = new ifcopenshell_parse_instance_list_t{ifcapi::bindings::alignment_get_mapped_segments(layout_segment_cpp)};
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -5149,12 +5169,12 @@ bool ifcopenshell_alignment_get_parent_alignment(ifcopenshell_instance_t* alignm
                 *out_result = new ifcopenshell_instance_t{unwrapped_result};
             }
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -5176,12 +5196,12 @@ bool ifcopenshell_alignment_get_referent_nest(ifcopenshell_instance_t* alignment
                 *out_result = new ifcopenshell_instance_t{unwrapped_result};
             }
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -5203,12 +5223,12 @@ bool ifcopenshell_alignment_get_vertical_layout(ifcopenshell_instance_t* alignme
                 *out_result = new ifcopenshell_instance_t{unwrapped_result};
             }
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -5220,12 +5240,12 @@ bool ifcopenshell_alignment_has_zero_length_segment(ifcopenshell_instance_t* lay
     if (layout == nullptr) { throw std::runtime_error("Handle parameter \"layout\" must not be null"); }
     auto layout_cpp = layout->value;
         *out_result = ifcapi::bindings::alignment_has_zero_length_segment(layout_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -5242,12 +5262,12 @@ bool ifcopenshell_alignment_layout_horizontal_by_pi_method(ifcopenshell_file_t* 
     if (radii == nullptr) { throw std::runtime_error("Parameter \"radii\" must not be null"); }
     auto radii_cpp = to_cpp_double_list(radii);
         ifcapi::bindings::alignment_layout_horizontal_by_pi_method(file_cpp, layout_cpp, points_cpp, radii_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -5264,12 +5284,12 @@ bool ifcopenshell_alignment_layout_vertical_by_pi_method(ifcopenshell_file_t* fi
     if (lengths == nullptr) { throw std::runtime_error("Parameter \"lengths\" must not be null"); }
     auto lengths_cpp = to_cpp_double_list(lengths);
         ifcapi::bindings::alignment_layout_vertical_by_pi_method(file_cpp, layout_cpp, points_cpp, lengths_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -5288,12 +5308,12 @@ bool ifcopenshell_alignment_map_segment(ifcopenshell_file_t* file, const ifcopen
         options_cpp.rail_head_distance = options->rail_head_distance;
     }
         *out_result = new ifcopenshell_parse_instance_list_t{ifcapi::bindings::alignment_map_segment(file_cpp, options_cpp)};
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -5306,12 +5326,12 @@ bool ifcopenshell_alignment_name_segments(const char* prefix, ifcopenshell_insta
     if (layout == nullptr) { throw std::runtime_error("Handle parameter \"layout\" must not be null"); }
     auto layout_cpp = layout->value;
         ifcapi::bindings::alignment_name_segments(prefix_cpp, layout_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -5324,12 +5344,12 @@ bool ifcopenshell_alignment_station_as_string(ifcopenshell_file_t* file, double 
     auto file_cpp = file->ptr;
     auto station_cpp = static_cast<double>(station);
         *out_result = make_string(ifcapi::bindings::alignment_station_as_string(file_cpp, station_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -5343,12 +5363,12 @@ bool ifcopenshell_alignment_update_curve_segment_transition_code(ifcopenshell_in
     auto next_segment_cpp = next_segment->value;
     auto position_tolerance_cpp = static_cast<double>(position_tolerance);
         ifcapi::bindings::alignment_update_curve_segment_transition_code(segment_cpp, next_segment_cpp, position_tolerance_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -5361,12 +5381,12 @@ bool ifcopenshell_alignment_update_end_point(ifcopenshell_file_t* file, ifcopens
     if (curve == nullptr) { throw std::runtime_error("Handle parameter \"curve\" must not be null"); }
     auto curve_cpp = curve->value;
         ifcapi::bindings::alignment_update_end_point(file_cpp, curve_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -5379,12 +5399,12 @@ bool ifcopenshell_alignment_update_fallback_position(ifcopenshell_file_t* file, 
     if (linear_placement == nullptr) { throw std::runtime_error("Handle parameter \"linear_placement\" must not be null"); }
     auto linear_placement_cpp = linear_placement->value;
         ifcapi::bindings::alignment_update_fallback_position(file_cpp, linear_placement_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -5410,12 +5430,12 @@ bool ifcopenshell_attribute_edit_attributes(ifcopenshell_file_t* file, const ifc
         options_cpp.application = options->application->value;
     }
         ifcapi::bindings::attribute_edit_attributes(file_cpp, options_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -5441,12 +5461,12 @@ bool ifcopenshell_boundary_assign_connection_geometry(ifcopenshell_file_t* file,
     options_cpp.inner_boundaries = to_cpp_double_list_list_list(options->inner_boundaries);
     options_cpp.unit_scale = static_cast<double>(options->unit_scale);
         ifcapi::bindings::boundary_assign_connection_geometry(file_cpp, rel_space_boundary_cpp, options_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -5465,12 +5485,12 @@ bool ifcopenshell_boundary_copy_boundary(ifcopenshell_file_t* file, ifcopenshell
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -5499,12 +5519,12 @@ bool ifcopenshell_boundary_edit_attributes(ifcopenshell_instance_t* entity, cons
     if (options->internal_or_external == nullptr) { throw std::runtime_error("Options field \"internal_or_external\" must not be null"); }
     options_cpp.internal_or_external = std::string(options->internal_or_external);
         ifcapi::bindings::boundary_edit_attributes(entity_cpp, options_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -5517,12 +5537,12 @@ bool ifcopenshell_boundary_remove_boundary(ifcopenshell_file_t* file, ifcopenshe
     if (boundary == nullptr) { throw std::runtime_error("Handle parameter \"boundary\" must not be null"); }
     auto boundary_cpp = &boundary->value;
         ifcapi::bindings::boundary_remove_boundary(file_cpp, boundary_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -5541,12 +5561,12 @@ bool ifcopenshell_classification_add_classification(ifcopenshell_file_t* file, c
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -5595,12 +5615,12 @@ bool ifcopenshell_classification_add_reference(ifcopenshell_file_t* file, const 
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -5615,12 +5635,12 @@ bool ifcopenshell_classification_edit_classification(ifcopenshell_file_t* file, 
     if (attributes == nullptr) { throw std::runtime_error("Parameter \"attributes\" must not be null"); }
     auto attributes_cpp = static_cast<ifcopenshell_pset_props_t*>(attributes);
         ifcapi::bindings::classification_edit_classification(file_cpp, classification_cpp, attributes_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -5635,12 +5655,12 @@ bool ifcopenshell_classification_edit_reference(ifcopenshell_file_t* file, ifcop
     if (attributes == nullptr) { throw std::runtime_error("Parameter \"attributes\" must not be null"); }
     auto attributes_cpp = static_cast<ifcopenshell_pset_props_t*>(attributes);
         ifcapi::bindings::classification_edit_reference(file_cpp, reference_cpp, attributes_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -5653,12 +5673,12 @@ bool ifcopenshell_classification_get_references(ifcopenshell_instance_t* element
     auto element_cpp = &element->value;
     auto should_inherit_cpp = static_cast<bool>(should_inherit);
         *out_result = new ifcopenshell_parse_instance_list_t{ifcapi::bindings::classification_get_references(element_cpp, should_inherit_cpp)};
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -5671,12 +5691,12 @@ bool ifcopenshell_classification_remove_classification(ifcopenshell_file_t* file
     if (classification == nullptr) { throw std::runtime_error("Handle parameter \"classification\" must not be null"); }
     auto classification_cpp = &classification->value;
         ifcapi::bindings::classification_remove_classification(file_cpp, classification_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -5701,12 +5721,12 @@ bool ifcopenshell_classification_remove_reference(ifcopenshell_file_t* file, con
         options_cpp.application = options->application->value;
     }
         ifcapi::bindings::classification_remove_reference(file_cpp, options_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -5743,12 +5763,12 @@ bool ifcopenshell_cogo_add_survey_point(ifcopenshell_file_t* file, const ifcopen
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -5761,12 +5781,12 @@ bool ifcopenshell_cogo_assign_survey_point(ifcopenshell_instance_t* annotation, 
     if (survey_point == nullptr) { throw std::runtime_error("Handle parameter \"survey_point\" must not be null"); }
     auto survey_point_cpp = &survey_point->value;
         ifcapi::bindings::cogo_assign_survey_point(annotation_cpp, survey_point_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -5778,12 +5798,12 @@ bool ifcopenshell_cogo_bearing2dd(const char* bearing, double* out_result) {
     if (bearing == nullptr) { throw std::runtime_error("Parameter \"bearing\" must not be null"); }
     std::string bearing_cpp(bearing);
         *out_result = static_cast<double>(ifcapi::bindings::cogo_bearing2dd(bearing_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -5797,12 +5817,12 @@ bool ifcopenshell_cogo_edit_survey_point(ifcopenshell_instance_t* annotation, do
     auto y_cpp = static_cast<double>(y);
     auto z_cpp = static_cast<double>(z);
         ifcapi::bindings::cogo_edit_survey_point(annotation_cpp, x_cpp, y_cpp, z_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -5826,12 +5846,12 @@ bool ifcopenshell_compute_derived(ifcopenshell_instance_t* instance, const char*
                 *out_result = new ifcopenshell_value_t{unwrapped_result, true};
             }
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -5850,12 +5870,12 @@ bool ifcopenshell_constraint_add_metric(ifcopenshell_file_t* file, ifcopenshell_
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -5871,12 +5891,12 @@ bool ifcopenshell_constraint_add_metric_reference(ifcopenshell_file_t* file, ifc
     if (reference_path == nullptr) { throw std::runtime_error("Parameter \"reference_path\" must not be null"); }
     std::string reference_path_cpp(reference_path);
         *out_result = new ifcopenshell_parse_instance_list_t{ifcapi::bindings::constraint_add_metric_reference(file_cpp, metric_cpp, reference_path_cpp)};
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -5893,12 +5913,12 @@ bool ifcopenshell_constraint_add_objective(ifcopenshell_file_t* file, ifcopenshe
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -5933,12 +5953,12 @@ bool ifcopenshell_constraint_assign_constraint(ifcopenshell_file_t* file, const 
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -5953,12 +5973,12 @@ bool ifcopenshell_constraint_edit_metric(ifcopenshell_file_t* file, ifcopenshell
     if (attributes == nullptr) { throw std::runtime_error("Parameter \"attributes\" must not be null"); }
     auto attributes_cpp = static_cast<ifcopenshell_pset_props_t*>(attributes);
         ifcapi::bindings::constraint_edit_metric(file_cpp, metric_cpp, attributes_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -5973,12 +5993,12 @@ bool ifcopenshell_constraint_edit_objective(ifcopenshell_file_t* file, ifcopensh
     if (attributes == nullptr) { throw std::runtime_error("Parameter \"attributes\" must not be null"); }
     auto attributes_cpp = static_cast<ifcopenshell_pset_props_t*>(attributes);
         ifcapi::bindings::constraint_edit_objective(file_cpp, objective_cpp, attributes_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -5991,12 +6011,12 @@ bool ifcopenshell_constraint_remove_constraint(ifcopenshell_file_t* file, ifcope
     if (constraint == nullptr) { throw std::runtime_error("Handle parameter \"constraint\" must not be null"); }
     auto constraint_cpp = &constraint->value;
         ifcapi::bindings::constraint_remove_constraint(file_cpp, constraint_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -6009,12 +6029,12 @@ bool ifcopenshell_constraint_remove_metric(ifcopenshell_file_t* file, ifcopenshe
     if (metric == nullptr) { throw std::runtime_error("Handle parameter \"metric\" must not be null"); }
     auto metric_cpp = &metric->value;
         ifcapi::bindings::constraint_remove_metric(file_cpp, metric_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -6039,12 +6059,12 @@ bool ifcopenshell_constraint_unassign_constraint(ifcopenshell_file_t* file, cons
         options_cpp.application = options->application->value;
     }
         ifcapi::bindings::constraint_unassign_constraint(file_cpp, options_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -6076,12 +6096,12 @@ bool ifcopenshell_context_add_context(ifcopenshell_file_t* file, const ifcopensh
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -6096,12 +6116,12 @@ bool ifcopenshell_context_edit_context(ifcopenshell_file_t* file, ifcopenshell_i
     if (attributes == nullptr) { throw std::runtime_error("Parameter \"attributes\" must not be null"); }
     auto attributes_cpp = static_cast<ifcopenshell_pset_props_t*>(attributes);
         ifcapi::bindings::context_edit_context(file_cpp, context_cpp, attributes_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -6114,12 +6134,12 @@ bool ifcopenshell_context_remove_context(ifcopenshell_file_t* file, ifcopenshell
     if (context == nullptr) { throw std::runtime_error("Handle parameter \"context\" must not be null"); }
     auto context_cpp = &context->value;
         ifcapi::bindings::context_remove_context(file_cpp, context_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -6154,12 +6174,12 @@ bool ifcopenshell_control_assign_control(ifcopenshell_file_t* file, const ifcope
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -6184,12 +6204,12 @@ bool ifcopenshell_control_unassign_control(ifcopenshell_file_t* file, const ifco
         options_cpp.application = options->application->value;
     }
         ifcapi::bindings::control_unassign_control(file_cpp, options_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -6228,12 +6248,12 @@ bool ifcopenshell_cost_add_cost_item(ifcopenshell_file_t* file, const ifcopenshe
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -6254,12 +6274,12 @@ bool ifcopenshell_cost_add_cost_item_quantity(ifcopenshell_file_t* file, ifcopen
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -6283,12 +6303,12 @@ bool ifcopenshell_cost_add_cost_schedule(ifcopenshell_file_t* file, const char* 
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -6307,12 +6327,12 @@ bool ifcopenshell_cost_add_cost_value(ifcopenshell_file_t* file, ifcopenshell_in
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -6342,12 +6362,12 @@ bool ifcopenshell_cost_assign_cost_item_quantity(ifcopenshell_file_t* file, ifco
         options_cpp.application = options->application->value;
     }
         ifcapi::bindings::cost_assign_cost_item_quantity(file_cpp, cost_item_cpp, products_cpp, prop_name, options_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -6362,12 +6382,12 @@ bool ifcopenshell_cost_assign_cost_value(ifcopenshell_file_t* file, ifcopenshell
     if (cost_rate == nullptr) { throw std::runtime_error("Handle parameter \"cost_rate\" must not be null"); }
     auto cost_rate_cpp = &cost_rate->value;
         ifcapi::bindings::cost_assign_cost_value(file_cpp, cost_item_cpp, cost_rate_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -6380,12 +6400,12 @@ bool ifcopenshell_cost_calculate_cost_item_resource_value(ifcopenshell_file_t* f
     if (cost_item == nullptr) { throw std::runtime_error("Handle parameter \"cost_item\" must not be null"); }
     auto cost_item_cpp = &cost_item->value;
         ifcapi::bindings::cost_calculate_cost_item_resource_value(file_cpp, cost_item_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -6399,12 +6419,12 @@ bool ifcopenshell_cost_copy_cost_item(ifcopenshell_file_t* file, ifcopenshell_in
     if (cost_item == nullptr) { throw std::runtime_error("Handle parameter \"cost_item\" must not be null"); }
     auto cost_item_cpp = &cost_item->value;
         *out_result = new ifcopenshell_parse_instance_list_t{ifcapi::bindings::cost_copy_cost_item(file_cpp, cost_item_cpp)};
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -6419,12 +6439,12 @@ bool ifcopenshell_cost_copy_cost_item_values(ifcopenshell_file_t* file, ifcopens
     if (destination == nullptr) { throw std::runtime_error("Handle parameter \"destination\" must not be null"); }
     auto destination_cpp = &destination->value;
         ifcapi::bindings::cost_copy_cost_item_values(file_cpp, source_cpp, destination_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -6457,12 +6477,12 @@ bool ifcopenshell_cost_copy_cost_schedule(ifcopenshell_file_t* file, ifcopenshel
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -6477,12 +6497,12 @@ bool ifcopenshell_cost_edit_cost_item(ifcopenshell_file_t* file, ifcopenshell_in
     if (attributes == nullptr) { throw std::runtime_error("Parameter \"attributes\" must not be null"); }
     auto attributes_cpp = static_cast<ifcopenshell_pset_props_t*>(attributes);
         ifcapi::bindings::cost_edit_cost_item(file_cpp, cost_item_cpp, attributes_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -6497,12 +6517,12 @@ bool ifcopenshell_cost_edit_cost_item_quantity(ifcopenshell_file_t* file, ifcope
     if (attributes == nullptr) { throw std::runtime_error("Parameter \"attributes\" must not be null"); }
     auto attributes_cpp = static_cast<ifcopenshell_pset_props_t*>(attributes);
         ifcapi::bindings::cost_edit_cost_item_quantity(file_cpp, physical_quantity_cpp, attributes_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -6517,12 +6537,12 @@ bool ifcopenshell_cost_edit_cost_schedule(ifcopenshell_file_t* file, ifcopenshel
     if (attributes == nullptr) { throw std::runtime_error("Parameter \"attributes\" must not be null"); }
     auto attributes_cpp = static_cast<ifcopenshell_pset_props_t*>(attributes);
         ifcapi::bindings::cost_edit_cost_schedule(file_cpp, cost_schedule_cpp, attributes_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -6546,12 +6566,12 @@ bool ifcopenshell_cost_edit_cost_value(ifcopenshell_file_t* file, ifcopenshell_i
         options_cpp.unit_component = options->unit_component->value;
     }
         ifcapi::bindings::cost_edit_cost_value(file_cpp, cost_value_cpp, attributes_cpp, options_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -6566,12 +6586,12 @@ bool ifcopenshell_cost_edit_cost_value_formula(ifcopenshell_file_t* file, ifcope
     if (formula == nullptr) { throw std::runtime_error("Parameter \"formula\" must not be null"); }
     std::string formula_cpp(formula);
         ifcapi::bindings::cost_edit_cost_value_formula(file_cpp, cost_value_cpp, formula_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -6584,12 +6604,12 @@ bool ifcopenshell_cost_remove_cost_item(ifcopenshell_file_t* file, ifcopenshell_
     if (cost_item == nullptr) { throw std::runtime_error("Handle parameter \"cost_item\" must not be null"); }
     auto cost_item_cpp = &cost_item->value;
         ifcapi::bindings::cost_remove_cost_item(file_cpp, cost_item_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -6604,12 +6624,12 @@ bool ifcopenshell_cost_remove_cost_item_quantity(ifcopenshell_file_t* file, ifco
     if (physical_quantity == nullptr) { throw std::runtime_error("Handle parameter \"physical_quantity\" must not be null"); }
     auto physical_quantity_cpp = &physical_quantity->value;
         ifcapi::bindings::cost_remove_cost_item_quantity(file_cpp, cost_item_cpp, physical_quantity_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -6622,12 +6642,12 @@ bool ifcopenshell_cost_remove_cost_schedule(ifcopenshell_file_t* file, ifcopensh
     if (cost_schedule == nullptr) { throw std::runtime_error("Handle parameter \"cost_schedule\" must not be null"); }
     auto cost_schedule_cpp = &cost_schedule->value;
         ifcapi::bindings::cost_remove_cost_schedule(file_cpp, cost_schedule_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -6642,12 +6662,12 @@ bool ifcopenshell_cost_remove_cost_value(ifcopenshell_file_t* file, ifcopenshell
     if (cost_value == nullptr) { throw std::runtime_error("Handle parameter \"cost_value\" must not be null"); }
     auto cost_value_cpp = &cost_value->value;
         ifcapi::bindings::cost_remove_cost_value(file_cpp, parent_cpp, cost_value_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -6672,12 +6692,12 @@ bool ifcopenshell_cost_unassign_cost_item_quantity(ifcopenshell_file_t* file, if
         options_cpp.application = options->application->value;
     }
         ifcapi::bindings::cost_unassign_cost_item_quantity(file_cpp, cost_item_cpp, products_cpp, options_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -6712,12 +6732,12 @@ bool ifcopenshell_document_add_information(ifcopenshell_file_t* file, const ifco
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -6736,12 +6756,12 @@ bool ifcopenshell_document_add_reference(ifcopenshell_file_t* file, ifcopenshell
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -6776,12 +6796,12 @@ bool ifcopenshell_document_assign_document(ifcopenshell_file_t* file, const ifco
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -6796,12 +6816,12 @@ bool ifcopenshell_document_edit_information(ifcopenshell_file_t* file, ifcopensh
     if (attributes == nullptr) { throw std::runtime_error("Parameter \"attributes\" must not be null"); }
     auto attributes_cpp = static_cast<ifcopenshell_pset_props_t*>(attributes);
         ifcapi::bindings::document_edit_information(file_cpp, information_cpp, attributes_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -6816,12 +6836,12 @@ bool ifcopenshell_document_edit_reference(ifcopenshell_file_t* file, ifcopenshel
     if (attributes == nullptr) { throw std::runtime_error("Parameter \"attributes\" must not be null"); }
     auto attributes_cpp = static_cast<ifcopenshell_pset_props_t*>(attributes);
         ifcapi::bindings::document_edit_reference(file_cpp, reference_cpp, attributes_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -6834,12 +6854,12 @@ bool ifcopenshell_document_remove_information(ifcopenshell_file_t* file, ifcopen
     if (information == nullptr) { throw std::runtime_error("Handle parameter \"information\" must not be null"); }
     auto information_cpp = &information->value;
         ifcapi::bindings::document_remove_information(file_cpp, information_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -6852,12 +6872,12 @@ bool ifcopenshell_document_remove_reference(ifcopenshell_file_t* file, ifcopensh
     if (reference == nullptr) { throw std::runtime_error("Handle parameter \"reference\" must not be null"); }
     auto reference_cpp = &reference->value;
         ifcapi::bindings::document_remove_reference(file_cpp, reference_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -6882,12 +6902,12 @@ bool ifcopenshell_document_unassign_document(ifcopenshell_file_t* file, const if
         options_cpp.application = options->application->value;
     }
         ifcapi::bindings::document_unassign_document(file_cpp, options_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -6922,12 +6942,12 @@ bool ifcopenshell_drawing_assign_product(ifcopenshell_file_t* file, const ifcope
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -6942,12 +6962,12 @@ bool ifcopenshell_drawing_edit_text_literal(ifcopenshell_file_t* file, ifcopensh
     if (attributes == nullptr) { throw std::runtime_error("Parameter \"attributes\" must not be null"); }
     auto attributes_cpp = static_cast<ifcopenshell_pset_props_t*>(attributes);
         ifcapi::bindings::drawing_edit_text_literal(file_cpp, text_literal_cpp, attributes_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -6972,12 +6992,12 @@ bool ifcopenshell_drawing_unassign_product(ifcopenshell_file_t* file, const ifco
         options_cpp.application = options->application->value;
     }
         ifcapi::bindings::drawing_unassign_product(file_cpp, options_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -6999,12 +7019,12 @@ bool ifcopenshell_element_get_aggregate(ifcopenshell_instance_t* instance, ifcop
                 *out_result = new ifcopenshell_instance_t{unwrapped_result};
             }
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -7016,12 +7036,12 @@ bool ifcopenshell_element_get_contained(ifcopenshell_instance_t* element, ifcope
     if (element == nullptr) { throw std::runtime_error("Handle parameter \"element\" must not be null"); }
     auto element_cpp = &element->value;
         *out_result = new ifcopenshell_parse_instance_list_t{ifcapi::bindings::element_get_contained(element_cpp)};
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -7052,12 +7072,12 @@ bool ifcopenshell_element_get_container(ifcopenshell_instance_t* instance, const
                 *out_result = new ifcopenshell_instance_t{unwrapped_result};
             }
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -7069,12 +7089,12 @@ bool ifcopenshell_element_get_controls(ifcopenshell_instance_t* element, ifcopen
     if (element == nullptr) { throw std::runtime_error("Handle parameter \"element\" must not be null"); }
     auto element_cpp = &element->value;
         *out_result = new ifcopenshell_parse_instance_list_t{ifcapi::bindings::element_get_controls(element_cpp)};
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -7091,12 +7111,12 @@ bool ifcopenshell_element_get_decomposition(ifcopenshell_instance_t* element, co
         options_cpp.is_recursive = options->is_recursive;
     }
         *out_result = new ifcopenshell_parse_instance_list_t{ifcapi::bindings::element_get_decomposition(element_cpp, options_cpp)};
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -7108,12 +7128,12 @@ bool ifcopenshell_element_get_elements_by_layer(ifcopenshell_instance_t* layer, 
     if (layer == nullptr) { throw std::runtime_error("Handle parameter \"layer\" must not be null"); }
     auto layer_cpp = &layer->value;
         *out_result = new ifcopenshell_parse_instance_list_t{ifcapi::bindings::element_get_elements_by_layer(layer_cpp)};
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -7125,12 +7145,12 @@ bool ifcopenshell_element_get_elements_by_material(ifcopenshell_instance_t* mate
     if (material == nullptr) { throw std::runtime_error("Handle parameter \"material\" must not be null"); }
     auto material_cpp = &material->value;
         *out_result = new ifcopenshell_parse_instance_list_t{ifcapi::bindings::element_get_elements_by_material(material_cpp)};
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -7142,12 +7162,12 @@ bool ifcopenshell_element_get_elements_by_profile(ifcopenshell_instance_t* profi
     if (profile == nullptr) { throw std::runtime_error("Handle parameter \"profile\" must not be null"); }
     auto profile_cpp = &profile->value;
         *out_result = new ifcopenshell_parse_instance_list_t{ifcapi::bindings::element_get_elements_by_profile(profile_cpp)};
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -7159,12 +7179,12 @@ bool ifcopenshell_element_get_elements_by_representation(ifcopenshell_instance_t
     if (representation == nullptr) { throw std::runtime_error("Handle parameter \"representation\" must not be null"); }
     auto representation_cpp = &representation->value;
         *out_result = new ifcopenshell_parse_instance_list_t{ifcapi::bindings::element_get_elements_by_representation(representation_cpp)};
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -7176,12 +7196,12 @@ bool ifcopenshell_element_get_elements_by_style(ifcopenshell_instance_t* style, 
     if (style == nullptr) { throw std::runtime_error("Handle parameter \"style\" must not be null"); }
     auto style_cpp = &style->value;
         *out_result = new ifcopenshell_parse_instance_list_t{ifcapi::bindings::element_get_elements_by_style(style_cpp)};
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -7203,12 +7223,12 @@ bool ifcopenshell_element_get_filled_void(ifcopenshell_instance_t* element, ifco
                 *out_result = new ifcopenshell_instance_t{unwrapped_result};
             }
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -7220,12 +7240,12 @@ bool ifcopenshell_element_get_groups(ifcopenshell_instance_t* element, ifcopensh
     if (element == nullptr) { throw std::runtime_error("Handle parameter \"element\" must not be null"); }
     auto element_cpp = &element->value;
         *out_result = new ifcopenshell_parse_instance_list_t{ifcapi::bindings::element_get_groups(element_cpp)};
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -7237,12 +7257,12 @@ bool ifcopenshell_element_get_layers(ifcopenshell_instance_t* element, ifcopensh
     if (element == nullptr) { throw std::runtime_error("Handle parameter \"element\" must not be null"); }
     auto element_cpp = &element->value;
         *out_result = new ifcopenshell_parse_instance_list_t{ifcapi::bindings::element_get_layers(element_cpp)};
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -7272,12 +7292,12 @@ bool ifcopenshell_element_get_material(ifcopenshell_instance_t* instance, const 
                 *out_result = new ifcopenshell_instance_t{unwrapped_result};
             }
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -7299,12 +7319,12 @@ bool ifcopenshell_element_get_nest(ifcopenshell_instance_t* instance, ifcopenshe
                 *out_result = new ifcopenshell_instance_t{unwrapped_result};
             }
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -7316,12 +7336,12 @@ bool ifcopenshell_element_get_openings(ifcopenshell_instance_t* element, ifcopen
     if (element == nullptr) { throw std::runtime_error("Handle parameter \"element\" must not be null"); }
     auto element_cpp = &element->value;
         *out_result = new ifcopenshell_parse_instance_list_t{ifcapi::bindings::element_get_openings(element_cpp)};
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -7343,12 +7363,12 @@ bool ifcopenshell_element_get_parent(ifcopenshell_instance_t* instance, ifcopens
                 *out_result = new ifcopenshell_instance_t{unwrapped_result};
             }
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -7360,12 +7380,12 @@ bool ifcopenshell_element_get_parts(ifcopenshell_instance_t* element, ifcopenshe
     if (element == nullptr) { throw std::runtime_error("Handle parameter \"element\" must not be null"); }
     auto element_cpp = &element->value;
         *out_result = new ifcopenshell_parse_instance_list_t{ifcapi::bindings::element_get_parts(element_cpp)};
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -7388,12 +7408,12 @@ bool ifcopenshell_element_get_pset_ids(ifcopenshell_instance_t* element, const i
         options_cpp.should_inherit = options->should_inherit;
     }
         *out_result = new ifcopenshell_parse_instance_list_t{ifcapi::bindings::element_get_pset_ids(element_cpp, options_cpp)};
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -7405,12 +7425,12 @@ bool ifcopenshell_element_get_referenced_elements(ifcopenshell_instance_t* refer
     if (reference == nullptr) { throw std::runtime_error("Handle parameter \"reference\" must not be null"); }
     auto reference_cpp = &reference->value;
         *out_result = new ifcopenshell_parse_instance_list_t{ifcapi::bindings::element_get_referenced_elements(reference_cpp)};
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -7422,12 +7442,12 @@ bool ifcopenshell_element_get_referenced_structures(ifcopenshell_instance_t* ele
     if (element == nullptr) { throw std::runtime_error("Handle parameter \"element\" must not be null"); }
     auto element_cpp = &element->value;
         *out_result = new ifcopenshell_parse_instance_list_t{ifcapi::bindings::element_get_referenced_structures(element_cpp)};
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -7444,12 +7464,12 @@ bool ifcopenshell_element_get_shape_aspects(ifcopenshell_instance_t* element, co
         options_cpp.should_inherit = options->should_inherit;
     }
         *out_result = new ifcopenshell_parse_instance_list_t{ifcapi::bindings::element_get_shape_aspects(element_cpp, options_cpp)};
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -7461,12 +7481,12 @@ bool ifcopenshell_element_get_structure_referenced_elements(ifcopenshell_instanc
     if (structure == nullptr) { throw std::runtime_error("Handle parameter \"structure\" must not be null"); }
     auto structure_cpp = &structure->value;
         *out_result = new ifcopenshell_parse_instance_list_t{ifcapi::bindings::element_get_structure_referenced_elements(structure_cpp)};
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -7478,12 +7498,12 @@ bool ifcopenshell_element_get_styles(ifcopenshell_instance_t* element, ifcopensh
     if (element == nullptr) { throw std::runtime_error("Handle parameter \"element\" must not be null"); }
     auto element_cpp = &element->value;
         *out_result = new ifcopenshell_parse_instance_list_t{ifcapi::bindings::element_get_styles(element_cpp)};
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -7505,12 +7525,12 @@ bool ifcopenshell_element_get_type(ifcopenshell_instance_t* instance, ifcopenshe
                 *out_result = new ifcopenshell_instance_t{unwrapped_result};
             }
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -7522,12 +7542,12 @@ bool ifcopenshell_element_get_types(ifcopenshell_instance_t* type_element, ifcop
     if (type_element == nullptr) { throw std::runtime_error("Handle parameter \"type_element\" must not be null"); }
     auto type_element_cpp = &type_element->value;
         *out_result = new ifcopenshell_parse_instance_list_t{ifcapi::bindings::element_get_types(type_element_cpp)};
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -7549,12 +7569,12 @@ bool ifcopenshell_element_get_voided_element(ifcopenshell_instance_t* element, i
                 *out_result = new ifcopenshell_instance_t{unwrapped_result};
             }
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -7566,12 +7586,12 @@ bool ifcopenshell_element_is_userdefined_type(ifcopenshell_instance_t* element, 
     if (element == nullptr) { throw std::runtime_error("Handle parameter \"element\" must not be null"); }
     auto element_cpp = &element->value;
         *out_result = ifcapi::bindings::element_is_userdefined_type(element_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -7582,12 +7602,12 @@ bool ifcopenshell_element_remove_deep(ifcopenshell_instance_t* element) {
     if (element == nullptr) { throw std::runtime_error("Handle parameter \"element\" must not be null"); }
     auto element_cpp = &element->value;
         ifcapi::bindings::element_remove_deep(element_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -7600,12 +7620,12 @@ bool ifcopenshell_element_replace_element(ifcopenshell_instance_t* old_element, 
     if (new_element == nullptr) { throw std::runtime_error("Handle parameter \"new_element\" must not be null"); }
     auto new_element_cpp = &new_element->value;
         ifcapi::bindings::element_replace_element(old_element_cpp, new_element_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -7616,12 +7636,12 @@ bool ifcopenshell_entity_remove_deep(ifcopenshell_instance_t* instance) {
     if (instance == nullptr) { throw std::runtime_error("Handle parameter \"instance\" must not be null"); }
     auto instance_cpp = &instance->value;
         ifcapi::bindings::entity_remove_deep(instance_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -7638,12 +7658,12 @@ bool ifcopenshell_entity_remove_deep_with_options(ifcopenshell_instance_t* insta
     if (options->do_not_delete == nullptr) { throw std::runtime_error("Options field \"do_not_delete\" must not be null"); }
     options_cpp.do_not_delete = options->do_not_delete->value;
         ifcapi::bindings::entity_remove_deep_with_options(instance_cpp, options_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -7674,12 +7694,12 @@ bool ifcopenshell_feature_add_feature(ifcopenshell_file_t* file, const ifcopensh
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -7700,12 +7720,12 @@ bool ifcopenshell_feature_add_filling(ifcopenshell_file_t* file, ifcopenshell_in
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -7728,12 +7748,12 @@ bool ifcopenshell_feature_remove_feature(ifcopenshell_file_t* file, const ifcope
         options_cpp.application = options->application->value;
     }
         ifcapi::bindings::feature_remove_feature(file_cpp, options_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -7746,12 +7766,12 @@ bool ifcopenshell_feature_remove_filling(ifcopenshell_file_t* file, ifcopenshell
     if (element == nullptr) { throw std::runtime_error("Handle parameter \"element\" must not be null"); }
     auto element_cpp = &element->value;
         ifcapi::bindings::feature_remove_filling(file_cpp, element_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -7772,12 +7792,12 @@ bool ifcopenshell_geometry_add_axis_representation(ifcopenshell_file_t* file, if
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -7795,12 +7815,12 @@ bool ifcopenshell_geometry_add_boolean(ifcopenshell_file_t* file, ifcopenshell_i
     if (operator_type == nullptr) { throw std::runtime_error("Parameter \"operator_type\" must not be null"); }
     std::string operator_type_cpp(operator_type);
         *out_result = new ifcopenshell_parse_instance_list_t{ifcapi::bindings::geometry_add_boolean(file_cpp, first_item_cpp, second_items_cpp, operator_type_cpp)};
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -7834,12 +7854,12 @@ bool ifcopenshell_geometry_add_door_representation(ifcopenshell_file_t* file, co
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -7860,12 +7880,12 @@ bool ifcopenshell_geometry_add_footprint_representation(ifcopenshell_file_t* fil
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -7893,12 +7913,12 @@ bool ifcopenshell_geometry_add_mesh_representation(ifcopenshell_file_t* file, if
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -7942,12 +7962,12 @@ bool ifcopenshell_geometry_add_profile_representation(ifcopenshell_file_t* file,
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -7997,12 +8017,12 @@ bool ifcopenshell_geometry_add_railing_representation(ifcopenshell_file_t* file,
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -8033,12 +8053,12 @@ bool ifcopenshell_geometry_add_shape_aspect(ifcopenshell_file_t* file, const ifc
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -8076,12 +8096,12 @@ bool ifcopenshell_geometry_add_slab_representation(ifcopenshell_file_t* file, co
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -8112,12 +8132,12 @@ bool ifcopenshell_geometry_add_topology_representation(ifcopenshell_file_t* file
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -8155,12 +8175,12 @@ bool ifcopenshell_geometry_add_wall_representation(ifcopenshell_file_t* file, co
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -8194,12 +8214,12 @@ bool ifcopenshell_geometry_add_window_representation(ifcopenshell_file_t* file, 
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -8220,12 +8240,12 @@ bool ifcopenshell_geometry_assign_representation(ifcopenshell_file_t* file, ifco
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -8266,12 +8286,12 @@ bool ifcopenshell_geometry_clip_solid(ifcopenshell_file_t* file, const ifcopensh
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -8316,12 +8336,12 @@ bool ifcopenshell_geometry_clip_solid_bounded(ifcopenshell_file_t* file, const i
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -8364,12 +8384,12 @@ bool ifcopenshell_geometry_compute_wall_mounted_handrail_geometry(const ifcopens
             ifcopenshell_geometry_wall_mounted_handrail_result_destroy(&result_value_c);
             throw;
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -8408,12 +8428,12 @@ bool ifcopenshell_geometry_connect_element(ifcopenshell_file_t* file, const ifco
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -8460,12 +8480,12 @@ bool ifcopenshell_geometry_connect_path(ifcopenshell_file_t* file, const ifcopen
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -8501,12 +8521,12 @@ bool ifcopenshell_geometry_connect_wall(ifcopenshell_file_t* file, const ifcopen
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -8538,12 +8558,12 @@ bool ifcopenshell_geometry_copy_representation(ifcopenshell_file_t* file, const 
                 *out_result = new ifcopenshell_instance_t{unwrapped_result};
             }
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -8574,12 +8594,12 @@ bool ifcopenshell_geometry_create_2pt_wall(ifcopenshell_file_t* file, const ifco
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -8594,12 +8614,12 @@ bool ifcopenshell_geometry_disconnect_element(ifcopenshell_file_t* file, ifcopen
     if (related_element == nullptr) { throw std::runtime_error("Handle parameter \"related_element\" must not be null"); }
     auto related_element_cpp = &related_element->value;
         ifcapi::bindings::geometry_disconnect_element(file_cpp, relating_element_cpp, related_element_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -8628,12 +8648,12 @@ bool ifcopenshell_geometry_disconnect_path(ifcopenshell_file_t* file, const ifco
         options_cpp.related_element = options->related_element->value;
     }
         ifcapi::bindings::geometry_disconnect_path(file_cpp, options_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -8658,12 +8678,12 @@ bool ifcopenshell_geometry_edit_object_placement(ifcopenshell_file_t* file, cons
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -8682,12 +8702,12 @@ bool ifcopenshell_geometry_map_representation(ifcopenshell_file_t* file, ifcopen
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -8701,12 +8721,12 @@ bool ifcopenshell_geometry_profile_extents(ifcopenshell_file_t* file, ifcopenshe
     if (profile == nullptr) { throw std::runtime_error("Handle parameter \"profile\" must not be null"); }
     auto profile_cpp = &profile->value;
         *out_result = make_double_list(ifcapi::bindings::geometry_profile_extents(file_cpp, profile_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -8732,12 +8752,12 @@ bool ifcopenshell_geometry_regenerate_wall_representation(ifcopenshell_file_t* f
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -8750,12 +8770,12 @@ bool ifcopenshell_geometry_remove_boolean(ifcopenshell_file_t* file, ifcopenshel
     if (item == nullptr) { throw std::runtime_error("Handle parameter \"item\" must not be null"); }
     auto item_cpp = &item->value;
         ifcapi::bindings::geometry_remove_boolean(file_cpp, item_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -8773,12 +8793,12 @@ bool ifcopenshell_geometry_remove_representation(ifcopenshell_file_t* file, ifco
         options_cpp.should_keep_named_profiles = options->should_keep_named_profiles;
     }
         ifcapi::bindings::geometry_remove_representation(file_cpp, representation_cpp, options_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -8793,12 +8813,12 @@ bool ifcopenshell_geometry_unassign_representation(ifcopenshell_file_t* file, if
     if (representation == nullptr) { throw std::runtime_error("Handle parameter \"representation\" must not be null"); }
     auto representation_cpp = &representation->value;
         ifcapi::bindings::geometry_unassign_representation(file_cpp, product_cpp, representation_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -8818,12 +8838,12 @@ bool ifcopenshell_geometry_validate_type(ifcopenshell_file_t* file, ifcopenshell
         options_cpp.preferred_item = options->preferred_item->value;
     }
         *out_result = ifcapi::bindings::geometry_validate_type(file_cpp, representation_cpp, options_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -8852,12 +8872,12 @@ bool ifcopenshell_georeference_add_georeferencing(ifcopenshell_file_t* file, con
         options_cpp.application = options->application->value;
     }
         ifcapi::bindings::georeference_add_georeferencing(file_cpp, options_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -8876,12 +8896,12 @@ bool ifcopenshell_georeference_edit_georeferencing(ifcopenshell_file_t* file, co
         options_cpp.projected_crs = static_cast<ifcopenshell_pset_props_t*>(options->projected_crs);
     }
         ifcapi::bindings::georeference_edit_georeferencing(file_cpp, options_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -8898,12 +8918,12 @@ bool ifcopenshell_georeference_edit_true_north(ifcopenshell_file_t* file, const 
         options_cpp.true_north = to_cpp_double_list(options->true_north);
     }
         ifcapi::bindings::georeference_edit_true_north(file_cpp, options_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -8931,12 +8951,12 @@ bool ifcopenshell_georeference_edit_wcs(ifcopenshell_file_t* file, const ifcopen
         options_cpp.is_si = options->is_si;
     }
         ifcapi::bindings::georeference_edit_wcs(file_cpp, options_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -8947,12 +8967,12 @@ bool ifcopenshell_georeference_remove_georeferencing(ifcopenshell_file_t* file) 
     if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
     auto file_cpp = file->ptr;
         ifcapi::bindings::georeference_remove_georeferencing(file_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -8970,12 +8990,12 @@ bool ifcopenshell_grid_create_axis_curve(ifcopenshell_file_t* file, const ifcope
     auto grid_axis_cpp = &grid_axis->value;
     auto is_si_cpp = static_cast<bool>(is_si);
         ifcapi::bindings::grid_create_axis_curve(file_cpp, p1_cpp, p2_cpp, grid_axis_cpp, is_si_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -8999,12 +9019,12 @@ bool ifcopenshell_grid_create_grid_axis(ifcopenshell_file_t* file, ifcopenshell_
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -9017,12 +9037,12 @@ bool ifcopenshell_grid_remove_grid_axis(ifcopenshell_file_t* file, ifcopenshell_
     if (axis == nullptr) { throw std::runtime_error("Handle parameter \"axis\" must not be null"); }
     auto axis_cpp = &axis->value;
         ifcapi::bindings::grid_remove_grid_axis(file_cpp, axis_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -9059,12 +9079,12 @@ bool ifcopenshell_group_add_group(ifcopenshell_file_t* file, const ifcopenshell_
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -9099,12 +9119,12 @@ bool ifcopenshell_group_assign_group(ifcopenshell_file_t* file, const ifcopenshe
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -9119,12 +9139,12 @@ bool ifcopenshell_group_edit_group(ifcopenshell_file_t* file, ifcopenshell_insta
     if (attributes == nullptr) { throw std::runtime_error("Parameter \"attributes\" must not be null"); }
     auto attributes_cpp = static_cast<ifcopenshell_pset_props_t*>(attributes);
         ifcapi::bindings::group_edit_group(file_cpp, group_cpp, attributes_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -9137,12 +9157,12 @@ bool ifcopenshell_group_remove_group(ifcopenshell_file_t* file, ifcopenshell_ins
     if (group == nullptr) { throw std::runtime_error("Handle parameter \"group\" must not be null"); }
     auto group_cpp = &group->value;
         ifcapi::bindings::group_remove_group(file_cpp, group_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -9167,12 +9187,12 @@ bool ifcopenshell_group_unassign_group(ifcopenshell_file_t* file, const ifcopens
         options_cpp.application = options->application->value;
     }
         ifcapi::bindings::group_unassign_group(file_cpp, options_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -9207,12 +9227,12 @@ bool ifcopenshell_group_update_group_products(ifcopenshell_file_t* file, const i
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -9224,12 +9244,12 @@ bool ifcopenshell_guid_compress(const char* uuid_hex, ifcopenshell_string_t* out
     if (uuid_hex == nullptr) { throw std::runtime_error("Parameter \"uuid_hex\" must not be null"); }
     std::string uuid_hex_cpp(uuid_hex);
         *out_result = make_string(ifcapi::bindings::guid_compress(uuid_hex_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -9241,12 +9261,12 @@ bool ifcopenshell_guid_expand(const char* guid, ifcopenshell_string_t* out_resul
     if (guid == nullptr) { throw std::runtime_error("Parameter \"guid\" must not be null"); }
     std::string guid_cpp(guid);
         *out_result = make_string(ifcapi::bindings::guid_expand(guid_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -9256,12 +9276,12 @@ bool ifcopenshell_guid_generate(ifcopenshell_string_t* out_result) {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
         *out_result = make_string(ifcapi::bindings::guid_generate());
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -9280,12 +9300,12 @@ bool ifcopenshell_layer_add_layer(ifcopenshell_file_t* file, const char* name, i
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -9317,12 +9337,12 @@ bool ifcopenshell_layer_add_layer_with_style(ifcopenshell_file_t* file, const ch
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -9337,12 +9357,12 @@ bool ifcopenshell_layer_assign_layer(ifcopenshell_file_t* file, const ifcopenshe
     if (layer == nullptr) { throw std::runtime_error("Handle parameter \"layer\" must not be null"); }
     auto layer_cpp = &layer->value;
         ifcapi::bindings::layer_assign_layer(file_cpp, items_cpp, layer_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -9357,12 +9377,12 @@ bool ifcopenshell_layer_edit_layer(ifcopenshell_file_t* file, ifcopenshell_insta
     if (attributes == nullptr) { throw std::runtime_error("Parameter \"attributes\" must not be null"); }
     auto attributes_cpp = static_cast<ifcopenshell_pset_props_t*>(attributes);
         ifcapi::bindings::layer_edit_layer(file_cpp, layer_cpp, attributes_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -9375,12 +9395,12 @@ bool ifcopenshell_layer_remove_layer(ifcopenshell_file_t* file, ifcopenshell_ins
     if (layer == nullptr) { throw std::runtime_error("Handle parameter \"layer\" must not be null"); }
     auto layer_cpp = &layer->value;
         ifcapi::bindings::layer_remove_layer(file_cpp, layer_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -9395,12 +9415,12 @@ bool ifcopenshell_layer_unassign_layer(ifcopenshell_file_t* file, const ifcopens
     if (layer == nullptr) { throw std::runtime_error("Handle parameter \"layer\" must not be null"); }
     auto layer_cpp = &layer->value;
         ifcapi::bindings::layer_unassign_layer(file_cpp, items_cpp, layer_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -9419,12 +9439,12 @@ bool ifcopenshell_library_add_library(ifcopenshell_file_t* file, const char* nam
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -9443,12 +9463,12 @@ bool ifcopenshell_library_add_reference(ifcopenshell_file_t* file, ifcopenshell_
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -9483,12 +9503,12 @@ bool ifcopenshell_library_assign_reference(ifcopenshell_file_t* file, const ifco
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -9503,12 +9523,12 @@ bool ifcopenshell_library_edit_library(ifcopenshell_file_t* file, ifcopenshell_i
     if (attributes == nullptr) { throw std::runtime_error("Parameter \"attributes\" must not be null"); }
     auto attributes_cpp = static_cast<ifcopenshell_pset_props_t*>(attributes);
         ifcapi::bindings::library_edit_library(file_cpp, library_cpp, attributes_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -9523,12 +9543,12 @@ bool ifcopenshell_library_edit_reference(ifcopenshell_file_t* file, ifcopenshell
     if (attributes == nullptr) { throw std::runtime_error("Parameter \"attributes\" must not be null"); }
     auto attributes_cpp = static_cast<ifcopenshell_pset_props_t*>(attributes);
         ifcapi::bindings::library_edit_reference(file_cpp, reference_cpp, attributes_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -9543,12 +9563,12 @@ bool ifcopenshell_library_edit_version_date(ifcopenshell_file_t* file, ifcopensh
     if (iso_date_time == nullptr) { throw std::runtime_error("Parameter \"iso_date_time\" must not be null"); }
     std::string iso_date_time_cpp(iso_date_time);
         ifcapi::bindings::library_edit_version_date(file_cpp, library_cpp, iso_date_time_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -9561,12 +9581,12 @@ bool ifcopenshell_library_remove_library(ifcopenshell_file_t* file, ifcopenshell
     if (library == nullptr) { throw std::runtime_error("Handle parameter \"library\" must not be null"); }
     auto library_cpp = &library->value;
         ifcapi::bindings::library_remove_library(file_cpp, library_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -9579,12 +9599,12 @@ bool ifcopenshell_library_remove_reference(ifcopenshell_file_t* file, ifcopenshe
     if (reference == nullptr) { throw std::runtime_error("Handle parameter \"reference\" must not be null"); }
     auto reference_cpp = &reference->value;
         ifcapi::bindings::library_remove_reference(file_cpp, reference_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -9609,12 +9629,12 @@ bool ifcopenshell_library_unassign_reference(ifcopenshell_file_t* file, const if
         options_cpp.application = options->application->value;
     }
         ifcapi::bindings::library_unassign_reference(file_cpp, options_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -9641,12 +9661,12 @@ bool ifcopenshell_material_add_constituent(ifcopenshell_file_t* file, ifcopenshe
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -9673,12 +9693,12 @@ bool ifcopenshell_material_add_layer(ifcopenshell_file_t* file, ifcopenshell_ins
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -9693,12 +9713,12 @@ bool ifcopenshell_material_add_list_item(ifcopenshell_file_t* file, ifcopenshell
     if (material == nullptr) { throw std::runtime_error("Handle parameter \"material\" must not be null"); }
     auto material_cpp = &material->value;
         ifcapi::bindings::material_add_list_item(file_cpp, material_list_cpp, material_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -9729,12 +9749,12 @@ bool ifcopenshell_material_add_material(ifcopenshell_file_t* file, const ifcopen
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -9761,12 +9781,12 @@ bool ifcopenshell_material_add_material_set(ifcopenshell_file_t* file, const ifc
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -9799,12 +9819,12 @@ bool ifcopenshell_material_add_profile(ifcopenshell_file_t* file, ifcopenshell_i
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -9840,12 +9860,12 @@ bool ifcopenshell_material_assign_material(ifcopenshell_file_t* file, const ifco
         options_cpp.application = options->application->value;
     }
         *out_result = new ifcopenshell_parse_instance_list_t{ifcapi::bindings::material_assign_material(file_cpp, products_cpp, options_cpp)};
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -9860,12 +9880,12 @@ bool ifcopenshell_material_assign_profile(ifcopenshell_file_t* file, ifcopenshel
     if (profile == nullptr) { throw std::runtime_error("Handle parameter \"profile\" must not be null"); }
     auto profile_cpp = &profile->value;
         ifcapi::bindings::material_assign_profile(file_cpp, material_profile_cpp, profile_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -9884,12 +9904,12 @@ bool ifcopenshell_material_copy_material(ifcopenshell_file_t* file, ifcopenshell
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -9904,12 +9924,12 @@ bool ifcopenshell_material_edit_assigned_material(ifcopenshell_file_t* file, ifc
     if (attributes == nullptr) { throw std::runtime_error("Parameter \"attributes\" must not be null"); }
     auto attributes_cpp = static_cast<ifcopenshell_pset_props_t*>(attributes);
         ifcapi::bindings::material_edit_assigned_material(file_cpp, element_cpp, attributes_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -9926,12 +9946,12 @@ bool ifcopenshell_material_edit_constituent(ifcopenshell_file_t* file, ifcopensh
     std::optional<express::Base> material_cpp;
     if (material != nullptr) { material_cpp = material->value; }
         ifcapi::bindings::material_edit_constituent(file_cpp, constituent_cpp, attributes_cpp, material_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -9948,12 +9968,12 @@ bool ifcopenshell_material_edit_layer(ifcopenshell_file_t* file, ifcopenshell_in
     std::optional<express::Base> material_cpp;
     if (material != nullptr) { material_cpp = material->value; }
         ifcapi::bindings::material_edit_layer(file_cpp, layer_cpp, attributes_cpp, material_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -9968,12 +9988,12 @@ bool ifcopenshell_material_edit_layer_usage(ifcopenshell_file_t* file, ifcopensh
     if (attributes == nullptr) { throw std::runtime_error("Parameter \"attributes\" must not be null"); }
     auto attributes_cpp = static_cast<ifcopenshell_pset_props_t*>(attributes);
         ifcapi::bindings::material_edit_layer_usage(file_cpp, usage_cpp, attributes_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -9988,12 +10008,12 @@ bool ifcopenshell_material_edit_material(ifcopenshell_file_t* file, ifcopenshell
     if (attributes == nullptr) { throw std::runtime_error("Parameter \"attributes\" must not be null"); }
     auto attributes_cpp = static_cast<ifcopenshell_pset_props_t*>(attributes);
         ifcapi::bindings::material_edit_material(file_cpp, material_cpp, attributes_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -10012,12 +10032,12 @@ bool ifcopenshell_material_edit_profile(ifcopenshell_file_t* file, ifcopenshell_
     std::optional<express::Base> material_cpp;
     if (material != nullptr) { material_cpp = material->value; }
         ifcapi::bindings::material_edit_profile(file_cpp, profile_cpp, attributes_cpp, profile_def_cpp, material_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -10039,12 +10059,12 @@ bool ifcopenshell_material_edit_profile_usage(ifcopenshell_file_t* file, ifcopen
         options_cpp.profile_height = options->profile_height;
     }
         ifcapi::bindings::material_edit_profile_usage(file_cpp, usage_cpp, options_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -10062,12 +10082,12 @@ bool ifcopenshell_material_remove_constituent(ifcopenshell_file_t* file, ifcopen
         options_cpp.should_remove_material = options->should_remove_material;
     }
         ifcapi::bindings::material_remove_constituent(file_cpp, constituent_cpp, options_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -10085,12 +10105,12 @@ bool ifcopenshell_material_remove_layer(ifcopenshell_file_t* file, ifcopenshell_
         options_cpp.should_remove_material = options->should_remove_material;
     }
         ifcapi::bindings::material_remove_layer(file_cpp, layer_cpp, options_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -10108,12 +10128,12 @@ bool ifcopenshell_material_remove_list_item(ifcopenshell_file_t* file, ifcopensh
         options_cpp.material_index = options->material_index;
     }
         ifcapi::bindings::material_remove_list_item(file_cpp, material_list_cpp, options_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -10126,12 +10146,12 @@ bool ifcopenshell_material_remove_material(ifcopenshell_file_t* file, ifcopenshe
     if (material == nullptr) { throw std::runtime_error("Handle parameter \"material\" must not be null"); }
     auto material_cpp = &material->value;
         ifcapi::bindings::material_remove_material(file_cpp, material_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -10144,12 +10164,12 @@ bool ifcopenshell_material_remove_material_set(ifcopenshell_file_t* file, ifcope
     if (material == nullptr) { throw std::runtime_error("Handle parameter \"material\" must not be null"); }
     auto material_cpp = &material->value;
         ifcapi::bindings::material_remove_material_set(file_cpp, material_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -10170,12 +10190,12 @@ bool ifcopenshell_material_remove_profile(ifcopenshell_file_t* file, ifcopenshel
         options_cpp.should_remove_material = options->should_remove_material;
     }
         ifcapi::bindings::material_remove_profile(file_cpp, profile_cpp, options_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -10196,12 +10216,12 @@ bool ifcopenshell_material_reorder_set_item(ifcopenshell_file_t* file, ifcopensh
         options_cpp.new_index = options->new_index;
     }
         ifcapi::bindings::material_reorder_set_item(file_cpp, material_set_cpp, options_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -10242,12 +10262,12 @@ bool ifcopenshell_material_set_shape_aspect_constituents(ifcopenshell_file_t* fi
         options_cpp.application = options->application->value;
     }
         ifcapi::bindings::material_set_shape_aspect_constituents(file_cpp, element_cpp, context_cpp, materials_cpp, options_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -10270,12 +10290,12 @@ bool ifcopenshell_material_unassign_material(ifcopenshell_file_t* file, const if
         options_cpp.application = options->application->value;
     }
         ifcapi::bindings::material_unassign_material(file_cpp, products_cpp, options_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -10310,12 +10330,12 @@ bool ifcopenshell_nest_assign_object(ifcopenshell_file_t* file, const ifcopenshe
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -10344,12 +10364,12 @@ bool ifcopenshell_nest_change_nest(ifcopenshell_file_t* file, const ifcopenshell
         options_cpp.application = options->application->value;
     }
         ifcapi::bindings::nest_change_nest(file_cpp, options_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -10378,12 +10398,12 @@ bool ifcopenshell_nest_reorder_nesting(ifcopenshell_file_t* file, const ifcopens
         options_cpp.application = options->application->value;
     }
         ifcapi::bindings::nest_reorder_nesting(file_cpp, options_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -10406,12 +10426,12 @@ bool ifcopenshell_nest_unassign_object(ifcopenshell_file_t* file, const ifcopens
         options_cpp.application = options->application->value;
     }
         ifcapi::bindings::nest_unassign_object(file_cpp, options_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -10446,12 +10466,12 @@ bool ifcopenshell_owner_add_actor(ifcopenshell_file_t* file, const ifcopenshell_
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -10472,12 +10492,12 @@ bool ifcopenshell_owner_add_address(ifcopenshell_file_t* file, ifcopenshell_inst
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -10518,12 +10538,12 @@ bool ifcopenshell_owner_add_application(ifcopenshell_file_t* file, const ifcopen
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -10544,12 +10564,12 @@ bool ifcopenshell_owner_add_organisation(ifcopenshell_file_t* file, const char* 
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -10572,12 +10592,12 @@ bool ifcopenshell_owner_add_person(ifcopenshell_file_t* file, const char* identi
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -10598,12 +10618,12 @@ bool ifcopenshell_owner_add_person_and_organisation(ifcopenshell_file_t* file, i
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -10624,12 +10644,12 @@ bool ifcopenshell_owner_add_role(ifcopenshell_file_t* file, ifcopenshell_instanc
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -10664,12 +10684,12 @@ bool ifcopenshell_owner_assign_actor(ifcopenshell_file_t* file, const ifcopenshe
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -10696,12 +10716,12 @@ bool ifcopenshell_owner_create_owner_history(ifcopenshell_file_t* file, const if
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -10716,12 +10736,12 @@ bool ifcopenshell_owner_edit_actor(ifcopenshell_file_t* file, ifcopenshell_insta
     if (attributes == nullptr) { throw std::runtime_error("Parameter \"attributes\" must not be null"); }
     auto attributes_cpp = static_cast<ifcopenshell_pset_props_t*>(attributes);
         ifcapi::bindings::owner_edit_actor(file_cpp, actor_cpp, attributes_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -10736,12 +10756,12 @@ bool ifcopenshell_owner_edit_address(ifcopenshell_file_t* file, ifcopenshell_ins
     if (attributes == nullptr) { throw std::runtime_error("Parameter \"attributes\" must not be null"); }
     auto attributes_cpp = static_cast<ifcopenshell_pset_props_t*>(attributes);
         ifcapi::bindings::owner_edit_address(file_cpp, address_cpp, attributes_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -10756,12 +10776,12 @@ bool ifcopenshell_owner_edit_application(ifcopenshell_file_t* file, ifcopenshell
     if (attributes == nullptr) { throw std::runtime_error("Parameter \"attributes\" must not be null"); }
     auto attributes_cpp = static_cast<ifcopenshell_pset_props_t*>(attributes);
         ifcapi::bindings::owner_edit_application(file_cpp, application_cpp, attributes_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -10776,12 +10796,12 @@ bool ifcopenshell_owner_edit_organisation(ifcopenshell_file_t* file, ifcopenshel
     if (attributes == nullptr) { throw std::runtime_error("Parameter \"attributes\" must not be null"); }
     auto attributes_cpp = static_cast<ifcopenshell_pset_props_t*>(attributes);
         ifcapi::bindings::owner_edit_organisation(file_cpp, organisation_cpp, attributes_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -10796,12 +10816,12 @@ bool ifcopenshell_owner_edit_person(ifcopenshell_file_t* file, ifcopenshell_inst
     if (attributes == nullptr) { throw std::runtime_error("Parameter \"attributes\" must not be null"); }
     auto attributes_cpp = static_cast<ifcopenshell_pset_props_t*>(attributes);
         ifcapi::bindings::owner_edit_person(file_cpp, person_cpp, attributes_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -10816,12 +10836,12 @@ bool ifcopenshell_owner_edit_role(ifcopenshell_file_t* file, ifcopenshell_instan
     if (attributes == nullptr) { throw std::runtime_error("Parameter \"attributes\" must not be null"); }
     auto attributes_cpp = static_cast<ifcopenshell_pset_props_t*>(attributes);
         ifcapi::bindings::owner_edit_role(file_cpp, role_cpp, attributes_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -10834,12 +10854,12 @@ bool ifcopenshell_owner_remove_actor(ifcopenshell_file_t* file, ifcopenshell_ins
     if (actor == nullptr) { throw std::runtime_error("Handle parameter \"actor\" must not be null"); }
     auto actor_cpp = &actor->value;
         ifcapi::bindings::owner_remove_actor(file_cpp, actor_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -10852,12 +10872,12 @@ bool ifcopenshell_owner_remove_address(ifcopenshell_file_t* file, ifcopenshell_i
     if (address == nullptr) { throw std::runtime_error("Handle parameter \"address\" must not be null"); }
     auto address_cpp = &address->value;
         ifcapi::bindings::owner_remove_address(file_cpp, address_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -10870,12 +10890,12 @@ bool ifcopenshell_owner_remove_application(ifcopenshell_file_t* file, ifcopenshe
     if (application == nullptr) { throw std::runtime_error("Handle parameter \"application\" must not be null"); }
     auto application_cpp = &application->value;
         ifcapi::bindings::owner_remove_application(file_cpp, application_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -10888,12 +10908,12 @@ bool ifcopenshell_owner_remove_organisation(ifcopenshell_file_t* file, ifcopensh
     if (organisation == nullptr) { throw std::runtime_error("Handle parameter \"organisation\" must not be null"); }
     auto organisation_cpp = &organisation->value;
         ifcapi::bindings::owner_remove_organisation(file_cpp, organisation_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -10906,12 +10926,12 @@ bool ifcopenshell_owner_remove_person(ifcopenshell_file_t* file, ifcopenshell_in
     if (person == nullptr) { throw std::runtime_error("Handle parameter \"person\" must not be null"); }
     auto person_cpp = &person->value;
         ifcapi::bindings::owner_remove_person(file_cpp, person_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -10924,12 +10944,12 @@ bool ifcopenshell_owner_remove_person_and_organisation(ifcopenshell_file_t* file
     if (person_and_organisation == nullptr) { throw std::runtime_error("Handle parameter \"person_and_organisation\" must not be null"); }
     auto person_and_organisation_cpp = &person_and_organisation->value;
         ifcapi::bindings::owner_remove_person_and_organisation(file_cpp, person_and_organisation_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -10942,12 +10962,12 @@ bool ifcopenshell_owner_remove_role(ifcopenshell_file_t* file, ifcopenshell_inst
     if (role == nullptr) { throw std::runtime_error("Handle parameter \"role\" must not be null"); }
     auto role_cpp = &role->value;
         ifcapi::bindings::owner_remove_role(file_cpp, role_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -10972,12 +10992,12 @@ bool ifcopenshell_owner_unassign_actor(ifcopenshell_file_t* file, const ifcopens
         options_cpp.application = options->application->value;
     }
         ifcapi::bindings::owner_unassign_actor(file_cpp, options_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -11008,12 +11028,12 @@ bool ifcopenshell_owner_update_owner_history(ifcopenshell_file_t* file, const if
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -11025,12 +11045,12 @@ bool ifcopenshell_placement_get_axis2_placement(ifcopenshell_instance_t* instanc
     if (instance == nullptr) { throw std::runtime_error("Handle parameter \"instance\" must not be null"); }
     auto instance_cpp = &instance->value;
         *out_result = make_double_list(ifcapi::bindings::placement_get_axis2_placement(instance_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -11042,12 +11062,12 @@ bool ifcopenshell_placement_get_cartesian_xform_3d(ifcopenshell_instance_t* inst
     if (instance == nullptr) { throw std::runtime_error("Handle parameter \"instance\" must not be null"); }
     auto instance_cpp = &instance->value;
         *out_result = make_double_list(ifcapi::bindings::placement_get_cartesian_xform_3d(instance_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -11059,12 +11079,12 @@ bool ifcopenshell_placement_get_local_placement(ifcopenshell_instance_t* instanc
     std::optional<express::Base> instance_cpp;
     if (instance != nullptr) { instance_cpp = instance->value; }
         *out_result = make_double_list(ifcapi::bindings::placement_get_local_placement(instance_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -11076,12 +11096,12 @@ bool ifcopenshell_placement_get_mappeditem_xform(ifcopenshell_instance_t* instan
     if (instance == nullptr) { throw std::runtime_error("Handle parameter \"instance\" must not be null"); }
     auto instance_cpp = &instance->value;
         *out_result = make_double_list(ifcapi::bindings::placement_get_mappeditem_xform(instance_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -11093,12 +11113,12 @@ bool ifcopenshell_placement_get_storey_elevation(ifcopenshell_instance_t* instan
     if (instance == nullptr) { throw std::runtime_error("Handle parameter \"instance\" must not be null"); }
     auto instance_cpp = &instance->value;
         *out_result = static_cast<double>(ifcapi::bindings::placement_get_storey_elevation(instance_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -11114,12 +11134,12 @@ bool ifcopenshell_placement_matrix_from_axes(const ifcopenshell_double_list_t* o
     if (x_axis == nullptr) { throw std::runtime_error("Parameter \"x_axis\" must not be null"); }
     auto x_axis_cpp = to_cpp_double_list(x_axis);
         *out_result = make_double_list(ifcapi::bindings::placement_matrix_from_axes(origin_cpp, z_axis_cpp, x_axis_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -11132,12 +11152,12 @@ bool ifcopenshell_placement_rotation(double angle_rad, const char* axis, ifcopen
     if (axis == nullptr) { throw std::runtime_error("Parameter \"axis\" must not be null"); }
     std::string axis_cpp(axis);
         *out_result = make_double_list(ifcapi::bindings::placement_rotation(angle_rad_cpp, axis_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -11162,12 +11182,12 @@ bool ifcopenshell_profile_add_arbitrary_profile(ifcopenshell_file_t* file, const
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -11194,12 +11214,12 @@ bool ifcopenshell_profile_add_arbitrary_profile_with_voids(ifcopenshell_file_t* 
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -11220,12 +11240,12 @@ bool ifcopenshell_profile_add_parameterized_profile(ifcopenshell_file_t* file, c
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -11244,12 +11264,12 @@ bool ifcopenshell_profile_copy_profile(ifcopenshell_file_t* file, ifcopenshell_i
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -11262,12 +11282,12 @@ bool ifcopenshell_profile_edit_profile(ifcopenshell_instance_t* profile, void* a
     if (attributes == nullptr) { throw std::runtime_error("Parameter \"attributes\" must not be null"); }
     auto attributes_cpp = static_cast<ifcopenshell_pset_props_t*>(attributes);
         ifcapi::bindings::profile_edit_profile(profile_cpp, attributes_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -11280,12 +11300,12 @@ bool ifcopenshell_profile_remove_profile(ifcopenshell_file_t* file, ifcopenshell
     if (profile == nullptr) { throw std::runtime_error("Handle parameter \"profile\" must not be null"); }
     auto profile_cpp = &profile->value;
         ifcapi::bindings::profile_remove_profile(file_cpp, profile_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -11320,12 +11340,12 @@ bool ifcopenshell_project_append_asset(ifcopenshell_file_t* file, const ifcopens
                 *out_result = new ifcopenshell_instance_t{unwrapped_result};
             }
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -11349,12 +11369,12 @@ bool ifcopenshell_project_append_asset_cache_entries(ifcopenshell_project_append
             ifcopenshell_project_append_asset_cache_entry_destroy(&result_value_c);
             throw;
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -11365,12 +11385,12 @@ bool ifcopenshell_project_append_asset_cache_free(ifcopenshell_project_append_as
     if (cache == nullptr || cache->ptr == nullptr) { throw std::runtime_error("Handle parameter \"cache\" is invalid"); }
     auto cache_cpp = cache->ptr;
         ifcapi::bindings::project_append_asset_cache_free(cache_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -11385,12 +11405,12 @@ bool ifcopenshell_project_append_asset_cache_new(ifcopenshell_project_append_ass
         } else {
             *out_result = new ifcopenshell_project_append_asset_cache_t{result_value, true};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -11405,12 +11425,12 @@ bool ifcopenshell_project_append_asset_cache_set(ifcopenshell_project_append_ass
     if (target == nullptr) { throw std::runtime_error("Handle parameter \"target\" must not be null"); }
     auto target_cpp = target->value;
         ifcapi::bindings::project_append_asset_cache_set(cache_cpp, source_cpp, target_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -11445,12 +11465,12 @@ bool ifcopenshell_project_assign_declaration(ifcopenshell_file_t* file, const if
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -11475,12 +11495,12 @@ bool ifcopenshell_project_unassign_declaration(ifcopenshell_file_t* file, const 
         options_cpp.application = options->application->value;
     }
         ifcapi::bindings::project_unassign_declaration(file_cpp, options_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -11519,12 +11539,12 @@ bool ifcopenshell_pset_add_pset(ifcopenshell_file_t* file, const ifcopenshell_ps
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -11559,12 +11579,12 @@ bool ifcopenshell_pset_add_qto(ifcopenshell_file_t* file, const ifcopenshell_pse
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -11599,12 +11619,12 @@ bool ifcopenshell_pset_assign_pset(ifcopenshell_file_t* file, const ifcopenshell
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -11630,12 +11650,12 @@ bool ifcopenshell_pset_edit_pset(ifcopenshell_file_t* file, const ifcopenshell_p
     }
     options_cpp.should_purge = static_cast<bool>(options->should_purge);
         *out_result = ifcapi::bindings::pset_edit_pset(file_cpp, options_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -11660,12 +11680,12 @@ bool ifcopenshell_pset_edit_qto(ifcopenshell_file_t* file, const ifcopenshell_ps
         options_cpp.qto_template = options->qto_template->value;
     }
         *out_result = ifcapi::bindings::pset_edit_qto(file_cpp, options_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -11676,12 +11696,12 @@ bool ifcopenshell_pset_props_free(void* props) {
     if (props == nullptr) { throw std::runtime_error("Parameter \"props\" must not be null"); }
     auto props_cpp = static_cast<ifcopenshell_pset_props_t*>(props);
         ifcapi::bindings::pset_props_free(props_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -11691,12 +11711,12 @@ bool ifcopenshell_pset_props_new(void** out_result) {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
         *out_result = static_cast<void*>(ifcapi::bindings::pset_props_new());
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -11710,12 +11730,12 @@ bool ifcopenshell_pset_props_set_bool(void* props, const char* key, bool value) 
     std::string key_cpp(key);
     auto value_cpp = static_cast<bool>(value);
         ifcapi::bindings::pset_props_set_bool(props_cpp, key_cpp, value_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -11730,12 +11750,12 @@ bool ifcopenshell_pset_props_set_bool_list(void* props, const char* key, const i
     if (values == nullptr) { throw std::runtime_error("Parameter \"values\" must not be null"); }
     auto values_cpp = to_cpp_bool_list(values);
         ifcapi::bindings::pset_props_set_bool_list(props_cpp, key_cpp, values_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -11751,12 +11771,12 @@ bool ifcopenshell_pset_props_set_date(void* props, const char* key, int32_t year
     auto month_cpp = static_cast<int>(month);
     auto day_cpp = static_cast<int>(day);
         ifcapi::bindings::pset_props_set_date(props_cpp, key_cpp, year_cpp, month_cpp, day_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -11778,12 +11798,12 @@ bool ifcopenshell_pset_props_set_datetime(void* props, const char* key, int32_t 
     auto has_timezone_cpp = static_cast<bool>(has_timezone);
     auto timezone_offset_minutes_cpp = static_cast<int>(timezone_offset_minutes);
         ifcapi::bindings::pset_props_set_datetime(props_cpp, key_cpp, year_cpp, month_cpp, day_cpp, hour_cpp, minute_cpp, second_cpp, microsecond_cpp, has_timezone_cpp, timezone_offset_minutes_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -11798,12 +11818,12 @@ bool ifcopenshell_pset_props_set_dict(void* outer, const char* key, void* inner)
     if (inner == nullptr) { throw std::runtime_error("Parameter \"inner\" must not be null"); }
     auto inner_cpp = static_cast<ifcopenshell_pset_props_t*>(inner);
         ifcapi::bindings::pset_props_set_dict(outer_cpp, key_cpp, inner_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -11817,12 +11837,12 @@ bool ifcopenshell_pset_props_set_double(void* props, const char* key, double val
     std::string key_cpp(key);
     auto value_cpp = static_cast<double>(value);
         ifcapi::bindings::pset_props_set_double(props_cpp, key_cpp, value_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -11837,12 +11857,12 @@ bool ifcopenshell_pset_props_set_double_list(void* props, const char* key, const
     if (values == nullptr) { throw std::runtime_error("Parameter \"values\" must not be null"); }
     auto values_cpp = to_cpp_double_list(values);
         ifcapi::bindings::pset_props_set_double_list(props_cpp, key_cpp, values_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -11863,12 +11883,12 @@ bool ifcopenshell_pset_props_set_duration(void* props, const char* key, bool neg
     auto seconds_cpp = static_cast<int>(seconds);
     auto microseconds_cpp = static_cast<int>(microseconds);
         ifcapi::bindings::pset_props_set_duration(props_cpp, key_cpp, negative_cpp, years_cpp, months_cpp, days_cpp, hours_cpp, minutes_cpp, seconds_cpp, microseconds_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -11883,12 +11903,12 @@ bool ifcopenshell_pset_props_set_instance(void* props, const char* key, ifcopens
     std::optional<express::Base> value_cpp;
     if (value != nullptr) { value_cpp = value->value; }
         ifcapi::bindings::pset_props_set_instance(props_cpp, key_cpp, value_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -11903,12 +11923,12 @@ bool ifcopenshell_pset_props_set_instance_list(void* props, const char* key, con
     if (values == nullptr) { throw std::runtime_error("Parameter \"values\" must not be null"); }
     auto values_cpp = to_cpp_instance_list(values);
         ifcapi::bindings::pset_props_set_instance_list(props_cpp, key_cpp, values_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -11922,12 +11942,12 @@ bool ifcopenshell_pset_props_set_int(void* props, const char* key, int64_t value
     std::string key_cpp(key);
     auto value_cpp = static_cast<long long>(value);
         ifcapi::bindings::pset_props_set_int(props_cpp, key_cpp, value_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -11942,12 +11962,12 @@ bool ifcopenshell_pset_props_set_int_list(void* props, const char* key, const if
     if (values == nullptr) { throw std::runtime_error("Parameter \"values\" must not be null"); }
     auto values_cpp = to_cpp_int64_list(values);
         ifcapi::bindings::pset_props_set_int_list(props_cpp, key_cpp, values_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -11960,12 +11980,12 @@ bool ifcopenshell_pset_props_set_null(void* props, const char* key) {
     if (key == nullptr) { throw std::runtime_error("Parameter \"key\" must not be null"); }
     std::string key_cpp(key);
         ifcapi::bindings::pset_props_set_null(props_cpp, key_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -11980,12 +12000,12 @@ bool ifcopenshell_pset_props_set_string(void* props, const char* key, const char
     if (value == nullptr) { throw std::runtime_error("Parameter \"value\" must not be null"); }
     std::string value_cpp(value);
         ifcapi::bindings::pset_props_set_string(props_cpp, key_cpp, value_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -12000,12 +12020,12 @@ bool ifcopenshell_pset_props_set_string_list(void* props, const char* key, const
     if (values == nullptr) { throw std::runtime_error("Parameter \"values\" must not be null"); }
     auto values_cpp = to_cpp_string_list(values);
         ifcapi::bindings::pset_props_set_string_list(props_cpp, key_cpp, values_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -12021,12 +12041,12 @@ bool ifcopenshell_pset_props_set_typed_bool(void* props, const char* key, bool v
     if (ifc_type == nullptr) { throw std::runtime_error("Parameter \"ifc_type\" must not be null"); }
     std::string ifc_type_cpp(ifc_type);
         ifcapi::bindings::pset_props_set_typed_bool(props_cpp, key_cpp, value_cpp, ifc_type_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -12042,12 +12062,12 @@ bool ifcopenshell_pset_props_set_typed_double(void* props, const char* key, doub
     if (ifc_type == nullptr) { throw std::runtime_error("Parameter \"ifc_type\" must not be null"); }
     std::string ifc_type_cpp(ifc_type);
         ifcapi::bindings::pset_props_set_typed_double(props_cpp, key_cpp, value_cpp, ifc_type_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -12063,12 +12083,12 @@ bool ifcopenshell_pset_props_set_typed_int(void* props, const char* key, int64_t
     if (ifc_type == nullptr) { throw std::runtime_error("Parameter \"ifc_type\" must not be null"); }
     std::string ifc_type_cpp(ifc_type);
         ifcapi::bindings::pset_props_set_typed_int(props_cpp, key_cpp, value_cpp, ifc_type_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -12085,12 +12105,12 @@ bool ifcopenshell_pset_props_set_typed_string(void* props, const char* key, cons
     if (ifc_type == nullptr) { throw std::runtime_error("Parameter \"ifc_type\" must not be null"); }
     std::string ifc_type_cpp(ifc_type);
         ifcapi::bindings::pset_props_set_typed_string(props_cpp, key_cpp, value_cpp, ifc_type_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -12103,12 +12123,12 @@ bool ifcopenshell_pset_props_set_unit_for_last(void* props, ifcopenshell_instanc
     std::optional<express::Base> unit_cpp;
     if (unit != nullptr) { unit_cpp = unit->value; }
         ifcapi::bindings::pset_props_set_unit_for_last(props_cpp, unit_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -12123,12 +12143,12 @@ bool ifcopenshell_pset_remove_pset(ifcopenshell_file_t* file, ifcopenshell_insta
     if (pset == nullptr) { throw std::runtime_error("Handle parameter \"pset\" must not be null"); }
     auto pset_cpp = &pset->value;
         ifcapi::bindings::pset_remove_pset(file_cpp, product_cpp, pset_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -12152,12 +12172,12 @@ bool ifcopenshell_pset_template_add_prop_template(ifcopenshell_file_t* file, ifc
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -12180,12 +12200,12 @@ bool ifcopenshell_pset_template_add_pset_template(ifcopenshell_file_t* file, con
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -12204,12 +12224,12 @@ bool ifcopenshell_pset_template_create_from_files(const char* schema_identifier,
         } else {
             *out_result = new ifcopenshell_pset_template_handle_t{result_value, true};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -12225,12 +12245,12 @@ bool ifcopenshell_pset_template_edit_prop_template(ifcopenshell_file_t* file, co
     options_cpp.prop_template = options->prop_template->value;
     options_cpp.attributes = static_cast<ifcopenshell_pset_props_t*>(options->attributes);
         ifcapi::bindings::pset_template_edit_prop_template(file_cpp, options_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -12245,12 +12265,12 @@ bool ifcopenshell_pset_template_edit_pset_template(ifcopenshell_file_t* file, if
     if (attributes == nullptr) { throw std::runtime_error("Parameter \"attributes\" must not be null"); }
     auto attributes_cpp = static_cast<ifcopenshell_pset_props_t*>(attributes);
         ifcapi::bindings::pset_template_edit_pset_template(file_cpp, pset_template_cpp, attributes_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -12267,12 +12287,12 @@ bool ifcopenshell_pset_template_get_applicable(ifcopenshell_pset_template_handle
     auto qto_only_cpp = static_cast<bool>(qto_only);
     const char* schema_name_str = schema_name;
         *out_result = new ifcopenshell_parse_instance_list_t{ifcapi::bindings::pset_template_get_applicable(pqt_cpp, ifc_class, predefined_type, pset_only_cpp, qto_only_cpp, schema_name)};
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -12289,12 +12309,12 @@ bool ifcopenshell_pset_template_get_applicable_names(ifcopenshell_pset_template_
     auto qto_only_cpp = static_cast<bool>(qto_only);
     const char* schema_name_str = schema_name;
         *out_result = make_string_list(ifcapi::bindings::pset_template_get_applicable_names(pqt_cpp, ifc_class, predefined_type, pset_only_cpp, qto_only_cpp, schema_name));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -12313,12 +12333,12 @@ bool ifcopenshell_pset_template_get_by_name(ifcopenshell_pset_template_handle_t*
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -12335,12 +12355,12 @@ bool ifcopenshell_pset_template_get_template(const char* schema_identifier, ifco
         } else {
             *out_result = new ifcopenshell_pset_template_handle_t{result_value, false};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -12354,12 +12374,12 @@ bool ifcopenshell_pset_template_is_templated(ifcopenshell_pset_template_handle_t
     if (name == nullptr) { throw std::runtime_error("Parameter \"name\" must not be null"); }
     std::string name_cpp(name);
         *out_result = ifcapi::bindings::pset_template_is_templated(pqt_cpp, name_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -12371,12 +12391,12 @@ bool ifcopenshell_pset_template_pset_type(ifcopenshell_instance_t* pset_template
     if (pset_template == nullptr) { throw std::runtime_error("Handle parameter \"pset_template\" must not be null"); }
     auto pset_template_cpp = &pset_template->value;
         *out_result = make_string(ifcapi::bindings::pset_template_pset_type(pset_template_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -12389,12 +12409,12 @@ bool ifcopenshell_pset_template_remove_prop_template(ifcopenshell_file_t* file, 
     if (prop_template == nullptr) { throw std::runtime_error("Handle parameter \"prop_template\" must not be null"); }
     auto prop_template_cpp = &prop_template->value;
         ifcapi::bindings::pset_template_remove_prop_template(file_cpp, prop_template_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -12405,12 +12425,12 @@ bool ifcopenshell_pset_template_remove_pset_template(ifcopenshell_instance_t* ps
     if (pset_template == nullptr) { throw std::runtime_error("Handle parameter \"pset_template\" must not be null"); }
     auto pset_template_cpp = &pset_template->value;
         ifcapi::bindings::pset_template_remove_pset_template(pset_template_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -12421,12 +12441,12 @@ bool ifcopenshell_pset_template_set_template_dir(const char* dir) {
     if (dir == nullptr) { throw std::runtime_error("Parameter \"dir\" must not be null"); }
     std::string dir_cpp(dir);
         ifcapi::bindings::pset_template_set_template_dir(dir_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -12441,12 +12461,12 @@ bool ifcopenshell_pset_unassign_pset(ifcopenshell_file_t* file, const ifcopenshe
     if (pset == nullptr) { throw std::runtime_error("Handle parameter \"pset\" must not be null"); }
     auto pset_cpp = &pset->value;
         ifcapi::bindings::pset_unassign_pset(file_cpp, products_cpp, pset_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -12476,12 +12496,12 @@ bool ifcopenshell_pset_unshare_pset(ifcopenshell_file_t* file, const ifcopenshel
         options_cpp.application = options->application->value;
     }
         *out_result = new ifcopenshell_parse_instance_list_t{ifcapi::bindings::pset_unshare_pset(file_cpp, options_cpp)};
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -12494,12 +12514,12 @@ bool ifcopenshell_register_scratch_file(const char* schema_name, ifcopenshell_fi
     if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
     auto file_cpp = file->ptr;
         *out_result = ifcapi::bindings::register_scratch_file(schema_name, file_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -12519,12 +12539,12 @@ bool ifcopenshell_representation_get_context(ifcopenshell_file_t* file, const ch
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -12536,12 +12556,12 @@ bool ifcopenshell_representation_get_prioritised_contexts(ifcopenshell_file_t* f
     if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
     auto file_cpp = file->ptr;
         *out_result = new ifcopenshell_parse_instance_list_t{ifcapi::bindings::representation_get_prioritised_contexts(file_cpp)};
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -12576,12 +12596,12 @@ bool ifcopenshell_representation_get_product_representation(ifcopenshell_instanc
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -12598,12 +12618,12 @@ bool ifcopenshell_representation_resolve(ifcopenshell_instance_t* representation
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -12615,12 +12635,12 @@ bool ifcopenshell_representation_resolve_base_items(ifcopenshell_instance_t* rep
     if (representation == nullptr) { throw std::runtime_error("Handle parameter \"representation\" must not be null"); }
     auto representation_cpp = &representation->value;
         *out_result = new ifcopenshell_parse_instance_list_t{ifcapi::bindings::representation_resolve_base_items(representation_cpp)};
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -12667,12 +12687,12 @@ bool ifcopenshell_resource_add_resource(ifcopenshell_file_t* file, const ifcopen
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -12693,12 +12713,12 @@ bool ifcopenshell_resource_add_resource_quantity(ifcopenshell_file_t* file, ifco
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -12717,12 +12737,12 @@ bool ifcopenshell_resource_add_resource_time(ifcopenshell_file_t* file, ifcopens
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -12757,12 +12777,12 @@ bool ifcopenshell_resource_assign_resource(ifcopenshell_file_t* file, const ifco
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -12775,12 +12795,12 @@ bool ifcopenshell_resource_calculate_resource_usage(ifcopenshell_file_t* file, i
     if (resource == nullptr) { throw std::runtime_error("Handle parameter \"resource\" must not be null"); }
     auto resource_cpp = &resource->value;
         ifcapi::bindings::resource_calculate_resource_usage(file_cpp, resource_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -12793,12 +12813,12 @@ bool ifcopenshell_resource_calculate_resource_work(ifcopenshell_file_t* file, if
     if (resource == nullptr) { throw std::runtime_error("Handle parameter \"resource\" must not be null"); }
     auto resource_cpp = &resource->value;
         ifcapi::bindings::resource_calculate_resource_work(file_cpp, resource_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -12813,12 +12833,12 @@ bool ifcopenshell_resource_edit_resource(ifcopenshell_file_t* file, ifcopenshell
     if (attributes == nullptr) { throw std::runtime_error("Parameter \"attributes\" must not be null"); }
     auto attributes_cpp = static_cast<ifcopenshell_pset_props_t*>(attributes);
         ifcapi::bindings::resource_edit_resource(file_cpp, resource_cpp, attributes_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -12833,12 +12853,12 @@ bool ifcopenshell_resource_edit_resource_quantity(ifcopenshell_file_t* file, ifc
     if (attributes == nullptr) { throw std::runtime_error("Parameter \"attributes\" must not be null"); }
     auto attributes_cpp = static_cast<ifcopenshell_pset_props_t*>(attributes);
         ifcapi::bindings::resource_edit_resource_quantity(file_cpp, physical_quantity_cpp, attributes_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -12853,12 +12873,12 @@ bool ifcopenshell_resource_edit_resource_time(ifcopenshell_file_t* file, ifcopen
     if (attributes == nullptr) { throw std::runtime_error("Parameter \"attributes\" must not be null"); }
     auto attributes_cpp = static_cast<ifcopenshell_pset_props_t*>(attributes);
         ifcapi::bindings::resource_edit_resource_time(file_cpp, resource_time_cpp, attributes_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -12881,12 +12901,12 @@ bool ifcopenshell_resource_remove_resource(ifcopenshell_file_t* file, const ifco
         options_cpp.application = options->application->value;
     }
         ifcapi::bindings::resource_remove_resource(file_cpp, options_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -12899,12 +12919,12 @@ bool ifcopenshell_resource_remove_resource_quantity(ifcopenshell_file_t* file, i
     if (resource == nullptr) { throw std::runtime_error("Handle parameter \"resource\" must not be null"); }
     auto resource_cpp = &resource->value;
         ifcapi::bindings::resource_remove_resource_quantity(file_cpp, resource_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -12933,12 +12953,12 @@ bool ifcopenshell_resource_unassign_resource(ifcopenshell_file_t* file, const if
         options_cpp.application = options->application->value;
     }
         ifcapi::bindings::resource_unassign_resource(file_cpp, options_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -12957,12 +12977,12 @@ bool ifcopenshell_root_copy_class(ifcopenshell_file_t* file, ifcopenshell_instan
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -12995,12 +13015,12 @@ bool ifcopenshell_root_create_entity(ifcopenshell_file_t* file, const ifcopenshe
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -13033,12 +13053,12 @@ bool ifcopenshell_root_reassign_class(ifcopenshell_file_t* file, const ifcopensh
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -13061,12 +13081,12 @@ bool ifcopenshell_root_remove_product(ifcopenshell_file_t* file, ifcopenshell_in
         options_cpp.application = options->application->value;
     }
         ifcapi::bindings::root_remove_product(file_cpp, product_cpp, options_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -13087,12 +13107,12 @@ bool ifcopenshell_schema_reassign_class(ifcopenshell_file_t* file, ifcopenshell_
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -13116,12 +13136,12 @@ bool ifcopenshell_selector_filter_all(ifcopenshell_file_t* file, const char* que
                 *out_result = new ifcopenshell_value_t{unwrapped_result, true};
             }
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -13147,12 +13167,12 @@ bool ifcopenshell_selector_filter_elements(ifcopenshell_file_t* file, const char
                 *out_result = new ifcopenshell_value_t{unwrapped_result, true};
             }
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -13174,12 +13194,12 @@ bool ifcopenshell_selector_format(ifcopenshell_file_t* file, ifcopenshell_instan
         } else {
             *out_result = make_string(std::move(*result_value));
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -13205,12 +13225,12 @@ bool ifcopenshell_selector_get_element_value(ifcopenshell_file_t* file, ifcopens
                 *out_result = new ifcopenshell_value_t{unwrapped_result, true};
             }
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -13222,12 +13242,12 @@ bool ifcopenshell_selector_keys_count(void* keys, size_t* out_result) {
     std::optional<ifcopenshell_selector_keys_t*> keys_cpp;
     if (keys != nullptr) { keys_cpp = static_cast<ifcopenshell_selector_keys_t*>(keys); }
         *out_result = static_cast<size_t>(ifcapi::bindings::selector_keys_count(keys_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -13238,12 +13258,12 @@ bool ifcopenshell_selector_keys_free(void* keys) {
     std::optional<ifcopenshell_selector_keys_t*> keys_cpp;
     if (keys != nullptr) { keys_cpp = static_cast<ifcopenshell_selector_keys_t*>(keys); }
         ifcapi::bindings::selector_keys_free(keys_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -13256,12 +13276,12 @@ bool ifcopenshell_selector_keys_get(void* keys, size_t index, ifcopenshell_strin
     if (keys != nullptr) { keys_cpp = static_cast<ifcopenshell_selector_keys_t*>(keys); }
     auto index_cpp = static_cast<size_t>(index);
         *out_result = make_string(ifcapi::bindings::selector_keys_get(keys_cpp, index_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -13274,12 +13294,12 @@ bool ifcopenshell_selector_keys_is_regex(void* keys, size_t index, bool* out_res
     if (keys != nullptr) { keys_cpp = static_cast<ifcopenshell_selector_keys_t*>(keys); }
     auto index_cpp = static_cast<size_t>(index);
         *out_result = ifcapi::bindings::selector_keys_is_regex(keys_cpp, index_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -13292,12 +13312,12 @@ bool ifcopenshell_selector_node_child(void* node, size_t index, void** out_resul
     if (node != nullptr) { node_cpp = static_cast<ifcopenshell_selector_node_t*>(node); }
     auto index_cpp = static_cast<size_t>(index);
         *out_result = static_cast<void*>(ifcapi::bindings::selector_node_child(node_cpp, index_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -13309,12 +13329,12 @@ bool ifcopenshell_selector_node_child_count(void* node, size_t* out_result) {
     std::optional<ifcopenshell_selector_node_t*> node_cpp;
     if (node != nullptr) { node_cpp = static_cast<ifcopenshell_selector_node_t*>(node); }
         *out_result = static_cast<size_t>(ifcapi::bindings::selector_node_child_count(node_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -13325,12 +13345,12 @@ bool ifcopenshell_selector_node_free(void* root) {
     std::optional<ifcopenshell_selector_node_t*> root_cpp;
     if (root != nullptr) { root_cpp = static_cast<ifcopenshell_selector_node_t*>(root); }
         ifcapi::bindings::selector_node_free(root_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -13342,12 +13362,12 @@ bool ifcopenshell_selector_node_kind(void* node, int32_t* out_result) {
     std::optional<ifcopenshell_selector_node_t*> node_cpp;
     if (node != nullptr) { node_cpp = static_cast<ifcopenshell_selector_node_t*>(node); }
         *out_result = static_cast<int32_t>(ifcapi::bindings::selector_node_kind(node_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -13359,12 +13379,12 @@ bool ifcopenshell_selector_node_text(void* node, ifcopenshell_string_t* out_resu
     std::optional<ifcopenshell_selector_node_t*> node_cpp;
     if (node != nullptr) { node_cpp = static_cast<ifcopenshell_selector_node_t*>(node); }
         *out_result = make_string(ifcapi::bindings::selector_node_text(node_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -13376,12 +13396,12 @@ bool ifcopenshell_selector_parse_filter(const char* query, void** out_result) {
     if (query == nullptr) { throw std::runtime_error("Parameter \"query\" must not be null"); }
     std::string query_cpp(query);
         *out_result = static_cast<void*>(ifcapi::bindings::selector_parse_filter(query_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -13393,12 +13413,12 @@ bool ifcopenshell_selector_parse_format(const char* query, void** out_result) {
     if (query == nullptr) { throw std::runtime_error("Parameter \"query\" must not be null"); }
     std::string query_cpp(query);
         *out_result = static_cast<void*>(ifcapi::bindings::selector_parse_format(query_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -13410,12 +13430,12 @@ bool ifcopenshell_selector_parse_get_element(const char* query, void** out_resul
     if (query == nullptr) { throw std::runtime_error("Parameter \"query\" must not be null"); }
     std::string query_cpp(query);
         *out_result = static_cast<void*>(ifcapi::bindings::selector_parse_get_element(query_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -13427,12 +13447,12 @@ bool ifcopenshell_selector_parse_keys(const char* query, void** out_result) {
     if (query == nullptr) { throw std::runtime_error("Parameter \"query\" must not be null"); }
     std::string query_cpp(query);
         *out_result = static_cast<void*>(ifcapi::bindings::selector_parse_keys(query_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -13450,12 +13470,12 @@ bool ifcopenshell_selector_set_element_value(ifcopenshell_file_t* file, ifcopens
     if (value != nullptr && value->ptr != nullptr) { value_cpp = value->ptr; }
     const char* concat_str = concat;
         ifcapi::bindings::selector_set_element_value(file_cpp, element_cpp, query_cpp, value_cpp, concat);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -13478,12 +13498,12 @@ bool ifcopenshell_sequence_add_date_time(ifcopenshell_file_t* file, const char* 
                     out_result->value_1 = make_string(std::move(std::get<std::string>(result_value)));
                 }
         else { throw std::runtime_error("Unsupported variant alternative"); }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -13538,12 +13558,12 @@ bool ifcopenshell_sequence_add_task(ifcopenshell_file_t* file, const ifcopenshel
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -13567,12 +13587,12 @@ bool ifcopenshell_sequence_add_task_time(ifcopenshell_file_t* file, ifcopenshell
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -13601,12 +13621,12 @@ bool ifcopenshell_sequence_add_time_period(ifcopenshell_file_t* file, ifcopenshe
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -13645,12 +13665,12 @@ bool ifcopenshell_sequence_add_work_calendar(ifcopenshell_file_t* file, const if
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -13701,12 +13721,12 @@ bool ifcopenshell_sequence_add_work_plan(ifcopenshell_file_t* file, const ifcope
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -13765,12 +13785,12 @@ bool ifcopenshell_sequence_add_work_schedule(ifcopenshell_file_t* file, const if
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -13791,12 +13811,12 @@ bool ifcopenshell_sequence_add_work_time(ifcopenshell_file_t* file, ifcopenshell
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -13823,12 +13843,12 @@ bool ifcopenshell_sequence_assign_lag_time(ifcopenshell_file_t* file, ifcopenshe
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -13863,12 +13883,12 @@ bool ifcopenshell_sequence_assign_process(ifcopenshell_file_t* file, ifcopenshel
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -13903,12 +13923,12 @@ bool ifcopenshell_sequence_assign_product(ifcopenshell_file_t* file, ifcopenshel
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -13929,12 +13949,12 @@ bool ifcopenshell_sequence_assign_recurrence_pattern(ifcopenshell_file_t* file, 
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -13973,12 +13993,12 @@ bool ifcopenshell_sequence_assign_sequence(ifcopenshell_file_t* file, ifcopenshe
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -14013,12 +14033,12 @@ bool ifcopenshell_sequence_assign_work_plan(ifcopenshell_file_t* file, ifcopensh
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -14031,12 +14051,12 @@ bool ifcopenshell_sequence_calculate_task_duration(ifcopenshell_file_t* file, if
     if (task == nullptr) { throw std::runtime_error("Handle parameter \"task\" must not be null"); }
     auto task_cpp = &task->value;
         ifcapi::bindings::sequence_calculate_task_duration(file_cpp, task_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -14049,12 +14069,12 @@ bool ifcopenshell_sequence_cascade_schedule(ifcopenshell_file_t* file, ifcopensh
     if (task == nullptr) { throw std::runtime_error("Handle parameter \"task\" must not be null"); }
     auto task_cpp = &task->value;
         ifcapi::bindings::sequence_cascade_schedule(file_cpp, task_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -14087,12 +14107,12 @@ bool ifcopenshell_sequence_copy_work_schedule(ifcopenshell_file_t* file, ifcopen
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -14123,12 +14143,12 @@ bool ifcopenshell_sequence_create_baseline(ifcopenshell_file_t* file, ifcopenshe
         options_cpp.application = options->application->value;
     }
         ifcapi::bindings::sequence_create_baseline(file_cpp, work_schedule_cpp, options_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -14166,12 +14186,12 @@ bool ifcopenshell_sequence_duplicate_task(ifcopenshell_file_t* file, ifcopenshel
             ifcopenshell_sequence_duplicate_task_result_destroy(&result_value_c);
             throw;
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -14186,12 +14206,12 @@ bool ifcopenshell_sequence_edit_lag_time(ifcopenshell_file_t* file, ifcopenshell
     if (attributes == nullptr) { throw std::runtime_error("Parameter \"attributes\" must not be null"); }
     auto attributes_cpp = static_cast<ifcopenshell_pset_props_t*>(attributes);
         ifcapi::bindings::sequence_edit_lag_time(file_cpp, lag_time_cpp, attributes_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -14204,12 +14224,12 @@ bool ifcopenshell_sequence_edit_recurrence_pattern(ifcopenshell_instance_t* recu
     if (attributes == nullptr) { throw std::runtime_error("Parameter \"attributes\" must not be null"); }
     auto attributes_cpp = static_cast<ifcopenshell_pset_props_t*>(attributes);
         ifcapi::bindings::sequence_edit_recurrence_pattern(recurrence_pattern_cpp, attributes_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -14224,12 +14244,12 @@ bool ifcopenshell_sequence_edit_sequence(ifcopenshell_file_t* file, ifcopenshell
     if (attributes == nullptr) { throw std::runtime_error("Parameter \"attributes\" must not be null"); }
     auto attributes_cpp = static_cast<ifcopenshell_pset_props_t*>(attributes);
         ifcapi::bindings::sequence_edit_sequence(file_cpp, rel_sequence_cpp, attributes_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -14242,12 +14262,12 @@ bool ifcopenshell_sequence_edit_task(ifcopenshell_instance_t* task, void* attrib
     if (attributes == nullptr) { throw std::runtime_error("Parameter \"attributes\" must not be null"); }
     auto attributes_cpp = static_cast<ifcopenshell_pset_props_t*>(attributes);
         ifcapi::bindings::sequence_edit_task(task_cpp, attributes_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -14262,12 +14282,12 @@ bool ifcopenshell_sequence_edit_task_time(ifcopenshell_file_t* file, ifcopenshel
     if (attributes == nullptr) { throw std::runtime_error("Parameter \"attributes\" must not be null"); }
     auto attributes_cpp = static_cast<ifcopenshell_pset_props_t*>(attributes);
         ifcapi::bindings::sequence_edit_task_time(file_cpp, task_time_cpp, attributes_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -14280,12 +14300,12 @@ bool ifcopenshell_sequence_edit_work_calendar(ifcopenshell_instance_t* work_cale
     if (attributes == nullptr) { throw std::runtime_error("Parameter \"attributes\" must not be null"); }
     auto attributes_cpp = static_cast<ifcopenshell_pset_props_t*>(attributes);
         ifcapi::bindings::sequence_edit_work_calendar(work_calendar_cpp, attributes_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -14298,12 +14318,12 @@ bool ifcopenshell_sequence_edit_work_plan(ifcopenshell_instance_t* work_plan, vo
     if (attributes == nullptr) { throw std::runtime_error("Parameter \"attributes\" must not be null"); }
     auto attributes_cpp = static_cast<ifcopenshell_pset_props_t*>(attributes);
         ifcapi::bindings::sequence_edit_work_plan(work_plan_cpp, attributes_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -14316,12 +14336,12 @@ bool ifcopenshell_sequence_edit_work_schedule(ifcopenshell_instance_t* work_sche
     if (attributes == nullptr) { throw std::runtime_error("Parameter \"attributes\" must not be null"); }
     auto attributes_cpp = static_cast<ifcopenshell_pset_props_t*>(attributes);
         ifcapi::bindings::sequence_edit_work_schedule(work_schedule_cpp, attributes_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -14334,12 +14354,12 @@ bool ifcopenshell_sequence_edit_work_time(ifcopenshell_instance_t* work_time, vo
     if (attributes == nullptr) { throw std::runtime_error("Parameter \"attributes\" must not be null"); }
     auto attributes_cpp = static_cast<ifcopenshell_pset_props_t*>(attributes);
         ifcapi::bindings::sequence_edit_work_time(work_time_cpp, attributes_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -14352,12 +14372,12 @@ bool ifcopenshell_sequence_recalculate_schedule(ifcopenshell_file_t* file, ifcop
     if (work_schedule == nullptr) { throw std::runtime_error("Handle parameter \"work_schedule\" must not be null"); }
     auto work_schedule_cpp = &work_schedule->value;
         ifcapi::bindings::sequence_recalculate_schedule(file_cpp, work_schedule_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -14380,12 +14400,12 @@ bool ifcopenshell_sequence_remove_task(ifcopenshell_file_t* file, ifcopenshell_i
         options_cpp.application = options->application->value;
     }
         ifcapi::bindings::sequence_remove_task(file_cpp, task_cpp, options_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -14398,12 +14418,12 @@ bool ifcopenshell_sequence_remove_time_period(ifcopenshell_file_t* file, ifcopen
     if (time_period == nullptr) { throw std::runtime_error("Handle parameter \"time_period\" must not be null"); }
     auto time_period_cpp = &time_period->value;
         ifcapi::bindings::sequence_remove_time_period(file_cpp, time_period_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -14426,12 +14446,12 @@ bool ifcopenshell_sequence_remove_work_calendar(ifcopenshell_file_t* file, ifcop
         options_cpp.application = options->application->value;
     }
         ifcapi::bindings::sequence_remove_work_calendar(file_cpp, work_calendar_cpp, options_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -14454,12 +14474,12 @@ bool ifcopenshell_sequence_remove_work_plan(ifcopenshell_file_t* file, ifcopensh
         options_cpp.application = options->application->value;
     }
         ifcapi::bindings::sequence_remove_work_plan(file_cpp, work_plan_cpp, options_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -14482,12 +14502,12 @@ bool ifcopenshell_sequence_remove_work_schedule(ifcopenshell_file_t* file, ifcop
         options_cpp.application = options->application->value;
     }
         ifcapi::bindings::sequence_remove_work_schedule(file_cpp, work_schedule_cpp, options_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -14500,12 +14520,12 @@ bool ifcopenshell_sequence_remove_work_time(ifcopenshell_file_t* file, ifcopensh
     if (work_time == nullptr) { throw std::runtime_error("Handle parameter \"work_time\" must not be null"); }
     auto work_time_cpp = &work_time->value;
         ifcapi::bindings::sequence_remove_work_time(file_cpp, work_time_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -14518,12 +14538,12 @@ bool ifcopenshell_sequence_unassign_lag_time(ifcopenshell_file_t* file, ifcopens
     if (rel_sequence == nullptr) { throw std::runtime_error("Handle parameter \"rel_sequence\" must not be null"); }
     auto rel_sequence_cpp = &rel_sequence->value;
         ifcapi::bindings::sequence_unassign_lag_time(file_cpp, rel_sequence_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -14554,12 +14574,12 @@ bool ifcopenshell_sequence_unassign_process(ifcopenshell_file_t* file, ifcopensh
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -14590,12 +14610,12 @@ bool ifcopenshell_sequence_unassign_product(ifcopenshell_file_t* file, ifcopensh
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -14608,12 +14628,12 @@ bool ifcopenshell_sequence_unassign_recurrence_pattern(ifcopenshell_file_t* file
     if (recurrence_pattern == nullptr) { throw std::runtime_error("Handle parameter \"recurrence_pattern\" must not be null"); }
     auto recurrence_pattern_cpp = &recurrence_pattern->value;
         ifcapi::bindings::sequence_unassign_recurrence_pattern(file_cpp, recurrence_pattern_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -14628,12 +14648,12 @@ bool ifcopenshell_sequence_unassign_sequence(ifcopenshell_file_t* file, ifcopens
     if (related_process == nullptr) { throw std::runtime_error("Handle parameter \"related_process\" must not be null"); }
     auto related_process_cpp = &related_process->value;
         ifcapi::bindings::sequence_unassign_sequence(file_cpp, relating_process_cpp, related_process_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -14658,12 +14678,12 @@ bool ifcopenshell_shape_builder_axis2_placement_2d(ifcopenshell_file_t* file, co
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -14688,12 +14708,12 @@ bool ifcopenshell_shape_builder_axis2_placement_3d(ifcopenshell_file_t* file, co
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -14717,12 +14737,12 @@ bool ifcopenshell_shape_builder_block(ifcopenshell_file_t* file, const ifcopensh
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -14742,12 +14762,12 @@ bool ifcopenshell_shape_builder_circle(ifcopenshell_file_t* file, const ifcopens
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -14766,12 +14786,12 @@ bool ifcopenshell_shape_builder_curve_between_two_points(ifcopenshell_file_t* fi
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -14790,12 +14810,12 @@ bool ifcopenshell_shape_builder_deep_copy(ifcopenshell_file_t* file, ifcopenshel
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -14816,12 +14836,12 @@ bool ifcopenshell_shape_builder_edge(ifcopenshell_file_t* file, const ifcopenshe
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -14852,12 +14872,12 @@ bool ifcopenshell_shape_builder_ellipse_curve(ifcopenshell_file_t* file, const i
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -14891,12 +14911,12 @@ bool ifcopenshell_shape_builder_extrude(ifcopenshell_file_t* file, const ifcopen
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -14915,12 +14935,12 @@ bool ifcopenshell_shape_builder_face(ifcopenshell_file_t* file, const ifcopenshe
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -14941,12 +14961,12 @@ bool ifcopenshell_shape_builder_faceted_brep(ifcopenshell_file_t* file, const if
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -14958,12 +14978,12 @@ bool ifcopenshell_shape_builder_get_polyline_coords(ifcopenshell_instance_t* pol
     if (polyline == nullptr) { throw std::runtime_error("Handle parameter \"polyline\" must not be null"); }
     auto polyline_cpp = &polyline->value;
         *out_result = make_double_list_list(ifcapi::bindings::shape_builder_get_polyline_coords(polyline_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -14985,12 +15005,12 @@ bool ifcopenshell_shape_builder_half_space_solid(ifcopenshell_file_t* file, cons
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -15011,12 +15031,12 @@ bool ifcopenshell_shape_builder_indexed_polycurve_2d(ifcopenshell_file_t* file, 
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -15056,12 +15076,12 @@ bool ifcopenshell_shape_builder_mep_bend_shape(ifcopenshell_file_t* file, const 
             ifcopenshell_shape_builder_mep_bend_shape_result_destroy(&result_value_c);
             throw;
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -15090,12 +15110,12 @@ bool ifcopenshell_shape_builder_mep_transition_calculate(const ifcopenshell_shap
         options_cpp.angle = options->angle;
     }
         *out_result = static_cast<double>(ifcapi::bindings::shape_builder_mep_transition_calculate(options_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -15114,12 +15134,12 @@ bool ifcopenshell_shape_builder_mep_transition_length(const ifcopenshell_shape_b
     if (options->profile_offset == nullptr) { throw std::runtime_error("Options field \"profile_offset\" must not be null"); }
     options_cpp.profile_offset = to_cpp_double_list(options->profile_offset);
         *out_result = static_cast<double>(ifcapi::bindings::shape_builder_mep_transition_length(options_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -15160,12 +15180,12 @@ bool ifcopenshell_shape_builder_mep_transition_shape(ifcopenshell_file_t* file, 
             ifcopenshell_optional_shape_builder_mep_transition_shape_result_destroy(&result_value_c);
             throw;
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -15186,12 +15206,12 @@ bool ifcopenshell_shape_builder_mesh(ifcopenshell_file_t* file, const ifcopenshe
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -15219,12 +15239,12 @@ bool ifcopenshell_shape_builder_mirror(ifcopenshell_file_t* file, const ifcopens
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -15245,12 +15265,12 @@ bool ifcopenshell_shape_builder_plane(ifcopenshell_file_t* file, const ifcopensh
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -15271,12 +15291,12 @@ bool ifcopenshell_shape_builder_polygonal_face_set(ifcopenshell_file_t* file, co
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -15306,12 +15326,12 @@ bool ifcopenshell_shape_builder_polyline(ifcopenshell_file_t* file, const ifcope
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -15342,12 +15362,12 @@ bool ifcopenshell_shape_builder_profile(ifcopenshell_file_t* file, const ifcopen
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -15374,12 +15394,12 @@ bool ifcopenshell_shape_builder_representation(ifcopenshell_file_t* file, const 
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -15405,12 +15425,12 @@ bool ifcopenshell_shape_builder_rotate(ifcopenshell_file_t* file, const ifcopens
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -15431,12 +15451,12 @@ bool ifcopenshell_shape_builder_set_polyline_coords(ifcopenshell_file_t* file, i
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -15458,12 +15478,12 @@ bool ifcopenshell_shape_builder_sphere(ifcopenshell_file_t* file, const ifcopens
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -15483,12 +15503,12 @@ bool ifcopenshell_shape_builder_swept_disk_solid(ifcopenshell_file_t* file, ifco
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -15512,12 +15532,12 @@ bool ifcopenshell_shape_builder_translate(ifcopenshell_file_t* file, const ifcop
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -15538,12 +15558,12 @@ bool ifcopenshell_shape_builder_triangulated_face_set(ifcopenshell_file_t* file,
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -15562,12 +15582,12 @@ bool ifcopenshell_shape_builder_vertex(ifcopenshell_file_t* file, const ifcopens
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -15580,12 +15600,12 @@ bool ifcopenshell_shape_is_almost_equal(double value, double x, double tolerance
     auto x_cpp = static_cast<double>(x);
     auto tolerance_cpp = static_cast<double>(tolerance);
         *out_result = ifcapi::bindings::shape_is_almost_equal(value_cpp, x_cpp, tolerance_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -15620,12 +15640,12 @@ bool ifcopenshell_spatial_assign_container(ifcopenshell_file_t* file, const ifco
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -15650,12 +15670,12 @@ bool ifcopenshell_spatial_dereference_structure(ifcopenshell_file_t* file, const
         options_cpp.application = options->application->value;
     }
         ifcapi::bindings::spatial_dereference_structure(file_cpp, options_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -15690,12 +15710,12 @@ bool ifcopenshell_spatial_reference_structure(ifcopenshell_file_t* file, const i
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -15718,12 +15738,12 @@ bool ifcopenshell_spatial_unassign_container(ifcopenshell_file_t* file, const if
         options_cpp.application = options->application->value;
     }
         ifcapi::bindings::spatial_unassign_container(file_cpp, options_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -15760,12 +15780,12 @@ bool ifcopenshell_structural_add_structural_activity(ifcopenshell_file_t* file, 
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -15784,12 +15804,12 @@ bool ifcopenshell_structural_add_structural_analysis_model(ifcopenshell_file_t* 
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -15818,12 +15838,12 @@ bool ifcopenshell_structural_add_structural_boundary_condition(ifcopenshell_file
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -15844,12 +15864,12 @@ bool ifcopenshell_structural_add_structural_load(ifcopenshell_file_t* file, cons
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -15874,12 +15894,12 @@ bool ifcopenshell_structural_add_structural_load_case(ifcopenshell_file_t* file,
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -15904,12 +15924,12 @@ bool ifcopenshell_structural_add_structural_load_group(ifcopenshell_file_t* file
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -15932,12 +15952,12 @@ bool ifcopenshell_structural_add_structural_member_connection(ifcopenshell_file_
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -15960,12 +15980,12 @@ bool ifcopenshell_structural_assign_product(ifcopenshell_file_t* file, ifcopensh
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -16000,12 +16020,12 @@ bool ifcopenshell_structural_assign_structural_analysis_model(ifcopenshell_file_
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -16028,12 +16048,12 @@ bool ifcopenshell_structural_assign_to_building(ifcopenshell_file_t* file, ifcop
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -16048,12 +16068,12 @@ bool ifcopenshell_structural_edit_structural_analysis_model(ifcopenshell_file_t*
     if (attributes == nullptr) { throw std::runtime_error("Parameter \"attributes\" must not be null"); }
     auto attributes_cpp = static_cast<ifcopenshell_pset_props_t*>(attributes);
         ifcapi::bindings::structural_edit_structural_analysis_model(file_cpp, structural_analysis_model_cpp, attributes_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -16068,12 +16088,12 @@ bool ifcopenshell_structural_edit_structural_boundary_condition(ifcopenshell_fil
     if (attributes == nullptr) { throw std::runtime_error("Parameter \"attributes\" must not be null"); }
     auto attributes_cpp = static_cast<ifcopenshell_pset_props_t*>(attributes);
         ifcapi::bindings::structural_edit_structural_boundary_condition(file_cpp, condition_cpp, attributes_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -16090,12 +16110,12 @@ bool ifcopenshell_structural_edit_structural_connection_cs(ifcopenshell_file_t* 
     if (ref_direction == nullptr) { throw std::runtime_error("Parameter \"ref_direction\" must not be null"); }
     auto ref_direction_cpp = to_cpp_double_list(ref_direction);
         ifcapi::bindings::structural_edit_structural_connection_cs(file_cpp, structural_item_cpp, axis_cpp, ref_direction_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -16110,12 +16130,12 @@ bool ifcopenshell_structural_edit_structural_item_axis(ifcopenshell_file_t* file
     if (axis == nullptr) { throw std::runtime_error("Parameter \"axis\" must not be null"); }
     auto axis_cpp = to_cpp_double_list(axis);
         ifcapi::bindings::structural_edit_structural_item_axis(file_cpp, structural_item_cpp, axis_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -16130,12 +16150,12 @@ bool ifcopenshell_structural_edit_structural_load(ifcopenshell_file_t* file, ifc
     if (attributes == nullptr) { throw std::runtime_error("Parameter \"attributes\" must not be null"); }
     auto attributes_cpp = static_cast<ifcopenshell_pset_props_t*>(attributes);
         ifcapi::bindings::structural_edit_structural_load(file_cpp, structural_load_cpp, attributes_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -16150,12 +16170,12 @@ bool ifcopenshell_structural_edit_structural_load_case(ifcopenshell_file_t* file
     if (attributes == nullptr) { throw std::runtime_error("Parameter \"attributes\" must not be null"); }
     auto attributes_cpp = static_cast<ifcopenshell_pset_props_t*>(attributes);
         ifcapi::bindings::structural_edit_structural_load_case(file_cpp, structural_load_case_cpp, attributes_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -16168,12 +16188,12 @@ bool ifcopenshell_structural_remove_structural_analysis_model(ifcopenshell_file_
     if (structural_analysis_model == nullptr) { throw std::runtime_error("Handle parameter \"structural_analysis_model\" must not be null"); }
     auto structural_analysis_model_cpp = &structural_analysis_model->value;
         ifcapi::bindings::structural_remove_structural_analysis_model(file_cpp, structural_analysis_model_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -16194,12 +16214,12 @@ bool ifcopenshell_structural_remove_structural_boundary_condition(ifcopenshell_f
         options_cpp.boundary_condition = options->boundary_condition->value;
     }
         ifcapi::bindings::structural_remove_structural_boundary_condition(file_cpp, options_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -16212,12 +16232,12 @@ bool ifcopenshell_structural_remove_structural_connection_condition(ifcopenshell
     if (relation == nullptr) { throw std::runtime_error("Handle parameter \"relation\" must not be null"); }
     auto relation_cpp = &relation->value;
         ifcapi::bindings::structural_remove_structural_connection_condition(file_cpp, relation_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -16230,12 +16250,12 @@ bool ifcopenshell_structural_remove_structural_load(ifcopenshell_file_t* file, i
     if (structural_load == nullptr) { throw std::runtime_error("Handle parameter \"structural_load\" must not be null"); }
     auto structural_load_cpp = &structural_load->value;
         ifcapi::bindings::structural_remove_structural_load(file_cpp, structural_load_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -16248,12 +16268,12 @@ bool ifcopenshell_structural_remove_structural_load_case(ifcopenshell_file_t* fi
     if (structural_load_case == nullptr) { throw std::runtime_error("Handle parameter \"structural_load_case\" must not be null"); }
     auto structural_load_case_cpp = &structural_load_case->value;
         ifcapi::bindings::structural_remove_structural_load_case(file_cpp, structural_load_case_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -16266,12 +16286,12 @@ bool ifcopenshell_structural_remove_structural_load_group(ifcopenshell_file_t* f
     if (structural_load_group == nullptr) { throw std::runtime_error("Handle parameter \"structural_load_group\" must not be null"); }
     auto structural_load_group_cpp = &structural_load_group->value;
         ifcapi::bindings::structural_remove_structural_load_group(file_cpp, structural_load_group_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -16296,12 +16316,12 @@ bool ifcopenshell_structural_unassign_structural_analysis_model(ifcopenshell_fil
         options_cpp.application = options->application->value;
     }
         ifcapi::bindings::structural_unassign_structural_analysis_model(file_cpp, products_cpp, structural_analysis_model_cpp, options_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -16321,12 +16341,12 @@ bool ifcopenshell_style_add_style(ifcopenshell_file_t* file, const char* name, c
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -16348,12 +16368,12 @@ bool ifcopenshell_style_add_surface_style(ifcopenshell_file_t* file, ifcopenshel
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -16395,12 +16415,12 @@ bool ifcopenshell_style_add_surface_textures(ifcopenshell_file_t* file, const if
     if (uv_maps == nullptr) { throw std::runtime_error("Parameter \"uv_maps\" must not be null"); }
     auto uv_maps_cpp = to_cpp_instance_list(uv_maps);
         *out_result = new ifcopenshell_parse_instance_list_t{ifcapi::bindings::style_add_surface_textures(file_cpp, textures_cpp, uv_maps_cpp)};
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -16426,12 +16446,12 @@ bool ifcopenshell_style_assign_item_style(ifcopenshell_file_t* file, const ifcop
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -16449,12 +16469,12 @@ bool ifcopenshell_style_assign_material_style(ifcopenshell_file_t* file, ifcopen
     auto context_cpp = &context->value;
     auto should_use_presentation_style_assignment_cpp = static_cast<bool>(should_use_presentation_style_assignment);
         ifcapi::bindings::style_assign_material_style(file_cpp, material_cpp, style_cpp, context_cpp, should_use_presentation_style_assignment_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -16472,12 +16492,12 @@ bool ifcopenshell_style_assign_representation_styles(ifcopenshell_file_t* file, 
     auto should_use_presentation_style_assignment_cpp = static_cast<bool>(should_use_presentation_style_assignment);
     auto replace_previous_same_type_style_cpp = static_cast<bool>(replace_previous_same_type_style);
         *out_result = new ifcopenshell_parse_instance_list_t{ifcapi::bindings::style_assign_representation_styles(file_cpp, shape_representation_cpp, styles_cpp, should_use_presentation_style_assignment_cpp, replace_previous_same_type_style_cpp)};
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -16492,12 +16512,12 @@ bool ifcopenshell_style_edit_presentation_style(ifcopenshell_file_t* file, ifcop
     if (attributes == nullptr) { throw std::runtime_error("Parameter \"attributes\" must not be null"); }
     auto attributes_cpp = static_cast<ifcopenshell_pset_props_t*>(attributes);
         ifcapi::bindings::style_edit_presentation_style(file_cpp, style_cpp, attributes_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -16512,12 +16532,12 @@ bool ifcopenshell_style_edit_surface_style(ifcopenshell_file_t* file, ifcopenshe
     if (attributes == nullptr) { throw std::runtime_error("Parameter \"attributes\" must not be null"); }
     auto attributes_cpp = static_cast<ifcopenshell_pset_props_t*>(attributes);
         ifcapi::bindings::style_edit_surface_style(file_cpp, style_cpp, attributes_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -16530,12 +16550,12 @@ bool ifcopenshell_style_remove_style(ifcopenshell_file_t* file, ifcopenshell_ins
     if (style == nullptr) { throw std::runtime_error("Handle parameter \"style\" must not be null"); }
     auto style_cpp = &style->value;
         ifcapi::bindings::style_remove_style(file_cpp, style_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -16548,12 +16568,12 @@ bool ifcopenshell_style_remove_styled_representation(ifcopenshell_file_t* file, 
     if (representation == nullptr) { throw std::runtime_error("Handle parameter \"representation\" must not be null"); }
     auto representation_cpp = &representation->value;
         ifcapi::bindings::style_remove_styled_representation(file_cpp, representation_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -16566,12 +16586,12 @@ bool ifcopenshell_style_remove_surface_style(ifcopenshell_file_t* file, ifcopens
     if (style == nullptr) { throw std::runtime_error("Handle parameter \"style\" must not be null"); }
     auto style_cpp = &style->value;
         ifcapi::bindings::style_remove_surface_style(file_cpp, style_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -16588,12 +16608,12 @@ bool ifcopenshell_style_unassign_material_style(ifcopenshell_file_t* file, ifcop
     if (context == nullptr) { throw std::runtime_error("Handle parameter \"context\" must not be null"); }
     auto context_cpp = &context->value;
         ifcapi::bindings::style_unassign_material_style(file_cpp, material_cpp, style_cpp, context_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -16609,12 +16629,12 @@ bool ifcopenshell_style_unassign_representation_styles(ifcopenshell_file_t* file
     auto styles_cpp = to_cpp_instance_list(styles);
     auto should_use_presentation_style_assignment_cpp = static_cast<bool>(should_use_presentation_style_assignment);
         ifcapi::bindings::style_unassign_representation_styles(file_cpp, shape_representation_cpp, styles_cpp, should_use_presentation_style_assignment_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -16649,12 +16669,12 @@ bool ifcopenshell_system_add_port(ifcopenshell_file_t* file, const ifcopenshell_
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -16679,12 +16699,12 @@ bool ifcopenshell_system_add_system(ifcopenshell_file_t* file, const ifcopenshel
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -16719,12 +16739,12 @@ bool ifcopenshell_system_assign_flow_control(ifcopenshell_file_t* file, const if
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -16759,12 +16779,12 @@ bool ifcopenshell_system_assign_port(ifcopenshell_file_t* file, const ifcopenshe
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -16799,12 +16819,12 @@ bool ifcopenshell_system_assign_system(ifcopenshell_file_t* file, const ifcopens
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -16839,12 +16859,12 @@ bool ifcopenshell_system_connect_port(ifcopenshell_file_t* file, const ifcopensh
         options_cpp.application = options->application->value;
     }
         ifcapi::bindings::system_connect_port(file_cpp, options_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -16857,12 +16877,12 @@ bool ifcopenshell_system_disconnect_port(ifcopenshell_file_t* file, ifcopenshell
     if (port == nullptr) { throw std::runtime_error("Handle parameter \"port\" must not be null"); }
     auto port_cpp = &port->value;
         ifcapi::bindings::system_disconnect_port(file_cpp, port_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -16877,12 +16897,12 @@ bool ifcopenshell_system_edit_system(ifcopenshell_file_t* file, ifcopenshell_ins
     if (attributes == nullptr) { throw std::runtime_error("Parameter \"attributes\" must not be null"); }
     auto attributes_cpp = static_cast<ifcopenshell_pset_props_t*>(attributes);
         ifcapi::bindings::system_edit_system(file_cpp, system_cpp, attributes_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -16895,12 +16915,12 @@ bool ifcopenshell_system_remove_system(ifcopenshell_file_t* file, ifcopenshell_i
     if (system == nullptr) { throw std::runtime_error("Handle parameter \"system\" must not be null"); }
     auto system_cpp = &system->value;
         ifcapi::bindings::system_remove_system(file_cpp, system_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -16925,12 +16945,12 @@ bool ifcopenshell_system_unassign_flow_control(ifcopenshell_file_t* file, const 
         options_cpp.application = options->application->value;
     }
         ifcapi::bindings::system_unassign_flow_control(file_cpp, options_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -16955,12 +16975,12 @@ bool ifcopenshell_system_unassign_port(ifcopenshell_file_t* file, const ifcopens
         options_cpp.application = options->application->value;
     }
         ifcapi::bindings::system_unassign_port(file_cpp, options_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -16985,12 +17005,12 @@ bool ifcopenshell_system_unassign_system(ifcopenshell_file_t* file, const ifcope
         options_cpp.application = options->application->value;
     }
         ifcapi::bindings::system_unassign_system(file_cpp, options_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -17028,12 +17048,12 @@ bool ifcopenshell_type_assign_type(ifcopenshell_file_t* file, const ifcopenshell
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -17049,12 +17069,12 @@ bool ifcopenshell_type_map_type_representations(ifcopenshell_file_t* file, ifcop
     if (relating_type == nullptr) { throw std::runtime_error("Handle parameter \"relating_type\" must not be null"); }
     auto relating_type_cpp = &relating_type->value;
         *out_result = ifcapi::bindings::type_map_type_representations(file_cpp, related_object_cpp, relating_type_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -17077,12 +17097,12 @@ bool ifcopenshell_type_unassign_type(ifcopenshell_file_t* file, const ifcopenshe
         options_cpp.application = options->application->value;
     }
         ifcapi::bindings::type_unassign_type(file_cpp, options_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -17105,12 +17125,12 @@ bool ifcopenshell_unit_add_context_dependent_unit(ifcopenshell_file_t* file, con
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -17136,12 +17156,12 @@ bool ifcopenshell_unit_add_conversion_based_unit(ifcopenshell_file_t* file, cons
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -17165,12 +17185,12 @@ bool ifcopenshell_unit_add_derived_unit(ifcopenshell_file_t* file, const char* u
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -17189,12 +17209,12 @@ bool ifcopenshell_unit_add_monetary_unit(ifcopenshell_file_t* file, const char* 
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -17214,12 +17234,12 @@ bool ifcopenshell_unit_add_si_unit(ifcopenshell_file_t* file, const char* unit_t
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -17263,12 +17283,12 @@ bool ifcopenshell_unit_assign_unit(ifcopenshell_file_t* file, const ifcopenshell
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -17282,12 +17302,12 @@ bool ifcopenshell_unit_calculate_unit_scale(ifcopenshell_file_t* file, const cha
     if (unit_type == nullptr) { throw std::runtime_error("Parameter \"unit_type\" must not be null"); }
     std::string unit_type_cpp(unit_type);
         *out_result = static_cast<double>(ifcapi::bindings::unit_calculate_unit_scale(file_cpp, unit_type_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -17306,12 +17326,12 @@ bool ifcopenshell_unit_convert(double value, const char* from_prefix, const char
     if (to_unit == nullptr) { throw std::runtime_error("Parameter \"to_unit\" must not be null"); }
     std::string to_unit_cpp(to_unit);
         *out_result = static_cast<double>(ifcapi::bindings::unit_convert(value_cpp, from_prefix_cpp, from_unit_cpp, to_prefix_cpp, to_unit_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -17326,12 +17346,12 @@ bool ifcopenshell_unit_convert_unit(double value, ifcopenshell_instance_t* from_
     if (to_unit == nullptr) { throw std::runtime_error("Handle parameter \"to_unit\" must not be null"); }
     auto to_unit_cpp = &to_unit->value;
         *out_result = static_cast<double>(ifcapi::bindings::unit_convert_unit(value_cpp, from_unit_cpp, to_unit_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -17346,12 +17366,12 @@ bool ifcopenshell_unit_edit_derived_unit(ifcopenshell_file_t* file, ifcopenshell
     if (attributes == nullptr) { throw std::runtime_error("Parameter \"attributes\" must not be null"); }
     auto attributes_cpp = static_cast<ifcopenshell_pset_props_t*>(attributes);
         ifcapi::bindings::unit_edit_derived_unit(file_cpp, unit_cpp, attributes_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -17366,12 +17386,12 @@ bool ifcopenshell_unit_edit_monetary_unit(ifcopenshell_file_t* file, ifcopenshel
     if (attributes == nullptr) { throw std::runtime_error("Parameter \"attributes\" must not be null"); }
     auto attributes_cpp = static_cast<ifcopenshell_pset_props_t*>(attributes);
         ifcapi::bindings::unit_edit_monetary_unit(file_cpp, unit_cpp, attributes_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -17387,12 +17407,12 @@ bool ifcopenshell_unit_edit_named_unit(ifcopenshell_file_t* file, const ifcopens
     options_cpp.unit = options->unit->value;
     options_cpp.attributes = static_cast<ifcopenshell_pset_props_t*>(options->attributes);
         ifcapi::bindings::unit_edit_named_unit(file_cpp, options_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -17412,12 +17432,12 @@ bool ifcopenshell_unit_format_length(double value, double precision, int32_t dec
     if (output_unit == nullptr) { throw std::runtime_error("Parameter \"output_unit\" must not be null"); }
     std::string output_unit_cpp(output_unit);
         *out_result = make_string(ifcapi::bindings::unit_format_length(value_cpp, precision_cpp, decimal_places_cpp, suppress_zero_inches_cpp, unit_system_cpp, input_unit_cpp, output_unit_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -17429,12 +17449,12 @@ bool ifcopenshell_unit_get_full_unit_name(ifcopenshell_instance_t* unit, ifcopen
     if (unit == nullptr) { throw std::runtime_error("Handle parameter \"unit\" must not be null"); }
     auto unit_cpp = &unit->value;
         *out_result = make_string(ifcapi::bindings::unit_get_full_unit_name(unit_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -17446,12 +17466,12 @@ bool ifcopenshell_unit_get_measure_class(const char* unit_type, ifcopenshell_str
     if (unit_type == nullptr) { throw std::runtime_error("Parameter \"unit_type\" must not be null"); }
     std::string unit_type_cpp(unit_type);
         *out_result = make_string(ifcapi::bindings::unit_get_measure_class(unit_type_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -17463,12 +17483,12 @@ bool ifcopenshell_unit_get_measure_unit_type(const char* measure_class, ifcopens
     if (measure_class == nullptr) { throw std::runtime_error("Parameter \"measure_class\" must not be null"); }
     std::string measure_class_cpp(measure_class);
         *out_result = make_string(ifcapi::bindings::unit_get_measure_unit_type(measure_class_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -17480,12 +17500,12 @@ bool ifcopenshell_unit_get_named_dimensions(const char* name, ifcopenshell_int32
     if (name == nullptr) { throw std::runtime_error("Parameter \"name\" must not be null"); }
     std::string name_cpp(name);
         *out_result = make_int32_list(ifcapi::bindings::unit_get_named_dimensions(name_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -17497,12 +17517,12 @@ bool ifcopenshell_unit_get_prefix(const char* text, ifcopenshell_string_t* out_r
     if (text == nullptr) { throw std::runtime_error("Parameter \"text\" must not be null"); }
     std::string text_cpp(text);
         *out_result = make_string(ifcapi::bindings::unit_get_prefix(text_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -17514,12 +17534,12 @@ bool ifcopenshell_unit_get_prefix_multiplier(const char* text, double* out_resul
     if (text == nullptr) { throw std::runtime_error("Parameter \"text\" must not be null"); }
     std::string text_cpp(text);
         *out_result = static_cast<double>(ifcapi::bindings::unit_get_prefix_multiplier(text_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -17538,12 +17558,12 @@ bool ifcopenshell_unit_get_project_unit(ifcopenshell_file_t* file, const char* u
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -17555,12 +17575,12 @@ bool ifcopenshell_unit_get_si_dimensions(const char* name, ifcopenshell_int32_li
     if (name == nullptr) { throw std::runtime_error("Parameter \"name\" must not be null"); }
     std::string name_cpp(name);
         *out_result = make_int32_list(ifcapi::bindings::unit_get_si_dimensions(name_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -17572,12 +17592,12 @@ bool ifcopenshell_unit_get_symbol_measure_class(const char* symbol, ifcopenshell
     if (symbol == nullptr) { throw std::runtime_error("Parameter \"symbol\" must not be null"); }
     std::string symbol_cpp(symbol);
         *out_result = make_string(ifcapi::bindings::unit_get_symbol_measure_class(symbol_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -17589,12 +17609,12 @@ bool ifcopenshell_unit_get_symbol_quantity_class(const char* symbol, ifcopenshel
     if (symbol == nullptr) { throw std::runtime_error("Parameter \"symbol\" must not be null"); }
     std::string symbol_cpp(symbol);
         *out_result = make_string(ifcapi::bindings::unit_get_symbol_quantity_class(symbol_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -17611,12 +17631,12 @@ bool ifcopenshell_unit_get_unit_assignment(ifcopenshell_file_t* file, ifcopenshe
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -17628,12 +17648,12 @@ bool ifcopenshell_unit_get_unit_name(const char* text, ifcopenshell_string_t* ou
     if (text == nullptr) { throw std::runtime_error("Parameter \"text\" must not be null"); }
     std::string text_cpp(text);
         *out_result = make_string(ifcapi::bindings::unit_get_unit_name(text_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -17645,12 +17665,12 @@ bool ifcopenshell_unit_get_unit_name_universal(const char* text, ifcopenshell_st
     if (text == nullptr) { throw std::runtime_error("Parameter \"text\" must not be null"); }
     std::string text_cpp(text);
         *out_result = make_string(ifcapi::bindings::unit_get_unit_name_universal(text_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -17662,12 +17682,12 @@ bool ifcopenshell_unit_get_unit_symbol(ifcopenshell_instance_t* unit, ifcopenshe
     if (unit == nullptr) { throw std::runtime_error("Handle parameter \"unit\" must not be null"); }
     auto unit_cpp = &unit->value;
         *out_result = make_string(ifcapi::bindings::unit_get_unit_symbol(unit_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -17680,12 +17700,12 @@ bool ifcopenshell_unit_remove_unit(ifcopenshell_file_t* file, ifcopenshell_insta
     if (unit == nullptr) { throw std::runtime_error("Handle parameter \"unit\" must not be null"); }
     auto unit_cpp = &unit->value;
         ifcapi::bindings::unit_remove_unit(file_cpp, unit_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -17697,12 +17717,12 @@ bool ifcopenshell_unit_resolve_property_measure_class(ifcopenshell_instance_t* p
     if (prop == nullptr) { throw std::runtime_error("Handle parameter \"prop\" must not be null"); }
     auto prop_cpp = &prop->value;
         *out_result = make_string(ifcapi::bindings::unit_resolve_property_measure_class(prop_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -17714,12 +17734,12 @@ bool ifcopenshell_unit_resolve_property_table_defined_measure_class(ifcopenshell
     if (prop == nullptr) { throw std::runtime_error("Handle parameter \"prop\" must not be null"); }
     auto prop_cpp = &prop->value;
         *out_result = make_string(ifcapi::bindings::unit_resolve_property_table_defined_measure_class(prop_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -17736,12 +17756,12 @@ bool ifcopenshell_unit_resolve_property_table_defined_unit(ifcopenshell_instance
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -17753,12 +17773,12 @@ bool ifcopenshell_unit_resolve_property_table_defining_measure_class(ifcopenshel
     if (prop == nullptr) { throw std::runtime_error("Handle parameter \"prop\" must not be null"); }
     auto prop_cpp = &prop->value;
         *out_result = make_string(ifcapi::bindings::unit_resolve_property_table_defining_measure_class(prop_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -17775,12 +17795,12 @@ bool ifcopenshell_unit_resolve_property_table_defining_unit(ifcopenshell_instanc
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -17797,12 +17817,12 @@ bool ifcopenshell_unit_resolve_property_unit(ifcopenshell_instance_t* prop, ifco
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -17815,12 +17835,12 @@ bool ifcopenshell_unit_unassign_unit(ifcopenshell_file_t* file, const ifcopenshe
     if (units == nullptr) { throw std::runtime_error("Parameter \"units\" must not be null"); }
     auto units_cpp = to_cpp_instance_list(units);
         ifcapi::bindings::unit_unassign_unit(file_cpp, units_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -17832,12 +17852,12 @@ bool ifcopenshell_value_as_bool(ifcopenshell_value_t* value, bool* out_result) {
     if (value == nullptr || value->ptr == nullptr) { throw std::runtime_error("Handle parameter \"value\" is invalid"); }
     auto value_cpp = value->ptr;
         *out_result = ifcapi::bindings::value_as_bool(value_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -17849,12 +17869,12 @@ bool ifcopenshell_value_as_double(ifcopenshell_value_t* value, double* out_resul
     if (value == nullptr || value->ptr == nullptr) { throw std::runtime_error("Handle parameter \"value\" is invalid"); }
     auto value_cpp = value->ptr;
         *out_result = static_cast<double>(ifcapi::bindings::value_as_double(value_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -17871,12 +17891,12 @@ bool ifcopenshell_value_as_instance(ifcopenshell_value_t* value, ifcopenshell_in
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -17888,12 +17908,12 @@ bool ifcopenshell_value_as_int64(ifcopenshell_value_t* value, int64_t* out_resul
     if (value == nullptr || value->ptr == nullptr) { throw std::runtime_error("Handle parameter \"value\" is invalid"); }
     auto value_cpp = value->ptr;
         *out_result = static_cast<int64_t>(ifcapi::bindings::value_as_int64(value_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -17905,12 +17925,12 @@ bool ifcopenshell_value_as_string(ifcopenshell_value_t* value, ifcopenshell_stri
     if (value == nullptr || value->ptr == nullptr) { throw std::runtime_error("Handle parameter \"value\" is invalid"); }
     auto value_cpp = value->ptr;
         *out_result = make_string(ifcapi::bindings::value_as_string(value_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -17923,12 +17943,12 @@ bool ifcopenshell_value_dict_key_at(ifcopenshell_value_t* value, size_t index, i
     auto value_cpp = value->ptr;
     auto index_cpp = static_cast<size_t>(index);
         *out_result = make_string(ifcapi::bindings::value_dict_key_at(value_cpp, index_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -17944,12 +17964,12 @@ bool ifcopenshell_value_dict_set(ifcopenshell_value_t* dict, const char* key, if
     std::optional<ifcopenshell_selector_value_t*> value_cpp;
     if (value != nullptr && value->ptr != nullptr) { value_cpp = value->ptr; }
         *out_result = ifcapi::bindings::value_dict_set(dict_cpp, key_cpp, value_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -17961,12 +17981,12 @@ bool ifcopenshell_value_dict_size(ifcopenshell_value_t* value, size_t* out_resul
     if (value == nullptr || value->ptr == nullptr) { throw std::runtime_error("Handle parameter \"value\" is invalid"); }
     auto value_cpp = value->ptr;
         *out_result = static_cast<size_t>(ifcapi::bindings::value_dict_size(value_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -17984,12 +18004,12 @@ bool ifcopenshell_value_dict_value_at(ifcopenshell_value_t* value, size_t index,
         } else {
             *out_result = new ifcopenshell_value_t{const_cast<ifcopenshell_selector_value_t*>(result_value), false};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -18001,12 +18021,12 @@ bool ifcopenshell_value_kind(ifcopenshell_value_t* value, int32_t* out_result) {
     if (value == nullptr || value->ptr == nullptr) { throw std::runtime_error("Handle parameter \"value\" is invalid"); }
     auto value_cpp = value->ptr;
         *out_result = static_cast<int32_t>(ifcapi::bindings::value_kind(value_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -18020,12 +18040,12 @@ bool ifcopenshell_value_list_append(ifcopenshell_value_t* list, ifcopenshell_val
     std::optional<ifcopenshell_selector_value_t*> item_cpp;
     if (item != nullptr && item->ptr != nullptr) { item_cpp = item->ptr; }
         *out_result = ifcapi::bindings::value_list_append(list_cpp, item_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -18043,12 +18063,12 @@ bool ifcopenshell_value_list_at(ifcopenshell_value_t* value, size_t index, ifcop
         } else {
             *out_result = new ifcopenshell_value_t{const_cast<ifcopenshell_selector_value_t*>(result_value), false};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -18060,12 +18080,12 @@ bool ifcopenshell_value_list_size(ifcopenshell_value_t* value, size_t* out_resul
     if (value == nullptr || value->ptr == nullptr) { throw std::runtime_error("Handle parameter \"value\" is invalid"); }
     auto value_cpp = value->ptr;
         *out_result = static_cast<size_t>(ifcapi::bindings::value_list_size(value_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -18081,12 +18101,12 @@ bool ifcopenshell_value_new_bool(bool value, ifcopenshell_value_t** out_result) 
         } else {
             *out_result = new ifcopenshell_value_t{result_value, true};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -18101,12 +18121,12 @@ bool ifcopenshell_value_new_dict(ifcopenshell_value_t** out_result) {
         } else {
             *out_result = new ifcopenshell_value_t{result_value, true};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -18122,12 +18142,12 @@ bool ifcopenshell_value_new_double(double value, ifcopenshell_value_t** out_resu
         } else {
             *out_result = new ifcopenshell_value_t{result_value, true};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -18144,12 +18164,12 @@ bool ifcopenshell_value_new_instance(ifcopenshell_instance_t* value, ifcopenshel
         } else {
             *out_result = new ifcopenshell_value_t{result_value, true};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -18165,12 +18185,12 @@ bool ifcopenshell_value_new_int(int64_t value, ifcopenshell_value_t** out_result
         } else {
             *out_result = new ifcopenshell_value_t{result_value, true};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -18185,12 +18205,12 @@ bool ifcopenshell_value_new_list(ifcopenshell_value_t** out_result) {
         } else {
             *out_result = new ifcopenshell_value_t{result_value, true};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -18205,12 +18225,12 @@ bool ifcopenshell_value_new_none(ifcopenshell_value_t** out_result) {
         } else {
             *out_result = new ifcopenshell_value_t{result_value, true};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -18227,12 +18247,12 @@ bool ifcopenshell_value_new_string(const char* value, ifcopenshell_value_t** out
         } else {
             *out_result = new ifcopenshell_value_t{result_value, true};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -18244,12 +18264,12 @@ bool ifcopenshell_geom_arrange_polygons(const ifcopenshell_geom_svgfill_polygon_
     if (polygons_cpp == nullptr) { throw std::runtime_error("Parameter \"polygons_cpp\" must not be null"); }
     auto polygons_cpp_cpp = to_cpp_geom_svgfill_polygon_list(polygons_cpp);
         *out_result = make_geom_svgfill_polygon_list(ifcgeom::bindings::arrange_polygons(polygons_cpp_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -18261,12 +18281,12 @@ bool ifcopenshell_geom_convert_loop_to_function_item(ifcopenshell_geom_taxonomy_
     if (loop_item_cpp == nullptr || loop_item_cpp->ptr == nullptr) { throw std::runtime_error("Handle parameter \"loop_item_cpp\" is invalid"); }
     const auto& loop_item_cpp_cpp = loop_item_cpp->ptr;
         *out_result = new ifcopenshell_geom_taxonomy_item_t{ifcgeom::bindings::convert_loop_to_function_item(loop_item_cpp_cpp)};
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -18282,12 +18302,12 @@ bool ifcopenshell_geom_create_epeck_from_double(double value, ifcopenshell_geom_
         } else {
             *out_result = new ifcopenshell_geom_opaque_number_t{std::move(result_value).release(), true};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -18303,12 +18323,12 @@ bool ifcopenshell_geom_create_epeck_from_int(int32_t value, ifcopenshell_geom_op
         } else {
             *out_result = new ifcopenshell_geom_opaque_number_t{std::move(result_value).release(), true};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -18325,12 +18345,12 @@ bool ifcopenshell_geom_create_epeck_from_string(const char* value_cpp, ifcopensh
         } else {
             *out_result = new ifcopenshell_geom_opaque_number_t{std::move(result_value).release(), true};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -18349,12 +18369,12 @@ bool ifcopenshell_geom_create_function_item_evaluator(ifcopenshell_geom_settings
         } else {
             *out_result = new ifcopenshell_geom_function_item_evaluator_t{std::move(result_value).release(), true};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -18379,12 +18399,12 @@ bool ifcopenshell_geom_create_geometry_serializer_by_path(const char* format, co
         } else {
             *out_result = new ifcopenshell_geom_geometry_serializer_t{std::move(result_value).release(), true};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -18409,12 +18429,12 @@ bool ifcopenshell_geom_create_geometry_serializer_by_stream(const char* format, 
         } else {
             *out_result = new ifcopenshell_geom_geometry_serializer_t{std::move(result_value).release(), true};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -18436,12 +18456,12 @@ bool ifcopenshell_geom_create_iterator(const char* geometry_library_cpp, ifcopen
         } else {
             *out_result = new ifcopenshell_geom_iterator_t{std::move(result_value).release(), true};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -18466,12 +18486,12 @@ bool ifcopenshell_geom_create_iterator_with_include_exclude(const char* geometry
         } else {
             *out_result = new ifcopenshell_geom_iterator_t{std::move(result_value).release(), true};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -18496,12 +18516,12 @@ bool ifcopenshell_geom_create_iterator_with_include_exclude_globalid(const char*
         } else {
             *out_result = new ifcopenshell_geom_iterator_t{std::move(result_value).release(), true};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -18526,12 +18546,12 @@ bool ifcopenshell_geom_create_iterator_with_include_exclude_id(const char* geome
         } else {
             *out_result = new ifcopenshell_geom_iterator_t{std::move(result_value).release(), true};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -18554,12 +18574,12 @@ bool ifcopenshell_geom_create_shape(ifcopenshell_geom_settings_t* settings_cpp, 
         } else {
             *out_result = new ifcopenshell_geom_element_t{std::move(result_value).release(), true};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -18573,12 +18593,12 @@ bool ifcopenshell_geom_line_segments_to_polygons(int32_t solver, double eps, con
     if (segments_json_cpp == nullptr) { throw std::runtime_error("Parameter \"segments_json_cpp\" must not be null"); }
     std::string segments_json_cpp_cpp(segments_json_cpp);
         *out_result = make_geom_svgfill_polygon_list(ifcgeom::bindings::line_segments_to_polygons(solver_cpp, eps_cpp, segments_json_cpp_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -18592,12 +18612,12 @@ bool ifcopenshell_geom_map_shape(ifcopenshell_geom_settings_t* settings_cpp, ifc
     if (instance_cpp == nullptr) { throw std::runtime_error("Handle parameter \"instance_cpp\" must not be null"); }
     auto instance_cpp_cpp = &instance_cpp->value;
         *out_result = new ifcopenshell_geom_taxonomy_item_t{ifcgeom::bindings::map_shape(settings_cpp_cpp, instance_cpp_cpp)};
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -18614,12 +18634,12 @@ bool ifcopenshell_geom_nary_union(const ifcopenshell_geom_conversion_result_shap
         } else {
             *out_result = new ifcopenshell_geom_conversion_result_shape_t{std::move(result_value).release(), true};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -18633,12 +18653,12 @@ bool ifcopenshell_geom_plugin_is_loaded(const char* kind, const char* id, bool* 
     if (id == nullptr) { throw std::runtime_error("Parameter \"id\" must not be null"); }
     std::string id_cpp(id);
         *out_result = ifcgeom::bindings::plugin_is_loaded(kind_cpp, id_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -18652,12 +18672,12 @@ bool ifcopenshell_geom_plugin_load(const char* kind, const char* id, bool* out_r
     if (id == nullptr) { throw std::runtime_error("Parameter \"id\" must not be null"); }
     std::string id_cpp(id);
         *out_result = ifcgeom::bindings::plugin_load(kind_cpp, id_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -18671,12 +18691,12 @@ bool ifcopenshell_geom_svg_to_line_segments(const char* svg_data_cpp, const char
     std::optional<std::string> class_name_cpp;
     if (class_name != nullptr) { class_name_cpp = std::string(class_name); }
         *out_result = make_string(ifcgeom::bindings::svg_to_line_segments(svg_data_cpp_cpp, class_name_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -18690,12 +18710,12 @@ bool ifcopenshell_geom_svg_to_polygons(const char* svg_data_cpp, const char* cla
     std::optional<std::string> class_name_cpp;
     if (class_name != nullptr) { class_name_cpp = std::string(class_name); }
         *out_result = make_geom_svgfill_polygon_list(ifcgeom::bindings::svg_to_polygons(svg_data_cpp_cpp, class_name_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -18706,12 +18726,12 @@ bool ifcopenshell_geom_taxonomy_create_boolean_result(int32_t operation, ifcopen
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
     auto operation_cpp = static_cast<int>(operation);
         *out_result = new ifcopenshell_geom_taxonomy_boolean_result_t{ifcgeom::bindings::taxonomy_create_boolean_result(operation_cpp)};
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -18724,12 +18744,12 @@ bool ifcopenshell_geom_taxonomy_create_box(double dx, double dy, double dz, ifco
     auto dy_cpp = static_cast<double>(dy);
     auto dz_cpp = static_cast<double>(dz);
         *out_result = new ifcopenshell_geom_taxonomy_solid_t{ifcgeom::bindings::taxonomy_create_box(dx_cpp, dy_cpp, dz_cpp)};
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -18740,12 +18760,12 @@ bool ifcopenshell_geom_taxonomy_create_bspline_curve(int32_t degree, ifcopenshel
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
     auto degree_cpp = static_cast<int>(degree);
         *out_result = new ifcopenshell_geom_taxonomy_bspline_curve_t{ifcgeom::bindings::taxonomy_create_bspline_curve(degree_cpp)};
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -18757,12 +18777,12 @@ bool ifcopenshell_geom_taxonomy_create_bspline_surface(int32_t degree_u, int32_t
     auto degree_u_cpp = static_cast<int>(degree_u);
     auto degree_v_cpp = static_cast<int>(degree_v);
         *out_result = new ifcopenshell_geom_taxonomy_bspline_surface_t{ifcgeom::bindings::taxonomy_create_bspline_surface(degree_u_cpp, degree_v_cpp)};
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -18779,12 +18799,12 @@ bool ifcopenshell_geom_taxonomy_create_circle(double origin_x, double origin_y, 
     auto dir_z_cpp = static_cast<double>(dir_z);
     auto radius_cpp = static_cast<double>(radius);
         *out_result = new ifcopenshell_geom_taxonomy_circle_t{ifcgeom::bindings::taxonomy_create_circle(origin_x_cpp, origin_y_cpp, origin_z_cpp, dir_x_cpp, dir_y_cpp, dir_z_cpp, radius_cpp)};
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -18794,12 +18814,12 @@ bool ifcopenshell_geom_taxonomy_create_collection(ifcopenshell_geom_taxonomy_col
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
         *out_result = new ifcopenshell_geom_taxonomy_collection_t{ifcgeom::bindings::taxonomy_create_collection()};
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -18816,12 +18836,12 @@ bool ifcopenshell_geom_taxonomy_create_cylinder(double origin_x, double origin_y
     auto dir_z_cpp = static_cast<double>(dir_z);
     auto radius_cpp = static_cast<double>(radius);
         *out_result = new ifcopenshell_geom_taxonomy_cylinder_t{ifcgeom::bindings::taxonomy_create_cylinder(origin_x_cpp, origin_y_cpp, origin_z_cpp, dir_x_cpp, dir_y_cpp, dir_z_cpp, radius_cpp)};
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -18834,12 +18854,12 @@ bool ifcopenshell_geom_taxonomy_create_direction3(double x, double y, double z, 
     auto y_cpp = static_cast<double>(y);
     auto z_cpp = static_cast<double>(z);
         *out_result = new ifcopenshell_geom_taxonomy_direction3_t{ifcgeom::bindings::taxonomy_create_direction3(x_cpp, y_cpp, z_cpp)};
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -18857,12 +18877,12 @@ bool ifcopenshell_geom_taxonomy_create_ellipse(double origin_x, double origin_y,
     auto radius1_cpp = static_cast<double>(radius1);
     auto radius2_cpp = static_cast<double>(radius2);
         *out_result = new ifcopenshell_geom_taxonomy_ellipse_t{ifcgeom::bindings::taxonomy_create_ellipse(origin_x_cpp, origin_y_cpp, origin_z_cpp, dir_x_cpp, dir_y_cpp, dir_z_cpp, radius1_cpp, radius2_cpp)};
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -18877,12 +18897,12 @@ bool ifcopenshell_geom_taxonomy_create_extrusion(ifcopenshell_geom_taxonomy_item
     const auto& direction_cpp_cpp = direction_cpp->ptr;
     auto depth_cpp = static_cast<double>(depth);
         *out_result = new ifcopenshell_geom_taxonomy_extrusion_t{ifcgeom::bindings::taxonomy_create_extrusion(basis_cpp_cpp, direction_cpp_cpp, depth_cpp)};
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -18898,12 +18918,12 @@ bool ifcopenshell_geom_taxonomy_create_line(double origin_x, double origin_y, do
     auto dir_y_cpp = static_cast<double>(dir_y);
     auto dir_z_cpp = static_cast<double>(dir_z);
         *out_result = new ifcopenshell_geom_taxonomy_line_t{ifcgeom::bindings::taxonomy_create_line(origin_x_cpp, origin_y_cpp, origin_z_cpp, dir_x_cpp, dir_y_cpp, dir_z_cpp)};
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -18913,12 +18933,12 @@ bool ifcopenshell_geom_taxonomy_create_loft(ifcopenshell_geom_taxonomy_loft_t** 
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
         *out_result = new ifcopenshell_geom_taxonomy_loft_t{ifcgeom::bindings::taxonomy_create_loft()};
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -18928,12 +18948,12 @@ bool ifcopenshell_geom_taxonomy_create_node(ifcopenshell_geom_taxonomy_node_t** 
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
         *out_result = new ifcopenshell_geom_taxonomy_node_t{ifcgeom::bindings::taxonomy_create_node()};
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -18948,12 +18968,12 @@ bool ifcopenshell_geom_taxonomy_create_offset_curve(ifcopenshell_geom_taxonomy_i
     const auto& reference_cpp = reference->ptr;
     auto offset_cpp = static_cast<double>(offset);
         *out_result = new ifcopenshell_geom_taxonomy_offset_curve_t{ifcgeom::bindings::taxonomy_create_offset_curve(basis_cpp, reference_cpp, offset_cpp)};
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -18969,12 +18989,12 @@ bool ifcopenshell_geom_taxonomy_create_plane(double origin_x, double origin_y, d
     auto dir_y_cpp = static_cast<double>(dir_y);
     auto dir_z_cpp = static_cast<double>(dir_z);
         *out_result = new ifcopenshell_geom_taxonomy_plane_t{ifcgeom::bindings::taxonomy_create_plane(origin_x_cpp, origin_y_cpp, origin_z_cpp, dir_x_cpp, dir_y_cpp, dir_z_cpp)};
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -18987,12 +19007,12 @@ bool ifcopenshell_geom_taxonomy_create_point3(double x, double y, double z, ifco
     auto y_cpp = static_cast<double>(y);
     auto z_cpp = static_cast<double>(z);
         *out_result = new ifcopenshell_geom_taxonomy_point3_t{ifcgeom::bindings::taxonomy_create_point3(x_cpp, y_cpp, z_cpp)};
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -19009,12 +19029,12 @@ bool ifcopenshell_geom_taxonomy_create_revolve(ifcopenshell_geom_taxonomy_item_t
     const auto& direction_cpp_cpp = direction_cpp->ptr;
     auto angle_cpp = static_cast<double>(angle);
         *out_result = new ifcopenshell_geom_taxonomy_revolve_t{ifcgeom::bindings::taxonomy_create_revolve(basis_cpp_cpp, axis_origin_cpp_cpp, direction_cpp_cpp, angle_cpp)};
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -19031,12 +19051,12 @@ bool ifcopenshell_geom_taxonomy_create_sphere(double origin_x, double origin_y, 
     auto dir_z_cpp = static_cast<double>(dir_z);
     auto radius_cpp = static_cast<double>(radius);
         *out_result = new ifcopenshell_geom_taxonomy_sphere_t{ifcgeom::bindings::taxonomy_create_sphere(origin_x_cpp, origin_y_cpp, origin_z_cpp, dir_x_cpp, dir_y_cpp, dir_z_cpp, radius_cpp)};
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -19052,12 +19072,12 @@ bool ifcopenshell_geom_taxonomy_create_sweep_along_curve(ifcopenshell_geom_taxon
     if (reference_direction_cpp == nullptr || reference_direction_cpp->ptr == nullptr) { throw std::runtime_error("Handle parameter \"reference_direction_cpp\" is invalid"); }
     const auto& reference_direction_cpp_cpp = reference_direction_cpp->ptr;
         *out_result = new ifcopenshell_geom_taxonomy_sweep_along_curve_t{ifcgeom::bindings::taxonomy_create_sweep_along_curve(basis_face_cpp_cpp, directrix_cpp_cpp, reference_direction_cpp_cpp)};
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -19075,12 +19095,12 @@ bool ifcopenshell_geom_taxonomy_create_torus(double origin_x, double origin_y, d
     auto radius1_cpp = static_cast<double>(radius1);
     auto radius2_cpp = static_cast<double>(radius2);
         *out_result = new ifcopenshell_geom_taxonomy_torus_t{ifcgeom::bindings::taxonomy_create_torus(origin_x_cpp, origin_y_cpp, origin_z_cpp, dir_x_cpp, dir_y_cpp, dir_z_cpp, radius1_cpp, radius2_cpp)};
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -19092,12 +19112,12 @@ bool ifcopenshell_geom_taxonomy_function_item_end(ifcopenshell_geom_taxonomy_ite
     if (item_cpp == nullptr || item_cpp->ptr == nullptr) { throw std::runtime_error("Handle parameter \"item_cpp\" is invalid"); }
     const auto& item_cpp_cpp = item_cpp->ptr;
         *out_result = static_cast<double>(ifcgeom::bindings::taxonomy_function_item_end(item_cpp_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -19109,12 +19129,12 @@ bool ifcopenshell_geom_taxonomy_function_item_start(ifcopenshell_geom_taxonomy_i
     if (item_cpp == nullptr || item_cpp->ptr == nullptr) { throw std::runtime_error("Handle parameter \"item_cpp\" is invalid"); }
     const auto& item_cpp_cpp = item_cpp->ptr;
         *out_result = static_cast<double>(ifcgeom::bindings::taxonomy_function_item_start(item_cpp_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -19134,12 +19154,12 @@ bool ifcopenshell_file_create(ifcopenshell_file_t* self, ifcopenshell_declaratio
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -19155,12 +19175,12 @@ bool ifcopenshell_file_get_inverses_by_declaration(ifcopenshell_file_t* self, in
     auto declaration_cpp = declaration->ptr;
     auto attribute_index_cpp = static_cast<int>(attribute_index);
         *out_result = make_instance_list(self_cpp->get_inverse(instance_id_cpp, declaration_cpp, attribute_index_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -19174,12 +19194,12 @@ bool ifcopenshell_file_by_type(ifcopenshell_file_t* self, const char* type_name,
     if (type_name == nullptr) { throw std::runtime_error("Parameter \"type_name\" must not be null"); }
     std::string type_name_cpp(type_name);
         *out_result = new ifcopenshell_parse_instance_list_t{self_cpp->instances_by_type(type_name_cpp)};
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -19193,12 +19213,12 @@ bool ifcopenshell_file_by_type_excl_subtypes(ifcopenshell_file_t* self, const ch
     if (type_name == nullptr) { throw std::runtime_error("Parameter \"type_name\" must not be null"); }
     std::string type_name_cpp(type_name);
         *out_result = new ifcopenshell_parse_instance_list_t{self_cpp->instances_by_type_excl_subtypes(type_name_cpp)};
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -19218,12 +19238,12 @@ bool ifcopenshell_file_add(ifcopenshell_file_t* self, ifcopenshell_instance_t* e
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -19236,12 +19256,12 @@ bool ifcopenshell_file_add_type_ref(ifcopenshell_file_t* self, ifcopenshell_inst
     if (new_entity == nullptr) { throw std::runtime_error("Handle parameter \"new_entity\" must not be null"); }
     const auto& new_entity_cpp = new_entity->value;
         self_cpp->add_type_ref(new_entity_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -19252,12 +19272,12 @@ bool ifcopenshell_file_batch(ifcopenshell_file_t* self) {
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         self_cpp->batch();
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -19268,12 +19288,12 @@ bool ifcopenshell_file_build_inverses(ifcopenshell_file_t* self) {
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         self_cpp->build_inverses();
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -19286,12 +19306,12 @@ bool ifcopenshell_file_build_inverses_(ifcopenshell_file_t* self, ifcopenshell_i
     if (entity == nullptr) { throw std::runtime_error("Handle parameter \"entity\" must not be null"); }
     const auto& entity_cpp = entity->value;
         self_cpp->build_inverses_(entity_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -19304,12 +19324,12 @@ bool ifcopenshell_file_bypass_type(ifcopenshell_file_t* self, const char* type_n
     if (type_name == nullptr) { throw std::runtime_error("Parameter \"type_name\" must not be null"); }
     std::string type_name_cpp(type_name);
         self_cpp->bypass_type(type_name_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -19321,12 +19341,12 @@ bool ifcopenshell_file_create_timestamp(ifcopenshell_file_t* self, ifcopenshell_
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = make_string(self_cpp->create_timestamp());
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -19338,12 +19358,12 @@ bool ifcopenshell_file_fresh_id(ifcopenshell_file_t* self, uint32_t* out_result)
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = static_cast<uint32_t>(self_cpp->fresh_id());
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -19356,12 +19376,12 @@ bool ifcopenshell_file_get_inverse_indices_by_id(ifcopenshell_file_t* self, int3
     auto* self_cpp = self->ptr;
     auto instance_id_cpp = static_cast<int>(instance_id);
         *out_result = make_int32_list(self_cpp->get_inverse_indices_by_id(instance_id_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -19373,12 +19393,12 @@ bool ifcopenshell_file_get_max_id(ifcopenshell_file_t* self, uint32_t* out_resul
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = static_cast<uint32_t>(self_cpp->get_max_id());
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -19391,12 +19411,12 @@ bool ifcopenshell_file_get_total_inverses_by_id(ifcopenshell_file_t* self, int32
     auto* self_cpp = self->ptr;
     auto instance_id_cpp = static_cast<int>(instance_id);
         *out_result = static_cast<size_t>(self_cpp->get_total_inverses(instance_id_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -19413,12 +19433,12 @@ bool ifcopenshell_file_ifcroot_type(ifcopenshell_file_t* self, ifcopenshell_decl
         } else {
             *out_result = new ifcopenshell_declaration_t{const_cast<ifcopenshell::declaration*>(result_value), false};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -19434,12 +19454,12 @@ bool ifcopenshell_file_initialize(ifcopenshell_file_t* self, const char* path, i
     auto type_cpp = static_cast<ifcopenshell::filetype>(type);
     auto read_only_cpp = static_cast<bool>(read_only);
         *out_result = self_cpp->initialize(path_cpp, type_cpp, read_only_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -19458,12 +19478,12 @@ bool ifcopenshell_file_by_guid(ifcopenshell_file_t* self, const char* global_id,
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -19481,12 +19501,12 @@ bool ifcopenshell_file_by_id(ifcopenshell_file_t* self, int32_t instance_id, ifc
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -19499,12 +19519,12 @@ bool ifcopenshell_file_instances_by_reference(ifcopenshell_file_t* self, int32_t
     auto* self_cpp = self->ptr;
     auto reference_id_cpp = static_cast<int>(reference_id);
         *out_result = new ifcopenshell_parse_instance_list_t{self_cpp->instances_by_reference(reference_id_cpp)};
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -19517,12 +19537,12 @@ bool ifcopenshell_file_process_deletion_inverse(ifcopenshell_file_t* self, ifcop
     if (entity == nullptr) { throw std::runtime_error("Handle parameter \"entity\" must not be null"); }
     const auto& entity_cpp = entity->value;
         self_cpp->process_deletion_inverse(entity_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -19533,12 +19553,12 @@ bool ifcopenshell_file_recalculate_id_counter(ifcopenshell_file_t* self) {
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         self_cpp->recalculate_id_counter();
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -19551,12 +19571,12 @@ bool ifcopenshell_file_remove(ifcopenshell_file_t* self, ifcopenshell_instance_t
     if (entity == nullptr) { throw std::runtime_error("Handle parameter \"entity\" must not be null"); }
     const auto& entity_cpp = entity->value;
         self_cpp->remove_entity(entity_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -19569,12 +19589,12 @@ bool ifcopenshell_file_remove_type_ref(ifcopenshell_file_t* self, ifcopenshell_i
     if (new_entity == nullptr) { throw std::runtime_error("Handle parameter \"new_entity\" must not be null"); }
     const auto& new_entity_cpp = new_entity->value;
         self_cpp->remove_type_ref(new_entity_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -19585,12 +19605,12 @@ bool ifcopenshell_file_reset_identity_cache(ifcopenshell_file_t* self) {
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         self_cpp->reset_identity_cache();
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -19607,12 +19627,12 @@ bool ifcopenshell_file_schema(ifcopenshell_file_t* self, ifcopenshell_schema_t**
         } else {
             *out_result = new ifcopenshell_schema_t{const_cast<ifcopenshell::schema_definition*>(result_value), false};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -19627,12 +19647,12 @@ bool ifcopenshell_file_traverse(ifcopenshell_file_t* self, ifcopenshell_instance
     const auto& instance_cpp = instance->value;
     auto max_depth_cpp = static_cast<int>(max_depth);
         *out_result = new ifcopenshell_parse_instance_list_t{self_cpp->traverse(instance_cpp, max_depth_cpp)};
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -19647,12 +19667,12 @@ bool ifcopenshell_file_traverse_breadth_first(ifcopenshell_file_t* self, ifcopen
     const auto& instance_cpp = instance->value;
     auto max_depth_cpp = static_cast<int>(max_depth);
         *out_result = new ifcopenshell_parse_instance_list_t{self_cpp->traverse_breadth_first(instance_cpp, max_depth_cpp)};
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -19663,12 +19683,12 @@ bool ifcopenshell_file_unbatch(ifcopenshell_file_t* self) {
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         self_cpp->unbatch();
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -19681,12 +19701,12 @@ bool ifcopenshell_instance_declaration(ifcopenshell_instance_t* self, ifcopenshe
     if (!static_cast<bool>(self->value)) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = &self->value;
         *out_result = new ifcopenshell_declaration_t{const_cast<ifcopenshell::declaration*>(&(self_cpp->declaration())), false};
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -19704,12 +19724,12 @@ bool ifcopenshell_instance_file(ifcopenshell_instance_t* self, ifcopenshell_file
         } else {
             *out_result = new ifcopenshell_file_t{result_value, false};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -19723,12 +19743,12 @@ bool ifcopenshell_instance_get_argument(ifcopenshell_instance_t* self, size_t at
     auto* self_cpp = &self->value;
     auto attribute_index_cpp = static_cast<size_t>(attribute_index);
         *out_result = new ifcopenshell_parse_attribute_value_t{self_cpp->get_attribute_value(attribute_index_cpp)};
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -19744,12 +19764,12 @@ bool ifcopenshell_instance_id(ifcopenshell_instance_t* self, uint32_t* out_resul
     }
     auto* self_cpp = &self->value;
         *out_result = static_cast<uint32_t>(self_cpp->id());
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -19765,12 +19785,12 @@ bool ifcopenshell_instance_identity(ifcopenshell_instance_t* self, uint32_t* out
     }
     auto* self_cpp = &self->value;
         *out_result = static_cast<uint32_t>(self_cpp->identity());
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -19789,12 +19809,12 @@ bool ifcopenshell_schema_declaration_by_name(ifcopenshell_schema_t* self, const 
         } else {
             *out_result = new ifcopenshell_declaration_t{const_cast<ifcopenshell::declaration*>(result_value), false};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -19812,12 +19832,12 @@ bool ifcopenshell_schema_declaration_by_index(ifcopenshell_schema_t* self, size_
         } else {
             *out_result = new ifcopenshell_declaration_t{const_cast<ifcopenshell::declaration*>(result_value), false};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -19829,12 +19849,12 @@ bool ifcopenshell_schema_declarations(ifcopenshell_schema_t* self, ifcopenshell_
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = make_declaration_list(self_cpp->declarations());
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -19846,12 +19866,12 @@ bool ifcopenshell_schema_entities(ifcopenshell_schema_t* self, ifcopenshell_enti
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = make_entity_list(self_cpp->entities());
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -19863,12 +19883,12 @@ bool ifcopenshell_schema_enumeration_types(ifcopenshell_schema_t* self, ifcopens
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = make_enumeration_list(self_cpp->enumeration_types());
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -19880,12 +19900,12 @@ bool ifcopenshell_schema_name(ifcopenshell_schema_t* self, ifcopenshell_string_t
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = make_string(self_cpp->name());
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -19897,12 +19917,12 @@ bool ifcopenshell_schema_select_types(ifcopenshell_schema_t* self, ifcopenshell_
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = make_select_type_list(self_cpp->select_types());
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -19914,12 +19934,12 @@ bool ifcopenshell_schema_type_declarations(ifcopenshell_schema_t* self, ifcopens
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = make_type_declaration_list(self_cpp->type_declarations());
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -19933,12 +19953,12 @@ bool ifcopenshell_declaration_is_a(ifcopenshell_declaration_t* self, const char*
     if (name == nullptr) { throw std::runtime_error("Parameter \"name\" must not be null"); }
     std::string name_cpp(name);
         *out_result = self_cpp->is(name_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -19955,12 +19975,12 @@ bool ifcopenshell_declaration_as_entity(ifcopenshell_declaration_t* self, ifcope
         } else {
             *out_result = new ifcopenshell_entity_t{const_cast<ifcopenshell::entity*>(result_value), false};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -19977,12 +19997,12 @@ bool ifcopenshell_declaration_as_enumeration_type(ifcopenshell_declaration_t* se
         } else {
             *out_result = new ifcopenshell_enumeration_t{const_cast<ifcopenshell::enumeration_type*>(result_value), false};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -19999,12 +20019,12 @@ bool ifcopenshell_declaration_as_select_type(ifcopenshell_declaration_t* self, i
         } else {
             *out_result = new ifcopenshell_select_type_t{const_cast<ifcopenshell::select_type*>(result_value), false};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -20021,12 +20041,12 @@ bool ifcopenshell_declaration_as_type_declaration(ifcopenshell_declaration_t* se
         } else {
             *out_result = new ifcopenshell_type_declaration_t{const_cast<ifcopenshell::type_declaration*>(result_value), false};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -20038,12 +20058,12 @@ bool ifcopenshell_declaration_index_in_schema(ifcopenshell_declaration_t* self, 
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = static_cast<int32_t>(self_cpp->index_in_schema());
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -20055,12 +20075,12 @@ bool ifcopenshell_declaration_name(ifcopenshell_declaration_t* self, ifcopenshel
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = make_string(self_cpp->name());
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -20072,12 +20092,12 @@ bool ifcopenshell_declaration_name_uc(ifcopenshell_declaration_t* self, ifcopens
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = make_string(self_cpp->name_uc());
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -20094,12 +20114,12 @@ bool ifcopenshell_declaration_schema(ifcopenshell_declaration_t* self, ifcopensh
         } else {
             *out_result = new ifcopenshell_schema_t{const_cast<ifcopenshell::schema_definition*>(result_value), false};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -20111,12 +20131,12 @@ bool ifcopenshell_declaration_type(ifcopenshell_declaration_t* self, int32_t* ou
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = static_cast<int32_t>(self_cpp->type());
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -20133,12 +20153,12 @@ bool ifcopenshell_type_declaration_as_type_declaration(ifcopenshell_type_declara
         } else {
             *out_result = new ifcopenshell_type_declaration_t{const_cast<ifcopenshell::type_declaration*>(result_value), false};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -20155,12 +20175,12 @@ bool ifcopenshell_type_declaration_declared_type(ifcopenshell_type_declaration_t
         } else {
             *out_result = new ifcopenshell_parameter_type_t{const_cast<ifcopenshell::parameter_type*>(result_value), false};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -20177,12 +20197,12 @@ bool ifcopenshell_select_type_as_select_type(ifcopenshell_select_type_t* self, i
         } else {
             *out_result = new ifcopenshell_select_type_t{const_cast<ifcopenshell::select_type*>(result_value), false};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -20194,12 +20214,12 @@ bool ifcopenshell_select_type_select_list(ifcopenshell_select_type_t* self, ifco
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = make_declaration_list(self_cpp->select_list());
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -20216,12 +20236,12 @@ bool ifcopenshell_enumeration_as_enumeration_type(ifcopenshell_enumeration_t* se
         } else {
             *out_result = new ifcopenshell_enumeration_t{const_cast<ifcopenshell::enumeration_type*>(result_value), false};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -20233,12 +20253,12 @@ bool ifcopenshell_enumeration_enumeration_items(ifcopenshell_enumeration_t* self
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = make_string_list(self_cpp->enumeration_items());
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -20252,12 +20272,12 @@ bool ifcopenshell_enumeration_lookup_enum_offset(ifcopenshell_enumeration_t* sel
     if (value_name == nullptr) { throw std::runtime_error("Parameter \"value_name\" must not be null"); }
     std::string value_name_cpp(value_name);
         *out_result = static_cast<size_t>(self_cpp->lookup_enum_offset(value_name_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -20270,12 +20290,12 @@ bool ifcopenshell_enumeration_lookup_enum_value(ifcopenshell_enumeration_t* self
     auto* self_cpp = self->ptr;
     auto i_cpp = static_cast<size_t>(i);
         *out_result = make_string(self_cpp->lookup_enum_value(i_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -20292,12 +20312,12 @@ bool ifcopenshell_parameter_type_as_aggregation_type(ifcopenshell_parameter_type
         } else {
             *out_result = new ifcopenshell_aggregation_type_t{const_cast<ifcopenshell::aggregation_type*>(result_value), false};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -20314,12 +20334,12 @@ bool ifcopenshell_parameter_type_as_named_type(ifcopenshell_parameter_type_t* se
         } else {
             *out_result = new ifcopenshell_named_type_t{const_cast<ifcopenshell::named_type*>(result_value), false};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -20336,12 +20356,12 @@ bool ifcopenshell_parameter_type_as_simple_type(ifcopenshell_parameter_type_t* s
         } else {
             *out_result = new ifcopenshell_simple_type_t{const_cast<ifcopenshell::simple_type*>(result_value), false};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -20355,12 +20375,12 @@ bool ifcopenshell_named_type_is_a(ifcopenshell_named_type_t* self, const char* n
     if (name == nullptr) { throw std::runtime_error("Parameter \"name\" must not be null"); }
     std::string name_cpp(name);
         *out_result = self_cpp->is(name_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -20377,12 +20397,12 @@ bool ifcopenshell_named_type_as_named_type(ifcopenshell_named_type_t* self, ifco
         } else {
             *out_result = new ifcopenshell_named_type_t{const_cast<ifcopenshell::named_type*>(result_value), false};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -20399,12 +20419,12 @@ bool ifcopenshell_named_type_declared_type(ifcopenshell_named_type_t* self, ifco
         } else {
             *out_result = new ifcopenshell_declaration_t{result_value, false};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -20421,12 +20441,12 @@ bool ifcopenshell_simple_type_as_simple_type(ifcopenshell_simple_type_t* self, i
         } else {
             *out_result = new ifcopenshell_simple_type_t{const_cast<ifcopenshell::simple_type*>(result_value), false};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -20438,12 +20458,12 @@ bool ifcopenshell_simple_type_declared_type(ifcopenshell_simple_type_t* self, in
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = static_cast<int32_t>(self_cpp->declared_type());
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -20460,12 +20480,12 @@ bool ifcopenshell_aggregation_type_as_aggregation_type(ifcopenshell_aggregation_
         } else {
             *out_result = new ifcopenshell_aggregation_type_t{const_cast<ifcopenshell::aggregation_type*>(result_value), false};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -20477,12 +20497,12 @@ bool ifcopenshell_aggregation_type_bound1(ifcopenshell_aggregation_type_t* self,
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = static_cast<int32_t>(self_cpp->bound1());
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -20494,12 +20514,12 @@ bool ifcopenshell_aggregation_type_bound2(ifcopenshell_aggregation_type_t* self,
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = static_cast<int32_t>(self_cpp->bound2());
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -20516,12 +20536,12 @@ bool ifcopenshell_aggregation_type_type_of_element(ifcopenshell_aggregation_type
         } else {
             *out_result = new ifcopenshell_parameter_type_t{result_value, false};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -20538,12 +20558,12 @@ bool ifcopenshell_header_file(ifcopenshell_header_t* self, ifcopenshell_file_t**
         } else {
             *out_result = new ifcopenshell_file_t{result_value, false};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -20560,12 +20580,12 @@ bool ifcopenshell_header_file_description(ifcopenshell_header_t* self, ifcopensh
         } else {
             *out_result = new ifcopenshell_file_description_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -20582,12 +20602,12 @@ bool ifcopenshell_header_file_name(ifcopenshell_header_t* self, ifcopenshell_fil
         } else {
             *out_result = new ifcopenshell_file_name_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -20604,12 +20624,12 @@ bool ifcopenshell_header_file_schema(ifcopenshell_header_t* self, ifcopenshell_f
         } else {
             *out_result = new ifcopenshell_file_schema_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -20622,12 +20642,12 @@ bool ifcopenshell_file_description_class(ifcopenshell_file_description_t* self, 
     if (!static_cast<bool>(self->value)) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = &self->value;
         *out_result = new ifcopenshell_entity_t{const_cast<ifcopenshell::entity*>(&(self_cpp->Class())), false};
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -20640,12 +20660,12 @@ bool ifcopenshell_file_description_description(ifcopenshell_file_description_t* 
     if (!static_cast<bool>(self->value)) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = &self->value;
         *out_result = make_string_list(self_cpp->description());
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -20658,12 +20678,12 @@ bool ifcopenshell_file_description_implementation_level(ifcopenshell_file_descri
     if (!static_cast<bool>(self->value)) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = &self->value;
         *out_result = make_string(self_cpp->implementation_level());
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -20685,12 +20705,12 @@ bool ifcopenshell_file_description_initialize(ifcopenshell_file_description_t* s
         } else {
             *out_result = new ifcopenshell_file_description_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -20704,12 +20724,12 @@ bool ifcopenshell_file_description_setdescription(ifcopenshell_file_description_
     if (v == nullptr) { throw std::runtime_error("Parameter \"v\" must not be null"); }
     auto v_cpp = to_cpp_string_list(v);
         self_cpp->setdescription(v_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -20723,12 +20743,12 @@ bool ifcopenshell_file_description_setimplementation_level(ifcopenshell_file_des
     if (v == nullptr) { throw std::runtime_error("Parameter \"v\" must not be null"); }
     std::string v_cpp(v);
         self_cpp->setimplementation_level(v_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -20741,12 +20761,12 @@ bool ifcopenshell_file_name_class(ifcopenshell_file_name_t* self, ifcopenshell_e
     if (!static_cast<bool>(self->value)) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = &self->value;
         *out_result = new ifcopenshell_entity_t{const_cast<ifcopenshell::entity*>(&(self_cpp->Class())), false};
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -20759,12 +20779,12 @@ bool ifcopenshell_file_name_author(ifcopenshell_file_name_t* self, ifcopenshell_
     if (!static_cast<bool>(self->value)) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = &self->value;
         *out_result = make_string_list(self_cpp->author());
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -20777,12 +20797,12 @@ bool ifcopenshell_file_name_authorization(ifcopenshell_file_name_t* self, ifcope
     if (!static_cast<bool>(self->value)) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = &self->value;
         *out_result = make_string(self_cpp->authorization());
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -20814,12 +20834,12 @@ bool ifcopenshell_file_name_initialize(ifcopenshell_file_name_t* self, const cha
         } else {
             *out_result = new ifcopenshell_file_name_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -20832,12 +20852,12 @@ bool ifcopenshell_file_name_name(ifcopenshell_file_name_t* self, ifcopenshell_st
     if (!static_cast<bool>(self->value)) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = &self->value;
         *out_result = make_string(self_cpp->name());
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -20850,12 +20870,12 @@ bool ifcopenshell_file_name_organization(ifcopenshell_file_name_t* self, ifcopen
     if (!static_cast<bool>(self->value)) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = &self->value;
         *out_result = make_string_list(self_cpp->organization());
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -20868,12 +20888,12 @@ bool ifcopenshell_file_name_originating_system(ifcopenshell_file_name_t* self, i
     if (!static_cast<bool>(self->value)) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = &self->value;
         *out_result = make_string(self_cpp->originating_system());
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -20886,12 +20906,12 @@ bool ifcopenshell_file_name_preprocessor_version(ifcopenshell_file_name_t* self,
     if (!static_cast<bool>(self->value)) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = &self->value;
         *out_result = make_string(self_cpp->preprocessor_version());
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -20905,12 +20925,12 @@ bool ifcopenshell_file_name_setauthor(ifcopenshell_file_name_t* self, const ifco
     if (v == nullptr) { throw std::runtime_error("Parameter \"v\" must not be null"); }
     auto v_cpp = to_cpp_string_list(v);
         self_cpp->setauthor(v_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -20924,12 +20944,12 @@ bool ifcopenshell_file_name_setauthorization(ifcopenshell_file_name_t* self, con
     if (v == nullptr) { throw std::runtime_error("Parameter \"v\" must not be null"); }
     std::string v_cpp(v);
         self_cpp->setauthorization(v_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -20943,12 +20963,12 @@ bool ifcopenshell_file_name_setname(ifcopenshell_file_name_t* self, const char* 
     if (v == nullptr) { throw std::runtime_error("Parameter \"v\" must not be null"); }
     std::string v_cpp(v);
         self_cpp->setname(v_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -20962,12 +20982,12 @@ bool ifcopenshell_file_name_setorganization(ifcopenshell_file_name_t* self, cons
     if (v == nullptr) { throw std::runtime_error("Parameter \"v\" must not be null"); }
     auto v_cpp = to_cpp_string_list(v);
         self_cpp->setorganization(v_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -20981,12 +21001,12 @@ bool ifcopenshell_file_name_setoriginating_system(ifcopenshell_file_name_t* self
     if (v == nullptr) { throw std::runtime_error("Parameter \"v\" must not be null"); }
     std::string v_cpp(v);
         self_cpp->setoriginating_system(v_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -21000,12 +21020,12 @@ bool ifcopenshell_file_name_setpreprocessor_version(ifcopenshell_file_name_t* se
     if (v == nullptr) { throw std::runtime_error("Parameter \"v\" must not be null"); }
     std::string v_cpp(v);
         self_cpp->setpreprocessor_version(v_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -21019,12 +21039,12 @@ bool ifcopenshell_file_name_settime_stamp(ifcopenshell_file_name_t* self, const 
     if (v == nullptr) { throw std::runtime_error("Parameter \"v\" must not be null"); }
     std::string v_cpp(v);
         self_cpp->settime_stamp(v_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -21037,12 +21057,12 @@ bool ifcopenshell_file_name_time_stamp(ifcopenshell_file_name_t* self, ifcopensh
     if (!static_cast<bool>(self->value)) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = &self->value;
         *out_result = make_string(self_cpp->time_stamp());
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -21055,12 +21075,12 @@ bool ifcopenshell_file_schema_class(ifcopenshell_file_schema_t* self, ifcopenshe
     if (!static_cast<bool>(self->value)) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = &self->value;
         *out_result = new ifcopenshell_entity_t{const_cast<ifcopenshell::entity*>(&(self_cpp->Class())), false};
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -21080,12 +21100,12 @@ bool ifcopenshell_file_schema_initialize(ifcopenshell_file_schema_t* self, const
         } else {
             *out_result = new ifcopenshell_file_schema_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -21098,12 +21118,12 @@ bool ifcopenshell_file_schema_schema_identifiers(ifcopenshell_file_schema_t* sel
     if (!static_cast<bool>(self->value)) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = &self->value;
         *out_result = make_string_list(self_cpp->schema_identifiers());
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -21117,12 +21137,12 @@ bool ifcopenshell_file_schema_setschema_identifiers(ifcopenshell_file_schema_t* 
     if (v == nullptr) { throw std::runtime_error("Parameter \"v\" must not be null"); }
     auto v_cpp = to_cpp_string_list(v);
         self_cpp->setschema_identifiers(v_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -21136,12 +21156,12 @@ bool ifcopenshell_entity_attribute_index(ifcopenshell_entity_t* self, const char
     if (attr_name == nullptr) { throw std::runtime_error("Parameter \"attr_name\" must not be null"); }
     std::string attr_name_cpp(attr_name);
         *out_result = static_cast<int32_t>(self_cpp->attribute_index(attr_name_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -21153,12 +21173,12 @@ bool ifcopenshell_entity_all_attributes(ifcopenshell_entity_t* self, ifcopenshel
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = make_attribute_list(self_cpp->all_attributes());
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -21170,12 +21190,12 @@ bool ifcopenshell_entity_all_inverse_attributes(ifcopenshell_entity_t* self, ifc
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = make_inverse_attribute_list(self_cpp->all_inverse_attributes());
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -21192,12 +21212,12 @@ bool ifcopenshell_entity_as_entity(ifcopenshell_entity_t* self, ifcopenshell_ent
         } else {
             *out_result = new ifcopenshell_entity_t{const_cast<ifcopenshell::entity*>(result_value), false};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -21215,12 +21235,12 @@ bool ifcopenshell_entity_attribute_by_index(ifcopenshell_entity_t* self, size_t 
         } else {
             *out_result = new ifcopenshell_attribute_t{const_cast<ifcopenshell::attribute*>(result_value), false};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -21232,12 +21252,12 @@ bool ifcopenshell_entity_attribute_count(ifcopenshell_entity_t* self, size_t* ou
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = static_cast<size_t>(self_cpp->attribute_count());
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -21249,12 +21269,12 @@ bool ifcopenshell_entity_attributes(ifcopenshell_entity_t* self, ifcopenshell_at
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = make_attribute_list(self_cpp->attributes());
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -21266,12 +21286,12 @@ bool ifcopenshell_entity_derived(ifcopenshell_entity_t* self, ifcopenshell_bool_
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = make_bool_list(self_cpp->derived());
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -21283,12 +21303,12 @@ bool ifcopenshell_entity_inverse_attributes(ifcopenshell_entity_t* self, ifcopen
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = make_inverse_attribute_list(self_cpp->inverse_attributes());
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -21300,12 +21320,12 @@ bool ifcopenshell_entity_is_abstract(ifcopenshell_entity_t* self, bool* out_resu
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = self_cpp->is_abstract();
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -21320,12 +21340,12 @@ bool ifcopenshell_entity_set_attributes(ifcopenshell_entity_t* self, const ifcop
     if (derived == nullptr) { throw std::runtime_error("Parameter \"derived\" must not be null"); }
     auto derived_cpp = to_cpp_bool_list(derived);
         self_cpp->set_attributes(attributes_cpp, derived_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -21338,12 +21358,12 @@ bool ifcopenshell_entity_set_inverse_attributes(ifcopenshell_entity_t* self, con
     if (inverse_attributes == nullptr) { throw std::runtime_error("Parameter \"inverse_attributes\" must not be null"); }
     auto inverse_attributes_cpp = to_cpp_inverse_attribute_list(inverse_attributes);
         self_cpp->set_inverse_attributes(inverse_attributes_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -21356,12 +21376,12 @@ bool ifcopenshell_entity_set_subtypes(ifcopenshell_entity_t* self, const ifcopen
     if (subtypes == nullptr) { throw std::runtime_error("Parameter \"subtypes\" must not be null"); }
     auto subtypes_cpp = to_cpp_entity_list(subtypes);
         self_cpp->set_subtypes(subtypes_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -21373,12 +21393,12 @@ bool ifcopenshell_entity_subtypes(ifcopenshell_entity_t* self, ifcopenshell_enti
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = make_entity_list(self_cpp->subtypes());
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -21395,12 +21415,12 @@ bool ifcopenshell_entity_supertype(ifcopenshell_entity_t* self, ifcopenshell_ent
         } else {
             *out_result = new ifcopenshell_entity_t{const_cast<ifcopenshell::entity*>(result_value), false};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -21412,12 +21432,12 @@ bool ifcopenshell_attribute_name(ifcopenshell_attribute_t* self, ifcopenshell_st
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = make_string(self_cpp->name());
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -21429,12 +21449,12 @@ bool ifcopenshell_attribute_optional(ifcopenshell_attribute_t* self, bool* out_r
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = self_cpp->optional();
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -21451,12 +21471,12 @@ bool ifcopenshell_attribute_type_of_attribute(ifcopenshell_attribute_t* self, if
         } else {
             *out_result = new ifcopenshell_parameter_type_t{const_cast<ifcopenshell::parameter_type*>(result_value), false};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -21473,12 +21493,12 @@ bool ifcopenshell_inverse_attribute_attribute_reference(ifcopenshell_inverse_att
         } else {
             *out_result = new ifcopenshell_attribute_t{const_cast<ifcopenshell::attribute*>(result_value), false};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -21490,12 +21510,12 @@ bool ifcopenshell_inverse_attribute_bound1(ifcopenshell_inverse_attribute_t* sel
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = static_cast<int32_t>(self_cpp->bound1());
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -21507,12 +21527,12 @@ bool ifcopenshell_inverse_attribute_bound2(ifcopenshell_inverse_attribute_t* sel
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = static_cast<int32_t>(self_cpp->bound2());
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -21529,12 +21549,12 @@ bool ifcopenshell_inverse_attribute_entity_reference(ifcopenshell_inverse_attrib
         } else {
             *out_result = new ifcopenshell_entity_t{const_cast<ifcopenshell::entity*>(result_value), false};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -21546,12 +21566,12 @@ bool ifcopenshell_inverse_attribute_name(ifcopenshell_inverse_attribute_t* self,
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = make_string(self_cpp->name());
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -21563,12 +21583,12 @@ bool ifcopenshell_instance_streamer_bypassed_instances(ifcopenshell_instance_str
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = make_uint32_list(self_cpp->bypassed_instances());
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -21580,12 +21600,12 @@ bool ifcopenshell_instance_streamer_has_semicolon(ifcopenshell_instance_streamer
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = self_cpp->has_semicolon();
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -21598,12 +21618,12 @@ bool ifcopenshell_instance_streamer_push_page(ifcopenshell_instance_streamer_t* 
     if (page_data == nullptr) { throw std::runtime_error("Parameter \"page_data\" must not be null"); }
     std::string page_data_cpp(page_data);
         self_cpp->push_page(page_data_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -21615,12 +21635,12 @@ bool ifcopenshell_instance_streamer_semicolon_count(ifcopenshell_instance_stream
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = static_cast<size_t>(self_cpp->semicolon_count());
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -21632,12 +21652,12 @@ bool ifcopenshell_geom_triangulation_edges(ifcopenshell_geom_triangulation_t* se
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = make_int32_list(self_cpp->edges());
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -21649,12 +21669,12 @@ bool ifcopenshell_geom_triangulation_edges_item_ids(ifcopenshell_geom_triangulat
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = make_int32_list(self_cpp->edges_item_ids());
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -21666,12 +21686,12 @@ bool ifcopenshell_geom_triangulation_faces(ifcopenshell_geom_triangulation_t* se
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = make_int32_list(self_cpp->faces());
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -21683,12 +21703,12 @@ bool ifcopenshell_geom_triangulation_item_ids(ifcopenshell_geom_triangulation_t*
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = make_int32_list(self_cpp->item_ids());
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -21700,12 +21720,12 @@ bool ifcopenshell_geom_triangulation_material_ids(ifcopenshell_geom_triangulatio
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = make_int32_list(self_cpp->material_ids());
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -21717,12 +21737,12 @@ bool ifcopenshell_geom_triangulation_materials(ifcopenshell_geom_triangulation_t
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = make_geom_taxonomy_style_list(self_cpp->materials());
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -21734,12 +21754,12 @@ bool ifcopenshell_geom_triangulation_normals(ifcopenshell_geom_triangulation_t* 
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = make_double_list(self_cpp->normals());
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -21751,12 +21771,12 @@ bool ifcopenshell_geom_triangulation_polyhedral_faces_with_holes(ifcopenshell_ge
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = make_int32_list_list_list(self_cpp->polyhedral_faces_with_holes());
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -21768,12 +21788,12 @@ bool ifcopenshell_geom_triangulation_polyhedral_faces_without_holes(ifcopenshell
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = make_int32_list_list(self_cpp->polyhedral_faces_without_holes());
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -21785,12 +21805,12 @@ bool ifcopenshell_geom_triangulation_uvs(ifcopenshell_geom_triangulation_t* self
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = make_double_list(self_cpp->uvs());
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -21802,12 +21822,12 @@ bool ifcopenshell_geom_triangulation_verts(ifcopenshell_geom_triangulation_t* se
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = make_double_list(self_cpp->verts());
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -21819,12 +21839,12 @@ bool ifcopenshell_geom_triangulation_verts_buffer_size(ifcopenshell_geom_triangu
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = self_cpp->verts().size();
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -21836,12 +21856,12 @@ bool ifcopenshell_geom_triangulation_faces_buffer_size(ifcopenshell_geom_triangu
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = self_cpp->faces().size();
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -21853,12 +21873,12 @@ bool ifcopenshell_geom_triangulation_normals_buffer_size(ifcopenshell_geom_trian
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = self_cpp->normals().size();
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -21870,12 +21890,12 @@ bool ifcopenshell_geom_triangulation_edges_buffer_size(ifcopenshell_geom_triangu
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = self_cpp->edges().size();
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -21887,12 +21907,12 @@ bool ifcopenshell_geom_triangulation_material_ids_buffer_size(ifcopenshell_geom_
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = self_cpp->material_ids().size();
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -21904,12 +21924,12 @@ bool ifcopenshell_geom_triangulation_item_ids_buffer_size(ifcopenshell_geom_tria
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = self_cpp->item_ids().size();
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -21921,12 +21941,12 @@ bool ifcopenshell_geom_triangulation_edges_item_ids_buffer_size(ifcopenshell_geo
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = self_cpp->edges_item_ids().size();
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -21938,12 +21958,12 @@ bool ifcopenshell_geom_triangulation_uvs_buffer_size(ifcopenshell_geom_triangula
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = self_cpp->uvs().size();
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -21955,12 +21975,12 @@ bool ifcopenshell_geom_triangulation_material_count(ifcopenshell_geom_triangulat
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = self_cpp->materials().size();
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -21974,12 +21994,12 @@ bool ifcopenshell_geom_triangulation_material_at(ifcopenshell_geom_triangulation
         const auto& items = self_cpp->materials();
         if (index >= items.size()) { throw std::runtime_error("Material index out of bounds"); }
         *out_result = new ifcopenshell_geom_taxonomy_style_t{items[index]};
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -21991,12 +22011,12 @@ bool ifcopenshell_geom_iterator_bounds_max(ifcopenshell_geom_iterator_t* self, i
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = new ifcopenshell_geom_taxonomy_point3_t{std::make_shared<ifcopenshell::geometry::taxonomy::point3>(self_cpp->bounds_max())};
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -22008,12 +22028,12 @@ bool ifcopenshell_geom_iterator_bounds_min(ifcopenshell_geom_iterator_t* self, i
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = new ifcopenshell_geom_taxonomy_point3_t{std::make_shared<ifcopenshell::geometry::taxonomy::point3>(self_cpp->bounds_min())};
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -22025,12 +22045,12 @@ bool ifcopenshell_geom_iterator_compute_bounds(ifcopenshell_geom_iterator_t* sel
     auto* self_cpp = self->ptr;
     auto with_geometry_cpp = static_cast<bool>(with_geometry);
         self_cpp->compute_bounds(with_geometry_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -22047,12 +22067,12 @@ bool ifcopenshell_geom_iterator_create(ifcopenshell_geom_iterator_t* self, ifcop
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -22069,12 +22089,12 @@ bool ifcopenshell_geom_iterator_file(ifcopenshell_geom_iterator_t* self, ifcopen
         } else {
             *out_result = new ifcopenshell_file_t{result_value, false};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -22091,12 +22111,12 @@ bool ifcopenshell_geom_iterator_get(ifcopenshell_geom_iterator_t* self, ifcopens
         } else {
             *out_result = new ifcopenshell_geom_element_t{result_value, false};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -22108,12 +22128,12 @@ bool ifcopenshell_geom_iterator_get_log(ifcopenshell_geom_iterator_t* self, ifco
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = make_string(self_cpp->getLog());
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -22130,12 +22150,12 @@ bool ifcopenshell_geom_iterator_get_native(ifcopenshell_geom_iterator_t* self, i
         } else {
             *out_result = new ifcopenshell_geom_brep_element_t{result_value, false};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -22153,12 +22173,12 @@ bool ifcopenshell_geom_iterator_get_object(ifcopenshell_geom_iterator_t* self, i
         } else {
             *out_result = new ifcopenshell_geom_element_t{const_cast<IfcGeom::Element*>(result_value), false};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -22170,12 +22190,12 @@ bool ifcopenshell_geom_iterator_get_task_items(ifcopenshell_geom_iterator_t* sel
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = make_geom_taxonomy_item_list(self_cpp->get_task_items());
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -22187,12 +22207,12 @@ bool ifcopenshell_geom_iterator_get_task_products(ifcopenshell_geom_iterator_t* 
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = make_instance_list_list(self_cpp->get_task_products());
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -22204,12 +22224,12 @@ bool ifcopenshell_geom_iterator_had_error_processing_elements(ifcopenshell_geom_
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = self_cpp->had_error_processing_elements();
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -22221,12 +22241,12 @@ bool ifcopenshell_geom_iterator_initialize(ifcopenshell_geom_iterator_t* self, b
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = self_cpp->initialize();
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -22238,12 +22258,12 @@ bool ifcopenshell_geom_iterator_progress(ifcopenshell_geom_iterator_t* self, int
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = static_cast<int32_t>(self_cpp->progress());
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -22255,12 +22275,12 @@ bool ifcopenshell_geom_iterator_unit_magnitude(ifcopenshell_geom_iterator_t* sel
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = static_cast<double>(self_cpp->unit_magnitude());
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -22272,12 +22292,12 @@ bool ifcopenshell_geom_iterator_unit_name(ifcopenshell_geom_iterator_t* self, if
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = make_string(self_cpp->unit_name());
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -22294,12 +22314,12 @@ bool ifcopenshell_geom_brep_representation_calculate_projected_surface_area(ifco
     auto along_y_cpp = static_cast<double&>(along_y);
     auto along_z_cpp = static_cast<double&>(along_z);
         *out_result = self_cpp->calculate_projected_surface_area(ax_cpp, along_x_cpp, along_y_cpp, along_z_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -22316,12 +22336,12 @@ bool ifcopenshell_geom_brep_representation_calculate_surface_area(ifcopenshell_g
         } else {
             *out_result = std::numeric_limits<double>::quiet_NaN();
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -22338,12 +22358,12 @@ bool ifcopenshell_geom_brep_representation_calculate_volume(ifcopenshell_geom_br
         } else {
             *out_result = std::numeric_limits<double>::quiet_NaN();
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -22355,12 +22375,12 @@ bool ifcopenshell_geom_brep_representation_entity(ifcopenshell_geom_brep_represe
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = make_string(self_cpp->entity());
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -22372,12 +22392,12 @@ bool ifcopenshell_geom_brep_representation_id(ifcopenshell_geom_brep_representat
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = make_string(self_cpp->id());
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -22395,12 +22415,12 @@ bool ifcopenshell_geom_brep_representation_item(ifcopenshell_geom_brep_represent
         } else {
             *out_result = new ifcopenshell_geom_conversion_result_shape_t{const_cast<IfcGeom::ConversionResultShape*>(result_value), false};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -22413,12 +22433,12 @@ bool ifcopenshell_geom_brep_representation_item_id(ifcopenshell_geom_brep_repres
     auto* self_cpp = self->ptr;
     auto i_cpp = static_cast<int>(i);
         *out_result = static_cast<int32_t>(self_cpp->item_id(i_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -22430,12 +22450,12 @@ bool ifcopenshell_geom_brep_representation_settings(ifcopenshell_geom_brep_repre
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = new ifcopenshell_geom_settings_t{const_cast<ifcopenshell::geometry::Settings*>(&(self_cpp->settings())), false};
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -22447,12 +22467,12 @@ bool ifcopenshell_geom_brep_representation_size(ifcopenshell_geom_brep_represent
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = static_cast<int32_t>(self_cpp->size());
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -22464,12 +22484,12 @@ bool ifcopenshell_geom_element_context(ifcopenshell_geom_element_t* self, ifcope
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = make_string(self_cpp->context());
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -22481,12 +22501,12 @@ bool ifcopenshell_geom_element_guid(ifcopenshell_geom_element_t* self, ifcopensh
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = make_string(self_cpp->guid());
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -22498,12 +22518,12 @@ bool ifcopenshell_geom_element_id(ifcopenshell_geom_element_t* self, int32_t* ou
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = static_cast<int32_t>(self_cpp->id());
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -22515,12 +22535,12 @@ bool ifcopenshell_geom_element_name(ifcopenshell_geom_element_t* self, ifcopensh
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = make_string(self_cpp->name());
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -22532,12 +22552,12 @@ bool ifcopenshell_geom_element_parent_id(ifcopenshell_geom_element_t* self, int3
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = static_cast<int32_t>(self_cpp->parent_id());
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -22549,12 +22569,12 @@ bool ifcopenshell_geom_element_parents(ifcopenshell_geom_element_t* self, ifcope
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = make_geom_element_list(self_cpp->parents());
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -22571,12 +22591,12 @@ bool ifcopenshell_geom_element_product(ifcopenshell_geom_element_t* self, ifcope
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -22588,12 +22608,12 @@ bool ifcopenshell_geom_element_transformation(ifcopenshell_geom_element_t* self,
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = new ifcopenshell_geom_transformation_t{const_cast<IfcGeom::Transformation*>(&(self_cpp->transformation())), false};
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -22605,12 +22625,12 @@ bool ifcopenshell_geom_element_type(ifcopenshell_geom_element_t* self, ifcopensh
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = make_string(self_cpp->type());
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -22622,12 +22642,12 @@ bool ifcopenshell_geom_element_unique_id(ifcopenshell_geom_element_t* self, ifco
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = make_string(self_cpp->unique_id());
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -22642,12 +22662,12 @@ bool ifcopenshell_geom_brep_element_calculate_projected_surface_area(ifcopenshel
     auto along_y_cpp = static_cast<double&>(along_y);
     auto along_z_cpp = static_cast<double&>(along_z);
         *out_result = self_cpp->calculate_projected_surface_area(along_x_cpp, along_y_cpp, along_z_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -22659,12 +22679,12 @@ bool ifcopenshell_geom_brep_element_geometry(ifcopenshell_geom_brep_element_t* s
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = new ifcopenshell_geom_brep_representation_t{const_cast<IfcGeom::Representation::BRep*>(&(self_cpp->geometry())), false};
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -22676,12 +22696,12 @@ bool ifcopenshell_geom_triangulation_element_geometry(ifcopenshell_geom_triangul
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = new ifcopenshell_geom_triangulation_t{const_cast<IfcGeom::Representation::Triangulation*>(&(self_cpp->geometry())), false};
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -22693,12 +22713,12 @@ bool ifcopenshell_geom_serialized_element_geometry(ifcopenshell_geom_serialized_
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = new ifcopenshell_geom_serialization_t{const_cast<IfcGeom::Representation::Serialization*>(&(self_cpp->geometry())), false};
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -22710,12 +22730,12 @@ bool ifcopenshell_geom_conversion_result_shape_is_manifold(ifcopenshell_geom_con
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = self_cpp->is_manifold();
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -22727,12 +22747,12 @@ bool ifcopenshell_geom_conversion_result_shape_num_edges(ifcopenshell_geom_conve
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = static_cast<int32_t>(self_cpp->num_edges());
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -22744,12 +22764,12 @@ bool ifcopenshell_geom_conversion_result_shape_num_faces(ifcopenshell_geom_conve
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = static_cast<int32_t>(self_cpp->num_faces());
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -22761,12 +22781,12 @@ bool ifcopenshell_geom_conversion_result_shape_num_vertices(ifcopenshell_geom_co
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = static_cast<int32_t>(self_cpp->num_vertices());
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -22784,12 +22804,12 @@ bool ifcopenshell_geom_conversion_result_shape_surface_area_along_direction(ifco
     auto along_y_cpp = static_cast<double&>(along_y);
     auto along_z_cpp = static_cast<double&>(along_z);
         *out_result = self_cpp->surface_area_along_direction(tol_cpp, arg_1_cpp, along_x_cpp, along_y_cpp, along_z_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -22801,12 +22821,12 @@ bool ifcopenshell_geom_conversion_result_shape_surface_genus(ifcopenshell_geom_c
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = static_cast<int32_t>(self_cpp->surface_genus());
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -22818,12 +22838,12 @@ bool ifcopenshell_geom_function_item_evaluator_evaluation_points(ifcopenshell_ge
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = make_double_list(self_cpp->evaluation_points());
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -22838,12 +22858,12 @@ bool ifcopenshell_geom_function_item_evaluator_evaluation_points_range(ifcopensh
     auto uend_cpp = static_cast<double>(uend);
     auto nsteps_cpp = static_cast<unsigned int>(nsteps);
         *out_result = make_double_list(self_cpp->evaluation_points(ustart_cpp, uend_cpp, nsteps_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -22855,12 +22875,12 @@ bool ifcopenshell_geom_function_item_evaluator_evaluate(ifcopenshell_geom_functi
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = new ifcopenshell_geom_taxonomy_item_t{self_cpp->evaluate()};
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -22875,12 +22895,12 @@ bool ifcopenshell_geom_function_item_evaluator_evaluate_range(ifcopenshell_geom_
     auto uend_cpp = static_cast<double>(uend);
     auto nsteps_cpp = static_cast<unsigned int>(nsteps);
         *out_result = new ifcopenshell_geom_taxonomy_item_t{self_cpp->evaluate(ustart_cpp, uend_cpp, nsteps_cpp)};
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -22892,12 +22912,12 @@ bool ifcopenshell_geom_serialization_brep_data(ifcopenshell_geom_serialization_t
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = make_string(self_cpp->brep_data());
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -22909,12 +22929,12 @@ bool ifcopenshell_geom_serialization_surface_style_ids(ifcopenshell_geom_seriali
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = make_int32_list(self_cpp->surface_style_ids());
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -22926,12 +22946,12 @@ bool ifcopenshell_geom_serialization_surface_styles(ifcopenshell_geom_serializat
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = make_double_list(self_cpp->surface_styles());
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -22943,12 +22963,12 @@ bool ifcopenshell_geom_geometry_serializer_geometry_settings(ifcopenshell_geom_g
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = new ifcopenshell_geom_settings_t{const_cast<ifcopenshell::geometry::Settings*>(&(self_cpp->geometry_settings())), false};
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -22960,12 +22980,12 @@ bool ifcopenshell_geom_geometry_serializer_settings(ifcopenshell_geom_geometry_s
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = new ifcopenshell_geom_serializer_settings_t{const_cast<ifcopenshell::geometry::SerializerSettings*>(&(self_cpp->settings())), false};
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -22978,12 +22998,12 @@ bool ifcopenshell_geom_geometry_serializer_write_triangulation_element(ifcopensh
     if (o == nullptr || o->ptr == nullptr) { throw std::runtime_error("Handle parameter \"o\" is invalid"); }
     auto o_cpp = o->ptr;
         self_cpp->write(o_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -22996,12 +23016,12 @@ bool ifcopenshell_geom_geometry_serializer_write_brep_element(ifcopenshell_geom_
     if (o == nullptr || o->ptr == nullptr) { throw std::runtime_error("Handle parameter \"o\" is invalid"); }
     auto o_cpp = o->ptr;
         self_cpp->write(o_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -23012,12 +23032,12 @@ bool ifcopenshell_geom_geometry_serializer_finalize(ifcopenshell_geom_geometry_s
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         self_cpp->finalize();
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -23029,12 +23049,12 @@ bool ifcopenshell_geom_geometry_serializer_is_tesselated(ifcopenshell_geom_geome
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = self_cpp->isTesselated();
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -23046,12 +23066,12 @@ bool ifcopenshell_geom_geometry_serializer_is_streaming(ifcopenshell_geom_geomet
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = self_cpp->is_streaming();
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -23075,12 +23095,12 @@ bool ifcopenshell_geom_geometry_serializer_read(ifcopenshell_geom_geometry_seria
         } else {
             *out_result = new ifcopenshell_geom_element_t{result_value, false};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -23092,12 +23112,12 @@ bool ifcopenshell_geom_geometry_serializer_ready(ifcopenshell_geom_geometry_seri
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = self_cpp->ready();
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -23110,12 +23130,12 @@ bool ifcopenshell_geom_geometry_serializer_set_file(ifcopenshell_geom_geometry_s
     if (arg_0 == nullptr || arg_0->ptr == nullptr) { throw std::runtime_error("Handle parameter \"arg_0\" is invalid"); }
     auto arg_0_cpp = arg_0->ptr;
         self_cpp->setFile(arg_0_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -23129,12 +23149,12 @@ bool ifcopenshell_geom_geometry_serializer_set_unit_name_and_magnitude(ifcopensh
     std::string name_cpp(name);
     auto magnitude_cpp = static_cast<float>(magnitude);
         self_cpp->setUnitNameAndMagnitude(name_cpp, magnitude_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -23145,12 +23165,12 @@ bool ifcopenshell_geom_geometry_serializer_write_header(ifcopenshell_geom_geomet
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         self_cpp->writeHeader();
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -23163,12 +23183,12 @@ bool ifcopenshell_geom_taxonomy_circle_matrix(ifcopenshell_geom_taxonomy_circle_
     auto* self_cpp = self->ptr.get();
         if (!self_cpp->matrix) { throw std::runtime_error("matrix is not set"); }
         *out_result = new ifcopenshell_geom_taxonomy_matrix4_t{self_cpp->matrix};
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -23180,12 +23200,12 @@ bool ifcopenshell_geom_taxonomy_circle_radius(ifcopenshell_geom_taxonomy_circle_
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr.get();
         *out_result = static_cast<double>(self_cpp->radius);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -23198,12 +23218,12 @@ bool ifcopenshell_geom_taxonomy_line_matrix(ifcopenshell_geom_taxonomy_line_t* s
     auto* self_cpp = self->ptr.get();
         if (!self_cpp->matrix) { throw std::runtime_error("matrix is not set"); }
         *out_result = new ifcopenshell_geom_taxonomy_matrix4_t{self_cpp->matrix};
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -23220,12 +23240,12 @@ bool ifcopenshell_geom_taxonomy_line_as_item(ifcopenshell_geom_taxonomy_line_t* 
         } else {
             *out_result = new ifcopenshell_geom_taxonomy_item_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -23238,12 +23258,12 @@ bool ifcopenshell_geom_taxonomy_plane_matrix(ifcopenshell_geom_taxonomy_plane_t*
     auto* self_cpp = self->ptr.get();
         if (!self_cpp->matrix) { throw std::runtime_error("matrix is not set"); }
         *out_result = new ifcopenshell_geom_taxonomy_matrix4_t{self_cpp->matrix};
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -23256,12 +23276,12 @@ bool ifcopenshell_geom_taxonomy_ellipse_matrix(ifcopenshell_geom_taxonomy_ellips
     auto* self_cpp = self->ptr.get();
         if (!self_cpp->matrix) { throw std::runtime_error("matrix is not set"); }
         *out_result = new ifcopenshell_geom_taxonomy_matrix4_t{self_cpp->matrix};
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -23273,12 +23293,12 @@ bool ifcopenshell_geom_taxonomy_ellipse_radius1(ifcopenshell_geom_taxonomy_ellip
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr.get();
         *out_result = static_cast<double>(self_cpp->radius);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -23290,12 +23310,12 @@ bool ifcopenshell_geom_taxonomy_ellipse_radius2(ifcopenshell_geom_taxonomy_ellip
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr.get();
         *out_result = static_cast<double>(self_cpp->radius2);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -23307,12 +23327,12 @@ bool ifcopenshell_geom_taxonomy_style_has_specularity(ifcopenshell_geom_taxonomy
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr.get();
         *out_result = self_cpp->has_specularity();
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -23324,12 +23344,12 @@ bool ifcopenshell_geom_taxonomy_style_has_transparency(ifcopenshell_geom_taxonom
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr.get();
         *out_result = self_cpp->has_transparency();
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -23341,12 +23361,12 @@ bool ifcopenshell_geom_taxonomy_style_diffuse(ifcopenshell_geom_taxonomy_style_t
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr.get();
         *out_result = new ifcopenshell_geom_taxonomy_colour_t{std::make_shared<ifcopenshell::geometry::taxonomy::colour>(self_cpp->diffuse)};
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -23358,12 +23378,12 @@ bool ifcopenshell_geom_taxonomy_style_name(ifcopenshell_geom_taxonomy_style_t* s
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr.get();
         *out_result = make_string(self_cpp->name);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -23375,12 +23395,12 @@ bool ifcopenshell_geom_taxonomy_style_specular(ifcopenshell_geom_taxonomy_style_
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr.get();
         *out_result = new ifcopenshell_geom_taxonomy_colour_t{std::make_shared<ifcopenshell::geometry::taxonomy::colour>(self_cpp->specular)};
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -23392,12 +23412,12 @@ bool ifcopenshell_geom_taxonomy_style_specularity(ifcopenshell_geom_taxonomy_sty
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr.get();
         *out_result = static_cast<double>(self_cpp->specularity);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -23409,12 +23429,12 @@ bool ifcopenshell_geom_taxonomy_style_surface(ifcopenshell_geom_taxonomy_style_t
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr.get();
         *out_result = new ifcopenshell_geom_taxonomy_colour_t{std::make_shared<ifcopenshell::geometry::taxonomy::colour>(self_cpp->surface)};
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -23426,12 +23446,12 @@ bool ifcopenshell_geom_taxonomy_style_transparency(ifcopenshell_geom_taxonomy_st
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr.get();
         *out_result = static_cast<double>(self_cpp->transparency);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -23443,12 +23463,12 @@ bool ifcopenshell_geom_taxonomy_style_use_surface_color(ifcopenshell_geom_taxono
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr.get();
         *out_result = self_cpp->use_surface_color;
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -23461,12 +23481,12 @@ bool ifcopenshell_geom_taxonomy_sphere_matrix(ifcopenshell_geom_taxonomy_sphere_
     auto* self_cpp = self->ptr.get();
         if (!self_cpp->matrix) { throw std::runtime_error("matrix is not set"); }
         *out_result = new ifcopenshell_geom_taxonomy_matrix4_t{self_cpp->matrix};
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -23478,12 +23498,12 @@ bool ifcopenshell_geom_taxonomy_sphere_radius(ifcopenshell_geom_taxonomy_sphere_
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr.get();
         *out_result = static_cast<double>(self_cpp->radius);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -23496,12 +23516,12 @@ bool ifcopenshell_geom_taxonomy_torus_matrix(ifcopenshell_geom_taxonomy_torus_t*
     auto* self_cpp = self->ptr.get();
         if (!self_cpp->matrix) { throw std::runtime_error("matrix is not set"); }
         *out_result = new ifcopenshell_geom_taxonomy_matrix4_t{self_cpp->matrix};
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -23513,12 +23533,12 @@ bool ifcopenshell_geom_taxonomy_torus_radius1(ifcopenshell_geom_taxonomy_torus_t
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr.get();
         *out_result = static_cast<double>(self_cpp->radius1);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -23530,12 +23550,12 @@ bool ifcopenshell_geom_taxonomy_torus_radius2(ifcopenshell_geom_taxonomy_torus_t
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr.get();
         *out_result = static_cast<double>(self_cpp->radius2);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -23548,12 +23568,12 @@ bool ifcopenshell_geom_taxonomy_cylinder_matrix(ifcopenshell_geom_taxonomy_cylin
     auto* self_cpp = self->ptr.get();
         if (!self_cpp->matrix) { throw std::runtime_error("matrix is not set"); }
         *out_result = new ifcopenshell_geom_taxonomy_matrix4_t{self_cpp->matrix};
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -23565,12 +23585,12 @@ bool ifcopenshell_geom_taxonomy_cylinder_radius(ifcopenshell_geom_taxonomy_cylin
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr.get();
         *out_result = static_cast<double>(self_cpp->radius);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -23583,12 +23603,12 @@ bool ifcopenshell_geom_taxonomy_extrusion_basis(ifcopenshell_geom_taxonomy_extru
     auto* self_cpp = self->ptr.get();
         if (!self_cpp->basis) { throw std::runtime_error("basis is not set"); }
         *out_result = new ifcopenshell_geom_taxonomy_item_t{self_cpp->basis};
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -23600,12 +23620,12 @@ bool ifcopenshell_geom_taxonomy_extrusion_depth(ifcopenshell_geom_taxonomy_extru
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr.get();
         *out_result = static_cast<double>(self_cpp->depth);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -23618,12 +23638,12 @@ bool ifcopenshell_geom_taxonomy_extrusion_direction(ifcopenshell_geom_taxonomy_e
     auto* self_cpp = self->ptr.get();
         if (!self_cpp->direction) { throw std::runtime_error("direction is not set"); }
         *out_result = new ifcopenshell_geom_taxonomy_direction3_t{self_cpp->direction};
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -23636,12 +23656,12 @@ bool ifcopenshell_geom_taxonomy_extrusion_matrix(ifcopenshell_geom_taxonomy_extr
     auto* self_cpp = self->ptr.get();
         if (!self_cpp->matrix) { throw std::runtime_error("matrix is not set"); }
         *out_result = new ifcopenshell_geom_taxonomy_matrix4_t{self_cpp->matrix};
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -23654,12 +23674,12 @@ bool ifcopenshell_geom_taxonomy_offset_curve_basis(ifcopenshell_geom_taxonomy_of
     auto* self_cpp = self->ptr.get();
         if (!self_cpp->basis) { throw std::runtime_error("basis is not set"); }
         *out_result = new ifcopenshell_geom_taxonomy_item_t{self_cpp->basis};
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -23671,12 +23691,12 @@ bool ifcopenshell_geom_taxonomy_offset_curve_offset(ifcopenshell_geom_taxonomy_o
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr.get();
         *out_result = static_cast<double>(self_cpp->offset);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -23689,12 +23709,12 @@ bool ifcopenshell_geom_taxonomy_offset_curve_reference(ifcopenshell_geom_taxonom
     auto* self_cpp = self->ptr.get();
         if (!self_cpp->reference) { throw std::runtime_error("reference is not set"); }
         *out_result = new ifcopenshell_geom_taxonomy_direction3_t{self_cpp->reference};
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -23711,12 +23731,12 @@ bool ifcopenshell_geom_taxonomy_offset_curve_as_item(ifcopenshell_geom_taxonomy_
         } else {
             *out_result = new ifcopenshell_geom_taxonomy_item_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -23728,12 +23748,12 @@ bool ifcopenshell_geom_taxonomy_revolve_has_angle(ifcopenshell_geom_taxonomy_rev
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr.get();
         *out_result = static_cast<bool>(self_cpp->angle);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -23746,12 +23766,12 @@ bool ifcopenshell_geom_taxonomy_revolve_angle(ifcopenshell_geom_taxonomy_revolve
     auto* self_cpp = self->ptr.get();
         if (!self_cpp->angle) { throw std::runtime_error("angle is not set"); }
         *out_result = static_cast<double>(*self_cpp->angle);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -23764,12 +23784,12 @@ bool ifcopenshell_geom_taxonomy_revolve_axis_origin(ifcopenshell_geom_taxonomy_r
     auto* self_cpp = self->ptr.get();
         if (!self_cpp->axis_origin) { throw std::runtime_error("axis_origin is not set"); }
         *out_result = new ifcopenshell_geom_taxonomy_point3_t{self_cpp->axis_origin};
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -23782,12 +23802,12 @@ bool ifcopenshell_geom_taxonomy_revolve_basis(ifcopenshell_geom_taxonomy_revolve
     auto* self_cpp = self->ptr.get();
         if (!self_cpp->basis) { throw std::runtime_error("basis is not set"); }
         *out_result = new ifcopenshell_geom_taxonomy_item_t{self_cpp->basis};
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -23800,12 +23820,12 @@ bool ifcopenshell_geom_taxonomy_revolve_direction(ifcopenshell_geom_taxonomy_rev
     auto* self_cpp = self->ptr.get();
         if (!self_cpp->direction) { throw std::runtime_error("direction is not set"); }
         *out_result = new ifcopenshell_geom_taxonomy_direction3_t{self_cpp->direction};
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -23818,12 +23838,12 @@ bool ifcopenshell_geom_taxonomy_revolve_matrix(ifcopenshell_geom_taxonomy_revolv
     auto* self_cpp = self->ptr.get();
         if (!self_cpp->matrix) { throw std::runtime_error("matrix is not set"); }
         *out_result = new ifcopenshell_geom_taxonomy_matrix4_t{self_cpp->matrix};
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -23835,12 +23855,12 @@ bool ifcopenshell_geom_taxonomy_bspline_curve_degree(ifcopenshell_geom_taxonomy_
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr.get();
         *out_result = static_cast<int32_t>(self_cpp->degree);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -23852,12 +23872,12 @@ bool ifcopenshell_geom_taxonomy_bspline_curve_knots(ifcopenshell_geom_taxonomy_b
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr.get();
         *out_result = make_double_list(self_cpp->knots);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -23869,12 +23889,12 @@ bool ifcopenshell_geom_taxonomy_bspline_curve_multiplicities(ifcopenshell_geom_t
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr.get();
         *out_result = make_int32_list(self_cpp->multiplicities);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -23886,12 +23906,12 @@ bool ifcopenshell_geom_taxonomy_bspline_curve_has_weights(ifcopenshell_geom_taxo
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr.get();
         *out_result = static_cast<bool>(self_cpp->weights);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -23904,12 +23924,12 @@ bool ifcopenshell_geom_taxonomy_bspline_curve_weights(ifcopenshell_geom_taxonomy
     auto* self_cpp = self->ptr.get();
         if (!self_cpp->weights) { throw std::runtime_error("weights is not set"); }
         *out_result = make_double_list(*self_cpp->weights);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -23921,12 +23941,12 @@ bool ifcopenshell_geom_taxonomy_bspline_curve_control_point_count(ifcopenshell_g
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr.get();
         *out_result = self_cpp->control_points.size();
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -23939,12 +23959,12 @@ bool ifcopenshell_geom_taxonomy_bspline_curve_control_point_at(ifcopenshell_geom
     auto* self_cpp = self->ptr.get();
         if (index >= self_cpp->control_points.size()) { throw std::runtime_error("Index out of bounds"); }
         *out_result = new ifcopenshell_geom_taxonomy_point3_t{self_cpp->control_points[index]};
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -23961,12 +23981,12 @@ bool ifcopenshell_geom_taxonomy_bspline_curve_as_item(ifcopenshell_geom_taxonomy
         } else {
             *out_result = new ifcopenshell_geom_taxonomy_item_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -23979,12 +23999,12 @@ bool ifcopenshell_geom_taxonomy_sweep_along_curve_basis(ifcopenshell_geom_taxono
     auto* self_cpp = self->ptr.get();
         if (!self_cpp->basis) { throw std::runtime_error("basis is not set"); }
         *out_result = new ifcopenshell_geom_taxonomy_item_t{self_cpp->basis};
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -23996,12 +24016,12 @@ bool ifcopenshell_geom_taxonomy_sweep_along_curve_has_basis(ifcopenshell_geom_ta
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr.get();
         *out_result = (self_cpp->basis != nullptr);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -24014,12 +24034,12 @@ bool ifcopenshell_geom_taxonomy_sweep_along_curve_curve(ifcopenshell_geom_taxono
     auto* self_cpp = self->ptr.get();
         if (!self_cpp->curve) { throw std::runtime_error("curve is not set"); }
         *out_result = new ifcopenshell_geom_taxonomy_item_t{self_cpp->curve};
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -24031,12 +24051,12 @@ bool ifcopenshell_geom_taxonomy_sweep_along_curve_has_curve(ifcopenshell_geom_ta
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr.get();
         *out_result = (self_cpp->curve != nullptr);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -24049,12 +24069,12 @@ bool ifcopenshell_geom_taxonomy_sweep_along_curve_direction(ifcopenshell_geom_ta
     auto* self_cpp = self->ptr.get();
         if (!self_cpp->direction) { throw std::runtime_error("direction is not set"); }
         *out_result = new ifcopenshell_geom_taxonomy_direction3_t{self_cpp->direction};
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -24066,12 +24086,12 @@ bool ifcopenshell_geom_taxonomy_sweep_along_curve_has_direction(ifcopenshell_geo
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr.get();
         *out_result = (self_cpp->direction != nullptr);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -24084,12 +24104,12 @@ bool ifcopenshell_geom_taxonomy_sweep_along_curve_matrix(ifcopenshell_geom_taxon
     auto* self_cpp = self->ptr.get();
         if (!self_cpp->matrix) { throw std::runtime_error("matrix is not set"); }
         *out_result = new ifcopenshell_geom_taxonomy_matrix4_t{self_cpp->matrix};
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -24101,12 +24121,12 @@ bool ifcopenshell_geom_taxonomy_sweep_along_curve_has_matrix(ifcopenshell_geom_t
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr.get();
         *out_result = (self_cpp->matrix != nullptr);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -24119,12 +24139,12 @@ bool ifcopenshell_geom_taxonomy_sweep_along_curve_surface(ifcopenshell_geom_taxo
     auto* self_cpp = self->ptr.get();
         if (!self_cpp->surface) { throw std::runtime_error("surface is not set"); }
         *out_result = new ifcopenshell_geom_taxonomy_item_t{self_cpp->surface};
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -24136,12 +24156,12 @@ bool ifcopenshell_geom_taxonomy_sweep_along_curve_has_surface(ifcopenshell_geom_
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr.get();
         *out_result = (self_cpp->surface != nullptr);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -24154,12 +24174,12 @@ bool ifcopenshell_geom_taxonomy_face_basis(ifcopenshell_geom_taxonomy_face_t* se
     auto* self_cpp = self->ptr.get();
         if (!self_cpp->basis) { throw std::runtime_error("basis is not set"); }
         *out_result = new ifcopenshell_geom_taxonomy_item_t{self_cpp->basis};
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -24171,12 +24191,12 @@ bool ifcopenshell_geom_taxonomy_face_loop_count(ifcopenshell_geom_taxonomy_face_
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr.get();
         *out_result = self_cpp->children.size();
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -24189,12 +24209,12 @@ bool ifcopenshell_geom_taxonomy_face_loop_at(ifcopenshell_geom_taxonomy_face_t* 
     auto* self_cpp = self->ptr.get();
         if (index >= self_cpp->children.size()) { throw std::runtime_error("Index out of bounds"); }
         *out_result = new ifcopenshell_geom_taxonomy_loop_t{self_cpp->children[index]};
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -24207,12 +24227,12 @@ bool ifcopenshell_geom_taxonomy_face_matrix(ifcopenshell_geom_taxonomy_face_t* s
     auto* self_cpp = self->ptr.get();
         if (!self_cpp->matrix) { throw std::runtime_error("matrix is not set"); }
         *out_result = new ifcopenshell_geom_taxonomy_matrix4_t{self_cpp->matrix};
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -24229,12 +24249,12 @@ bool ifcopenshell_geom_taxonomy_face_as_item(ifcopenshell_geom_taxonomy_face_t* 
         } else {
             *out_result = new ifcopenshell_geom_taxonomy_item_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -24247,12 +24267,12 @@ bool ifcopenshell_geom_taxonomy_loft_axis(ifcopenshell_geom_taxonomy_loft_t* sel
     auto* self_cpp = self->ptr.get();
         if (!self_cpp->axis) { throw std::runtime_error("axis is not set"); }
         *out_result = new ifcopenshell_geom_taxonomy_item_t{self_cpp->axis};
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -24264,12 +24284,12 @@ bool ifcopenshell_geom_taxonomy_loft_has_axis(ifcopenshell_geom_taxonomy_loft_t*
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr.get();
         *out_result = (self_cpp->axis != nullptr);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -24281,12 +24301,12 @@ bool ifcopenshell_geom_taxonomy_loft_item_count(ifcopenshell_geom_taxonomy_loft_
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr.get();
         *out_result = self_cpp->children.size();
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -24299,12 +24319,12 @@ bool ifcopenshell_geom_taxonomy_loft_item_at(ifcopenshell_geom_taxonomy_loft_t* 
     auto* self_cpp = self->ptr.get();
         if (index >= self_cpp->children.size()) { throw std::runtime_error("Index out of bounds"); }
         *out_result = new ifcopenshell_geom_taxonomy_item_t{self_cpp->children[index]};
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -24319,12 +24339,12 @@ bool ifcopenshell_geom_taxonomy_loft_add_item(ifcopenshell_geom_taxonomy_loft_t*
         auto cast_item = ifcopenshell::geometry::taxonomy::dcast<ifcopenshell::geometry::taxonomy::geom_item>(item_cpp);
         if (!cast_item) { throw std::runtime_error("Invalid item type"); }
         self_cpp->children.push_back(cast_item);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -24337,12 +24357,12 @@ bool ifcopenshell_geom_taxonomy_loft_set_axis(ifcopenshell_geom_taxonomy_loft_t*
     if (value == nullptr || value->ptr == nullptr) { throw std::runtime_error("Handle parameter \"value\" is invalid"); }
     auto value_cpp = value->ptr;
         self_cpp->axis = value_cpp;
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -24354,12 +24374,12 @@ bool ifcopenshell_geom_taxonomy_loop_edge_count(ifcopenshell_geom_taxonomy_loop_
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr.get();
         *out_result = self_cpp->children.size();
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -24372,12 +24392,12 @@ bool ifcopenshell_geom_taxonomy_loop_edge_at(ifcopenshell_geom_taxonomy_loop_t* 
     auto* self_cpp = self->ptr.get();
         if (index >= self_cpp->children.size()) { throw std::runtime_error("Index out of bounds"); }
         *out_result = new ifcopenshell_geom_taxonomy_edge_t{self_cpp->children[index]};
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -24389,12 +24409,12 @@ bool ifcopenshell_geom_taxonomy_shell_face_count(ifcopenshell_geom_taxonomy_shel
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr.get();
         *out_result = self_cpp->children.size();
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -24407,12 +24427,12 @@ bool ifcopenshell_geom_taxonomy_shell_face_at(ifcopenshell_geom_taxonomy_shell_t
     auto* self_cpp = self->ptr.get();
         if (index >= self_cpp->children.size()) { throw std::runtime_error("Index out of bounds"); }
         *out_result = new ifcopenshell_geom_taxonomy_face_t{self_cpp->children[index]};
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -24424,12 +24444,12 @@ bool ifcopenshell_geom_taxonomy_solid_shell_count(ifcopenshell_geom_taxonomy_sol
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr.get();
         *out_result = self_cpp->children.size();
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -24442,12 +24462,12 @@ bool ifcopenshell_geom_taxonomy_solid_shell_at(ifcopenshell_geom_taxonomy_solid_
     auto* self_cpp = self->ptr.get();
         if (index >= self_cpp->children.size()) { throw std::runtime_error("Index out of bounds"); }
         *out_result = new ifcopenshell_geom_taxonomy_shell_t{self_cpp->children[index]};
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -24460,12 +24480,12 @@ bool ifcopenshell_geom_taxonomy_solid_matrix(ifcopenshell_geom_taxonomy_solid_t*
     auto* self_cpp = self->ptr.get();
         if (!self_cpp->matrix) { throw std::runtime_error("matrix is not set"); }
         *out_result = new ifcopenshell_geom_taxonomy_matrix4_t{self_cpp->matrix};
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -24477,12 +24497,12 @@ bool ifcopenshell_geom_taxonomy_collection_item_count(ifcopenshell_geom_taxonomy
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr.get();
         *out_result = self_cpp->children.size();
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -24495,12 +24515,12 @@ bool ifcopenshell_geom_taxonomy_collection_item_at(ifcopenshell_geom_taxonomy_co
     auto* self_cpp = self->ptr.get();
         if (index >= self_cpp->children.size()) { throw std::runtime_error("Index out of bounds"); }
         *out_result = new ifcopenshell_geom_taxonomy_item_t{self_cpp->children[index]};
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -24515,12 +24535,12 @@ bool ifcopenshell_geom_taxonomy_collection_add_item(ifcopenshell_geom_taxonomy_c
         auto cast_item = ifcopenshell::geometry::taxonomy::dcast<ifcopenshell::geometry::taxonomy::geom_item>(item_cpp);
         if (!cast_item) { throw std::runtime_error("Invalid item type"); }
         self_cpp->children.push_back(cast_item);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -24532,12 +24552,12 @@ bool ifcopenshell_geom_taxonomy_boolean_result_operation(ifcopenshell_geom_taxon
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr.get();
         *out_result = static_cast<int32_t>(self_cpp->operation);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -24549,12 +24569,12 @@ bool ifcopenshell_geom_taxonomy_boolean_result_item_count(ifcopenshell_geom_taxo
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr.get();
         *out_result = self_cpp->children.size();
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -24567,12 +24587,12 @@ bool ifcopenshell_geom_taxonomy_boolean_result_item_at(ifcopenshell_geom_taxonom
     auto* self_cpp = self->ptr.get();
         if (index >= self_cpp->children.size()) { throw std::runtime_error("Index out of bounds"); }
         *out_result = new ifcopenshell_geom_taxonomy_item_t{self_cpp->children[index]};
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -24587,12 +24607,12 @@ bool ifcopenshell_geom_taxonomy_boolean_result_add_item(ifcopenshell_geom_taxono
         auto cast_item = ifcopenshell::geometry::taxonomy::dcast<ifcopenshell::geometry::taxonomy::geom_item>(item_cpp);
         if (!cast_item) { throw std::runtime_error("Invalid item type"); }
         self_cpp->children.push_back(cast_item);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -24604,12 +24624,12 @@ bool ifcopenshell_geom_taxonomy_bspline_surface_degree_u(ifcopenshell_geom_taxon
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr.get();
         *out_result = static_cast<int32_t>(self_cpp->degree[0]);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -24621,12 +24641,12 @@ bool ifcopenshell_geom_taxonomy_bspline_surface_degree_v(ifcopenshell_geom_taxon
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr.get();
         *out_result = static_cast<int32_t>(self_cpp->degree[1]);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -24638,12 +24658,12 @@ bool ifcopenshell_geom_taxonomy_bspline_surface_multiplicities_u(ifcopenshell_ge
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr.get();
         *out_result = make_int32_list(self_cpp->multiplicities[0]);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -24655,12 +24675,12 @@ bool ifcopenshell_geom_taxonomy_bspline_surface_multiplicities_v(ifcopenshell_ge
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr.get();
         *out_result = make_int32_list(self_cpp->multiplicities[1]);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -24672,12 +24692,12 @@ bool ifcopenshell_geom_taxonomy_bspline_surface_knots_u(ifcopenshell_geom_taxono
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr.get();
         *out_result = make_double_list(self_cpp->knots[0]);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -24689,12 +24709,12 @@ bool ifcopenshell_geom_taxonomy_bspline_surface_knots_v(ifcopenshell_geom_taxono
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr.get();
         *out_result = make_double_list(self_cpp->knots[1]);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -24711,12 +24731,12 @@ bool ifcopenshell_geom_taxonomy_bspline_surface_as_item(ifcopenshell_geom_taxono
         } else {
             *out_result = new ifcopenshell_geom_taxonomy_item_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -24728,12 +24748,12 @@ bool ifcopenshell_geom_opaque_number_to_double(ifcopenshell_geom_opaque_number_t
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = static_cast<double>(self_cpp->to_double());
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -24745,12 +24765,12 @@ bool ifcopenshell_geom_opaque_number_to_string(ifcopenshell_geom_opaque_number_t
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = make_string(self_cpp->to_string());
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -24761,12 +24781,12 @@ bool ifcopenshell_geom_serializer_finalize(ifcopenshell_geom_serializer_t* self)
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         self_cpp->finalize();
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -24778,12 +24798,12 @@ bool ifcopenshell_geom_serializer_is_streaming(ifcopenshell_geom_serializer_t* s
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = self_cpp->is_streaming();
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -24795,12 +24815,12 @@ bool ifcopenshell_geom_serializer_ready(ifcopenshell_geom_serializer_t* self, bo
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = self_cpp->ready();
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -24813,12 +24833,12 @@ bool ifcopenshell_geom_serializer_set_file(ifcopenshell_geom_serializer_t* self,
     if (arg_0 == nullptr || arg_0->ptr == nullptr) { throw std::runtime_error("Handle parameter \"arg_0\" is invalid"); }
     auto arg_0_cpp = arg_0->ptr;
         self_cpp->setFile(arg_0_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -24829,12 +24849,12 @@ bool ifcopenshell_geom_serializer_write_header(ifcopenshell_geom_serializer_t* s
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         self_cpp->writeHeader();
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -24848,12 +24868,12 @@ bool ifcopenshell_geom_settings_get_type(ifcopenshell_geom_settings_t* self, con
     if (name == nullptr) { throw std::runtime_error("Parameter \"name\" must not be null"); }
     std::string name_cpp(name);
         *out_result = make_string(self_cpp->get_type(name_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -24865,12 +24885,12 @@ bool ifcopenshell_geom_settings_setting_names(ifcopenshell_geom_settings_t* self
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = make_string_list(self_cpp->setting_names());
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -24887,12 +24907,12 @@ bool ifcopenshell_geom_settings_get_bool(ifcopenshell_geom_settings_t* self, con
         bool matched = false;
         if (auto* p = std::get_if<bool>(&val)) { *out_result = *p; matched = true; }
         if (!matched) { throw std::runtime_error("Setting is not of expected type"); }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -24905,12 +24925,12 @@ bool ifcopenshell_geom_settings_set_bool(ifcopenshell_geom_settings_t* self, con
     if (name == nullptr) { throw std::runtime_error("Parameter \"name\" must not be null"); }
     std::string name_cpp(name);
         self_cpp->set(name_cpp, ifcopenshell::geometry::Settings::value_variant_t(value));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -24931,12 +24951,12 @@ bool ifcopenshell_geom_settings_get_int(ifcopenshell_geom_settings_t* self, cons
         if (auto* p = std::get_if<ifcopenshell::geometry::settings::OutputDimensionalityTypes>(&val)) { *out_result = static_cast<int32_t>(*p); matched = true; }
         if (auto* p = std::get_if<ifcopenshell::geometry::settings::TriangulationMethod>(&val)) { *out_result = static_cast<int32_t>(*p); matched = true; }
         if (!matched) { throw std::runtime_error("Setting is not of expected type"); }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -24949,12 +24969,12 @@ bool ifcopenshell_geom_settings_set_int(ifcopenshell_geom_settings_t* self, cons
     if (name == nullptr) { throw std::runtime_error("Parameter \"name\" must not be null"); }
     std::string name_cpp(name);
         self_cpp->set(name_cpp, ifcopenshell::geometry::Settings::value_variant_t(int(value)));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -24971,12 +24991,12 @@ bool ifcopenshell_geom_settings_get_double(ifcopenshell_geom_settings_t* self, c
         bool matched = false;
         if (auto* p = std::get_if<double>(&val)) { *out_result = static_cast<double>(*p); matched = true; }
         if (!matched) { throw std::runtime_error("Setting is not of expected type"); }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -24989,12 +25009,12 @@ bool ifcopenshell_geom_settings_set_double(ifcopenshell_geom_settings_t* self, c
     if (name == nullptr) { throw std::runtime_error("Parameter \"name\" must not be null"); }
     std::string name_cpp(name);
         self_cpp->set(name_cpp, ifcopenshell::geometry::Settings::value_variant_t(value));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -25011,12 +25031,12 @@ bool ifcopenshell_geom_settings_get_string(ifcopenshell_geom_settings_t* self, c
         bool matched = false;
         if (auto* p = std::get_if<std::string>(&val)) { *out_result = make_string(*p); matched = true; }
         if (!matched) { throw std::runtime_error("Setting is not of expected type"); }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -25031,12 +25051,12 @@ bool ifcopenshell_geom_settings_set_string(ifcopenshell_geom_settings_t* self, c
     if (value == nullptr) { throw std::runtime_error("Parameter \"value\" must not be null"); }
     std::string value_cpp(value);
         self_cpp->set(name_cpp, ifcopenshell::geometry::Settings::value_variant_t(value_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -25053,12 +25073,12 @@ bool ifcopenshell_geom_settings_get_int_set(ifcopenshell_geom_settings_t* self, 
         bool matched = false;
         if (auto* p = std::get_if<std::set<int>>(&val)) { *out_result = make_int32_list(([&]() { auto tmp = *p; return std::vector(tmp.begin(), tmp.end()); })()); matched = true; }
         if (!matched) { throw std::runtime_error("Setting is not of expected type"); }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -25074,12 +25094,12 @@ bool ifcopenshell_geom_settings_set_int_set(ifcopenshell_geom_settings_t* self, 
     auto value_vec = to_cpp_int32_list(value);
     std::set<int> value_cpp(value_vec.begin(), value_vec.end());
         self_cpp->set(name_cpp, ifcopenshell::geometry::Settings::value_variant_t(value_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -25096,12 +25116,12 @@ bool ifcopenshell_geom_settings_get_string_set(ifcopenshell_geom_settings_t* sel
         bool matched = false;
         if (auto* p = std::get_if<std::set<std::string>>(&val)) { *out_result = make_string_list(([&]() { auto tmp = *p; return std::vector(tmp.begin(), tmp.end()); })()); matched = true; }
         if (!matched) { throw std::runtime_error("Setting is not of expected type"); }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -25117,12 +25137,12 @@ bool ifcopenshell_geom_settings_set_string_set(ifcopenshell_geom_settings_t* sel
     auto value_vec = to_cpp_string_list(value);
     std::set<std::string> value_cpp(value_vec.begin(), value_vec.end());
         self_cpp->set(name_cpp, ifcopenshell::geometry::Settings::value_variant_t(value_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -25139,12 +25159,12 @@ bool ifcopenshell_geom_settings_get_double_list(ifcopenshell_geom_settings_t* se
         bool matched = false;
         if (auto* p = std::get_if<std::vector<double>>(&val)) { *out_result = make_double_list(*p); matched = true; }
         if (!matched) { throw std::runtime_error("Setting is not of expected type"); }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -25159,12 +25179,12 @@ bool ifcopenshell_geom_settings_set_double_list(ifcopenshell_geom_settings_t* se
     if (value == nullptr) { throw std::runtime_error("Parameter \"value\" must not be null"); }
     auto value_cpp = to_cpp_double_list(value);
         self_cpp->set(name_cpp, ifcopenshell::geometry::Settings::value_variant_t(value_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -25178,12 +25198,12 @@ bool ifcopenshell_geom_serializer_settings_get_type(ifcopenshell_geom_serializer
     if (name == nullptr) { throw std::runtime_error("Parameter \"name\" must not be null"); }
     std::string name_cpp(name);
         *out_result = make_string(self_cpp->get_type(name_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -25195,12 +25215,12 @@ bool ifcopenshell_geom_serializer_settings_setting_names(ifcopenshell_geom_seria
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = make_string_list(self_cpp->setting_names());
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -25217,12 +25237,12 @@ bool ifcopenshell_geom_serializer_settings_get_bool(ifcopenshell_geom_serializer
         bool matched = false;
         if (auto* p = std::get_if<bool>(&val)) { *out_result = *p; matched = true; }
         if (!matched) { throw std::runtime_error("Setting is not of expected type"); }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -25235,12 +25255,12 @@ bool ifcopenshell_geom_serializer_settings_set_bool(ifcopenshell_geom_serializer
     if (name == nullptr) { throw std::runtime_error("Parameter \"name\" must not be null"); }
     std::string name_cpp(name);
         self_cpp->set(name_cpp, ifcopenshell::geometry::SerializerSettings::value_variant_t(value));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -25257,12 +25277,12 @@ bool ifcopenshell_geom_serializer_settings_get_int(ifcopenshell_geom_serializer_
         bool matched = false;
         if (auto* p = std::get_if<int>(&val)) { *out_result = static_cast<int32_t>(*p); matched = true; }
         if (!matched) { throw std::runtime_error("Setting is not of expected type"); }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -25275,12 +25295,12 @@ bool ifcopenshell_geom_serializer_settings_set_int(ifcopenshell_geom_serializer_
     if (name == nullptr) { throw std::runtime_error("Parameter \"name\" must not be null"); }
     std::string name_cpp(name);
         self_cpp->set(name_cpp, ifcopenshell::geometry::SerializerSettings::value_variant_t(int(value)));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -25297,12 +25317,12 @@ bool ifcopenshell_geom_serializer_settings_get_double(ifcopenshell_geom_serializ
         bool matched = false;
         if (auto* p = std::get_if<double>(&val)) { *out_result = static_cast<double>(*p); matched = true; }
         if (!matched) { throw std::runtime_error("Setting is not of expected type"); }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -25315,12 +25335,12 @@ bool ifcopenshell_geom_serializer_settings_set_double(ifcopenshell_geom_serializ
     if (name == nullptr) { throw std::runtime_error("Parameter \"name\" must not be null"); }
     std::string name_cpp(name);
         self_cpp->set(name_cpp, ifcopenshell::geometry::SerializerSettings::value_variant_t(value));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -25337,12 +25357,12 @@ bool ifcopenshell_geom_serializer_settings_get_string(ifcopenshell_geom_serializ
         bool matched = false;
         if (auto* p = std::get_if<std::string>(&val)) { *out_result = make_string(*p); matched = true; }
         if (!matched) { throw std::runtime_error("Setting is not of expected type"); }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -25357,12 +25377,12 @@ bool ifcopenshell_geom_serializer_settings_set_string(ifcopenshell_geom_serializ
     if (value == nullptr) { throw std::runtime_error("Parameter \"value\" must not be null"); }
     std::string value_cpp(value);
         self_cpp->set(name_cpp, ifcopenshell::geometry::SerializerSettings::value_variant_t(value_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -25379,12 +25399,12 @@ bool ifcopenshell_geom_serializer_settings_get_int_set(ifcopenshell_geom_seriali
         bool matched = false;
         if (auto* p = std::get_if<std::set<int>>(&val)) { *out_result = make_int32_list(([&]() { auto tmp = *p; return std::vector(tmp.begin(), tmp.end()); })()); matched = true; }
         if (!matched) { throw std::runtime_error("Setting is not of expected type"); }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -25400,12 +25420,12 @@ bool ifcopenshell_geom_serializer_settings_set_int_set(ifcopenshell_geom_seriali
     auto value_vec = to_cpp_int32_list(value);
     std::set<int> value_cpp(value_vec.begin(), value_vec.end());
         self_cpp->set(name_cpp, ifcopenshell::geometry::SerializerSettings::value_variant_t(value_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -25417,12 +25437,12 @@ bool ifcopenshell_geom_buffer_get_value(ifcopenshell_geom_buffer_t* self, ifcope
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = make_string(self_cpp->get_value());
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -25434,12 +25454,12 @@ bool ifcopenshell_geom_buffer_is_ready(ifcopenshell_geom_buffer_t* self, bool* o
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = self_cpp->is_ready();
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -25451,12 +25471,12 @@ bool ifcopenshell_geom_taxonomy_item_hash(ifcopenshell_geom_taxonomy_item_t* sel
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr.get();
         *out_result = static_cast<size_t>(self_cpp->hash());
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -25468,12 +25488,12 @@ bool ifcopenshell_geom_taxonomy_item_identity(ifcopenshell_geom_taxonomy_item_t*
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr.get();
         *out_result = static_cast<uint32_t>(self_cpp->identity());
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -25485,12 +25505,12 @@ bool ifcopenshell_geom_taxonomy_item_kind(ifcopenshell_geom_taxonomy_item_t* sel
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr.get();
         *out_result = static_cast<int32_t>(self_cpp->kind());
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -25502,12 +25522,12 @@ bool ifcopenshell_geom_tree_enable_face_styles(ifcopenshell_geom_tree_t* self, b
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = self_cpp->enable_face_styles();
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -25519,12 +25539,12 @@ bool ifcopenshell_geom_tree_set_enable_face_styles(ifcopenshell_geom_tree_t* sel
     auto* self_cpp = self->ptr;
     auto enable_cpp = static_cast<bool>(enable);
         self_cpp->enable_face_styles(enable_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -25539,12 +25559,12 @@ bool ifcopenshell_geom_tree_add_file(ifcopenshell_geom_tree_t* self, ifcopenshel
     if (settings == nullptr || settings->ptr == nullptr) { throw std::runtime_error("Handle parameter \"settings\" is invalid"); }
     auto& settings_cpp = *settings->ptr;
         self_cpp->add_file(file_cpp, settings_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -25557,12 +25577,12 @@ bool ifcopenshell_geom_tree_add_iterator(ifcopenshell_geom_tree_t* self, ifcopen
     if (iterator == nullptr || iterator->ptr == nullptr) { throw std::runtime_error("Handle parameter \"iterator\" is invalid"); }
     auto& iterator_cpp = *iterator->ptr;
         self_cpp->add_file(iterator_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -25580,12 +25600,12 @@ bool ifcopenshell_geom_tree_clash_clearance_many(ifcopenshell_geom_tree_t* self,
     auto clearance_cpp = static_cast<double>(clearance);
     auto check_all_cpp = static_cast<bool>(check_all);
         *out_result = new ifcopenshell_geom_tree_clash_list_t{new std::vector<IfcGeom::clash>(self_cpp->clash_clearance_many(set_a_cpp, set_b_cpp, clearance_cpp, check_all_cpp)), true};
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -25602,12 +25622,12 @@ bool ifcopenshell_geom_tree_clash_collision_many(ifcopenshell_geom_tree_t* self,
     auto set_b_cpp = to_cpp_instance_list(set_b);
     auto allow_touching_cpp = static_cast<bool>(allow_touching);
         *out_result = new ifcopenshell_geom_tree_clash_list_t{new std::vector<IfcGeom::clash>(self_cpp->clash_collision_many(set_a_cpp, set_b_cpp, allow_touching_cpp)), true};
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -25625,12 +25645,12 @@ bool ifcopenshell_geom_tree_clash_intersection_many(ifcopenshell_geom_tree_t* se
     auto tolerance_cpp = static_cast<double>(tolerance);
     auto check_all_cpp = static_cast<bool>(check_all);
         *out_result = new ifcopenshell_geom_tree_clash_list_t{new std::vector<IfcGeom::clash>(self_cpp->clash_intersection_many(set_a_cpp, set_b_cpp, tolerance_cpp, check_all_cpp)), true};
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -25642,12 +25662,12 @@ bool ifcopenshell_geom_tree_distances(ifcopenshell_geom_tree_t* self, ifcopenshe
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = make_double_list(self_cpp->distances());
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -25661,12 +25681,12 @@ bool ifcopenshell_geom_tree_is_manifold(ifcopenshell_geom_tree_t* self, const if
     if (faces == nullptr) { throw std::runtime_error("Parameter \"faces\" must not be null"); }
     auto faces_cpp = to_cpp_int32_list(faces);
         *out_result = self_cpp->is_manifold(faces_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -25678,12 +25698,12 @@ bool ifcopenshell_geom_tree_protrusion_distances(ifcopenshell_geom_tree_t* self,
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = make_double_list(self_cpp->protrusion_distances());
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -25695,12 +25715,12 @@ bool ifcopenshell_geom_tree_styles(ifcopenshell_geom_tree_t* self, ifcopenshell_
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = make_geom_taxonomy_style_list(self_cpp->styles());
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -25714,12 +25734,12 @@ bool ifcopenshell_geom_tree_uint8_to_b64(ifcopenshell_geom_tree_t* self, const i
     if (uuids_array == nullptr) { throw std::runtime_error("Parameter \"uuids_array\" must not be null"); }
     auto uuids_array_cpp = to_cpp_uint8_list(uuids_array);
         *out_result = make_string(self_cpp->uint8_to_b64(uuids_array_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -25731,12 +25751,12 @@ bool ifcopenshell_geom_tree_style_count(ifcopenshell_geom_tree_t* self, size_t* 
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = self_cpp->styles().size();
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -25750,12 +25770,12 @@ bool ifcopenshell_geom_tree_style_at(ifcopenshell_geom_tree_t* self, size_t inde
         const auto& items = self_cpp->styles();
         if (index >= items.size()) { throw std::out_of_range("Style index out of range"); }
         *out_result = new ifcopenshell_geom_taxonomy_style_t{items[index]};
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -25772,12 +25792,12 @@ bool ifcopenshell_geom_tree_clash_a(ifcopenshell_geom_tree_clash_t* self, ifcope
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -25794,12 +25814,12 @@ bool ifcopenshell_geom_tree_clash_b(ifcopenshell_geom_tree_clash_t* self, ifcope
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -25811,12 +25831,12 @@ bool ifcopenshell_geom_tree_clash_type(ifcopenshell_geom_tree_clash_t* self, int
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = static_cast<int32_t>(self_cpp->clash_type);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -25828,12 +25848,12 @@ bool ifcopenshell_geom_tree_clash_distance(ifcopenshell_geom_tree_clash_t* self,
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = static_cast<double>(self_cpp->distance);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -25845,12 +25865,12 @@ bool ifcopenshell_geom_tree_clash_p1(ifcopenshell_geom_tree_clash_t* self, ifcop
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = make_double_list(std::vector<double>(self_cpp->p1.begin(), self_cpp->p1.end()));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -25862,12 +25882,12 @@ bool ifcopenshell_geom_tree_clash_p2(ifcopenshell_geom_tree_clash_t* self, ifcop
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = make_double_list(std::vector<double>(self_cpp->p2.begin(), self_cpp->p2.end()));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -25879,12 +25899,12 @@ bool ifcopenshell_geom_tree_ray_intersection_distance(ifcopenshell_geom_tree_ray
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = static_cast<double>(self_cpp->distance);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -25896,12 +25916,12 @@ bool ifcopenshell_geom_tree_ray_intersection_dot_product(ifcopenshell_geom_tree_
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = static_cast<double>(self_cpp->dot_product);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -25913,12 +25933,12 @@ bool ifcopenshell_geom_tree_ray_intersection_normal(ifcopenshell_geom_tree_ray_i
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = make_double_list(std::vector<double>(self_cpp->normal.begin(), self_cpp->normal.end()));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -25930,12 +25950,12 @@ bool ifcopenshell_geom_tree_ray_intersection_position(ifcopenshell_geom_tree_ray
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = make_double_list(std::vector<double>(self_cpp->position.begin(), self_cpp->position.end()));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -25947,12 +25967,12 @@ bool ifcopenshell_geom_tree_ray_intersection_ray_distance(ifcopenshell_geom_tree
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = static_cast<double>(self_cpp->ray_distance);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -25964,12 +25984,12 @@ bool ifcopenshell_geom_tree_ray_intersection_style_index(ifcopenshell_geom_tree_
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = static_cast<int32_t>(self_cpp->style_index);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -25982,12 +26002,12 @@ bool ifcopenshell_geom_taxonomy_point3_get_data(ifcopenshell_geom_taxonomy_point
     auto* self_cpp = self->ptr.get();
         const auto& v = self_cpp->ccomponents();
         *out_result = make_double_list(std::vector<double>{{v(0), v(1), v(2)}});
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -26000,12 +26020,12 @@ bool ifcopenshell_geom_taxonomy_direction3_get_data(ifcopenshell_geom_taxonomy_d
     auto* self_cpp = self->ptr.get();
         const auto& v = self_cpp->ccomponents();
         *out_result = make_double_list(std::vector<double>{{v(0), v(1), v(2)}});
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -26024,12 +26044,12 @@ bool ifcopenshell_geom_taxonomy_matrix4_get_data(ifcopenshell_geom_taxonomy_matr
             }
         }
         *out_result = make_double_list(data);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -26042,12 +26062,12 @@ bool ifcopenshell_geom_taxonomy_colour_get_data(ifcopenshell_geom_taxonomy_colou
     auto* self_cpp = self->ptr.get();
         const auto& v = self_cpp->ccomponents();
         *out_result = make_double_list(std::vector<double>{{v(0), v(1), v(2)}});
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -26066,12 +26086,12 @@ bool ifcopenshell_geom_transformation_matrix(ifcopenshell_geom_transformation_t*
             }
         }
         *out_result = make_double_list(data);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -26086,12 +26106,12 @@ bool ifcopenshell_geom_tree_clash_count(ifcopenshell_geom_tree_t* self, ifcopens
     auto clashes_cpp = clashes->ptr;
         (void)self_cpp;
         *out_result = clashes_cpp->size();
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -26108,12 +26128,12 @@ bool ifcopenshell_geom_tree_clash_at(ifcopenshell_geom_tree_t* self, ifcopenshel
         if (index >= clashes_cpp->size()) { throw std::out_of_range("Clash index out of range"); }
         auto result_value = std::unique_ptr<IfcGeom::clash>(new IfcGeom::clash((*clashes_cpp)[index]));
         *out_result = new ifcopenshell_geom_tree_clash_t{result_value.release(), true};
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -26128,12 +26148,12 @@ bool ifcopenshell_geom_tree_ray_intersection_count(ifcopenshell_geom_tree_t* sel
     auto intersections_cpp = intersections->ptr;
         (void)self_cpp;
         *out_result = intersections_cpp->size();
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -26150,12 +26170,12 @@ bool ifcopenshell_geom_tree_ray_intersection_at(ifcopenshell_geom_tree_t* self, 
         if (index >= intersections_cpp->size()) { throw std::out_of_range("Ray intersection index out of range"); }
         auto result_value = std::unique_ptr<IfcGeom::ray_intersection_result>(new IfcGeom::ray_intersection_result((*intersections_cpp)[index]));
         *out_result = new ifcopenshell_geom_tree_ray_intersection_t{result_value.release(), true};
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -26175,12 +26195,12 @@ bool ifcopenshell_file_add_entity(ifcopenshell_file_t* self, ifcopenshell_instan
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -26192,12 +26212,12 @@ bool ifcopenshell_type_declaration_argument_types(ifcopenshell_type_declaration_
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = make_string_list(ifcparse::bindings::argument_types(self_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -26209,12 +26229,12 @@ bool ifcopenshell_enumeration_argument_types(ifcopenshell_enumeration_t* self, i
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = make_string_list(ifcparse::bindings::argument_types(self_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -26226,12 +26246,12 @@ bool ifcopenshell_entity_argument_types(ifcopenshell_entity_t* self, ifcopenshel
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = make_string_list(ifcparse::bindings::argument_types(self_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -26243,12 +26263,12 @@ bool ifcopenshell_parse_attribute_value_as_bool(ifcopenshell_parse_attribute_val
     if (self == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto& self_cpp = self->value;
         *out_result = ifcparse::bindings::as_bool(self_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -26260,12 +26280,12 @@ bool ifcopenshell_parse_attribute_value_as_double(ifcopenshell_parse_attribute_v
     if (self == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto& self_cpp = self->value;
         *out_result = static_cast<double>(ifcparse::bindings::as_double(self_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -26277,12 +26297,12 @@ bool ifcopenshell_parse_attribute_value_as_double_list(ifcopenshell_parse_attrib
     if (self == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto& self_cpp = self->value;
         *out_result = make_double_list(ifcparse::bindings::as_double_list(self_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -26294,12 +26314,12 @@ bool ifcopenshell_parse_attribute_value_as_double_list_list(ifcopenshell_parse_a
     if (self == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto& self_cpp = self->value;
         *out_result = make_double_list_list(ifcparse::bindings::as_double_list_list(self_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -26311,12 +26331,12 @@ bool ifcopenshell_parse_attribute_value_as_enumeration_index(ifcopenshell_parse_
     if (self == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto& self_cpp = self->value;
         *out_result = static_cast<size_t>(ifcparse::bindings::as_enumeration_index(self_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -26338,12 +26358,12 @@ bool ifcopenshell_parse_attribute_value_as_enumeration_type(ifcopenshell_parse_a
                 *out_result = new ifcopenshell_enumeration_t{unwrapped_result, false};
             }
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -26355,12 +26375,12 @@ bool ifcopenshell_parse_attribute_value_as_enumeration_value(ifcopenshell_parse_
     if (self == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto& self_cpp = self->value;
         *out_result = make_string(ifcparse::bindings::as_enumeration_value(self_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -26382,12 +26402,12 @@ bool ifcopenshell_parse_attribute_value_as_instance(ifcopenshell_parse_attribute
                 *out_result = new ifcopenshell_instance_t{unwrapped_result};
             }
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -26399,12 +26419,12 @@ bool ifcopenshell_parse_attribute_value_as_instance_id_list_list(ifcopenshell_pa
     if (self == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto& self_cpp = self->value;
         *out_result = make_int32_list_list(ifcparse::bindings::as_instance_id_list_list(self_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -26416,12 +26436,12 @@ bool ifcopenshell_parse_attribute_value_as_instance_list(ifcopenshell_parse_attr
     if (self == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto& self_cpp = self->value;
         *out_result = new ifcopenshell_parse_instance_list_t{ifcparse::bindings::as_instance_list(self_cpp)};
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -26433,12 +26453,12 @@ bool ifcopenshell_parse_attribute_value_as_int32(ifcopenshell_parse_attribute_va
     if (self == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto& self_cpp = self->value;
         *out_result = static_cast<int32_t>(ifcparse::bindings::as_int32(self_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -26450,12 +26470,12 @@ bool ifcopenshell_parse_attribute_value_as_int32_list(ifcopenshell_parse_attribu
     if (self == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto& self_cpp = self->value;
         *out_result = make_int32_list(ifcparse::bindings::as_int32_list(self_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -26467,12 +26487,12 @@ bool ifcopenshell_parse_attribute_value_as_int32_list_list(ifcopenshell_parse_at
     if (self == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto& self_cpp = self->value;
         *out_result = make_int32_list_list(ifcparse::bindings::as_int32_list_list(self_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -26484,12 +26504,12 @@ bool ifcopenshell_parse_attribute_value_as_logical(ifcopenshell_parse_attribute_
     if (self == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto& self_cpp = self->value;
         *out_result = static_cast<int32_t>(ifcparse::bindings::as_logical(self_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -26501,12 +26521,12 @@ bool ifcopenshell_parse_attribute_value_as_string(ifcopenshell_parse_attribute_v
     if (self == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto& self_cpp = self->value;
         *out_result = make_string(ifcparse::bindings::as_string(self_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -26518,12 +26538,12 @@ bool ifcopenshell_parse_attribute_value_as_string_list(ifcopenshell_parse_attrib
     if (self == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto& self_cpp = self->value;
         *out_result = make_string_list(ifcparse::bindings::as_string_list(self_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -26537,12 +26557,12 @@ bool ifcopenshell_instance_class_name(ifcopenshell_instance_t* self, bool with_s
     auto* self_cpp = &self->value;
     auto with_schema_cpp = static_cast<bool>(with_schema);
         *out_result = make_string(ifcparse::bindings::class_name(*self_cpp, with_schema_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -26561,12 +26581,12 @@ bool ifcopenshell_file_create_entity_by_name(ifcopenshell_file_t* self, const ch
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -26586,12 +26606,12 @@ bool ifcopenshell_file_create_entity_by_name_with_id(ifcopenshell_file_t* self, 
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -26603,12 +26623,12 @@ bool ifcopenshell_file_entity_names(ifcopenshell_file_t* self, ifcopenshell_uint
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = make_uint32_list(ifcparse::bindings::entity_names(*self_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -26620,12 +26640,12 @@ bool ifcopenshell_file_file_pointer(ifcopenshell_file_t* self, size_t* out_resul
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = static_cast<size_t>(ifcparse::bindings::file_pointer(*self_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -26638,12 +26658,12 @@ bool ifcopenshell_instance_file_pointer(ifcopenshell_instance_t* self, size_t* o
     if (!static_cast<bool>(self->value)) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = &self->value;
         *out_result = static_cast<size_t>(ifcparse::bindings::file_pointer(*self_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -26666,12 +26686,12 @@ bool ifcopenshell_parse_instance_list_get(ifcopenshell_parse_instance_list_t* se
                 *out_result = new ifcopenshell_instance_t{unwrapped_result};
             }
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -26686,12 +26706,12 @@ bool ifcopenshell_instance_get_argument_by_name(ifcopenshell_instance_t* self, c
     if (name == nullptr) { throw std::runtime_error("Parameter \"name\" must not be null"); }
     std::string name_cpp(name);
         *out_result = new ifcopenshell_parse_attribute_value_t{ifcparse::bindings::get_argument_by_name(*self_cpp, name_cpp)};
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -26706,12 +26726,12 @@ bool ifcopenshell_instance_get_argument_index(ifcopenshell_instance_t* self, con
     if (name == nullptr) { throw std::runtime_error("Parameter \"name\" must not be null"); }
     std::string name_cpp(name);
         *out_result = static_cast<uint32_t>(ifcparse::bindings::get_argument_index(*self_cpp, name_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -26725,12 +26745,12 @@ bool ifcopenshell_instance_get_argument_name(ifcopenshell_instance_t* self, uint
     auto* self_cpp = &self->value;
     auto index_cpp = static_cast<unsigned int>(index);
         *out_result = make_string(ifcparse::bindings::get_argument_name(*self_cpp, index_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -26744,12 +26764,12 @@ bool ifcopenshell_instance_get_argument_type(ifcopenshell_instance_t* self, uint
     auto* self_cpp = &self->value;
     auto index_cpp = static_cast<unsigned int>(index);
         *out_result = make_static_string(ifcparse::bindings::get_argument_type(*self_cpp, index_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -26764,12 +26784,12 @@ bool ifcopenshell_instance_get_attribute_category(ifcopenshell_instance_t* self,
     if (name == nullptr) { throw std::runtime_error("Parameter \"name\" must not be null"); }
     std::string name_cpp(name);
         *out_result = static_cast<int32_t>(ifcparse::bindings::get_attribute_category(*self_cpp, name_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -26782,12 +26802,12 @@ bool ifcopenshell_instance_get_attribute_names(ifcopenshell_instance_t* self, if
     if (!static_cast<bool>(self->value)) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = &self->value;
         *out_result = make_string_list(ifcparse::bindings::get_attribute_names(*self_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -26801,12 +26821,12 @@ bool ifcopenshell_instance_get_attribute_value(ifcopenshell_instance_t* self, si
     auto* self_cpp = &self->value;
     auto index_cpp = static_cast<size_t>(index);
         *out_result = new ifcopenshell_parse_attribute_value_t{ifcparse::bindings::get_attribute_value(*self_cpp, index_cpp)};
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -26820,12 +26840,12 @@ bool ifcopenshell_file_get_inverse(ifcopenshell_file_t* self, ifcopenshell_insta
     if (instance == nullptr) { throw std::runtime_error("Handle parameter \"instance\" must not be null"); }
     auto instance_cpp = &instance->value;
         *out_result = new ifcopenshell_parse_instance_list_t{ifcparse::bindings::get_inverse(self_cpp, instance_cpp)};
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -26840,12 +26860,12 @@ bool ifcopenshell_instance_get_inverse(ifcopenshell_instance_t* self, const char
     if (name == nullptr) { throw std::runtime_error("Parameter \"name\" must not be null"); }
     std::string name_cpp(name);
         *out_result = new ifcopenshell_parse_instance_list_t{ifcparse::bindings::get_inverse(*self_cpp, name_cpp)};
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -26860,12 +26880,12 @@ bool ifcopenshell_instance_get_inverse_attribute_by_name(ifcopenshell_instance_t
     if (name == nullptr) { throw std::runtime_error("Parameter \"name\" must not be null"); }
     std::string name_cpp(name);
         *out_result = new ifcopenshell_parse_instance_list_t{ifcparse::bindings::get_inverse_attribute_by_name(*self_cpp, name_cpp)};
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -26878,12 +26898,12 @@ bool ifcopenshell_instance_get_inverse_attribute_names(ifcopenshell_instance_t* 
     if (!static_cast<bool>(self->value)) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = &self->value;
         *out_result = make_string_list(ifcparse::bindings::get_inverse_attribute_names(*self_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -26897,12 +26917,12 @@ bool ifcopenshell_file_get_inverse_indices(ifcopenshell_file_t* self, ifcopenshe
     if (instance == nullptr) { throw std::runtime_error("Handle parameter \"instance\" must not be null"); }
     const auto& instance_cpp = instance->value;
         *out_result = make_int32_list(ifcparse::bindings::get_inverse_indices(*self_cpp, instance_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -26916,12 +26936,12 @@ bool ifcopenshell_file_get_total_inverses(ifcopenshell_file_t* self, ifcopenshel
     if (instance == nullptr) { throw std::runtime_error("Handle parameter \"instance\" must not be null"); }
     const auto& instance_cpp = instance->value;
         *out_result = static_cast<int32_t>(ifcparse::bindings::get_total_inverses(*self_cpp, instance_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -26935,12 +26955,12 @@ bool ifcopenshell_file_get_unit(ifcopenshell_file_t* self, const char* unit_type
     if (unit_type == nullptr) { throw std::runtime_error("Parameter \"unit_type\" must not be null"); }
     std::string unit_type_cpp(unit_type);
         *out_result = static_cast<double>(ifcparse::bindings::get_unit(*self_cpp, unit_type_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -26952,12 +26972,12 @@ bool ifcopenshell_file_good(ifcopenshell_file_t* self, int32_t* out_result) {
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = static_cast<int32_t>(ifcparse::bindings::good(*self_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -26974,12 +26994,12 @@ bool ifcopenshell_file_header(ifcopenshell_file_t* self, ifcopenshell_header_t**
         } else {
             *out_result = new ifcopenshell_header_t{result_value, false};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -27001,12 +27021,12 @@ bool ifcopenshell_file_header_file_description(ifcopenshell_file_t* self, ifcope
                 *out_result = new ifcopenshell_instance_t{unwrapped_result};
             }
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -27028,12 +27048,12 @@ bool ifcopenshell_file_header_file_name(ifcopenshell_file_t* self, ifcopenshell_
                 *out_result = new ifcopenshell_instance_t{unwrapped_result};
             }
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -27055,12 +27075,12 @@ bool ifcopenshell_file_header_file_schema(ifcopenshell_file_t* self, ifcopenshel
                 *out_result = new ifcopenshell_instance_t{unwrapped_result};
             }
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -27072,12 +27092,12 @@ bool ifcopenshell_instance_streamer_inverses(ifcopenshell_instance_streamer_t* s
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = make_string(ifcparse::bindings::inverses(self_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -27092,12 +27112,12 @@ bool ifcopenshell_instance_is_a(ifcopenshell_instance_t* self, const char* decla
     if (declaration_name == nullptr) { throw std::runtime_error("Parameter \"declaration_name\" must not be null"); }
     std::string declaration_name_cpp(declaration_name);
         *out_result = ifcparse::bindings::is_a(*self_cpp, declaration_name_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -27109,12 +27129,12 @@ bool ifcopenshell_parse_attribute_value_is_null(ifcopenshell_parse_attribute_val
     if (self == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto& self_cpp = self->value;
         *out_result = ifcparse::bindings::is_null(self_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -27128,12 +27148,12 @@ bool ifcopenshell_file_key_value_store_iter(ifcopenshell_file_t* self, const cha
     if (prefix == nullptr) { throw std::runtime_error("Parameter \"prefix\" must not be null"); }
     std::string prefix_cpp(prefix);
         *out_result = make_string_list(ifcparse::bindings::key_value_store_iter(*self_cpp, prefix_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -27147,12 +27167,12 @@ bool ifcopenshell_file_key_value_store_query(ifcopenshell_file_t* self, const ch
     if (key == nullptr) { throw std::runtime_error("Parameter \"key\" must not be null"); }
     std::string key_cpp(key);
         *out_result = make_uint8_list(ifcparse::bindings::key_value_store_query(*self_cpp, key_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -27164,12 +27184,12 @@ bool ifcopenshell_parameter_type_kind(ifcopenshell_parameter_type_t* self, ifcop
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = make_static_string(ifcparse::bindings::kind(self_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -27181,12 +27201,12 @@ bool ifcopenshell_simple_type_kind(ifcopenshell_simple_type_t* self, ifcopenshel
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = make_static_string(ifcparse::bindings::kind(self_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -27198,12 +27218,12 @@ bool ifcopenshell_aggregation_type_kind(ifcopenshell_aggregation_type_t* self, i
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = make_static_string(ifcparse::bindings::kind(self_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -27216,12 +27236,12 @@ bool ifcopenshell_instance_streamer_read_instance_py(ifcopenshell_instance_strea
     auto* self_cpp = self->ptr;
     auto type_as_declaration_instance_cpp = static_cast<bool>(type_as_declaration_instance);
         *out_result = make_string(ifcparse::bindings::read_instance_py(self_cpp, type_as_declaration_instance_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -27233,12 +27253,12 @@ bool ifcopenshell_instance_streamer_references(ifcopenshell_instance_streamer_t*
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = make_string(ifcparse::bindings::references(self_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -27250,12 +27270,12 @@ bool ifcopenshell_file_schema_name(ifcopenshell_file_t* self, ifcopenshell_strin
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = make_string(ifcparse::bindings::schema_name(*self_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -27267,12 +27287,12 @@ bool ifcopenshell_select_type_select_list_names(ifcopenshell_select_type_t* self
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = make_string_list(ifcparse::bindings::select_list_names(self_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -27287,12 +27307,12 @@ bool ifcopenshell_instance_set_argument_as_aggregate_of_aggregate_of_entity_inst
     if (value == nullptr) { throw std::runtime_error("Parameter \"value\" must not be null"); }
     auto value_cpp = to_cpp_int32_list_list(value);
         ifcparse::bindings::set_argument_as_aggregate_of_aggregate_of_entity_instance(*self_cpp, index_cpp, value_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -27306,12 +27326,12 @@ bool ifcopenshell_instance_set_argument_bool(ifcopenshell_instance_t* self, size
     auto index_cpp = static_cast<size_t>(index);
     auto value_cpp = static_cast<bool>(value);
         ifcparse::bindings::set_argument_bool(*self_cpp, index_cpp, value_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -27325,12 +27345,12 @@ bool ifcopenshell_instance_set_argument_double(ifcopenshell_instance_t* self, si
     auto index_cpp = static_cast<size_t>(index);
     auto value_cpp = static_cast<double>(value);
         ifcparse::bindings::set_argument_double(*self_cpp, index_cpp, value_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -27345,12 +27365,12 @@ bool ifcopenshell_instance_set_argument_double_list(ifcopenshell_instance_t* sel
     if (value == nullptr) { throw std::runtime_error("Parameter \"value\" must not be null"); }
     auto value_cpp = to_cpp_double_list(value);
         ifcparse::bindings::set_argument_double_list(*self_cpp, index_cpp, value_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -27365,12 +27385,12 @@ bool ifcopenshell_instance_set_argument_double_list_list(ifcopenshell_instance_t
     if (value == nullptr) { throw std::runtime_error("Parameter \"value\" must not be null"); }
     auto value_cpp = to_cpp_double_list_list(value);
         ifcparse::bindings::set_argument_double_list_list(*self_cpp, index_cpp, value_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -27386,12 +27406,12 @@ bool ifcopenshell_instance_set_argument_enumeration(ifcopenshell_instance_t* sel
     auto enumeration_cpp = enumeration->ptr;
     auto enumeration_index_cpp = static_cast<size_t>(enumeration_index);
         ifcparse::bindings::set_argument_enumeration(*self_cpp, index_cpp, enumeration_cpp, enumeration_index_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -27407,12 +27427,12 @@ bool ifcopenshell_instance_set_argument_enumeration_by_name(ifcopenshell_instanc
     if (value == nullptr) { throw std::runtime_error("Parameter \"value\" must not be null"); }
     std::string value_cpp(value);
         *out_result = ifcparse::bindings::set_argument_enumeration_by_name(*self_cpp, index_cpp, value_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -27427,12 +27447,12 @@ bool ifcopenshell_instance_set_argument_instance(ifcopenshell_instance_t* self, 
     if (value == nullptr) { throw std::runtime_error("Handle parameter \"value\" must not be null"); }
     auto value_cpp = &value->value;
         ifcparse::bindings::set_argument_instance(*self_cpp, index_cpp, value_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -27447,12 +27467,12 @@ bool ifcopenshell_instance_set_argument_instance_list(ifcopenshell_instance_t* s
     if (value == nullptr) { throw std::runtime_error("Handle parameter \"value\" must not be null"); }
     auto value_cpp = &value->value;
         ifcparse::bindings::set_argument_instance_list(*self_cpp, index_cpp, value_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -27466,12 +27486,12 @@ bool ifcopenshell_instance_set_argument_int32(ifcopenshell_instance_t* self, siz
     auto index_cpp = static_cast<size_t>(index);
     auto value_cpp = static_cast<int>(value);
         ifcparse::bindings::set_argument_int32(*self_cpp, index_cpp, value_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -27486,12 +27506,12 @@ bool ifcopenshell_instance_set_argument_int32_list(ifcopenshell_instance_t* self
     if (value == nullptr) { throw std::runtime_error("Parameter \"value\" must not be null"); }
     auto value_cpp = to_cpp_int32_list(value);
         ifcparse::bindings::set_argument_int32_list(*self_cpp, index_cpp, value_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -27506,12 +27526,12 @@ bool ifcopenshell_instance_set_argument_int32_list_list(ifcopenshell_instance_t*
     if (value == nullptr) { throw std::runtime_error("Parameter \"value\" must not be null"); }
     auto value_cpp = to_cpp_int32_list_list(value);
         ifcparse::bindings::set_argument_int32_list_list(*self_cpp, index_cpp, value_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -27525,12 +27545,12 @@ bool ifcopenshell_instance_set_argument_logical(ifcopenshell_instance_t* self, s
     auto index_cpp = static_cast<size_t>(index);
     auto value_cpp = static_cast<int>(value);
         ifcparse::bindings::set_argument_logical(*self_cpp, index_cpp, value_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -27545,12 +27565,12 @@ bool ifcopenshell_instance_set_argument_string(ifcopenshell_instance_t* self, si
     if (value == nullptr) { throw std::runtime_error("Parameter \"value\" must not be null"); }
     std::string value_cpp(value);
         ifcparse::bindings::set_argument_string(*self_cpp, index_cpp, value_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -27565,12 +27585,12 @@ bool ifcopenshell_instance_set_argument_string_list(ifcopenshell_instance_t* sel
     if (value == nullptr) { throw std::runtime_error("Parameter \"value\" must not be null"); }
     auto value_cpp = to_cpp_string_list(value);
         ifcparse::bindings::set_argument_string_list(*self_cpp, index_cpp, value_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -27586,12 +27606,12 @@ bool ifcopenshell_instance_set_attribute_value(ifcopenshell_instance_t* self, co
     if (value == nullptr) { throw std::runtime_error("Handle parameter \"value\" must not be null"); }
     auto value_cpp = value->value;
         ifcparse::bindings::set_attribute_value(*self_cpp, name_cpp, value_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -27603,12 +27623,12 @@ bool ifcopenshell_parse_attribute_value_size(ifcopenshell_parse_attribute_value_
     if (self == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto& self_cpp = self->value;
         *out_result = static_cast<size_t>(ifcparse::bindings::size(self_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -27620,12 +27640,12 @@ bool ifcopenshell_parse_instance_list_size(ifcopenshell_parse_instance_list_t* s
     if (self == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = &self->value;
         *out_result = static_cast<size_t>(ifcparse::bindings::size(*self_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -27637,12 +27657,12 @@ bool ifcopenshell_instance_streamer_status(ifcopenshell_instance_streamer_t* sel
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = static_cast<int32_t>(ifcparse::bindings::status(self_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -27654,12 +27674,12 @@ bool ifcopenshell_file_storage_mode(ifcopenshell_file_t* self, int32_t* out_resu
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = static_cast<int32_t>(ifcparse::bindings::storage_mode(*self_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -27671,12 +27691,12 @@ bool ifcopenshell_file_to_string(ifcopenshell_file_t* self, ifcopenshell_string_
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = make_string(ifcparse::bindings::to_string(*self_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -27690,12 +27710,12 @@ bool ifcopenshell_instance_to_string(ifcopenshell_instance_t* self, bool valid_s
     auto* self_cpp = &self->value;
     auto valid_spf_cpp = static_cast<bool>(valid_spf);
         *out_result = make_string(ifcparse::bindings::to_string(*self_cpp, valid_spf_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -27707,12 +27727,12 @@ bool ifcopenshell_parse_attribute_value_type(ifcopenshell_parse_attribute_value_
     if (self == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto& self_cpp = self->value;
         *out_result = make_static_string(ifcparse::bindings::type(self_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -27724,12 +27744,12 @@ bool ifcopenshell_aggregation_type_type_of_aggregation(ifcopenshell_aggregation_
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = static_cast<int32_t>(ifcparse::bindings::type_of_aggregation(self_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -27741,12 +27761,12 @@ bool ifcopenshell_inverse_attribute_type_of_aggregation(ifcopenshell_inverse_att
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = static_cast<int32_t>(ifcparse::bindings::type_of_aggregation(self_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -27758,12 +27778,12 @@ bool ifcopenshell_aggregation_type_type_of_aggregation_string(ifcopenshell_aggre
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = make_static_string(ifcparse::bindings::type_of_aggregation_string(self_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -27775,12 +27795,12 @@ bool ifcopenshell_inverse_attribute_type_of_aggregation_string(ifcopenshell_inve
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = make_static_string(ifcparse::bindings::type_of_aggregation_string(self_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -27792,12 +27812,12 @@ bool ifcopenshell_file_types(ifcopenshell_file_t* self, ifcopenshell_string_list
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = make_string_list(ifcparse::bindings::types(*self_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -27810,12 +27830,12 @@ bool ifcopenshell_instance_unset_argument(ifcopenshell_instance_t* self, size_t 
     auto* self_cpp = &self->value;
     auto index_cpp = static_cast<size_t>(index);
         ifcparse::bindings::unset_argument(*self_cpp, index_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -27829,12 +27849,12 @@ bool ifcopenshell_instance_unset_attribute_value(ifcopenshell_instance_t* self, 
     if (name == nullptr) { throw std::runtime_error("Parameter \"name\" must not be null"); }
     std::string name_cpp(name);
         ifcparse::bindings::unset_attribute_value(*self_cpp, name_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -27847,12 +27867,12 @@ bool ifcopenshell_file_write(ifcopenshell_file_t* self, const char* path) {
     if (path == nullptr) { throw std::runtime_error("Parameter \"path\" must not be null"); }
     std::string path_cpp(path);
         ifcparse::bindings::write(*self_cpp, path_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -27864,12 +27884,12 @@ bool ifcopenshell_header_write(ifcopenshell_header_t* self, ifcopenshell_string_
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = make_string(ifcparse::bindings::write(self_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -27888,12 +27908,12 @@ bool ifcopenshell_geom_opaque_number_add(ifcopenshell_geom_opaque_number_t* self
         } else {
             *out_result = new ifcopenshell_geom_opaque_number_t{std::move(result_value).release(), true};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -27912,12 +27932,12 @@ bool ifcopenshell_geom_conversion_result_shape_add(ifcopenshell_geom_conversion_
         } else {
             *out_result = new ifcopenshell_geom_conversion_result_shape_t{std::move(result_value).release(), true};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -27929,12 +27949,12 @@ bool ifcopenshell_geom_conversion_result_shape_area(ifcopenshell_geom_conversion
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = static_cast<double>(ifcgeom::bindings::area(self_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -27952,12 +27972,12 @@ bool ifcopenshell_geom_brep_representation_as_compound(ifcopenshell_geom_brep_re
         } else {
             *out_result = new ifcopenshell_geom_conversion_result_shape_t{std::move(result_value).release(), true};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -27970,12 +27990,12 @@ bool ifcopenshell_geom_svgfill_polygon_boundary_point(ifcopenshell_geom_svgfill_
     auto* self_cpp = self->ptr;
     auto index_cpp = static_cast<size_t>(index);
         *out_result = make_double_list(ifcgeom::bindings::boundary_point(self_cpp, index_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -27987,12 +28007,12 @@ bool ifcopenshell_geom_svgfill_polygon_boundary_size(ifcopenshell_geom_svgfill_p
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = static_cast<size_t>(ifcgeom::bindings::boundary_size(self_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -28009,12 +28029,12 @@ bool ifcopenshell_geom_conversion_result_shape_box(ifcopenshell_geom_conversion_
         } else {
             *out_result = new ifcopenshell_geom_conversion_result_shape_t{std::move(result_value).release(), true};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -28026,12 +28046,12 @@ bool ifcopenshell_geom_brep_element_calc_surface_area(ifcopenshell_geom_brep_ele
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = static_cast<double>(ifcgeom::bindings::calc_surface_area(self_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -28043,12 +28063,12 @@ bool ifcopenshell_geom_brep_element_calc_volume(ifcopenshell_geom_brep_element_t
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = static_cast<double>(ifcgeom::bindings::calc_volume(self_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -28065,12 +28085,12 @@ bool ifcopenshell_geom_opaque_number_clone(ifcopenshell_geom_opaque_number_t* se
         } else {
             *out_result = new ifcopenshell_geom_opaque_number_t{std::move(result_value).release(), true};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -28082,12 +28102,12 @@ bool ifcopenshell_geom_triangulation_colors_buffer(ifcopenshell_geom_triangulati
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = make_double_list(ifcgeom::bindings::colors_buffer(self_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -28099,12 +28119,12 @@ bool ifcopenshell_geom_triangulation_colors_buffer_size(ifcopenshell_geom_triang
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = static_cast<size_t>(ifcgeom::bindings::colors_buffer_size(self_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -28123,12 +28143,12 @@ bool ifcopenshell_geom_conversion_result_shape_concat(ifcopenshell_geom_conversi
         } else {
             *out_result = new ifcopenshell_geom_conversion_result_shape_t{std::move(result_value).release(), true};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -28142,12 +28162,12 @@ bool ifcopenshell_geom_taxonomy_bspline_surface_control_point_at(ifcopenshell_ge
     auto row_cpp = static_cast<size_t>(row);
     auto col_cpp = static_cast<size_t>(col);
         *out_result = new ifcopenshell_geom_taxonomy_point3_t{ifcgeom::bindings::control_point_at(self_cpp, row_cpp, col_cpp)};
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -28160,12 +28180,12 @@ bool ifcopenshell_geom_taxonomy_bspline_surface_control_point_col_count_at(ifcop
     auto* self_cpp = self->ptr.get();
     auto row_cpp = static_cast<size_t>(row);
         *out_result = static_cast<size_t>(ifcgeom::bindings::control_point_col_count_at(self_cpp, row_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -28177,12 +28197,12 @@ bool ifcopenshell_geom_taxonomy_bspline_surface_control_point_row_count(ifcopens
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr.get();
         *out_result = static_cast<size_t>(ifcgeom::bindings::control_point_row_count(self_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -28194,12 +28214,12 @@ bool ifcopenshell_geom_conversion_result_shape_convex_tag(ifcopenshell_geom_conv
     auto* self_cpp = self->ptr;
     auto value_cpp = static_cast<bool>(value);
         ifcgeom::bindings::convex_tag(self_cpp, value_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -28218,12 +28238,12 @@ bool ifcopenshell_geom_opaque_number_divide(ifcopenshell_geom_opaque_number_t* s
         } else {
             *out_result = new ifcopenshell_geom_opaque_number_t{std::move(result_value).release(), true};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -28235,12 +28255,12 @@ bool ifcopenshell_geom_conversion_result_shape_edges(ifcopenshell_geom_conversio
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = make_geom_conversion_result_shape_list(ifcgeom::bindings::edges(self_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -28252,12 +28272,12 @@ bool ifcopenshell_geom_triangulation_edges_buffer(ifcopenshell_geom_triangulatio
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = (ifcgeom::bindings::edges_buffer(self_cpp)).data();
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -28269,12 +28289,12 @@ bool ifcopenshell_geom_triangulation_edges_item_ids_buffer(ifcopenshell_geom_tri
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = (ifcgeom::bindings::edges_item_ids_buffer(self_cpp)).data();
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -28288,12 +28308,12 @@ bool ifcopenshell_geom_opaque_number_equals(ifcopenshell_geom_opaque_number_t* s
     if (other == nullptr || other->ptr == nullptr) { throw std::runtime_error("Handle parameter \"other\" is invalid"); }
     auto other_cpp = other->ptr;
         *out_result = ifcgeom::bindings::equals(self_cpp, other_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -28306,12 +28326,12 @@ bool ifcopenshell_geom_function_item_evaluator_evaluate_at(ifcopenshell_geom_fun
     auto* self_cpp = self->ptr;
     auto u_cpp = static_cast<double>(u);
         *out_result = make_double_list(ifcgeom::bindings::evaluate_at(self_cpp, u_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -28323,12 +28343,12 @@ bool ifcopenshell_geom_triangulation_faces_buffer(ifcopenshell_geom_triangulatio
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = (ifcgeom::bindings::faces_buffer(self_cpp)).data();
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -28340,12 +28360,12 @@ bool ifcopenshell_geom_conversion_result_shape_facets(ifcopenshell_geom_conversi
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = make_geom_conversion_result_shape_list(ifcgeom::bindings::facets(self_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -28362,12 +28382,12 @@ bool ifcopenshell_geom_iterator_get_as_brep_element(ifcopenshell_geom_iterator_t
         } else {
             *out_result = new ifcopenshell_geom_brep_element_t{result_value, false};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -28384,12 +28404,12 @@ bool ifcopenshell_geom_iterator_get_as_serialized_element(ifcopenshell_geom_iter
         } else {
             *out_result = new ifcopenshell_geom_serialized_element_t{result_value, false};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -28406,12 +28426,12 @@ bool ifcopenshell_geom_iterator_get_as_triangulation_element(ifcopenshell_geom_i
         } else {
             *out_result = new ifcopenshell_geom_triangulation_element_t{result_value, false};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -28428,12 +28448,12 @@ bool ifcopenshell_geom_conversion_result_shape_halfspaces(ifcopenshell_geom_conv
         } else {
             *out_result = new ifcopenshell_geom_conversion_result_shape_t{std::move(result_value).release(), true};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -28445,12 +28465,12 @@ bool ifcopenshell_geom_taxonomy_bspline_surface_has_weights(ifcopenshell_geom_ta
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr.get();
         *out_result = ifcgeom::bindings::has_weights(self_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -28462,12 +28482,12 @@ bool ifcopenshell_geom_svgfill_polygon_inner_boundary_count(ifcopenshell_geom_sv
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = static_cast<size_t>(ifcgeom::bindings::inner_boundary_count(self_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -28481,12 +28501,12 @@ bool ifcopenshell_geom_svgfill_polygon_inner_boundary_point(ifcopenshell_geom_sv
     auto boundary_index_cpp = static_cast<size_t>(boundary_index);
     auto point_index_cpp = static_cast<size_t>(point_index);
         *out_result = make_double_list(ifcgeom::bindings::inner_boundary_point(self_cpp, boundary_index_cpp, point_index_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -28499,12 +28519,12 @@ bool ifcopenshell_geom_svgfill_polygon_inner_boundary_size(ifcopenshell_geom_svg
     auto* self_cpp = self->ptr;
     auto boundary_index_cpp = static_cast<size_t>(boundary_index);
         *out_result = static_cast<size_t>(ifcgeom::bindings::inner_boundary_size(self_cpp, boundary_index_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -28521,12 +28541,12 @@ bool ifcopenshell_geom_tree_ray_intersection_instance(ifcopenshell_geom_tree_ray
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -28538,12 +28558,12 @@ bool ifcopenshell_geom_taxonomy_style_instance_id(ifcopenshell_geom_taxonomy_sty
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr.get();
         *out_result = static_cast<size_t>(ifcgeom::bindings::instance_id(self_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -28562,12 +28582,12 @@ bool ifcopenshell_geom_conversion_result_shape_intersect(ifcopenshell_geom_conve
         } else {
             *out_result = new ifcopenshell_geom_conversion_result_shape_t{std::move(result_value).release(), true};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -28579,12 +28599,12 @@ bool ifcopenshell_geom_triangulation_item_ids_buffer(ifcopenshell_geom_triangula
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = (ifcgeom::bindings::item_ids_buffer(self_cpp)).data();
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -28596,12 +28616,12 @@ bool ifcopenshell_geom_conversion_result_shape_length(ifcopenshell_geom_conversi
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = static_cast<double>(ifcgeom::bindings::length(self_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -28615,12 +28635,12 @@ bool ifcopenshell_geom_opaque_number_less_than(ifcopenshell_geom_opaque_number_t
     if (other == nullptr || other->ptr == nullptr) { throw std::runtime_error("Handle parameter \"other\" is invalid"); }
     auto other_cpp = other->ptr;
         *out_result = ifcgeom::bindings::less_than(self_cpp, other_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -28632,12 +28652,12 @@ bool ifcopenshell_geom_triangulation_material_ids_buffer(ifcopenshell_geom_trian
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = (ifcgeom::bindings::material_ids_buffer(self_cpp)).data();
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -28656,12 +28676,12 @@ bool ifcopenshell_geom_conversion_result_shape_moved(ifcopenshell_geom_conversio
         } else {
             *out_result = new ifcopenshell_geom_conversion_result_shape_t{std::move(result_value).release(), true};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -28680,12 +28700,12 @@ bool ifcopenshell_geom_opaque_number_multiply(ifcopenshell_geom_opaque_number_t*
         } else {
             *out_result = new ifcopenshell_geom_opaque_number_t{std::move(result_value).release(), true};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -28702,12 +28722,12 @@ bool ifcopenshell_geom_opaque_number_negate(ifcopenshell_geom_opaque_number_t* s
         } else {
             *out_result = new ifcopenshell_geom_opaque_number_t{std::move(result_value).release(), true};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -28719,12 +28739,12 @@ bool ifcopenshell_geom_iterator_next(ifcopenshell_geom_iterator_t* self, bool* o
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = ifcgeom::bindings::next(self_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -28736,12 +28756,12 @@ bool ifcopenshell_geom_triangulation_normals_buffer(ifcopenshell_geom_triangulat
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = (ifcgeom::bindings::normals_buffer(self_cpp)).data();
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -28753,12 +28773,12 @@ bool ifcopenshell_geom_svgfill_polygon_point_inside(ifcopenshell_geom_svgfill_po
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = make_double_list(ifcgeom::bindings::point_inside(self_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -28777,12 +28797,12 @@ bool ifcopenshell_geom_tree_select_box_bounds(ifcopenshell_geom_tree_t* self, do
     auto zmax_cpp = static_cast<double>(zmax);
     auto completely_within_cpp = static_cast<bool>(completely_within);
         *out_result = new ifcopenshell_parse_instance_list_t{ifcgeom::bindings::select_box_bounds(self_cpp, xmin_cpp, ymin_cpp, zmin_cpp, xmax_cpp, ymax_cpp, zmax_cpp, completely_within_cpp)};
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -28798,12 +28818,12 @@ bool ifcopenshell_geom_tree_select_box_element(ifcopenshell_geom_tree_t* self, i
     auto completely_within_cpp = static_cast<bool>(completely_within);
     auto extend_cpp = static_cast<double>(extend);
         *out_result = new ifcopenshell_parse_instance_list_t{ifcgeom::bindings::select_box_element(self_cpp, instance_cpp, completely_within_cpp, extend_cpp)};
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -28819,12 +28839,12 @@ bool ifcopenshell_geom_tree_select_box_point(ifcopenshell_geom_tree_t* self, dou
     auto z_cpp = static_cast<double>(z);
     auto extend_cpp = static_cast<double>(extend);
         *out_result = new ifcopenshell_parse_instance_list_t{ifcgeom::bindings::select_box_point(self_cpp, x_cpp, y_cpp, z_cpp, extend_cpp)};
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -28840,12 +28860,12 @@ bool ifcopenshell_geom_tree_select_brep_element(ifcopenshell_geom_tree_t* self, 
     auto completely_within_cpp = static_cast<bool>(completely_within);
     auto extend_cpp = static_cast<double>(extend);
         *out_result = new ifcopenshell_parse_instance_list_t{ifcgeom::bindings::select_brep_element(self_cpp, element_cpp, completely_within_cpp, extend_cpp)};
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -28861,12 +28881,12 @@ bool ifcopenshell_geom_tree_select_element(ifcopenshell_geom_tree_t* self, ifcop
     auto completely_within_cpp = static_cast<bool>(completely_within);
     auto extend_cpp = static_cast<double>(extend);
         *out_result = new ifcopenshell_parse_instance_list_t{ifcgeom::bindings::select_element(self_cpp, instance_cpp, completely_within_cpp, extend_cpp)};
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -28882,12 +28902,12 @@ bool ifcopenshell_geom_tree_select_point(ifcopenshell_geom_tree_t* self, double 
     auto z_cpp = static_cast<double>(z);
     auto extend_cpp = static_cast<double>(extend);
         *out_result = new ifcopenshell_parse_instance_list_t{ifcgeom::bindings::select_point(self_cpp, x_cpp, y_cpp, z_cpp, extend_cpp)};
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -28906,12 +28926,12 @@ bool ifcopenshell_geom_tree_select_ray(ifcopenshell_geom_tree_t* self, double or
     auto dir_z_cpp = static_cast<double>(dir_z);
     auto length_cpp = static_cast<double>(length);
         *out_result = new ifcopenshell_geom_tree_ray_intersection_list_t{new std::vector<IfcGeom::ray_intersection_result>(ifcgeom::bindings::select_ray(self_cpp, origin_x_cpp, origin_y_cpp, origin_z_cpp, dir_x_cpp, dir_y_cpp, dir_z_cpp, length_cpp)), true};
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -28923,12 +28943,12 @@ bool ifcopenshell_geom_conversion_result_shape_serialize(ifcopenshell_geom_conve
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = make_string(ifcgeom::bindings::serialize(self_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -28940,12 +28960,12 @@ bool ifcopenshell_geom_conversion_result_shape_serialize_obj(ifcopenshell_geom_c
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = make_string(ifcgeom::bindings::serialize_obj(self_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -28962,12 +28982,12 @@ bool ifcopenshell_geom_conversion_result_shape_solid(ifcopenshell_geom_conversio
         } else {
             *out_result = new ifcopenshell_geom_conversion_result_shape_t{std::move(result_value).release(), true};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -28984,12 +29004,12 @@ bool ifcopenshell_geom_conversion_result_shape_solid_mt(ifcopenshell_geom_conver
         } else {
             *out_result = new ifcopenshell_geom_conversion_result_shape_t{std::move(result_value).release(), true};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -29008,12 +29028,12 @@ bool ifcopenshell_geom_opaque_number_subtract(ifcopenshell_geom_opaque_number_t*
         } else {
             *out_result = new ifcopenshell_geom_opaque_number_t{std::move(result_value).release(), true};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -29032,12 +29052,12 @@ bool ifcopenshell_geom_conversion_result_shape_subtract(ifcopenshell_geom_conver
         } else {
             *out_result = new ifcopenshell_geom_conversion_result_shape_t{std::move(result_value).release(), true};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -29049,12 +29069,12 @@ bool ifcopenshell_geom_element_transformation_buffer(ifcopenshell_geom_element_t
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = ifcgeom::bindings::transformation_buffer(self_cpp);
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -29066,12 +29086,12 @@ bool ifcopenshell_geom_element_transformation_buffer_size(ifcopenshell_geom_elem
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = static_cast<size_t>(ifcgeom::bindings::transformation_buffer_size(self_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -29083,12 +29103,12 @@ bool ifcopenshell_geom_triangulation_uvs_buffer(ifcopenshell_geom_triangulation_
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = (ifcgeom::bindings::uvs_buffer(self_cpp)).data();
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -29100,12 +29120,12 @@ bool ifcopenshell_geom_conversion_result_shape_vertices(ifcopenshell_geom_conver
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = make_geom_conversion_result_shape_list(ifcgeom::bindings::vertices(self_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -29117,12 +29137,12 @@ bool ifcopenshell_geom_triangulation_verts_buffer(ifcopenshell_geom_triangulatio
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = (ifcgeom::bindings::verts_buffer(self_cpp)).data();
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -29134,12 +29154,12 @@ bool ifcopenshell_geom_conversion_result_shape_volume(ifcopenshell_geom_conversi
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
         *out_result = static_cast<double>(ifcgeom::bindings::volume(self_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -29153,12 +29173,12 @@ bool ifcopenshell_geom_taxonomy_bspline_surface_weight_at(ifcopenshell_geom_taxo
     auto row_cpp = static_cast<size_t>(row);
     auto col_cpp = static_cast<size_t>(col);
         *out_result = static_cast<double>(ifcgeom::bindings::weight_at(self_cpp, row_cpp, col_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -29171,12 +29191,12 @@ bool ifcopenshell_geom_taxonomy_bspline_surface_weight_col_count_at(ifcopenshell
     auto* self_cpp = self->ptr.get();
     auto row_cpp = static_cast<size_t>(row);
         *out_result = static_cast<size_t>(ifcgeom::bindings::weight_col_count_at(self_cpp, row_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -29188,12 +29208,12 @@ bool ifcopenshell_geom_taxonomy_bspline_surface_weight_row_count(ifcopenshell_ge
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr.get();
         *out_result = static_cast<size_t>(ifcgeom::bindings::weight_row_count(self_cpp));
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }
@@ -29210,12 +29230,12 @@ bool ifcopenshell_geom_conversion_result_shape_wrap_in_compound(ifcopenshell_geo
         } else {
             *out_result = new ifcopenshell_geom_conversion_result_shape_t{std::move(result_value).release(), true};
         }
+        if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
+            return false;
+        }
         return true;
-    } catch (const std::exception& e) {
-        set_last_error(e.what());
-        return false;
     } catch (...) {
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }
 }

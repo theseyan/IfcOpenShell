@@ -201,7 +201,7 @@ express::Base reassign_class_impl(
     try {
         file->remove_entity(element);
     } catch (const std::exception& e) {
-        set_error(std::string("Failed to remove old element: ") + e.what());
+        ifcapi::detail::set_error(e, "Failed to remove old element: ");
         return {};
     }
 
@@ -218,7 +218,7 @@ express::Base reassign_class_impl(
         }
 
     } catch (const std::exception& e) {
-        set_error(std::string("Failed to create reassigned element: ") + e.what());
+        ifcapi::detail::set_error(e, "Failed to create reassigned element: ");
         return {};
     }
     if (!new_inst) {

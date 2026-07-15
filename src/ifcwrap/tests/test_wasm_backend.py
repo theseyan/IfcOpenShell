@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import sys
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -21,6 +22,7 @@ from src.ifcwrap.binding_generator.abi_ir import (
     COptionIR,
     CParamIR,
     CTypeIR,
+    ErrorCatalogEntryIR,
     _finalize_function,
 )
 from src.ifcwrap.binding_generator.binding_ir import BindingIR, CallIR, DirectCallOp
@@ -39,6 +41,7 @@ _DEFAULT_ERROR_FUNCTIONS = {
     "clear_error": "ifcopenshell_demo_clear_error",
     "last_error_message": "ifcopenshell_demo_last_error_message",
     "last_error_kind": "ifcopenshell_demo_last_error_kind",
+    "last_error_code": "ifcopenshell_demo_last_error_code",
 }
 
 
@@ -486,10 +489,11 @@ class TestWasmJsGlue:
         code = render_js_glue(metadata)
         assert "export async function createIfcOpenshellModule" in code
         assert "module._ifcopenshell_demo_clear_error()" in code
-        assert (
-            "throw new Error(_lastErrorMessage(module, 'ifcopenshell_demo_open_file failed'))"
-            in code
-        )
+        assert "throw _lastError(module, 'ifcopenshell_demo_open_file failed')" in code
+        assert "export class IfcOpenShellError extends Error" in code
+        assert "const kind = module._ifcopenshell_demo_last_error_kind();" in code
+        assert "const code = module._ifcopenshell_demo_last_error_code();" in code
+        assert "export function isIfcOpenShellAbortError" in code
         assert (
             "openFile: (path) => invoke_ifcopenshell_demo_open_file(module, path)"
             in code
@@ -872,6 +876,62 @@ class TestWasmJsGlue:
         assert "_NUMERIC_ARRAY_TYPES.has(TargetArray)" in code
         assert "const result = new TargetArray(source);" in code
         assert "WASM memory grew during numeric buffer snapshot" in code
+        assert (
+            "if (!sizeOk) throw _lastError(module, 'ifcopenshell_demo_mesh_verts_buffer_size failed')"
+            in code
+        )
+
+    def test_typed_errors_cover_void_nullable_and_scalar_calls(self):
+        metadata = _make_metadata(
+            handles={"item": _make_handle("ifcopenshell_demo_item_t")},
+            functions={
+                "ifcopenshell_demo_void": _make_function(
+                    c_name="ifcopenshell_demo_void",
+                    returns=TypeSpec(kind="void"),
+                ),
+                "ifcopenshell_demo_nullable": _make_function(
+                    c_name="ifcopenshell_demo_nullable",
+                    returns=TypeSpec(kind="handle", handle="item", nullable=True),
+                ),
+                "ifcopenshell_demo_scalar": _make_function(
+                    c_name="ifcopenshell_demo_scalar",
+                    returns=TypeSpec(kind="int32"),
+                ),
+            },
+        )
+
+        code = render_js_glue(metadata)
+
+        for name in ("void", "nullable", "scalar"):
+            assert (
+                f"if (!ok) throw _lastError(module, 'ifcopenshell_demo_{name} failed')"
+                in code
+            )
+
+    def test_typescript_exports_typed_error_contract(self):
+        metadata = _make_metadata()
+        code = render_typescript_declarations(metadata)
+
+        assert "export class IfcOpenShellError extends Error" in code
+        assert "readonly kind: IfcOpenShellErrorKind;" in code
+        assert "readonly code: IfcOpenShellErrorCode;" in code
+        assert "readonly INVALID_QUADRANT_BEARING: 100" in code
+        assert "isIfcOpenShellAbortError(error: unknown)" in code
+
+        custom = replace(
+            metadata,
+            error_catalog=replace(
+                metadata.error_catalog,
+                kinds=(ErrorCatalogEntryIR("NONE", 27),),
+                codes=(ErrorCatalogEntryIR("NONE", 42),),
+            ),
+        )
+        js = render_js_glue(custom)
+        declarations = render_typescript_declarations(custom)
+        assert "NONE: 27" in js
+        assert "NONE: 42" in js
+        assert "readonly NONE: 27" in declarations
+        assert "readonly NONE: 42" in declarations
 
     def test_snapshots_owner_backed_numeric_sequences_without_number_arrays(self):
         metadata = _make_metadata(
@@ -1287,7 +1347,9 @@ class TestWasmApiBridge:
         assert "pset_template: Object.freeze({" not in bridge
 
         assert "material: IfcOpenshellMaterialModule;" in declarations
-        assert "material_reorder: IfcOpenshellMaterialReorderModule;" not in declarations
+        assert (
+            "material_reorder: IfcOpenshellMaterialReorderModule;" not in declarations
+        )
         assert "shape_builder: IfcOpenshellShapeBuilderModule;" in declarations
         assert "shape: IfcOpenshellShapeModule;" in declarations
         assert "pset_template: IfcOpenshellPsetTemplateModule;" in declarations

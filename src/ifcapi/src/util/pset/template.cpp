@@ -3,6 +3,7 @@
 #include "ifcapi/ifcapi.h"
 #include "ifcapi/bindings/pset_template.h"
 #include "ifcapi/detail/attribute.h"
+#include "ifcapi/detail/error.h"
 
 #include "ifcparse/file.h"
 #include "ifcparse/schema.h"
@@ -98,7 +99,7 @@ ifcopenshell_pset_template_t* get_or_load_locked(const std::string& schema_id) {
     try {
         tf.reset(new ifcopenshell::file(path));
     } catch (const std::exception& e) {
-        set_error(std::string("Failed to load template file '") + path + "': " + e.what());
+        ifcapi::detail::set_error_with_context(e, std::string("Failed to load template file '") + path + "': ");
         return nullptr;
     }
     if (!tf || !tf->good()) {

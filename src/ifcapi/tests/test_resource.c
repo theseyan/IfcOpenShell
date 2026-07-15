@@ -77,7 +77,15 @@ static void test_resource_workflows(void) {
     ASSERT(!ifcopenshell_resource_add_resource_quantity(file, resource, "IfcQuantityCount", &quantity),
            "invalid default crew quantity is rejected");
     ASSERT(quantity == NULL, "invalid quantity returns no handle");
+    ASSERT(ifcopenshell_last_error_kind() == IFCOPENSHELL_ERROR_VALUE, "unsupported quantity is a value error");
+    ASSERT(ifcopenshell_last_error_code() == IFCOPENSHELL_ERROR_CODE_UNSUPPORTED_RESOURCE_QUANTITY,
+           "unsupported quantity has a stable code");
     ASSERT(ifcopenshell_last_error_message()[0] != '\0', "invalid quantity exposes last error");
+    ASSERT(!ifcopenshell_resource_add_resource_quantity(file, resource, "IfcWall", &quantity),
+           "invalid quantity IFC class is rejected");
+    ASSERT(ifcopenshell_last_error_kind() == IFCOPENSHELL_ERROR_VALUE, "unsupported class is a value error");
+    ASSERT(ifcopenshell_last_error_code() == IFCOPENSHELL_ERROR_CODE_UNSUPPORTED_RESOURCE_QUANTITY,
+           "resource support validation precedes schema resolution");
     ASSERT(ifcopenshell_resource_add_resource_quantity(file, resource, "IfcQuantityTime", &quantity),
            "valid crew quantity succeeds");
     ASSERT(ifcopenshell_resource_add_resource_time(file, resource, &time), "resource time succeeds");

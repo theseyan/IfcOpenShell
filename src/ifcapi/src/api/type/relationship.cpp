@@ -229,7 +229,7 @@ express::Base assign_type_core(
 
         return result_rel;
     } catch (const std::exception& e) {
-        set_error(e.what());
+        ifcapi::detail::set_error(e);
         return {};
     }
 }

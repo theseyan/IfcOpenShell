@@ -8,7 +8,7 @@ import type {
   IfcOpenshellGeomTriangulationElement,
 } from '@ifcopenshell-js/wasm/api';
 import type { IfcFile } from '../file.js';
-import { IfcOpenShellError, type IfcOpenShell } from '../init.js';
+import { IfcOpenShellError, abortError, type IfcOpenShell } from '../init.js';
 import { HandleGuard } from '../resource.js';
 import { GeomSettings } from './settings.js';
 import type { Mesh, MeshPrecision } from './mesh.js';
@@ -381,7 +381,7 @@ function validateTriangulatedOutput(settings: GeomSettings): void {
 }
 
 function throwIfAborted(signal: AbortSignal | undefined): void {
-  if (signal?.aborted) throw new IfcOpenShellError('IfcOpenShell operation was cancelled');
+  if (signal?.aborted) throw abortError('IfcOpenShell operation was cancelled', signal.reason);
 }
 
 function normalizeProgress(progress: number): number {

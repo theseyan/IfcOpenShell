@@ -19,6 +19,7 @@
 
 import ifcopenshell.api.cogo
 import pytest
+from ifcopenshell import _ifcopenshell_capi as _capi
 
 
 def test_bearing2dd():
@@ -113,6 +114,16 @@ def test_bearing2dd_whitespace_boundaries_and_strict_numeric_tokens():
     ):
         with pytest.raises(ValueError, match="^Invalid bearing string$"):
             ifcopenshell.api.cogo.bearing2dd(bearing)
+
+
+def test_invalid_bearing_exposes_typed_error_contract():
+    with pytest.raises(ValueError) as error:
+        ifcopenshell.api.cogo.bearing2dd(
+            "diagnostic wording is not a dispatch contract"
+        )
+
+    assert error.value.kind == _capi.IFCOPENSHELL_ERROR_VALUE
+    assert error.value.code == _capi.IFCOPENSHELL_ERROR_CODE_INVALID_QUADRANT_BEARING
 
 
 test_bearing2dd()

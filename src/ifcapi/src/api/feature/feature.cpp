@@ -118,7 +118,7 @@ express::Base feature_add_feature(
         }
         return rel;
     } catch (const std::exception& e) {
-        set_error(e.what());
+        ifcapi::detail::set_error(e);
         return {};
     }
 }
@@ -145,7 +145,7 @@ express::Base feature_add_filling(
         ifcapi::detail::write_ref_attr(rel, "RelatedBuildingElement", element_value);
         return rel;
     } catch (const std::exception& e) {
-        set_error(e.what());
+        ifcapi::detail::set_error(e);
         return {};
     }
 }
@@ -189,7 +189,7 @@ void feature_remove_feature(
         if (application_value) remove_options.application = application_value;
         root_remove_product(file, &feature_value, remove_options);
     } catch (const std::exception& e) {
-        set_error(e.what());
+        ifcapi::detail::set_error(e);
     }
 }
 
@@ -204,7 +204,7 @@ void feature_remove_filling(ifcopenshell::file* file, express::Base* element) {
             }
         }
     } catch (const std::exception& e) {
-        set_error(e.what());
+        ifcapi::detail::set_error(e);
     }
 }
 

@@ -1118,12 +1118,12 @@ def _render_call_impl(call: CallIR, spec: BindingIR) -> str:
     try {{
         {spec.c_prefix}_clear_error();
 {prelude}        {body_line}
+        if ({spec.c_prefix}_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {{
+            return false;
+        }}
         return true;
-    }} catch (const std::exception& e) {{
-        set_last_error(e.what());
-        return false;
     }} catch (...) {{
-        set_last_error("Unknown C++ exception");
+        ifcapi::detail::set_error_from_current_exception();
         return false;
     }}
 }}"""

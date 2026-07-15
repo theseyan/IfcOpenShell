@@ -2,6 +2,39 @@
 
 declare module 'ifcopenshell-api' {
   export type IfcOpenshellRawValue = null | boolean | number | bigint | string | object | IfcOpenshellRawValue[];
+  export const IfcOpenShellErrorKind: {
+    readonly NONE: 0;
+    readonly RUNTIME: 1;
+    readonly VALUE: 2;
+    readonly TYPE: 3;
+    readonly NOT_IMPLEMENTED: 4;
+    readonly KEY: 5;
+    readonly RECURSION: 6;
+    readonly CANCELLED: 7;
+  };
+  export type IfcOpenShellErrorKind = typeof IfcOpenShellErrorKind[keyof typeof IfcOpenShellErrorKind];
+  export const IfcOpenShellErrorCode: {
+    readonly NONE: 0;
+    readonly UNSPECIFIED: 1;
+    readonly INVALID_ARGUMENT: 2;
+    readonly DOMAIN_ERROR: 3;
+    readonly INVALID_QUADRANT_BEARING: 100;
+    readonly UNSUPPORTED_RESOURCE_QUANTITY: 101;
+    readonly INVALID_RESOURCE_QUANTITY_CLASS: 102;
+    readonly RECURSIVE_SCHEDULE_CASCADE: 103;
+    readonly CYCLIC_TASK_GRAPH: 104;
+    readonly OPERATION_CANCELLED: 105;
+  };
+  export type IfcOpenShellErrorCode = typeof IfcOpenShellErrorCode[keyof typeof IfcOpenShellErrorCode];
+  /** Kinds and codes are stable identifiers. Message is diagnostic only. */
+  export class IfcOpenShellError extends Error {
+    readonly kind: IfcOpenShellErrorKind;
+    readonly code: IfcOpenShellErrorCode;
+    constructor(message: string, cause?: unknown);
+    constructor(kind: IfcOpenShellErrorKind, code: IfcOpenShellErrorCode, message: string, cause?: unknown);
+  }
+  export function abortError(message?: string, cause?: unknown): IfcOpenShellError;
+  export function isIfcOpenShellAbortError(error: unknown): error is IfcOpenShellError;
   export type IfcOpenshellNumericTypedArray = Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array;
   export interface IfcOpenshellNumericArrayConstructor<T extends IfcOpenshellNumericTypedArray> {
     readonly BYTES_PER_ELEMENT: number;
@@ -2443,8 +2476,8 @@ declare module 'ifcopenshell-api' {
      * Convert a quadrant bearing to decimal degrees.
      *
      * Accepts N/S, degrees, optional minutes and decimal seconds, and E/W,
-     * separated by arbitrary whitespace. Invalid input reports
-     * "Invalid bearing string".
+     * separated by arbitrary whitespace. Invalid input is a value error with the
+     * stable invalid-quadrant-bearing code; its message is diagnostic only.
      */
     bearing2dd(bearing: string): number;
     /**
@@ -4944,7 +4977,14 @@ declare module 'ifcopenshell-api' {
   export interface IfcOpenshellResourceModule {
     /** Create a construction resource, nesting it below a parent when supplied or declaring it to the first IFC4+ context. */
     addResource(file: IfcOpenshellFile, options: IfcOpenshellResourceAddResourceOptions): IfcOpenshellInstance;
-    /** Create and attach a schema-valid base quantity. Validation precedes replacement of any existing quantity. */
+    /**
+     * Create and attach a schema-valid base quantity.
+     *
+     * Validation precedes replacement of any existing quantity. Matching upstream
+     * behavior, resource/quantity support is checked before schema resolution.
+     * Unsupported combinations and schema-resolution failures are value errors
+     * with distinct stable codes; diagnostic messages must not be parsed.
+     */
     addResourceQuantity(file: IfcOpenshellFile, resource: IfcOpenshellInstance, ifc_class: string): IfcOpenshellInstance;
     /** Create an IfcResourceTime and replace the resource Usage reference. */
     addResourceTime(file: IfcOpenshellFile, resource: IfcOpenshellInstance): IfcOpenshellInstance;
@@ -5369,6 +5409,8 @@ declare module 'ifcopenshell-api' {
      * @param related_process Successor IfcTask.
      * @param options Sequence type and ownership options.
      * @return The IfcRelSequence relationship.
+     * @throws A recursion error with the stable recursive-schedule-cascade code
+     * when the relationship exposes a cycle during cascading.
      */
     assignSequence(file: IfcOpenshellFile, relating_process: IfcOpenshellInstance, related_process: IfcOpenshellInstance, options: IfcOpenshellSequenceAssignSequenceOptions): IfcOpenshellInstance;
     /**
@@ -5405,6 +5447,7 @@ declare module 'ifcopenshell-api' {
      *
      * @param file File containing the task network.
      * @param task IfcTask from which to cascade.
+     * @throws A recursion error with the stable recursive-schedule-cascade code.
      */
     cascadeSchedule(file: IfcOpenshellFile, task: IfcOpenshellInstance): void;
     /**
@@ -5534,6 +5577,7 @@ declare module 'ifcopenshell-api' {
      *
      * @param file File containing the work schedule.
      * @param work_schedule IfcWorkSchedule to recalculate.
+     * @throws A recursion error with the stable cyclic-task-graph code.
      */
     recalculateSchedule(file: IfcOpenshellFile, work_schedule: IfcOpenshellInstance): void;
     /**
@@ -5657,6 +5701,8 @@ declare module 'ifcopenshell-api' {
      * @param file File containing the tasks.
      * @param relating_process Predecessor IfcTask.
      * @param related_process Successor IfcTask.
+     * @throws A recursion error with the stable recursive-schedule-cascade code
+     * when the remaining graph is cyclic.
      */
     unassignSequence(file: IfcOpenshellFile, relating_process: IfcOpenshellInstance, related_process: IfcOpenshellInstance): void;
   }

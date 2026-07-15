@@ -9,15 +9,33 @@
 static PyObject *raise_last_error(const char *fallback) {
     const char *msg = ifcopenshell_last_error_message();
     int kind = ifcopenshell_last_error_kind();
+    int code = ifcopenshell_last_error_code();
     PyObject *exc;
     switch (kind) {
         case IFCOPENSHELL_ERROR_VALUE: exc = PyExc_ValueError; break;
         case IFCOPENSHELL_ERROR_TYPE: exc = PyExc_TypeError; break;
         case IFCOPENSHELL_ERROR_NOT_IMPLEMENTED: exc = PyExc_NotImplementedError; break;
         case IFCOPENSHELL_ERROR_KEY: exc = PyExc_KeyError; break;
+        case IFCOPENSHELL_ERROR_RECURSION: exc = PyExc_RecursionError; break;
+        case IFCOPENSHELL_ERROR_CANCELLED: exc = PyExc_InterruptedError; break;
         default: exc = PyExc_RuntimeError; break;
     }
-    PyErr_SetString(exc, (msg && msg[0]) ? msg : fallback);
+    PyObject *value = PyObject_CallFunction(exc, "s", (msg && msg[0]) ? msg : fallback);
+    if (!value) return NULL;
+    PyObject *kind_value = PyLong_FromLong(kind);
+    PyObject *code_value = PyLong_FromLong(code);
+    if (!kind_value || !code_value ||
+        PyObject_SetAttrString(value, "kind", kind_value) < 0 ||
+        PyObject_SetAttrString(value, "code", code_value) < 0) {
+        Py_XDECREF(kind_value);
+        Py_XDECREF(code_value);
+        Py_DECREF(value);
+        return NULL;
+    }
+    Py_DECREF(kind_value);
+    Py_DECREF(code_value);
+    PyErr_SetObject(exc, value);
+    Py_DECREF(value);
     return NULL;
 }
 
@@ -55057,10 +55075,15 @@ static PyObject *py_last_error_kind(PyObject *self, PyObject *args) {
     return PyLong_FromLong(ifcopenshell_last_error_kind());
 }
 
+static PyObject *py_last_error_code(PyObject *self, PyObject *args) {
+    return PyLong_FromLong(ifcopenshell_last_error_code());
+}
+
 static PyMethodDef module_methods[] = {
     {"clear_error", py_clear_error, METH_NOARGS, "Clear the last error"},
     {"last_error_message", py_last_error_message, METH_NOARGS, "Get the last error message"},
     {"last_error_kind", py_last_error_kind, METH_NOARGS, "Get the last error kind"},
+    {"last_error_code", py_last_error_code, METH_NOARGS, "Get the stable last error code"},
     {"aggregation_type_destroy", py_aggregation_type_destroy, METH_VARARGS, "Destroy ifcopenshell_aggregation_type_t"},
     {"attribute_destroy", py_attribute_destroy, METH_VARARGS, "Destroy ifcopenshell_attribute_t"},
     {"declaration_destroy", py_declaration_destroy, METH_VARARGS, "Destroy ifcopenshell_declaration_t"},
@@ -57976,6 +57999,18 @@ PyMODINIT_FUNC PyInit__ifcopenshell_capi(void) {
     PyModule_AddIntConstant(m, "IFCOPENSHELL_ERROR_TYPE", 3);
     PyModule_AddIntConstant(m, "IFCOPENSHELL_ERROR_NOT_IMPLEMENTED", 4);
     PyModule_AddIntConstant(m, "IFCOPENSHELL_ERROR_KEY", 5);
+    PyModule_AddIntConstant(m, "IFCOPENSHELL_ERROR_RECURSION", 6);
+    PyModule_AddIntConstant(m, "IFCOPENSHELL_ERROR_CANCELLED", 7);
+    PyModule_AddIntConstant(m, "IFCOPENSHELL_ERROR_CODE_NONE", 0);
+    PyModule_AddIntConstant(m, "IFCOPENSHELL_ERROR_CODE_UNSPECIFIED", 1);
+    PyModule_AddIntConstant(m, "IFCOPENSHELL_ERROR_CODE_INVALID_ARGUMENT", 2);
+    PyModule_AddIntConstant(m, "IFCOPENSHELL_ERROR_CODE_DOMAIN_ERROR", 3);
+    PyModule_AddIntConstant(m, "IFCOPENSHELL_ERROR_CODE_INVALID_QUADRANT_BEARING", 100);
+    PyModule_AddIntConstant(m, "IFCOPENSHELL_ERROR_CODE_UNSUPPORTED_RESOURCE_QUANTITY", 101);
+    PyModule_AddIntConstant(m, "IFCOPENSHELL_ERROR_CODE_INVALID_RESOURCE_QUANTITY_CLASS", 102);
+    PyModule_AddIntConstant(m, "IFCOPENSHELL_ERROR_CODE_RECURSIVE_SCHEDULE_CASCADE", 103);
+    PyModule_AddIntConstant(m, "IFCOPENSHELL_ERROR_CODE_CYCLIC_TASK_GRAPH", 104);
+    PyModule_AddIntConstant(m, "IFCOPENSHELL_ERROR_CODE_OPERATION_CANCELLED", 105);
     PyModule_AddIntConstant(m, "IFCOPENSHELL_LOGICAL_UNKNOWN", -1);
     PyModule_AddIntConstant(m, "IFCOPENSHELL_LOGICAL_FALSE", 0);
     PyModule_AddIntConstant(m, "IFCOPENSHELL_LOGICAL_TRUE", 1);

@@ -244,7 +244,7 @@ express::Base root_copy_class(ifcopenshell::file* file, express::Base* product) 
     try {
         return copy_class_impl(file, source);
     } catch (const std::exception& exception) {
-        set_error(std::string("root_copy_class: ") + exception.what());
+        ifcapi::detail::set_error(exception, "root_copy_class: ");
         return {};
     } catch (...) {
         set_error("root_copy_class: unknown error");

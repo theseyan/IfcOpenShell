@@ -252,7 +252,7 @@ express::Base pset_add_pset(
             std::string("Class '") + product.declaration().name() + "' doesn't support adding a property set.");
         return {};
     } catch (const std::exception& e) {
-        set_error(std::string("pset_add_pset: ") + e.what());
+        ifcapi::detail::set_error(e, "pset_add_pset: ");
         return {};
     }
 }
@@ -313,7 +313,7 @@ express::Base pset_add_qto(
             std::string("Class '") + product.declaration().name() + "' doesn't support adding a quantity set.");
         return {};
     } catch (const std::exception& e) {
-        set_error(std::string("pset_add_qto: ") + e.what());
+        ifcapi::detail::set_error(e, "pset_add_qto: ");
         return {};
     }
 }

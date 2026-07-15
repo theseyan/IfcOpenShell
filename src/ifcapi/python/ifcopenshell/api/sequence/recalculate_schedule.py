@@ -47,16 +47,11 @@ def recalculate_schedule(file: ifcopenshell.file, work_schedule: ifcopenshell.en
         # critical path. Typically cascade_schedule is run prior to ensure
         # that dates are correct.
     """
-    try:
-        _capi.call_status(
-            "sequence_recalculate_schedule",
-            _capi.file_handle(file),
-            _capi.instance_handle(work_schedule),
-        )
-    except RuntimeError as e:
-        if str(e) == "Task graph is cyclic and so critical path method cannot be performed.":
-            raise RecursionError(str(e)) from e
-        raise
+    _capi.call_status(
+        "sequence_recalculate_schedule",
+        _capi.file_handle(file),
+        _capi.instance_handle(work_schedule),
+    )
 
 
 class Usecase:

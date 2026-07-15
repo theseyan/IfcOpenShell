@@ -33,6 +33,16 @@ def _render_internal_header(spec: BindingIR, header_name: str) -> str:
         f"#include {header}" if header.startswith("<") else f'#include "{header}"'
         for header in spec.public_headers
     )
+    error_catalog_assertions = "\n".join(
+        [
+            f'static_assert(ifcapi::detail::ERROR_{entry.name} == {entry.value}, "native error kind catalog mismatch: {entry.name}");'
+            for entry in spec.abi.error_catalog.kinds
+        ]
+        + [
+            f'static_assert(ifcapi::detail::ERROR_CODE_{entry.name} == {entry.value}, "native error code catalog mismatch: {entry.name}");'
+            for entry in spec.abi.error_catalog.codes
+        ]
+    )
     guard = f"{spec.c_prefix.upper()}_API_INTERNAL_HPP"
     helper_block = ""
     if "file" in spec.handles and "instance" in spec.handles:
@@ -95,6 +105,7 @@ inline {file_handle_type}* wrap_file(ifcopenshell::file* p, bool owned = true) {
 #define {guard}
 
 #include "{header_name}"
+#include "ifcapi/detail/error.h"
 
 #include <memory>
 #include <sstream>
@@ -102,6 +113,10 @@ inline {file_handle_type}* wrap_file(ifcopenshell::file* p, bool owned = true) {
 #include <vector>
 
 {includes}
+
+// The BindingIR catalog is authoritative for generated targets. These checks
+// make any handwritten native enum drift a compile-time failure.
+{error_catalog_assertions}
 
 {handle_structs_block}
 
@@ -112,6 +127,7 @@ namespace capi {{
 // set_last_error() and read via the public {spec.c_prefix}_last_error_message().
 extern thread_local std::string g_last_error;
 extern thread_local int g_last_error_kind;
+extern thread_local int g_last_error_code;
 
 // Set the global error message that will be returned by
 // {spec.c_prefix}_last_error_message(). Use this from external translation
@@ -119,6 +135,8 @@ extern thread_local int g_last_error_kind;
 // error reporting channel as the autogen API.
 void set_last_error(const std::string& message);
 void set_last_error(int kind, const std::string& message);
+void set_last_error(int kind, int code, const std::string& message);
+int last_error_kind();
 
 {helper_block}
 

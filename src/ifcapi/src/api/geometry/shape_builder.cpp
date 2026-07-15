@@ -1192,6 +1192,12 @@ template <typename Fn>
 express::Base wrap_shape_builder_errors(const char* name, Fn&& fn) {
     try {
         return fn();
+    } catch (const ifcapi::detail::Error& ex) {
+        throw ifcapi::detail::Error(ex.kind(), ex.code(), std::string(name) + ": " + ex.what());
+    } catch (const std::invalid_argument& ex) {
+        throw std::invalid_argument(std::string(name) + ": " + ex.what());
+    } catch (const std::domain_error& ex) {
+        throw std::domain_error(std::string(name) + ": " + ex.what());
     } catch (const std::exception& ex) {
         throw std::runtime_error(std::string(name) + ": " + ex.what());
     } catch (...) {

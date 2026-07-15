@@ -400,10 +400,10 @@ express::Base root_create_entity(
         return entity;
 
     } catch (const ifcopenshell::exception& e) {
-        set_error(e.what());
+        ifcapi::detail::set_error(e);
         return {};
     } catch (const std::exception& e) {
-        set_error(e.what());
+        ifcapi::detail::set_error(e);
         return {};
     } catch (...) {
         set_error("Unknown C++ exception in ifcopenshell_root_create_entity");
@@ -424,7 +424,7 @@ void root_remove_product(
             options.user.value_or(express::Base{}),
             options.application.value_or(express::Base{}));
     } catch (const std::exception& e) {
-        set_error(e.what());
+        ifcapi::detail::set_error(e);
     } catch (...) {
         set_error("Unknown C++ exception in ifcopenshell_root_remove_product");
     }

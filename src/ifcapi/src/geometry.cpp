@@ -1816,7 +1816,7 @@ std::vector<express::Base> geometry_add_boolean(
         }
         return booleans;
     } catch (const std::exception& e) {
-        set_error(e.what());
+        ifcapi::detail::set_error(e);
         return {};
     }
 }
@@ -1843,7 +1843,7 @@ express::Base geometry_add_axis_representation(
         write_ref_list(representation, "Items", {curve});
         return representation;
     } catch (const std::exception& e) {
-        set_error(e.what());
+        ifcapi::detail::set_error(e);
         return {};
     }
 }
@@ -1870,7 +1870,7 @@ express::Base geometry_add_footprint_representation(
         write_ref_list(representation, "Items", {curve_set});
         return representation;
     } catch (const std::exception& e) {
-        set_error(e.what());
+        ifcapi::detail::set_error(e);
         return {};
     }
 }
@@ -1920,7 +1920,7 @@ express::Base geometry_add_mesh_representation(
         write_ref_list(representation, "Items", items);
         return representation;
     } catch (const std::exception& e) {
-        set_error(e.what());
+        ifcapi::detail::set_error(e);
         return {};
     }
 }
@@ -2015,7 +2015,7 @@ express::Base geometry_add_shape_aspect(
 
         return shape_aspect;
     } catch (const std::exception& e) {
-        set_error(e.what());
+        ifcapi::detail::set_error(e);
         return {};
     }
 }
@@ -2051,7 +2051,7 @@ express::Base geometry_add_topology_representation(
         write_ref_list(representation, "Items", {item});
         return representation;
     } catch (const std::exception& e) {
-        set_error(e.what());
+        ifcapi::detail::set_error(e);
         return {};
     }
 }
@@ -2120,7 +2120,7 @@ express::Base geometry_add_wall_representation(
         return make_shape_representation(
             file, context, (!clipping_kinds.empty() || !booleans.empty()) ? "Clipping" : "SweptSolid", item);
     } catch (const std::exception& e) {
-        set_error(e.what());
+        ifcapi::detail::set_error(e);
         return {};
     }
 }
@@ -2197,7 +2197,7 @@ express::Base geometry_add_slab_representation(
             file, extrusion, clipping_kinds, clipping_locations, clipping_normals, clipping_entities, unit_scale);
         return make_shape_representation(file, context, clipping_kinds.empty() ? "SweptSolid" : "Clipping", item);
     } catch (const std::exception& e) {
-        set_error(e.what());
+        ifcapi::detail::set_error(e);
         return {};
     }
 }
@@ -2255,7 +2255,7 @@ express::Base geometry_create_2pt_wall(
         }
         return representation;
     } catch (const std::exception& e) {
-        set_error(e.what());
+        ifcapi::detail::set_error(e);
         return {};
     }
 }
@@ -2310,7 +2310,7 @@ express::Base geometry_connect_wall(
                 user ? std::optional<express::Base>(user) : std::nullopt,
                 application ? std::optional<express::Base>(application) : std::nullopt});
     } catch (const std::exception& e) {
-        set_error(e.what());
+        ifcapi::detail::set_error(e);
         return {};
     }
 }
@@ -2344,7 +2344,7 @@ express::Base geometry_clip_solid(
         register_bbim_boolean(file, element, result, owner_history, user, application);
         return result;
     } catch (const std::exception& e) {
-        set_error(e.what());
+        ifcapi::detail::set_error(e);
         return {};
     }
 }
@@ -2400,7 +2400,7 @@ express::Base geometry_clip_solid_bounded(
         register_bbim_boolean(file, element, result, owner_history, user, application);
         return result;
     } catch (const std::exception& e) {
-        set_error(e.what());
+        ifcapi::detail::set_error(e);
         return {};
     }
 }
@@ -2481,7 +2481,7 @@ bool geometry_validate_type(
         }
         return representation_type == "CSG";
     } catch (const std::exception& e) {
-        set_error(e.what());
+        ifcapi::detail::set_error(e);
         return false;
     }
 }
@@ -2495,7 +2495,7 @@ void geometry_remove_boolean(ifcopenshell::file* file, express::Base item) {
     try {
         geometry_remove_boolean_impl(file, item);
     } catch (const std::exception& e) {
-        set_error(e.what());
+        ifcapi::detail::set_error(e);
     }
 }
 
@@ -2511,7 +2511,7 @@ express::Base geometry_map_representation(
     try {
         return map_representation_impl(file, representation);
     } catch (const std::exception& e) {
-        set_error(e.what());
+        ifcapi::detail::set_error(e);
         return {};
     }
 }
@@ -2530,7 +2530,7 @@ express::Base geometry_assign_representation(
         assign_representation_impl(file, product, representation);
         return product;
     } catch (const std::exception& e) {
-        set_error(e.what());
+        ifcapi::detail::set_error(e);
         return {};
     }
 }
@@ -2553,7 +2553,7 @@ express::Base geometry_regenerate_wall_representation(
         WallRegenerator regenerator(file);
         return regenerator.regenerate(wall, length, height, has_angle, angle);
     } catch (const std::exception& e) {
-        set_error(e.what());
+        ifcapi::detail::set_error(e);
         return {};
     }
 }
@@ -2609,7 +2609,7 @@ express::Base geometry_connect_element(
         write_ref(rel, "RelatedElement", related_element);
         return rel;
     } catch (const std::exception& e) {
-        set_error(e.what());
+        ifcapi::detail::set_error(e);
         return {};
     }
 }
@@ -2649,7 +2649,7 @@ void geometry_disconnect_element(
         }
         remove_connections_with_history(file, incompatible_connections);
     } catch (const std::exception& e) {
-        set_error(e.what());
+        ifcapi::detail::set_error(e);
     }
 }
 
@@ -2732,7 +2732,7 @@ express::Base geometry_connect_path(
         write_empty_int_aggregate(rel, "RelatedPriorities");
         return rel;
     } catch (const std::exception& e) {
-        set_error(e.what());
+        ifcapi::detail::set_error(e);
         return {};
     }
 }
@@ -2777,7 +2777,7 @@ void geometry_disconnect_path(
         }
         remove_connections_with_history(file, connections);
     } catch (const std::exception& e) {
-        set_error(e.what());
+        ifcapi::detail::set_error(e);
     }
 }
 
@@ -3025,7 +3025,7 @@ void geometry_unassign_representation(
             unassign_type_representation(file, product, representation);
         }
     } catch (const std::exception& e) {
-        set_error(e.what());
+        ifcapi::detail::set_error(e);
     } catch (...) {
         set_error("geometry_unassign_representation: unknown exception");
     }
@@ -3158,7 +3158,7 @@ express::Base geometry_copy_representation(
         assign_representation_impl(file, target, new_rep);
         return new_rep;
     } catch (const std::exception& e) {
-        set_error(e.what());
+        ifcapi::detail::set_error(e);
         return {};
     }
 }
@@ -3194,7 +3194,7 @@ bool type_map_type_representations(
         }
         return true;
     } catch (const std::exception& e) {
-        set_error(e.what());
+        ifcapi::detail::set_error(e);
         return false;
     }
 }
@@ -3216,7 +3216,7 @@ std::vector<double> geometry_profile_extents(
         }
         return {x, y};
     } catch (const std::exception& e) {
-        set_error(e.what());
+        ifcapi::detail::set_error(e);
         return {};
     }
 }

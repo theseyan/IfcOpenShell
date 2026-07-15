@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
 #include "selector/internal.h"
+#include "ifcapi/detail/error.h"
 
 #include <algorithm>
 #include <unordered_set>
@@ -1044,7 +1045,7 @@ std::optional<ifcopenshell_selector_value_t*> selector_filter_elements(
         result_set = filter_elements_impl(file, &file_handle, base_ptr, ast);
     } catch (const std::exception& ex) {
         selector_node_free(ast);
-        ifcopenshell::capi::set_last_error(ex.what());
+        ifcapi::detail::set_error(ex);
         return {};
     } catch (...) {
         selector_node_free(ast);

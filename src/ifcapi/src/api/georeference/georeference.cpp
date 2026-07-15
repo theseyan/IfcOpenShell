@@ -235,7 +235,7 @@ void georeference_add_georeferencing(
             }
         }
     } catch (const std::exception& e) {
-        ifcapi::detail::set_error(e.what());
+        ifcapi::detail::set_error(e);
     }
 }
 
@@ -272,7 +272,7 @@ void georeference_edit_true_north(
             ifcapi::detail::write_double_aggregate(true_north, "DirectionRatios", {x, y});
         }
     } catch (const std::exception& e) {
-        ifcapi::detail::set_error(e.what());
+        ifcapi::detail::set_error(e);
     }
 }
 
@@ -301,7 +301,7 @@ void georeference_edit_georeferencing(
             ifcapi::detail::apply_attribute_props(conversion_items.front(), *options.coordinate_operation);
         }
     } catch (const std::exception& e) {
-        ifcapi::detail::set_error(e.what());
+        ifcapi::detail::set_error(e);
     }
 }
 
@@ -350,7 +350,7 @@ void georeference_edit_wcs(ifcopenshell::file* file, const GeoreferenceEditWcsOp
             }
         }
     } catch (const std::exception& e) {
-        ifcapi::detail::set_error(e.what());
+        ifcapi::detail::set_error(e);
     }
 }
 
@@ -376,7 +376,7 @@ void georeference_remove_georeferencing(ifcopenshell::file* file) {
             file->remove_entity(coordinate_operation);
         }
     } catch (const std::exception& e) {
-        ifcapi::detail::set_error(e.what());
+        ifcapi::detail::set_error(e);
     }
 }
 

@@ -69,6 +69,59 @@ class CFunctionIR:
 
 
 @dataclass(frozen=True)
+class ErrorCatalogEntryIR:
+    name: str
+    value: int
+
+
+@dataclass(frozen=True)
+class ErrorCatalogIR:
+    kinds: tuple[ErrorCatalogEntryIR, ...]
+    codes: tuple[ErrorCatalogEntryIR, ...]
+
+    def __post_init__(self) -> None:
+        for label, entries in (("kind", self.kinds), ("code", self.codes)):
+            names = [entry.name for entry in entries]
+            values = [entry.value for entry in entries]
+            if len(names) != len(set(names)):
+                raise ValueError(f"Duplicate error {label} name")
+            if len(values) != len(set(values)):
+                raise ValueError(f"Duplicate error {label} value")
+
+
+ERROR_CATALOG = ErrorCatalogIR(
+    kinds=tuple(
+        ErrorCatalogEntryIR(name, value)
+        for name, value in (
+            ("NONE", 0),
+            ("RUNTIME", 1),
+            ("VALUE", 2),
+            ("TYPE", 3),
+            ("NOT_IMPLEMENTED", 4),
+            ("KEY", 5),
+            ("RECURSION", 6),
+            ("CANCELLED", 7),
+        )
+    ),
+    codes=tuple(
+        ErrorCatalogEntryIR(name, value)
+        for name, value in (
+            ("NONE", 0),
+            ("UNSPECIFIED", 1),
+            ("INVALID_ARGUMENT", 2),
+            ("DOMAIN_ERROR", 3),
+            ("INVALID_QUADRANT_BEARING", 100),
+            ("UNSUPPORTED_RESOURCE_QUANTITY", 101),
+            ("INVALID_RESOURCE_QUANTITY_CLASS", 102),
+            ("RECURSIVE_SCHEDULE_CASCADE", 103),
+            ("CYCLIC_TASK_GRAPH", 104),
+            ("OPERATION_CANCELLED", 105),
+        )
+    ),
+)
+
+
+@dataclass(frozen=True)
 class BindingABI:
     module: str
     c_prefix: str
@@ -76,6 +129,7 @@ class BindingABI:
     value_types: dict[str, CTypeIR]
     functions: dict[str, CFunctionIR]
     error_functions: dict[str, str]
+    error_catalog: ErrorCatalogIR = ERROR_CATALOG
     option_structs: dict[str, COptionIR] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
@@ -708,6 +762,7 @@ def finalize_abi(ir: BindingIR) -> BindingABI:
             "clear_error": f"{ir.c_prefix}_clear_error",
             "last_error_message": f"{ir.c_prefix}_last_error_message",
             "last_error_kind": f"{ir.c_prefix}_last_error_kind",
+            "last_error_code": f"{ir.c_prefix}_last_error_code",
         },
     )
     _validate_finalized_contract(ir, metadata)

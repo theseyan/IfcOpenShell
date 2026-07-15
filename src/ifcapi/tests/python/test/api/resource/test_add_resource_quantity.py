@@ -16,11 +16,12 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
-import pytest
-
 import ifcopenshell.api
 import ifcopenshell.api.resource
 import ifcopenshell.util.resource
+import pytest
+from ifcopenshell import _ifcopenshell_capi as _capi
+
 import test.bootstrap
 
 
@@ -58,6 +59,24 @@ class TestAddResourceQuantity(test.bootstrap.IFC4):
                 assert len(self.file.by_type("IfcPhysicalSimpleQuantity")) == 1
 
             ifcopenshell.api.resource.remove_resource(self.file, resource)
+
+    def test_validation_errors_expose_stable_codes(self):
+        self.file.create_entity("IfcProject")
+        resource = ifcopenshell.api.resource.add_resource(self.file, ifc_class="IfcCrewResource")
+
+        with pytest.raises(ValueError) as unsupported:
+            ifcopenshell.api.resource.add_resource_quantity(self.file, resource=resource, ifc_class="IfcQuantityCount")
+        assert unsupported.value.kind == _capi.IFCOPENSHELL_ERROR_VALUE
+        assert unsupported.value.code == _capi.IFCOPENSHELL_ERROR_CODE_UNSUPPORTED_RESOURCE_QUANTITY
+
+        with pytest.raises(ValueError) as unsupported_invalid_class:
+            ifcopenshell.api.resource.add_resource_quantity(self.file, resource=resource, ifc_class="IfcWall")
+        assert unsupported_invalid_class.value.kind == _capi.IFCOPENSHELL_ERROR_VALUE
+        assert unsupported_invalid_class.value.code == _capi.IFCOPENSHELL_ERROR_CODE_UNSUPPORTED_RESOURCE_QUANTITY
+        assert str(unsupported_invalid_class.value) == (
+            "Resource type 'IfcCrewResource' does not support quantity type 'IfcWall'. "
+            "Supported quantities: IfcQuantityTime"
+        )
 
 
 class TestAddResourceQuantityIFC2X3(test.bootstrap.IFC2X3, TestAddResourceQuantity):

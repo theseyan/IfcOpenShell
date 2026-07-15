@@ -15,16 +15,31 @@ def _render_cpp_support_runtime() -> str:
 namespace ifcopenshell {{
 namespace capi {{
 thread_local std::string g_last_error;
-thread_local int g_last_error_kind = 0;
+thread_local int g_last_error_kind = IFCOPENSHELL_ERROR_NONE;
+thread_local int g_last_error_code = IFCOPENSHELL_ERROR_CODE_NONE;
 
 void set_last_error(const std::string& message) {{
-    g_last_error_kind = 1;
+    g_last_error_kind = IFCOPENSHELL_ERROR_RUNTIME;
+    g_last_error_code = IFCOPENSHELL_ERROR_CODE_UNSPECIFIED;
     g_last_error = message;
 }}
 
 void set_last_error(int kind, const std::string& message) {{
     g_last_error_kind = kind;
+    g_last_error_code = kind == IFCOPENSHELL_ERROR_NONE
+        ? IFCOPENSHELL_ERROR_CODE_NONE
+        : IFCOPENSHELL_ERROR_CODE_UNSPECIFIED;
     g_last_error = message;
+}}
+
+void set_last_error(int kind, int code, const std::string& message) {{
+    g_last_error_kind = kind;
+    g_last_error_code = code;
+    g_last_error = message;
+}}
+
+int last_error_kind() {{
+    return g_last_error_kind;
 }}
 }} // namespace capi
 }} // namespace ifcopenshell

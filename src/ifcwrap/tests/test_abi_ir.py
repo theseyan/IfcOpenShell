@@ -100,7 +100,24 @@ def test_finalized_abi_derives_layouts_and_signatures(tmp_path: Path) -> None:
         "clear_error": "ifcopenshell_demo_clear_error",
         "last_error_message": "ifcopenshell_demo_last_error_message",
         "last_error_kind": "ifcopenshell_demo_last_error_kind",
+        "last_error_code": "ifcopenshell_demo_last_error_code",
     }
+    assert [
+        (entry.name, entry.value) for entry in metadata.error_catalog.kinds[:6]
+    ] == [
+        ("NONE", 0),
+        ("RUNTIME", 1),
+        ("VALUE", 2),
+        ("TYPE", 3),
+        ("NOT_IMPLEMENTED", 4),
+        ("KEY", 5),
+    ]
+    assert (
+        dict((entry.name, entry.value) for entry in metadata.error_catalog.codes)[
+            "INVALID_QUADRANT_BEARING"
+        ]
+        == 100
+    )
     assert metadata.handles["file"].layout == "ptr_owned"
     assert metadata.handles["file"].fields[0].c_type == "void*"
     assert metadata.handles["file"].destroy_function == "ifcopenshell_demo_file_destroy"

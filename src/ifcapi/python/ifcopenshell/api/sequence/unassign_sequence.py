@@ -56,14 +56,9 @@ def unassign_sequence(
         ifcopenshell.api.sequence.unassign_sequence(model,
             relating_process=zone1, related_process=zone2)
     """
-    try:
-        _capi.call_status(
-            "sequence_unassign_sequence",
-            _capi.file_handle(file),
-            _capi.instance_handle(relating_process),
-            _capi.instance_handle(related_process),
-        )
-    except RuntimeError as e:
-        if str(e) == "Recursive tasks found. Could not cascade schedule.":
-            raise RecursionError(str(e)) from e
-        raise
+    _capi.call_status(
+        "sequence_unassign_sequence",
+        _capi.file_handle(file),
+        _capi.instance_handle(relating_process),
+        _capi.instance_handle(related_process),
+    )

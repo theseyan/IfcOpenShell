@@ -18,7 +18,7 @@ import type {
 import type { IfcFile } from '../file.js';
 import { loadGeometry, type OperationProgress } from '../geom/iterator.js';
 import type { GeomSettings } from '../geom/settings.js';
-import { IfcOpenShellError, type IfcOpenShell } from '../init.js';
+import { IfcOpenShellError, abortError, type IfcOpenShell } from '../init.js';
 import { HandleGuard } from '../resource.js';
 
 /** Formats supported by {@link exportToBuffer}. */
@@ -357,5 +357,5 @@ function release(handle: { destroy(): void } | null | undefined): void {
 }
 
 function throwIfAborted(signal: AbortSignal | undefined): void {
-  if (signal?.aborted) throw new IfcOpenShellError('IfcOpenShell operation was cancelled');
+  if (signal?.aborted) throw abortError('IfcOpenShell operation was cancelled', signal.reason);
 }

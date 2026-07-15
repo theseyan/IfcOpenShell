@@ -415,6 +415,8 @@ IFCAPI_BINDING express::Base sequence_add_time_period(
  * @param related_process Successor IfcTask.
  * @param options Sequence type and ownership options.
  * @return The IfcRelSequence relationship.
+ * @throws A recursion error with the stable recursive-schedule-cascade code
+ * when the relationship exposes a cycle during cascading.
  */
 IFCAPI_BINDING express::Base sequence_assign_sequence(
     ifcopenshell::file* file,
@@ -431,6 +433,7 @@ IFCAPI_BINDING express::Base sequence_assign_sequence(
  *
  * @param file File containing the task network.
  * @param task IfcTask from which to cascade.
+ * @throws A recursion error with the stable recursive-schedule-cascade code.
  */
 IFCAPI_BINDING void sequence_cascade_schedule(
     ifcopenshell::file* file,
@@ -445,6 +448,7 @@ IFCAPI_BINDING void sequence_cascade_schedule(
  *
  * @param file File containing the work schedule.
  * @param work_schedule IfcWorkSchedule to recalculate.
+ * @throws A recursion error with the stable cyclic-task-graph code.
  */
 IFCAPI_BINDING void sequence_recalculate_schedule(
     ifcopenshell::file* file,
@@ -651,6 +655,8 @@ IFCAPI_BINDING void sequence_unassign_lag_time(
  * @param file File containing the tasks.
  * @param relating_process Predecessor IfcTask.
  * @param related_process Successor IfcTask.
+ * @throws A recursion error with the stable recursive-schedule-cascade code
+ * when the remaining graph is cyclic.
  */
 IFCAPI_BINDING void sequence_unassign_sequence(
     ifcopenshell::file* file,

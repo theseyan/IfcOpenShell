@@ -306,7 +306,7 @@ express::Base resource_add_resource(ifcopenshell::file* file, const ResourceAddR
         }
         return resource;
     } catch (const std::exception& e) {
-        ifcopenshell::capi::set_last_error(e.what());
+        ifcapi::detail::set_error(e);
         throw;
     }
 }
@@ -325,10 +325,26 @@ express::Base resource_add_resource_quantity(ifcopenshell::file* file, express::
         auto type = resource.declaration().name();
         auto it = supported.find(type);
         if (it == supported.end() || std::find(it->second.begin(), it->second.end(), ifc_class) == it->second.end()) {
-            throw std::invalid_argument("Resource type '" + type + "' does not support quantity type '" + ifc_class + "'");
+            std::string supported_quantities;
+            if (it != supported.end()) {
+                for (const auto& quantity : it->second) {
+                    if (!supported_quantities.empty()) supported_quantities += ",";
+                    supported_quantities += quantity;
+                }
+            }
+            throw ifcapi::detail::Error(
+                ifcapi::detail::ERROR_VALUE,
+                ifcapi::detail::ERROR_CODE_UNSUPPORTED_RESOURCE_QUANTITY,
+                "Resource type '" + type + "' does not support quantity type '" + ifc_class
+                    + "'. Supported quantities: " + supported_quantities);
         }
         const auto* declaration = file->schema()->declaration_by_name(ifc_class);
-        if (!declaration || !declaration->is("IfcPhysicalSimpleQuantity")) throw std::invalid_argument("Invalid resource quantity class '" + ifc_class + "'");
+        if (!declaration || !declaration->is("IfcPhysicalSimpleQuantity")) {
+            throw ifcapi::detail::Error(
+                ifcapi::detail::ERROR_VALUE,
+                ifcapi::detail::ERROR_CODE_INVALID_RESOURCE_QUANTITY_CLASS,
+                "Invalid resource quantity class '" + ifc_class + "'");
+        }
         auto quantity = file->create(declaration);
         ifcapi::detail::write_string_attr(quantity, "Name", "Unnamed");
         if (ifc_class == "IfcQuantityCount") quantity.set_attribute_value(3, 0);
@@ -340,7 +356,7 @@ express::Base resource_add_resource_quantity(ifcopenshell::file* file, express::
         if (old) entity_remove_deep(&old);
         return quantity;
     } catch (const std::exception& e) {
-        ifcopenshell::capi::set_last_error(e.what());
+        ifcapi::detail::set_error(e);
         throw;
     }
 }
@@ -357,7 +373,7 @@ express::Base resource_add_resource_time(ifcopenshell::file* file, express::Base
         ifcapi::detail::entity_view(resource).set(static_cast<size_t>(usage_idx), time);
         return time;
     } catch (const std::exception& e) {
-        ifcopenshell::capi::set_last_error(e.what());
+        ifcapi::detail::set_error(e);
         throw;
     }
 }
@@ -390,7 +406,7 @@ express::Base resource_assign_resource(ifcopenshell::file* file, const ResourceA
         ifcapi::detail::set_ref(rel, ifcapi::detail::find_attr_index(entity, "RelatingResource"), options.relating_resource);
         return rel;
     } catch (const std::exception& e) {
-        ifcopenshell::capi::set_last_error(e.what());
+        ifcapi::detail::set_error(e);
         throw;
     }
 }
@@ -407,7 +423,7 @@ void resource_unassign_resource(ifcopenshell::file* file, const ResourceAssignme
                 options.user.value_or(express::Base()), options.application.value_or(express::Base()));
             return;
         }
-    } catch (const std::exception& e) { ifcopenshell::capi::set_last_error(e.what()); throw; }
+    } catch (const std::exception& e) { ifcapi::detail::set_error(e); throw; }
 }
 
 void resource_remove_resource_quantity(ifcopenshell::file* file, express::Base* resource_ptr) {
@@ -418,7 +434,7 @@ void resource_remove_resource_quantity(ifcopenshell::file* file, express::Base* 
         auto old = ifcapi::detail::read_ref_attr(resource, "BaseQuantity");
         ifcapi::detail::clear_attr(resource, "BaseQuantity");
         if (old) entity_remove_deep(&old);
-    } catch (const std::exception& e) { ifcopenshell::capi::set_last_error(e.what()); throw; }
+    } catch (const std::exception& e) { ifcapi::detail::set_error(e); throw; }
 }
 
 void resource_calculate_resource_work(ifcopenshell::file* file, express::Base* resource_ptr) {
@@ -465,7 +481,7 @@ void resource_calculate_resource_work(ifcopenshell::file* file, express::Base* r
         if (!usage) usage = resource_add_resource_time(file, resource_ptr);
         if (!usage) throw std::runtime_error("Failed to create resource time");
         ifcapi::detail::write_string_attr(usage, "ScheduleWork", text);
-    } catch (const std::exception& e) { ifcopenshell::capi::set_last_error(e.what()); throw; }
+    } catch (const std::exception& e) { ifcapi::detail::set_error(e); throw; }
 }
 
 void resource_calculate_resource_usage(ifcopenshell::file* file, express::Base* resource_ptr) {
@@ -491,7 +507,7 @@ void resource_calculate_resource_usage(ifcopenshell::file* file, express::Base* 
         if (task_seconds == 0.0) throw std::domain_error("Task ScheduleDuration must be non-zero");
         double work_seconds = work_duration.days * 86400.0 + work_duration.seconds;
         ifcapi::detail::write_double_attr(usage, "ScheduleUsage", work_seconds / task_seconds);
-    } catch (const std::exception& e) { ifcopenshell::capi::set_last_error(e.what()); throw; }
+    } catch (const std::exception& e) { ifcapi::detail::set_error(e); throw; }
 }
 
 void resource_remove_resource(ifcopenshell::file* file, const ResourceRemoveResourceOptions& options) {
@@ -530,7 +546,7 @@ void resource_remove_resource(ifcopenshell::file* file, const ResourceRemoveReso
         auto quantity = ifcapi::detail::read_ref_attr(resource, "BaseQuantity");
         if (quantity) { ifcapi::detail::clear_attr(resource, "BaseQuantity"); entity_remove_deep(&quantity); }
         ifcapi::detail::remove_with_history(file, resource);
-    } catch (const std::exception& e) { ifcopenshell::capi::set_last_error(e.what()); throw; }
+    } catch (const std::exception& e) { ifcapi::detail::set_error(e); throw; }
 }
 
 void resource_edit_resource_time(ifcopenshell::file* file, express::Base* resource_time_ptr, ifcopenshell_pset_props_t* attributes) {
@@ -557,7 +573,7 @@ void resource_edit_resource_time(ifcopenshell::file* file, express::Base* resour
             }
         }
     } catch (const std::exception& e) {
-        ifcopenshell::capi::set_last_error(e.what());
+        ifcapi::detail::set_error(e);
         throw;
     }
 }

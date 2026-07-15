@@ -385,7 +385,7 @@ void style_edit_surface_style_impl(
             }
         }
     } catch (const std::exception& e) {
-        ifcopenshell::capi::set_last_error(e.what());
+        ifcapi::detail::set_error(e);
     }
 }
 

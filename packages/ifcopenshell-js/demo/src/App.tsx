@@ -2,8 +2,10 @@ import { useCallback, useEffect, useRef, useState, type ChangeEvent } from 'reac
 import {
   GeomSettings,
   IfcFile,
+  abortError,
   exportToBuffer,
   init,
+  isIfcOpenShellAbortError,
   util,
 } from '@ifcopenshell-js/web';
 import type {
@@ -60,11 +62,11 @@ const EXPORT_FORMATS: { id: ExportFormat; label: string; note: string }[] = [
 type LoadedModel = { bytes: Uint8Array; name: string; schema: string };
 
 function isCancelled(error: unknown): boolean {
-  return error instanceof Error && error.message.includes('cancelled');
+  return isIfcOpenShellAbortError(error);
 }
 
 function throwIfCancelled(signal: AbortSignal): void {
-  if (signal.aborted) throw new Error('IfcOpenShell operation was cancelled');
+  if (signal.aborted) throw abortError('IfcOpenShell operation was cancelled', signal.reason);
 }
 
 async function computeModelBounds(

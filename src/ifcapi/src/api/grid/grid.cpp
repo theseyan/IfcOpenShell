@@ -88,7 +88,7 @@ express::Base grid_create_grid_axis(
         ifcapi::detail::set_ref_aggregate(grid_value, axes_idx, axes);
         return axis;
     } catch (const std::exception& e) {
-        set_error(e.what());
+        ifcapi::detail::set_error(e);
         return {};
     }
 }
@@ -101,7 +101,7 @@ void grid_remove_grid_axis(ifcopenshell::file* file, express::Base* axis) {
         file->remove_entity(axis_value);
         if (axis_curve) entity_remove_deep(&axis_curve);
     } catch (const std::exception& e) {
-        set_error(e.what());
+        ifcapi::detail::set_error(e);
     }
 }
 
@@ -150,7 +150,7 @@ void grid_create_axis_curve(
             entity_remove_deep(&existing_curve);
         }
     } catch (const std::exception& e) {
-        set_error(e.what());
+        ifcapi::detail::set_error(e);
     }
 }
 

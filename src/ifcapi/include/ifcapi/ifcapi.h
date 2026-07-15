@@ -11,10 +11,11 @@
 /// pointers (as void*) and STEP entity IDs, making them callable from any
 /// language with C FFI support.
 ///
-/// Error handling follows the thread-local pattern: on failure a function
-/// returns a sentinel value and the error message is retrievable via
-/// ifcopenshell_last_error_message(). Call ifcopenshell_clear_error() before a sequence of calls
-/// if you need precise attribution.
+/// Error handling follows the thread-local kind/code/message contract declared
+/// in ifcopenshell_api.h. Kinds and codes are stable programmatic identifiers;
+/// messages are human diagnostics and must not be parsed. Generated calls clear
+/// the state before execution. A nullable result is a successful absence only
+/// when ifcopenshell_last_error_kind() remains IFCOPENSHELL_ERROR_NONE.
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -51,10 +52,10 @@ typedef struct ifcopenshell_geom_taxonomy_item_t ifcopenshell_geom_taxonomy_item
 /* ------------------------------------------------------------------ */
 /*                                                                    */
 /* The high-level layer reports errors through the same thread-local  */
-/* string used by the autogen low-level layer. Use the autogen        */
-/* entry points ifcopenshell_last_error_message() and                 */
-/* ifcopenshell_clear_error() (declared in ifcopenshell_api.h) to     */
-/* read and reset it.                                                 */
+/* state used by the generated layer. Use the generated kind, code,   */
+/* message, and clear entry points declared in ifcopenshell_api.h.    */
+/* Returned message storage remains valid until the next error or     */
+/* clear on the calling thread.                                       */
 /* ------------------------------------------------------------------ */
 
 /* ------------------------------------------------------------------ */

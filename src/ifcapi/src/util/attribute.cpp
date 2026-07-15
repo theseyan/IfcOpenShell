@@ -154,7 +154,7 @@ void attribute_edit_attributes(
             ifcapi::detail::update_owner_history(file, product_value, user_value, application_value);
         }
     } catch (const std::exception& e) {
-        ifcapi::detail::set_error(e.what());
+        ifcapi::detail::set_error(e);
     }
 }
 
@@ -171,7 +171,7 @@ void edit_named_attributes(
     try {
         apply_named_attributes(target, attributes);
     } catch (const std::exception& e) {
-        set_error(e.what());
+        ifcapi::detail::set_error(e);
     }
 }
 

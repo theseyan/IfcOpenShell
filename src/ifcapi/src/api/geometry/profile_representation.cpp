@@ -92,7 +92,7 @@ express::Base geometry_add_profile_representation(
         ifcapi::detail::write_ref_aggregate(representation, "Items", {item});
         return representation;
     } catch (const std::exception& e) {
-        set_error(e.what());
+        ifcapi::detail::set_error(e);
         return {};
     }
 }

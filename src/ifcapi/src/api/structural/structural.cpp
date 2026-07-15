@@ -200,7 +200,7 @@ express::Base structural_assign_product(
         ifcapi::detail::write_ref_aggregate(rel, "RelatedObjects", {related_object_ref});
         return rel;
     } catch (const std::exception& e) {
-        set_error(e.what());
+        ifcapi::detail::set_error(e);
         return {};
     }
 }
@@ -238,7 +238,7 @@ express::Base structural_add_structural_activity(
         ifcapi::detail::write_ref_attr(rel, "RelatedStructuralActivity", activity);
         return activity;
     } catch (const std::exception& e) {
-        set_error(e.what());
+        ifcapi::detail::set_error(e);
         return {};
     }
 }
@@ -260,7 +260,7 @@ express::Base structural_add_structural_load(
         }
         return load;
     } catch (const std::exception& e) {
-        set_error(e.what());
+        ifcapi::detail::set_error(e);
         return {};
     }
 }
@@ -366,7 +366,7 @@ express::Base structural_add_structural_boundary_condition(
         }
         return condition;
     } catch (const std::exception& e) {
-        set_error(e.what());
+        ifcapi::detail::set_error(e);
         return {};
     }
 }
@@ -401,7 +401,7 @@ void structural_edit_structural_connection_cs(
         }
         ifcapi::detail::write_ref_attr(ccs, "RefDirection", create_direction(file, ref_direction));
     } catch (const std::exception& e) {
-        set_error(e.what());
+        ifcapi::detail::set_error(e);
     }
 }
 
@@ -425,7 +425,7 @@ void structural_edit_structural_item_axis(
         }
         ifcapi::detail::write_ref_attr(structural_item_ref, "Axis", create_direction(file, axis));
     } catch (const std::exception& e) {
-        set_error(e.what());
+        ifcapi::detail::set_error(e);
     }
 }
 
@@ -460,7 +460,7 @@ void structural_edit_structural_boundary_condition(
             }
         }
     } catch (const std::exception& e) {
-        set_error(e.what());
+        ifcapi::detail::set_error(e);
     }
 }
 
@@ -578,7 +578,7 @@ void structural_remove_structural_boundary_condition(
         }
         file->remove_entity(boundary_condition_ref);
     } catch (const std::exception& e) {
-        set_error(e.what());
+        ifcapi::detail::set_error(e);
     }
 }
 
@@ -603,7 +603,7 @@ void structural_remove_structural_connection_condition(
         file->remove_entity(relation_ref);
         if (history) ifcapi::bindings::entity_remove_deep(&history);
     } catch (const std::exception& e) {
-        set_error(e.what());
+        ifcapi::detail::set_error(e);
     }
 }
 

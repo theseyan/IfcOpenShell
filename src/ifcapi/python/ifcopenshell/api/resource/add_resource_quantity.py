@@ -64,17 +64,10 @@ def add_resource_quantity(
         ifcopenshell.api.resource.edit_resource_quantity(model,
             physical_quantity=quantity, attributes={"TimeValue": 8.0})
     """
-    try:
-        return _capi.call_handle(
-            file,
-            "resource_add_resource_quantity",
-            _capi.file_handle(file),
-            _capi.instance_handle(resource),
-            ifc_class,
-        )
-    except RuntimeError as error:
-        if "does not support quantity type" in str(
-            error
-        ) or "Invalid resource quantity class" in str(error):
-            raise ValueError(str(error)) from error
-        raise
+    return _capi.call_handle(
+        file,
+        "resource_add_resource_quantity",
+        _capi.file_handle(file),
+        _capi.instance_handle(resource),
+        ifc_class,
+    )

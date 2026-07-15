@@ -179,7 +179,7 @@ void context_edit_context(ifcopenshell::file* file, express::Base* context, ifco
         }
         ifcapi::detail::apply_attribute_props(context_value, attributes);
     } catch (const std::exception& e) {
-        ifcopenshell::capi::set_last_error(e.what());
+        ifcapi::detail::set_error(e);
     }
 }
 

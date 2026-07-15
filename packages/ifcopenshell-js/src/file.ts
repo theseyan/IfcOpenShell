@@ -5,7 +5,7 @@ import { GeomIterator, type IteratorOptions } from './geom/iterator.js';
 import type { MeshPrecision } from './geom/mesh.js';
 import { GeomSettings } from './geom/settings.js';
 import { GeometryTree } from './geom/tree.js';
-import { IfcOpenShellError, type IfcOpenShell } from './init.js';
+import { IfcOpenShellError, abortError, type IfcOpenShell } from './init.js';
 import { HandleGuard } from './resource.js';
 import { inspectEntity, type EntityInfo } from './util/inspect.js';
 
@@ -65,9 +65,13 @@ export class IfcFile {
     options: OpenOptions = {},
   ): Promise<IfcFile> {
     if (options.signal?.aborted) {
-      throw new IfcOpenShellError('Opening IFC file was aborted');
+      throw abortError('Opening IFC file was aborted', options.signal.reason);
     }
     const raw = shell.raw.parse.openBytes(bytes, filename, options.readonly ?? false);
+    if (options.signal?.aborted) {
+      raw?.destroy();
+      throw abortError('Opening IFC file was aborted', options.signal.reason);
+    }
     if (!raw || raw.ptr === 0) throw new IfcOpenShellError('Failed to open IFC file');
     return new IfcFile(shell, raw);
   }

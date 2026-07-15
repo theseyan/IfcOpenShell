@@ -1277,7 +1277,10 @@ public:
             }
         }
         if (is_cyclic) {
-            throw std::runtime_error("Task graph is cyclic and so critical path method cannot be performed.");
+            throw ifcapi::detail::Error(
+                ifcapi::detail::ERROR_RECURSION,
+                ifcapi::detail::ERROR_CODE_CYCLIC_TASK_GRAPH,
+                "Task graph is cyclic and so critical path method cannot be performed.");
         }
         pending.clear();
         for (const auto& item : nodes_) pending.insert(item.first);
@@ -1634,7 +1637,10 @@ private:
 
     void cascade_task(express::Base task, bool is_first_task, std::vector<express::Base> task_sequence) {
         if (std::find(task_sequence.begin(), task_sequence.end(), task) != task_sequence.end()) {
-            throw std::runtime_error("Recursive tasks found. Could not cascade schedule.");
+            throw ifcapi::detail::Error(
+                ifcapi::detail::ERROR_RECURSION,
+                ifcapi::detail::ERROR_CODE_RECURSIVE_SCHEDULE_CASCADE,
+                "Recursive tasks found. Could not cascade schedule.");
         }
         auto task_time = ifcapi::detail::read_ref_attr(task, "TaskTime");
         if (!task_time) {
@@ -1813,7 +1819,7 @@ void sequence_calculate_task_duration(ifcopenshell::file* file, express::Base* t
         auto task_time = ensure_task_time(file, task_value);
         ifcapi::detail::write_string_attr(task_time, "ScheduleDuration", "P" + std::to_string(static_cast<int>(duration)) + "D");
     } catch (const std::exception& e) {
-        set_error(e.what());
+        ifcapi::detail::set_error(e);
     }
 }
 
@@ -1853,7 +1859,7 @@ void sequence_edit_task_time(
             CascadeSchedule(file).execute(task);
         }
     } catch (const std::exception& e) {
-        set_error(e.what());
+        ifcapi::detail::set_error(e);
     }
 }
 
@@ -1870,7 +1876,7 @@ SequenceDuplicateTaskResult sequence_duplicate_task(
         auto application_value = option_entity(options.application);
         return DuplicateTask(file, owner_history_value, user_value, application_value).execute(task_value);
     } catch (const std::exception& e) {
-        set_error(e.what());
+        ifcapi::detail::set_error(e);
         return {};
     }
 }
@@ -1903,7 +1909,7 @@ express::Base sequence_copy_work_schedule(
         }
         return new_schedule;
     } catch (const std::exception& e) {
-        set_error(e.what());
+        ifcapi::detail::set_error(e);
         return {};
     }
 }
@@ -1967,7 +1973,7 @@ void sequence_create_baseline(
             }
         }
     } catch (const std::exception& e) {
-        set_error(e.what());
+        ifcapi::detail::set_error(e);
     }
 }
 
@@ -1984,7 +1990,7 @@ express::Base sequence_add_task_time(
         ifcapi::detail::write_ref_attr(task_value, "TaskTime", task_time);
         return task_time;
     } catch (const std::exception& e) {
-        set_error(e.what());
+        ifcapi::detail::set_error(e);
         return {};
     }
 }
@@ -2038,7 +2044,7 @@ express::Base sequence_add_task(
         }
         return task;
     } catch (const std::exception& e) {
-        set_error(e.what());
+        ifcapi::detail::set_error(e);
         return {};
     }
 }
@@ -2066,7 +2072,7 @@ express::Base sequence_add_work_calendar(
         });
         return work_calendar;
     } catch (const std::exception& e) {
-        set_error(e.what());
+        ifcapi::detail::set_error(e);
         return {};
     }
 }
@@ -2103,7 +2109,7 @@ express::Base sequence_add_work_plan(
         }
         return work_plan;
     } catch (const std::exception& e) {
-        set_error(e.what());
+        ifcapi::detail::set_error(e);
         return {};
     }
 }
@@ -2153,7 +2159,7 @@ express::Base sequence_add_work_schedule(
         }
         return work_schedule;
     } catch (const std::exception& e) {
-        set_error(e.what());
+        ifcapi::detail::set_error(e);
         return {};
     }
 }
@@ -2178,7 +2184,7 @@ express::Base sequence_add_work_time(
         }
         return work_time;
     } catch (const std::exception& e) {
-        set_error(e.what());
+        ifcapi::detail::set_error(e);
         return {};
     }
 }
@@ -2203,7 +2209,7 @@ express::Base sequence_add_time_period(
         ifcapi::detail::write_ref_aggregate(recurrence_pattern_value, "TimePeriods", time_periods);
         return time_period;
     } catch (const std::exception& e) {
-        set_error(e.what());
+        ifcapi::detail::set_error(e);
         return {};
     }
 }
@@ -2235,7 +2241,7 @@ express::Base sequence_assign_sequence(
         CascadeSchedule(file).execute(relating_process_value);
         return rel;
     } catch (const std::exception& e) {
-        set_error(e.what());
+        ifcapi::detail::set_error(e);
         return {};
     }
 }
@@ -2263,7 +2269,7 @@ express::Base sequence_assign_lag_time(
         ifcapi::detail::write_ref_attr(rel_sequence_value, "TimeLag", lag_time);
         return lag_time;
     } catch (const std::exception& e) {
-        set_error(e.what());
+        ifcapi::detail::set_error(e);
         return {};
     }
 }
@@ -2293,7 +2299,7 @@ express::Base sequence_assign_process(
             user_value,
             application_value);
     } catch (const std::exception& e) {
-        set_error(e.what());
+        ifcapi::detail::set_error(e);
         return {};
     }
 }
@@ -2323,7 +2329,7 @@ express::Base sequence_assign_product(
             user_value,
             application_value);
     } catch (const std::exception& e) {
-        set_error(e.what());
+        ifcapi::detail::set_error(e);
         return {};
     }
 }
@@ -2356,7 +2362,7 @@ express::Base sequence_assign_work_plan(
         if (application_value) aggregate_options.application = application_value;
         return ifcapi::bindings::aggregate_assign_object(file, aggregate_options);
     } catch (const std::exception& e) {
-        set_error(e.what());
+        ifcapi::detail::set_error(e);
         return {};
     }
 }
@@ -2386,7 +2392,7 @@ express::Base sequence_assign_recurrence_pattern(
         }
         return recurrence;
     } catch (const std::exception& e) {
-        set_error(e.what());
+        ifcapi::detail::set_error(e);
         return {};
     }
 }
@@ -2396,7 +2402,7 @@ void sequence_cascade_schedule(ifcopenshell::file* file, express::Base* task) {
     try {
         CascadeSchedule(file).execute(ifcapi::detail::deref_or_empty(task));
     } catch (const std::exception& e) {
-        set_error(e.what());
+        ifcapi::detail::set_error(e);
     }
 }
 
@@ -2405,7 +2411,7 @@ void sequence_recalculate_schedule(ifcopenshell::file* file, express::Base* work
     try {
         RecalculateSchedule(file).execute(ifcapi::detail::deref_or_empty(work_schedule));
     } catch (const std::exception& e) {
-        set_error(e.what());
+        ifcapi::detail::set_error(e);
     }
 }
 
@@ -2427,7 +2433,7 @@ void sequence_edit_lag_time(
             }
         }
     } catch (const std::exception& e) {
-        ifcapi::detail::set_error(e.what());
+        ifcapi::detail::set_error(e);
     }
 }
 
@@ -2452,7 +2458,7 @@ void sequence_edit_sequence(
             CascadeSchedule(file).execute(ifcapi::detail::read_ref_attr(rel_sequence_value, "RelatedProcess"));
         }
     } catch (const std::exception& e) {
-        ifcapi::detail::set_error(e.what());
+        ifcapi::detail::set_error(e);
     }
 }
 
@@ -2461,7 +2467,7 @@ void sequence_edit_task(express::Base* task, ifcopenshell_pset_props_t* attribut
     try {
         ifcapi::detail::apply_attribute_props(ifcapi::detail::deref_or_empty(task), attributes);
     } catch (const std::exception& e) {
-        ifcapi::detail::set_error(e.what());
+        ifcapi::detail::set_error(e);
     }
 }
 
@@ -2470,7 +2476,7 @@ void sequence_edit_recurrence_pattern(express::Base* recurrence_pattern, ifcopen
     try {
         ifcapi::detail::apply_attribute_props(ifcapi::detail::deref_or_empty(recurrence_pattern), attributes);
     } catch (const std::exception& e) {
-        ifcapi::detail::set_error(e.what());
+        ifcapi::detail::set_error(e);
     }
 }
 
@@ -2479,7 +2485,7 @@ void sequence_edit_work_calendar(express::Base* work_calendar, ifcopenshell_pset
     try {
         ifcapi::detail::apply_attribute_props(ifcapi::detail::deref_or_empty(work_calendar), attributes);
     } catch (const std::exception& e) {
-        ifcapi::detail::set_error(e.what());
+        ifcapi::detail::set_error(e);
     }
 }
 
@@ -2488,7 +2494,7 @@ void sequence_edit_work_plan(express::Base* work_plan, ifcopenshell_pset_props_t
     try {
         ifcapi::detail::apply_attribute_props(ifcapi::detail::deref_or_empty(work_plan), attributes);
     } catch (const std::exception& e) {
-        ifcapi::detail::set_error(e.what());
+        ifcapi::detail::set_error(e);
     }
 }
 
@@ -2497,7 +2503,7 @@ void sequence_edit_work_schedule(express::Base* work_schedule, ifcopenshell_pset
     try {
         ifcapi::detail::apply_attribute_props(ifcapi::detail::deref_or_empty(work_schedule), attributes);
     } catch (const std::exception& e) {
-        ifcapi::detail::set_error(e.what());
+        ifcapi::detail::set_error(e);
     }
 }
 
@@ -2506,7 +2512,7 @@ void sequence_edit_work_time(express::Base* work_time, ifcopenshell_pset_props_t
     try {
         apply_work_time_props(ifcapi::detail::deref_or_empty(work_time), attributes);
     } catch (const std::exception& e) {
-        ifcapi::detail::set_error(e.what());
+        ifcapi::detail::set_error(e);
     }
 }
 
@@ -2522,7 +2528,7 @@ void sequence_unassign_lag_time(ifcopenshell::file* file, express::Base* rel_seq
             ifcapi::detail::write_ref_attr(rel_sequence_value, "TimeLag", express::Base());
         }
     } catch (const std::exception& e) {
-        set_error(e.what());
+        ifcapi::detail::set_error(e);
     }
 }
 
@@ -2543,7 +2549,7 @@ void sequence_unassign_sequence(
         }
         CascadeSchedule(file).execute(related_process_value);
     } catch (const std::exception& e) {
-        set_error(e.what());
+        ifcapi::detail::set_error(e);
     }
 }
 
@@ -2568,7 +2574,7 @@ express::Base sequence_unassign_process(
             user_value,
             application_value);
     } catch (const std::exception& e) {
-        set_error(e.what());
+        ifcapi::detail::set_error(e);
         return {};
     }
 }
@@ -2594,7 +2600,7 @@ express::Base sequence_unassign_product(
             user_value,
             application_value);
     } catch (const std::exception& e) {
-        set_error(e.what());
+        ifcapi::detail::set_error(e);
         return {};
     }
 }
@@ -2609,7 +2615,7 @@ void sequence_unassign_recurrence_pattern(ifcopenshell::file* file, express::Bas
         }
         file->remove_entity(recurrence_pattern_value);
     } catch (const std::exception& e) {
-        set_error(e.what());
+        ifcapi::detail::set_error(e);
     }
 }
 
@@ -2618,7 +2624,7 @@ void sequence_remove_time_period(ifcopenshell::file* file, express::Base* time_p
     try {
         file->remove_entity(ifcapi::detail::deref_or_empty(time_period));
     } catch (const std::exception& e) {
-        set_error(e.what());
+        ifcapi::detail::set_error(e);
     }
 }
 
@@ -2635,7 +2641,7 @@ void sequence_remove_work_time(ifcopenshell::file* file, express::Base* work_tim
         }
         file->remove_entity(work_time_value);
     } catch (const std::exception& e) {
-        set_error(e.what());
+        ifcapi::detail::set_error(e);
     }
 }
 
@@ -2651,7 +2657,7 @@ void sequence_remove_task(
         auto application_value = option_entity(options.application);
         remove_task_internal(file, task_value, user_value, application_value);
     } catch (const std::exception& e) {
-        set_error(e.what());
+        ifcapi::detail::set_error(e);
     }
 }
 
@@ -2667,7 +2673,7 @@ void sequence_remove_work_calendar(
         auto application_value = option_entity(options.application);
         remove_work_calendar_internal(file, work_calendar_value, user_value, application_value);
     } catch (const std::exception& e) {
-        set_error(e.what());
+        ifcapi::detail::set_error(e);
     }
 }
 
@@ -2683,7 +2689,7 @@ void sequence_remove_work_plan(
         auto application_value = option_entity(options.application);
         remove_work_plan_internal(file, work_plan_value, user_value, application_value);
     } catch (const std::exception& e) {
-        set_error(e.what());
+        ifcapi::detail::set_error(e);
     }
 }
 
@@ -2699,7 +2705,7 @@ void sequence_remove_work_schedule(
         auto application_value = option_entity(options.application);
         remove_work_schedule_internal(file, work_schedule_value, user_value, application_value);
     } catch (const std::exception& e) {
-        set_error(e.what());
+        ifcapi::detail::set_error(e);
     }
 }
 

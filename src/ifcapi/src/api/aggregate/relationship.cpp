@@ -239,7 +239,7 @@ express::Base aggregate_assign_object(
         ifcapi::detail::write_ref_aggregate(rel, "RelatedObjects", ifcapi::detail::to_ref_vector(products_set));
         return rel;
     } catch (const std::exception& e) {
-        set_error(e.what());
+        ifcapi::detail::set_error(e);
         return {};
     }
 }
@@ -377,7 +377,7 @@ express::Base spatial_assign_container(
         ifcapi::detail::write_ref_aggregate(rel, "RelatedElements", ifcapi::detail::to_ref_vector(products_set));
         return rel;
     } catch (const std::exception& e) {
-        set_error(e.what());
+        ifcapi::detail::set_error(e);
         return {};
     }
 }
@@ -480,7 +480,7 @@ express::Base spatial_reference_structure(
         ifcapi::detail::write_ref_attr(rel, "RelatingStructure", structure);
         return rel;
     } catch (const std::exception& e) {
-        set_error(e.what());
+        ifcapi::detail::set_error(e);
         return {};
     }
 }
@@ -526,7 +526,7 @@ void spatial_dereference_structure(
             }
         }
     } catch (const std::exception& e) {
-        set_error(e.what());
+        ifcapi::detail::set_error(e);
     }
 }
 

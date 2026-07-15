@@ -991,7 +991,7 @@ std::optional<express::Base> project_append_asset(
         auto result = AppendAsset(file, options).execute();
         return result ? std::optional<express::Base>(result) : std::nullopt;
     } catch (const std::exception& error) {
-        set_error(error.what());
+        ifcapi::detail::set_error(error);
         return std::nullopt;
     } catch (...) {
         set_error("Unknown exception in project_append_asset");

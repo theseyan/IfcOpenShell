@@ -7,7 +7,14 @@
 
 import './disposable.js';
 
-export { init, IfcOpenShellError } from './init.js';
+export {
+  init,
+  IfcOpenShellError,
+  IfcOpenShellErrorCode,
+  IfcOpenShellErrorKind,
+  abortError,
+  isIfcOpenShellAbortError,
+} from './init.js';
 export type { IfcOpenShell } from './init.js';
 export type * from './generated/ifcopenshell_api.js';
 export type { ApiData, ValueData, ValueInput } from './api.js';

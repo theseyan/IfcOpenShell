@@ -17,8 +17,8 @@ namespace bindings {
  * Convert a quadrant bearing to decimal degrees.
  *
  * Accepts N/S, degrees, optional minutes and decimal seconds, and E/W,
- * separated by arbitrary whitespace. Invalid input reports
- * "Invalid bearing string".
+ * separated by arbitrary whitespace. Invalid input is a value error with the
+ * stable invalid-quadrant-bearing code; its message is diagnostic only.
  */
 IFCAPI_BINDING double cogo_bearing2dd(const std::string& bearing);
 

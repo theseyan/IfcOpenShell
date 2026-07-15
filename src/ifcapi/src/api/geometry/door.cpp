@@ -473,7 +473,7 @@ express::Base geometry_add_door_representation(
         }
         return representation;
     } catch (const std::exception& e) {
-        set_error(e.what());
+        ifcapi::detail::set_error(e);
         return {};
     }
 }

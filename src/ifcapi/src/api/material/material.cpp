@@ -796,7 +796,7 @@ void material_edit_profile_usage(
         }
         ifcapi::detail::apply_attribute_props(usage_value, options.attributes);
     } catch (const std::exception& e) {
-        ifcopenshell::capi::set_last_error(e.what());
+        ifcapi::detail::set_error(e);
     }
 }
 

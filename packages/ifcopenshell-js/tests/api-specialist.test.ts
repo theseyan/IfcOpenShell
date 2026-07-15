@@ -68,7 +68,7 @@ describeGeneratedOrSkip('generated specialist API', () => {
       expect(point).not.toBeNull();
       if (!point) throw new Error('addSurveyPoint returned null');
       expect(point.type).toBeDefined();
-      shell.api.cogo.editSurveyPoint(sp, 10, 20, 30);
+      shell.api.cogo.editSurveyPoint(point, 10, 20, 30);
     });
   });
 

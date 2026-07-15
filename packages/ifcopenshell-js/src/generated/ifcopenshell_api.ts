@@ -2946,8 +2946,8 @@ export interface CogoApi {
      * Convert a quadrant bearing to decimal degrees.
      *
      * Accepts N/S, degrees, optional minutes and decimal seconds, and E/W,
-     * separated by arbitrary whitespace. Invalid input reports
-     * "Invalid bearing string".
+     * separated by arbitrary whitespace. Invalid input is a value error with the
+     * stable invalid-quadrant-bearing code; its message is diagnostic only.
      */
     bearing2dd(bearing: string): number;
     /**
@@ -5266,7 +5266,14 @@ export interface RepresentationApi {
 export interface ResourceApi {
     /** Create a construction resource, nesting it below a parent when supplied or declaring it to the first IFC4+ context. */
     addResource(file: IfcFile, options: IfcOpenShellResourceAddResourceOptions): Entity;
-    /** Create and attach a schema-valid base quantity. Validation precedes replacement of any existing quantity. */
+    /**
+     * Create and attach a schema-valid base quantity.
+     *
+     * Validation precedes replacement of any existing quantity. Matching upstream
+     * behavior, resource/quantity support is checked before schema resolution.
+     * Unsupported combinations and schema-resolution failures are value errors
+     * with distinct stable codes; diagnostic messages must not be parsed.
+     */
     addResourceQuantity(file: IfcFile, resource: Entity, ifc_class: string): Entity;
     /** Create an IfcResourceTime and replace the resource Usage reference. */
     addResourceTime(file: IfcFile, resource: Entity): Entity;
@@ -5572,6 +5579,8 @@ export interface SequenceApi {
      * @param related_process Successor IfcTask.
      * @param options Sequence type and ownership options.
      * @return The IfcRelSequence relationship.
+     * @throws A recursion error with the stable recursive-schedule-cascade code
+     * when the relationship exposes a cycle during cascading.
      */
     assignSequence(file: IfcFile, relating_process: Entity, related_process: Entity, options: IfcOpenShellSequenceAssignSequenceOptions): Entity;
     /**
@@ -5608,6 +5617,7 @@ export interface SequenceApi {
      *
      * @param file File containing the task network.
      * @param task IfcTask from which to cascade.
+     * @throws A recursion error with the stable recursive-schedule-cascade code.
      */
     cascadeSchedule(file: IfcFile, task: Entity): void;
     /**
@@ -5737,6 +5747,7 @@ export interface SequenceApi {
      *
      * @param file File containing the work schedule.
      * @param work_schedule IfcWorkSchedule to recalculate.
+     * @throws A recursion error with the stable cyclic-task-graph code.
      */
     recalculateSchedule(file: IfcFile, work_schedule: Entity): void;
     /**
@@ -5860,6 +5871,8 @@ export interface SequenceApi {
      * @param file File containing the tasks.
      * @param relating_process Predecessor IfcTask.
      * @param related_process Successor IfcTask.
+     * @throws A recursion error with the stable recursive-schedule-cascade code
+     * when the remaining graph is cyclic.
      */
     unassignSequence(file: IfcFile, relating_process: Entity, related_process: Entity): void;
 }
@@ -8857,8 +8870,8 @@ export function createApi(shell: IfcOpenShell): Api {
      * Convert a quadrant bearing to decimal degrees.
      *
      * Accepts N/S, degrees, optional minutes and decimal seconds, and E/W,
-     * separated by arbitrary whitespace. Invalid input reports
-     * "Invalid bearing string".
+     * separated by arbitrary whitespace. Invalid input is a value error with the
+     * stable invalid-quadrant-bearing code; its message is diagnostic only.
      */
     bearing2dd(bearing: string): number {
       const temps: Disposable[] = [];
@@ -12967,7 +12980,14 @@ export function createApi(shell: IfcOpenShell): Api {
         disposeAll(temps);
       }
     },
-    /** Create and attach a schema-valid base quantity. Validation precedes replacement of any existing quantity. */
+    /**
+     * Create and attach a schema-valid base quantity.
+     *
+     * Validation precedes replacement of any existing quantity. Matching upstream
+     * behavior, resource/quantity support is checked before schema resolution.
+     * Unsupported combinations and schema-resolution failures are value errors
+     * with distinct stable codes; diagnostic messages must not be parsed.
+     */
     addResourceQuantity(file: IfcFile, resource: Entity, ifc_class: string): Entity {
       const temps: Disposable[] = [];
       try {
@@ -13527,6 +13547,8 @@ export function createApi(shell: IfcOpenShell): Api {
      * @param related_process Successor IfcTask.
      * @param options Sequence type and ownership options.
      * @return The IfcRelSequence relationship.
+     * @throws A recursion error with the stable recursive-schedule-cascade code
+     * when the relationship exposes a cycle during cascading.
      */
     assignSequence(file: IfcFile, relating_process: Entity, related_process: Entity, options: IfcOpenShellSequenceAssignSequenceOptions): Entity {
       const temps: Disposable[] = [];
@@ -13586,6 +13608,7 @@ export function createApi(shell: IfcOpenShell): Api {
      *
      * @param file File containing the task network.
      * @param task IfcTask from which to cascade.
+     * @throws A recursion error with the stable recursive-schedule-cascade code.
      */
     cascadeSchedule(file: IfcFile, task: Entity): void {
       const temps: Disposable[] = [];
@@ -13809,6 +13832,7 @@ export function createApi(shell: IfcOpenShell): Api {
      *
      * @param file File containing the work schedule.
      * @param work_schedule IfcWorkSchedule to recalculate.
+     * @throws A recursion error with the stable cyclic-task-graph code.
      */
     recalculateSchedule(file: IfcFile, work_schedule: Entity): void {
       const temps: Disposable[] = [];
@@ -14011,6 +14035,8 @@ export function createApi(shell: IfcOpenShell): Api {
      * @param file File containing the tasks.
      * @param relating_process Predecessor IfcTask.
      * @param related_process Successor IfcTask.
+     * @throws A recursion error with the stable recursive-schedule-cascade code
+     * when the remaining graph is cyclic.
      */
     unassignSequence(file: IfcFile, relating_process: Entity, related_process: Entity): void {
       const temps: Disposable[] = [];

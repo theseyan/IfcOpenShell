@@ -256,6 +256,8 @@ def serialise_settings(settings):
 def wrap_usecase(usecase_path, usecase):
     """Wraps an API function in pre/post listeners."""
 
+    signature = inspect.signature(usecase)
+
     def wrapper(*args, should_run_listeners: bool = True, **settings):
         ifc_file = args[0] if args else None
         nonlocal usecase_path
@@ -270,20 +272,17 @@ def wrap_usecase(usecase_path, usecase):
             usecase_path, settings = ARGUMENTS_DEPRECATION[usecase_path](usecase_path, settings)
 
         try:
-            result = usecase(*args, **settings)
+            signature.bind(*args, **settings)
         except TypeError as e:
-            if not e.args[0].startswith(f"{usecase.__name__}()"):
-                # signature errors typically start with function name
-                # e.g. "TypeError: edit_library() got an unexpected keyword argument 'test'"
-                # otherwise it's an error inside api call and we shouldn't get in the way
-                raise e
             msg = (
                 f"Incorrect function arguments provided for {usecase_path}\n{str(e)}. "
                 f"You specified args {args} and settings {settings}\n\n"
-                f"Correct signature is {inspect.signature(usecase)}\n"
+                f"Correct signature is {signature}\n"
                 f"See help(ifcopenshell.api.{usecase_path}) for documentation."
             )
             raise TypeError(msg) from e
+
+        result = usecase(*args, **settings)
 
         if should_run_listeners:
             listeners = list(post_listeners.get(usecase_path, {}).values())
@@ -293,7 +292,7 @@ def wrap_usecase(usecase_path, usecase):
 
         return result
 
-    wrapper.__signature__ = inspect.signature(usecase)
+    wrapper.__signature__ = signature
     wrapper.__doc__ = usecase.__doc__
     wrapper.__name__ = usecase_path
     return wrapper

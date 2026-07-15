@@ -98,7 +98,7 @@ express::Base owner_create_owner_history(
         ifcapi::detail::write_int_attr(owner_history, "CreationDate", now);
         return owner_history;
     } catch (const std::exception& ex) {
-        set_error(ex.what());
+        ifcapi::detail::set_error(ex);
         return {};
     } catch (...) {
         set_error("Unknown C++ exception in owner_create_owner_history");
@@ -148,7 +148,7 @@ express::Base owner_update_owner_history(
         ifcapi::detail::write_ref_attr(owner_history, "LastModifyingApplication", application);
         return owner_history;
     } catch (const std::exception& ex) {
-        set_error(ex.what());
+        ifcapi::detail::set_error(ex);
         return {};
     } catch (...) {
         set_error("Unknown C++ exception in owner_update_owner_history");

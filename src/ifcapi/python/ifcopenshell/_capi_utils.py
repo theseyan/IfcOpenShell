@@ -28,13 +28,18 @@ _ERROR_KIND_TO_EXC = {
     _capi.IFCOPENSHELL_ERROR_TYPE: TypeError,
     _capi.IFCOPENSHELL_ERROR_NOT_IMPLEMENTED: NotImplementedError,
     _capi.IFCOPENSHELL_ERROR_KEY: KeyError,
+    _capi.IFCOPENSHELL_ERROR_RECURSION: RecursionError,
+    _capi.IFCOPENSHELL_ERROR_CANCELLED: InterruptedError,
 }
 
 
 def raise_last_error(default_msg):
     msg = _capi.last_error_message() or default_msg
     kind = _capi.last_error_kind()
-    raise _ERROR_KIND_TO_EXC.get(kind, RuntimeError)(msg)
+    error = _ERROR_KIND_TO_EXC.get(kind, RuntimeError)(msg)
+    error.kind = kind
+    error.code = _capi.last_error_code()
+    raise error
 
 
 def call_handle(file, fn_name, *args, nullable=False, message=None):

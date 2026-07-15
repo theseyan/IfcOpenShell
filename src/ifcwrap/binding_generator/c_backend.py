@@ -127,8 +127,9 @@ def _render_cpp(ir: BindingIR, header_name: str) -> str:
 {_render_result_record_list_helpers(ir)}
 
 void {ir.c_prefix}_clear_error(void) {{
+    ifcopenshell::capi::g_last_error_kind = IFCOPENSHELL_ERROR_NONE;
+    ifcopenshell::capi::g_last_error_code = IFCOPENSHELL_ERROR_CODE_NONE;
     ifcopenshell::capi::g_last_error.clear();
-    ifcopenshell::capi::g_last_error_kind = 0;
 }}
 
 const char* {ir.c_prefix}_last_error_message(void) {{
@@ -137,6 +138,10 @@ const char* {ir.c_prefix}_last_error_message(void) {{
 
 int {ir.c_prefix}_last_error_kind(void) {{
     return ifcopenshell::capi::g_last_error_kind;
+}}
+
+int {ir.c_prefix}_last_error_code(void) {{
+    return ifcopenshell::capi::g_last_error_code;
 }}
 
 {destroy_impls_block}

@@ -158,7 +158,7 @@ void profile_edit_profile(
     try {
         ifcapi::detail::apply_attribute_props(profile, attributes);
     } catch (const std::exception& e) {
-        ifcapi::detail::set_error(e.what());
+        ifcapi::detail::set_error(e);
     }
 }
 

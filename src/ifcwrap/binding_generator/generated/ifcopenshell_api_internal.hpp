@@ -11,6 +11,7 @@
 #define IFCOPENSHELL_API_INTERNAL_HPP
 
 #include "ifcopenshell_api.h"
+#include "ifcapi/detail/error.h"
 
 #include <memory>
 #include <sstream>
@@ -51,6 +52,27 @@
 #include "ifcwrap/binding_generator/specs/cpp/ifcparse.hpp"
 #include "ifcwrap/binding_generator/specs/cpp/ifcapi.hpp"
 #include "ifcwrap/binding_generator/specs/cpp/ifcgeom.hpp"
+
+// The BindingIR catalog is authoritative for generated targets. These checks
+// make any handwritten native enum drift a compile-time failure.
+static_assert(ifcapi::detail::ERROR_NONE == 0, "native error kind catalog mismatch: NONE");
+static_assert(ifcapi::detail::ERROR_RUNTIME == 1, "native error kind catalog mismatch: RUNTIME");
+static_assert(ifcapi::detail::ERROR_VALUE == 2, "native error kind catalog mismatch: VALUE");
+static_assert(ifcapi::detail::ERROR_TYPE == 3, "native error kind catalog mismatch: TYPE");
+static_assert(ifcapi::detail::ERROR_NOT_IMPLEMENTED == 4, "native error kind catalog mismatch: NOT_IMPLEMENTED");
+static_assert(ifcapi::detail::ERROR_KEY == 5, "native error kind catalog mismatch: KEY");
+static_assert(ifcapi::detail::ERROR_RECURSION == 6, "native error kind catalog mismatch: RECURSION");
+static_assert(ifcapi::detail::ERROR_CANCELLED == 7, "native error kind catalog mismatch: CANCELLED");
+static_assert(ifcapi::detail::ERROR_CODE_NONE == 0, "native error code catalog mismatch: NONE");
+static_assert(ifcapi::detail::ERROR_CODE_UNSPECIFIED == 1, "native error code catalog mismatch: UNSPECIFIED");
+static_assert(ifcapi::detail::ERROR_CODE_INVALID_ARGUMENT == 2, "native error code catalog mismatch: INVALID_ARGUMENT");
+static_assert(ifcapi::detail::ERROR_CODE_DOMAIN_ERROR == 3, "native error code catalog mismatch: DOMAIN_ERROR");
+static_assert(ifcapi::detail::ERROR_CODE_INVALID_QUADRANT_BEARING == 100, "native error code catalog mismatch: INVALID_QUADRANT_BEARING");
+static_assert(ifcapi::detail::ERROR_CODE_UNSUPPORTED_RESOURCE_QUANTITY == 101, "native error code catalog mismatch: UNSUPPORTED_RESOURCE_QUANTITY");
+static_assert(ifcapi::detail::ERROR_CODE_INVALID_RESOURCE_QUANTITY_CLASS == 102, "native error code catalog mismatch: INVALID_RESOURCE_QUANTITY_CLASS");
+static_assert(ifcapi::detail::ERROR_CODE_RECURSIVE_SCHEDULE_CASCADE == 103, "native error code catalog mismatch: RECURSIVE_SCHEDULE_CASCADE");
+static_assert(ifcapi::detail::ERROR_CODE_CYCLIC_TASK_GRAPH == 104, "native error code catalog mismatch: CYCLIC_TASK_GRAPH");
+static_assert(ifcapi::detail::ERROR_CODE_OPERATION_CANCELLED == 105, "native error code catalog mismatch: OPERATION_CANCELLED");
 
 struct ifcopenshell_file_t {
     ifcopenshell::file* ptr;
@@ -400,6 +422,7 @@ namespace capi {
 // set_last_error() and read via the public ifcopenshell_last_error_message().
 extern thread_local std::string g_last_error;
 extern thread_local int g_last_error_kind;
+extern thread_local int g_last_error_code;
 
 // Set the global error message that will be returned by
 // ifcopenshell_last_error_message(). Use this from external translation
@@ -407,6 +430,8 @@ extern thread_local int g_last_error_kind;
 // error reporting channel as the autogen API.
 void set_last_error(const std::string& message);
 void set_last_error(int kind, const std::string& message);
+void set_last_error(int kind, int code, const std::string& message);
+int last_error_kind();
 
 
 // ------------------------------------------------------------------

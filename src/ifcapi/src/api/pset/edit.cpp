@@ -43,21 +43,16 @@ using ifcapi::detail::write_string_attr;
 
 using ifcapi::detail::set_error;
 
-struct ApiError : std::runtime_error {
-    ApiError(ifcapi::detail::ErrorKind kind, const std::string& message) : std::runtime_error(message), kind(kind) {}
-    ifcapi::detail::ErrorKind kind;
-};
-
-ApiError value_error(const std::string& message) {
-    return ApiError(ifcapi::detail::ERROR_VALUE, message);
+ifcapi::detail::Error value_error(const std::string& message) {
+    return {ifcapi::detail::ERROR_VALUE, ifcapi::detail::ERROR_CODE_UNSPECIFIED, message};
 }
 
-ApiError not_implemented_error(const std::string& message) {
-    return ApiError(ifcapi::detail::ERROR_NOT_IMPLEMENTED, message);
+ifcapi::detail::Error not_implemented_error(const std::string& message) {
+    return {ifcapi::detail::ERROR_NOT_IMPLEMENTED, ifcapi::detail::ERROR_CODE_UNSPECIFIED, message};
 }
 
-ApiError key_error(const std::string& key) {
-    return ApiError(ifcapi::detail::ERROR_KEY, key);
+ifcapi::detail::Error key_error(const std::string& key) {
+    return {ifcapi::detail::ERROR_KEY, ifcapi::detail::ERROR_CODE_UNSPECIFIED, key};
 }
 
 bool entity_is_a(express::Base e, const char* name) {
@@ -813,11 +808,8 @@ bool pset_edit_pset(
 
         write_ref_aggregate(pset, attr_name, kept);
         return true;
-    } catch (const ApiError& ex) {
-        set_error(ex.kind, ex.what());
-        return false;
     } catch (const std::exception& ex) {
-        set_error(std::string("pset_edit_pset: ") + ex.what());
+        ifcapi::detail::set_error(ex);
         return false;
     }
 }
@@ -1127,11 +1119,8 @@ bool pset_edit_qto(
 
         write_ref_aggregate(qto, attr_name, kept);
         return true;
-    } catch (const ApiError& ex) {
-        set_error(ex.kind, ex.what());
-        return false;
     } catch (const std::exception& ex) {
-        set_error(std::string("pset_edit_qto: ") + ex.what());
+        ifcapi::detail::set_error(ex);
         return false;
     }
 }

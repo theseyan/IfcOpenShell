@@ -30,7 +30,14 @@ struct ResourceAddResourceOptions {
 /** Create a construction resource, nesting it below a parent when supplied or declaring it to the first IFC4+ context. */
 IFCAPI_BINDING express::Base resource_add_resource(ifcopenshell::file* file, const ResourceAddResourceOptions& options);
 
-/** Create and attach a schema-valid base quantity. Validation precedes replacement of any existing quantity. */
+/**
+ * Create and attach a schema-valid base quantity.
+ *
+ * Validation precedes replacement of any existing quantity. Matching upstream
+ * behavior, resource/quantity support is checked before schema resolution.
+ * Unsupported combinations and schema-resolution failures are value errors
+ * with distinct stable codes; diagnostic messages must not be parsed.
+ */
 IFCAPI_BINDING express::Base resource_add_resource_quantity(
     ifcopenshell::file* file, express::Base* resource, const std::string& ifc_class = "IfcQuantityCount");
 

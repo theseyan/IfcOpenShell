@@ -69,6 +69,8 @@ static void test_error_handling(void) {
 
     ifcopenshell_clear_error();
     ASSERT(strlen(ifcopenshell_last_error_message()) == 0, "error starts empty");
+    ASSERT(ifcopenshell_last_error_kind() == IFCOPENSHELL_ERROR_NONE, "error kind starts empty");
+    ASSERT(ifcopenshell_last_error_code() == IFCOPENSHELL_ERROR_CODE_NONE, "error code starts empty");
 
     /* NULL file should fail gracefully */
     ifcopenshell_instance_t* inst = NULL;
@@ -81,6 +83,8 @@ static void test_error_handling(void) {
 
     ifcopenshell_clear_error();
     ASSERT(strlen(ifcopenshell_last_error_message()) == 0, "error cleared");
+    ASSERT(ifcopenshell_last_error_kind() == IFCOPENSHELL_ERROR_NONE, "error kind cleared");
+    ASSERT(ifcopenshell_last_error_code() == IFCOPENSHELL_ERROR_CODE_NONE, "error code cleared");
 
     printf("  Error handling tests done.\n\n");
 }

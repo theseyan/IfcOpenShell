@@ -1,5 +1,12 @@
 
 import { createApi, type Api } from './generated/ifcopenshell_api.js';
+import {
+  IfcOpenShellError,
+  IfcOpenShellErrorCode,
+  IfcOpenShellErrorKind,
+  abortError,
+  isIfcOpenShellAbortError,
+} from '@ifcopenshell-js/wasm/api';
 import type {
   EmscriptenFS,
   EmscriptenOptions,
@@ -22,13 +29,13 @@ export interface IfcOpenShell {
   [Symbol.asyncDispose](): Promise<void>;
 }
 
-/** Error raised when WASM initialization or a high-level operation fails. */
-export class IfcOpenShellError extends Error {
-  constructor(message: string, cause?: unknown) {
-    super(message, cause !== undefined ? { cause } : undefined);
-    this.name = 'IfcOpenShellError';
-  }
-}
+export {
+  IfcOpenShellError,
+  IfcOpenShellErrorCode,
+  IfcOpenShellErrorKind,
+  abortError,
+  isIfcOpenShellAbortError,
+};
 
 /**
  * Initialize the packaged or explicitly configured WASM runtime.

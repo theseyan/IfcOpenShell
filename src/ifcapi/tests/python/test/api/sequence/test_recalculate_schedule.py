@@ -22,6 +22,7 @@ import pytest
 
 import ifcopenshell.api.root
 import ifcopenshell.api.sequence
+from ifcopenshell import _ifcopenshell_capi as _capi
 import test.bootstrap
 
 
@@ -46,8 +47,10 @@ class TestRecalculateSchedule(test.bootstrap.IFC4):
         self._create_sequence(task2, task3, "FINISH_START")
         with pytest.raises(RecursionError):
             self._create_sequence(task3, task2, "FINISH_START")
-        with pytest.raises(RecursionError):
+        with pytest.raises(RecursionError) as error:
             ifcopenshell.api.sequence.recalculate_schedule(self.file, work_schedule=self.work_schedule)
+        assert error.value.kind == _capi.IFCOPENSHELL_ERROR_RECURSION
+        assert error.value.code == _capi.IFCOPENSHELL_ERROR_CODE_CYCLIC_TASK_GRAPH
 
     def test_recalculating_for_a_single_task(self):
         self._add_work_schedule()

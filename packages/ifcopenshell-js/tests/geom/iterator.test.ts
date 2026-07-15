@@ -6,6 +6,8 @@ import {
   GeomSettings,
   IfcFile,
   IfcOpenShellError,
+  IfcOpenShellErrorCode,
+  isIfcOpenShellAbortError,
   transformPoint4,
   type IfcOpenShell,
 } from '../../src/index.js';
@@ -217,8 +219,17 @@ describeOrSkip('GeomIterator', () => {
   it('honours an already-aborted collect signal', async () => {
     await using iterator = file.meshes(settings);
     const controller = new AbortController();
-    controller.abort();
-    await expect(iterator.collect({ signal: controller.signal })).rejects.toBeInstanceOf(IfcOpenShellError);
+    controller.abort('test cancellation reason');
+    let cancellation: unknown;
+    try {
+      await iterator.collect({ signal: controller.signal });
+    } catch (error) {
+      cancellation = error;
+    }
+    expect(cancellation).toBeInstanceOf(IfcOpenShellError);
+    expect(isIfcOpenShellAbortError(cancellation)).toBe(true);
+    expect(cancellation).toMatchObject({ name: 'AbortError', code: IfcOpenShellErrorCode.OPERATION_CANCELLED });
+    expect((cancellation as Error).cause).toBe('test cancellation reason');
   });
 
   it('dispose is idempotent and guards released handles', async () => {

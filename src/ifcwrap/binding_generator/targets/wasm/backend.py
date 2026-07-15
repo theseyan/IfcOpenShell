@@ -21,6 +21,7 @@ def render_export_list(metadata: BindingABI) -> str:
         f"_{metadata.error_functions['clear_error']}",
         f"_{metadata.error_functions['last_error_message']}",
         f"_{metadata.error_functions['last_error_kind']}",
+        f"_{metadata.error_functions['last_error_code']}",
     }
     exports.update(f"_{function.c_name}" for function in metadata.functions.values())
     exports.update(

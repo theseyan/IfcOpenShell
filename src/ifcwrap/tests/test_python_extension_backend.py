@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import ast
+import re
+from dataclasses import replace
 from pathlib import Path
 from textwrap import dedent
 
@@ -13,6 +16,7 @@ from src.ifcwrap.binding_generator.abi_ir import (
     COptionIR,
     CParamIR,
     CTypeIR,
+    ErrorCatalogEntryIR,
 )
 from src.ifcwrap.binding_generator.binding_ir import BindingIR
 from src.ifcwrap.binding_generator.binding_model import TypeSpec
@@ -23,6 +27,66 @@ from src.ifcwrap.binding_generator.targets.python.backend import (
     render_capi_utils,
     render_python_extension,
 )
+
+
+def test_production_wrappers_do_not_dispatch_on_error_messages():
+    repo = Path(__file__).resolve().parents[3]
+    python_root = repo / "src/ifcapi/python/ifcopenshell/api"
+    violations: list[str] = []
+
+    for path in python_root.rglob("*.py"):
+        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+        for handler in (
+            node
+            for node in ast.walk(tree)
+            if isinstance(node, ast.ExceptHandler) and node.name
+        ):
+            exception_name = handler.name
+            for control in (
+                node
+                for statement in handler.body
+                for node in ast.walk(statement)
+                if isinstance(node, (ast.If, ast.While, ast.IfExp, ast.Assert))
+            ):
+                test = control.test
+                for candidate in ast.walk(test):
+                    stringified = (
+                        isinstance(candidate, ast.Call)
+                        and isinstance(candidate.func, ast.Name)
+                        and candidate.func.id == "str"
+                        and candidate.args
+                        and isinstance(candidate.args[0], ast.Name)
+                        and candidate.args[0].id == exception_name
+                    )
+                    exception_field = (
+                        isinstance(candidate, ast.Attribute)
+                        and isinstance(candidate.value, ast.Name)
+                        and candidate.value.id == exception_name
+                        and candidate.attr in {"args", "message"}
+                    )
+                    if stringified or exception_field:
+                        violations.append(
+                            f"{path.relative_to(repo)}:{candidate.lineno}"
+                        )
+
+    ts_roots = (
+        repo / "packages/ifcopenshell-js/src",
+        repo / "packages/ifcopenshell-js/demo/src",
+    )
+    message_dispatch = re.compile(
+        r"\.message\s*(?:={2,3}|!={1,2})|\.message\.(?:includes|startsWith|endsWith|match|search)\s*\("
+    )
+    for root in ts_roots:
+        for path in (*root.rglob("*.ts"), *root.rglob("*.tsx")):
+            for lineno, line in enumerate(
+                path.read_text(encoding="utf-8").splitlines(), 1
+            ):
+                if message_dispatch.search(line):
+                    violations.append(f"{path.relative_to(repo)}:{lineno}")
+
+    assert not violations, "production error-message dispatch found:\n" + "\n".join(
+        violations
+    )
 
 
 def _make_ir(
@@ -46,6 +110,7 @@ _DEFAULT_ERROR_FUNCTIONS = {
     "clear_error": "ifcopenshell_demo_clear_error",
     "last_error_message": "ifcopenshell_demo_last_error_message",
     "last_error_kind": "ifcopenshell_demo_last_error_kind",
+    "last_error_code": "ifcopenshell_demo_last_error_code",
 }
 
 
@@ -969,8 +1034,8 @@ class TestOutputHandling:
         code = render_python_extension(meta)
 
         assert (
-            "if (!SimpleNamespaceType) {\n"
-            "        ifcopenshell_demo_result_destroy(value);" in code
+            "if (!SimpleNamespaceType) {\n        ifcopenshell_demo_result_destroy(value);"
+            in code
         )
         assert "value->item = NULL;" in code
         assert "ifcopenshell_demo_result_destroy(value);" in code
@@ -1157,7 +1222,11 @@ class TestErrorChecking:
         assert "PyExc_TypeError" in code
         assert "PyExc_NotImplementedError" in code
         assert "PyExc_KeyError" in code
+        assert "PyExc_RecursionError" in code
+        assert "PyExc_InterruptedError" in code
         assert "PyExc_RuntimeError" in code
+        assert 'PyObject_SetAttrString(value, "kind"' in code
+        assert 'PyObject_SetAttrString(value, "code"' in code
 
     def test_module_init_has_type_ready_calls(self):
         meta = _make_metadata(
@@ -1188,6 +1257,8 @@ class TestCapiUtils:
         code = render_capi_utils()
         assert "IFCOPENSHELL_ERROR_VALUE" in code
         assert "IFCOPENSHELL_ERROR_TYPE" in code
+        assert "IFCOPENSHELL_ERROR_RECURSION" in code
+        assert "last_error_code()" in code
 
     def test_contains_unwrap_parameter_type(self):
         code = render_capi_utils()
@@ -1232,6 +1303,20 @@ class TestModuleInit:
         assert "IFCOPENSHELL_ERROR_NONE" in code
         assert "IFCOPENSHELL_ERROR_RUNTIME" in code
         assert "IFCOPENSHELL_ERROR_KEY" in code
+        assert "IFCOPENSHELL_ERROR_RECURSION" in code
+        assert "IFCOPENSHELL_ERROR_CODE_INVALID_QUADRANT_BEARING" in code
+
+        custom = replace(
+            meta,
+            error_catalog=replace(
+                meta.error_catalog,
+                kinds=(ErrorCatalogEntryIR("NONE", 27),),
+                codes=(ErrorCatalogEntryIR("NONE", 42),),
+            ),
+        )
+        custom_code = render_python_extension(custom)
+        assert '"IFCOPENSHELL_ERROR_NONE", 27' in custom_code
+        assert '"IFCOPENSHELL_ERROR_CODE_NONE", 42' in custom_code
 
     def test_init_adds_logical_constants(self):
         meta = _make_metadata(

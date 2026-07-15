@@ -412,7 +412,7 @@ express::Base classification_add_classification(ifcopenshell::file* file, const 
         relate_classification_to_project(file, classification);
         return classification;
     } catch (const std::exception& e) {
-        ifcapi::detail::set_error(e.what());
+        ifcapi::detail::set_error(e);
         return {};
     }
 }
@@ -470,7 +470,7 @@ express::Base classification_add_reference(
             application_value);
         return reference_value;
     } catch (const std::exception& e) {
-        ifcapi::detail::set_error(e.what());
+        ifcapi::detail::set_error(e);
         return {};
     }
 }
@@ -548,7 +548,7 @@ void classification_remove_reference(
             file->remove_entity(reference_value);
         }
     } catch (const std::exception& e) {
-        ifcapi::detail::set_error(e.what());
+        ifcapi::detail::set_error(e);
     }
 }
 
@@ -575,7 +575,7 @@ void classification_remove_classification(ifcopenshell::file* file, express::Bas
             }
         }
     } catch (const std::exception& e) {
-        ifcapi::detail::set_error(e.what());
+        ifcapi::detail::set_error(e);
     }
 }
 

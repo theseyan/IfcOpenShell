@@ -248,7 +248,7 @@ def test_ifc_materialization_and_final_handrail(schema):
 def test_ifc2x3_arc_limitation_is_rejected_before_mutation():
     file, context = _context("IFC2X3")
     before = len(file)
-    with pytest.raises(RuntimeError, match="not supported for IFC2X3"):
+    with pytest.raises(ValueError, match="not supported for IFC2X3"):
         ifcopenshell.api.geometry.add_railing_representation(
             file,
             context=context,
@@ -286,12 +286,12 @@ def test_context_ownership_and_invalid_compute_are_atomic():
     file, context = _context()
     other, other_context = _context()
     before = len(file)
-    with pytest.raises(RuntimeError, match="context"):
+    with pytest.raises(ValueError, match="context"):
         ifcopenshell.api.geometry.add_railing_representation(
             file, context=other_context, railing_path=[(0, 0, 1), (2, 0, 1)]
         )
     assert len(file) == before
-    with pytest.raises(RuntimeError):
+    with pytest.raises(ValueError):
         ifcopenshell.api.geometry.add_railing_representation(
             file, context=context, railing_path=[(0, 0, 1)], terminal_type="NONE"
         )

@@ -5,12 +5,16 @@ from __future__ import annotations
 import shutil
 import subprocess
 import sys
+from dataclasses import replace
 from pathlib import Path
 from textwrap import dedent
 
 import pytest
 
-from src.ifcwrap.binding_generator.abi_ir import finalize_abi
+from src.ifcwrap.binding_generator.abi_ir import (
+    ErrorCatalogEntryIR,
+    finalize_abi,
+)
 from src.ifcwrap.binding_generator.binding_ir import (
     BindingIR,
     CallIR,
@@ -29,6 +33,7 @@ from src.ifcwrap.binding_generator.binding_model import (
 from src.ifcwrap.binding_generator.c_backend import _render_cpp
 from src.ifcwrap.binding_generator.c_handle_rendering import _destroy_body
 from src.ifcwrap.binding_generator.c_header_rendering import _render_header
+from src.ifcwrap.binding_generator.c_internal_header import _render_internal_header
 from src.ifcwrap.binding_generator.c_sequence_helpers import (
     _render_common_type_decls,
     _render_common_type_impls,
@@ -417,6 +422,54 @@ def test_c_header_renders_option_structs() -> None:
     assert "    const char* name;" in code
     assert "    bool has_name;" in code
     assert "} ifcopenshell_demo_create_entity_options_t;" in code
+
+
+def test_c_error_contract_preserves_kinds_and_adds_stable_codes() -> None:
+    spec = finalize_binding_ir(
+        BindingIR(
+            module="demo",
+            c_prefix="ifcopenshell_demo",
+            public_headers=(),
+            handles={},
+            result_structs={},
+            calls=(),
+        )
+    )
+
+    header = _render_header(spec)
+    cpp = _render_cpp(spec, "demo_api.h")
+    internal_header = _render_internal_header(spec, "demo_api.h")
+
+    for name, value in (
+        ("NONE", 0),
+        ("RUNTIME", 1),
+        ("VALUE", 2),
+        ("TYPE", 3),
+        ("NOT_IMPLEMENTED", 4),
+        ("KEY", 5),
+    ):
+        assert f"IFCOPENSHELL_ERROR_{name} = {value}" in header
+    assert "IFCOPENSHELL_ERROR_RECURSION = 6" in header
+    assert "IFCOPENSHELL_ERROR_CODE_INVALID_QUADRANT_BEARING = 100" in header
+    assert "int ifcopenshell_demo_last_error_code(void);" in header
+    assert "thread_local int g_last_error_code = IFCOPENSHELL_ERROR_CODE_NONE;" in cpp
+    assert "g_last_error_code = IFCOPENSHELL_ERROR_CODE_NONE;" in cpp
+    assert "static_assert(ifcapi::detail::ERROR_NONE == 0" in internal_header
+    assert (
+        "static_assert(ifcapi::detail::ERROR_CODE_INVALID_QUADRANT_BEARING == 100"
+        in internal_header
+    )
+
+    custom_catalog = replace(
+        spec.abi.error_catalog,
+        codes=(ErrorCatalogEntryIR("NONE", 27),),
+    )
+    custom_spec = replace(spec, abi=replace(spec.abi, error_catalog=custom_catalog))
+    assert "IFCOPENSHELL_ERROR_CODE_NONE = 27" in _render_header(custom_spec)
+    assert (
+        "static_assert(ifcapi::detail::ERROR_CODE_NONE == 27"
+        in _render_internal_header(custom_spec, "demo_api.h")
+    )
 
 
 def test_c_abi_variants_destroy_owned_alternatives() -> None:

@@ -152,7 +152,7 @@ class TestEditPropTemplate(test.bootstrap.IFC4):
         )
         enumeration = prop.Enumerators
 
-        with pytest.raises(RuntimeError, match="Invalid PrimaryMeasureType"):
+        with pytest.raises(ValueError, match="Invalid PrimaryMeasureType"):
             ifcopenshell.api.pset_template.edit_prop_template(
                 self.file,
                 prop_template=prop,
@@ -161,7 +161,7 @@ class TestEditPropTemplate(test.bootstrap.IFC4):
                     "Enumerators": ["B"],
                 },
             )
-        with pytest.raises(RuntimeError, match="incompatible"):
+        with pytest.raises(ValueError, match="incompatible"):
             ifcopenshell.api.pset_template.edit_prop_template(
                 self.file,
                 prop_template=prop,

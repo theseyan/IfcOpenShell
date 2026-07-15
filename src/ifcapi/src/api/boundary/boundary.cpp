@@ -30,7 +30,7 @@ express::Base boundary_copy_boundary(ifcopenshell::file* file, express::Base* bo
         }
         return result;
     } catch (const std::exception& e) {
-        set_error(e.what());
+        ifcapi::detail::set_error(e);
         return {};
     }
 }
@@ -68,7 +68,7 @@ void boundary_assign_connection_geometry(
         ifcapi::detail::write_ref_attr(connection_geometry, "SurfaceOnRelatingElement", curve_bounded_plane);
         ifcapi::detail::write_ref_attr(*rel_space_boundary, "ConnectionGeometry", connection_geometry);
     } catch (const std::exception& e) {
-        set_error(e.what());
+        ifcapi::detail::set_error(e);
     }
 }
 
@@ -85,7 +85,7 @@ void boundary_remove_boundary(ifcopenshell::file* file, express::Base* boundary)
         }
         ifcapi::detail::remove_with_history(file, *boundary);
     } catch (const std::exception& e) {
-        set_error(e.what());
+        ifcapi::detail::set_error(e);
     }
 }
 
@@ -111,7 +111,7 @@ void boundary_edit_attributes(
         ifcapi::detail::write_enum_attr(*entity, "PhysicalOrVirtualBoundary", options.physical_or_virtual);
         ifcapi::detail::write_enum_attr(*entity, "InternalOrExternalBoundary", options.internal_or_external);
     } catch (const std::exception& e) {
-        set_error(e.what());
+        ifcapi::detail::set_error(e);
     }
 }
 

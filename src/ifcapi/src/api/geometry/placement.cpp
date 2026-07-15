@@ -259,7 +259,7 @@ express::Base geometry_edit_object_placement(
     try {
         return edit_placement_impl(file, product_value, m, options.is_si, options.should_transform_children);
     } catch (const std::exception& ex) {
-        set_error(std::string("edit_object_placement: ") + ex.what());
+        ifcapi::detail::set_error(ex, "edit_object_placement: ");
         return {};
     } catch (...) {
         set_error("edit_object_placement: unknown error");

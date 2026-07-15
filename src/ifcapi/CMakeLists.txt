@@ -149,6 +149,7 @@ if(BUILD_TESTING AND NOT WASM_BUILD)
         tests/test_alignment.c
         tests/test_pset_template_cogo_library.c
         tests/test_edit_wrappers.c
+        tests/test_error_contract.c
     )
     target_link_libraries(ifcapi_c_smoke_test PRIVATE ifcopenshell_capi)
     target_include_directories(ifcapi_c_smoke_test PRIVATE

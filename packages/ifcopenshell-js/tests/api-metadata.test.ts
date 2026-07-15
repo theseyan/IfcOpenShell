@@ -336,8 +336,9 @@ describeGeneratedOrSkip('generated metadata and authoring API', () => {
       const value = shell.api.selector.getElementValue(file, wall, 'Name');
       expect(value).toBe('Wall A');
 
-      const allResult = shell.api.selector.filterAll(file, '.IfcWall');
-      expect(() => shell.api.selector.filterAll(file, '.IfcWall')).not.toThrow();
+      const allResult = shell.api.selector.filterAll(file, 'IfcWall');
+      expect(allResult).not.toBeNull();
+      expect(() => shell.api.selector.filterAll(file, 'IfcWall')).not.toThrow();
     });
   });
 

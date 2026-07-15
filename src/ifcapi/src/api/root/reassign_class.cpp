@@ -314,7 +314,7 @@ express::Base root_reassign_class(ifcopenshell::file* file, const RootReassignCl
         set_value_error("Class does not exist in schema: " + ifc_class);
         return {};
     } catch (const std::exception& exception) {
-        ifcopenshell::capi::set_last_error(std::string("root_reassign_class: ") + exception.what());
+        ifcapi::detail::set_error(exception, "root_reassign_class: ");
         return {};
     } catch (...) {
         ifcopenshell::capi::set_last_error("root_reassign_class: unknown error");

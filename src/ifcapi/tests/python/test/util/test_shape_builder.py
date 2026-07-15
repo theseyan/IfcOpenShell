@@ -233,9 +233,9 @@ class TestPrimitiveCurves(test.bootstrap.IFC4):
     def test_curve_between_two_points_rejects_invalid_input(self):
         builder = ShapeBuilder(self.file)
 
-        with pytest.raises(RuntimeError, match="expects two 2D points"):
+        with pytest.raises(ValueError, match="expects two 2D points"):
             builder.curve_between_two_points(((0.0, 0.0),))
-        with pytest.raises(RuntimeError, match="expects two 2D points"):
+        with pytest.raises(ValueError, match="expects two 2D points"):
             builder.curve_between_two_points(((0.0, 0.0, 0.0), (1.0, 1.0, 1.0)))
 
     def test_axis2_placements(self):
@@ -541,7 +541,7 @@ class TestMepBendShape(test.bootstrap.IFC4):
         builder = ShapeBuilder(self.file)
         segment = self.file.create_entity("IfcFlowSegment")
 
-        with pytest.raises(RuntimeError, match="segment must have a single material profile"):
+        with pytest.raises(ValueError, match="segment must have a single material profile"):
             builder.mep_bend_shape(segment, 1.0, 1.0, 1.0, 1.0, (1.0, 0.0), False)
 
     def test_zero_bend_vector_raises(self):
@@ -558,7 +558,7 @@ class TestMepBendShape(test.bootstrap.IFC4):
             RelatingMaterial=material_set,
         )
 
-        with pytest.raises(RuntimeError, match="bend_vector must have a non-zero X or Y component"):
+        with pytest.raises(ValueError, match="bend_vector must have a non-zero X or Y component"):
             builder.mep_bend_shape(segment, 1.0, 1.0, 1.0, 1.0, (0.0, 0.0), False)
 
         representation, bend_data = builder.mep_bend_shape(segment, 1.0, 1.0, 1.0, 1.0, (1.0, 0.0), False)
@@ -619,5 +619,5 @@ class TestFaceset(test.bootstrap.IFC4):
 
     def test_polygonal_face_set_rejects_empty_face(self):
         self.builder = ShapeBuilder(self.file)
-        with pytest.raises(RuntimeError, match="polygonal face loop must contain at least one index"):
+        with pytest.raises(ValueError, match="polygonal face loop must contain at least one index"):
             self.builder.polygonal_face_set([], [[]])

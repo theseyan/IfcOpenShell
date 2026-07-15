@@ -616,7 +616,7 @@ void cost_edit_cost_value(
             ifcapi::detail::write_ref_attr(cost_value, "UnitBasis", new_unit_basis);
         }
     } catch (const std::exception& e) {
-        ifcopenshell::capi::set_last_error(e.what());
+        ifcapi::detail::set_error(e);
     }
 }
 
@@ -632,7 +632,7 @@ void cost_edit_cost_value_formula(ifcopenshell::file* file, express::Base cost_v
         }
         apply_formula_node(file, cost_value, root);
     } catch (const std::exception& e) {
-        ifcopenshell::capi::set_last_error(e.what());
+        ifcapi::detail::set_error(e);
     }
 }
 
@@ -665,7 +665,7 @@ express::Base cost_add_cost_schedule(
         }
         return schedule;
     } catch (const std::exception& e) {
-        ifcopenshell::capi::set_last_error(e.what());
+        ifcapi::detail::set_error(e);
         return {};
     }
 }
@@ -705,7 +705,7 @@ express::Base cost_add_cost_item(
         }
         return item;
     } catch (const std::exception& e) {
-        ifcopenshell::capi::set_last_error(e.what());
+        ifcapi::detail::set_error(e);
         return {};
     }
 }
@@ -715,7 +715,7 @@ express::Base cost_add_cost_value(ifcopenshell::file* file, express::Base parent
     try {
         return add_cost_value(file, parent);
     } catch (const std::exception& e) {
-        ifcopenshell::capi::set_last_error(e.what());
+        ifcapi::detail::set_error(e);
         return {};
     }
 }
@@ -741,7 +741,7 @@ express::Base cost_add_cost_item_quantity(
         append_ref(cost_item, "CostQuantities", quantity);
         return quantity;
     } catch (const std::exception& e) {
-        ifcopenshell::capi::set_last_error(e.what());
+        ifcapi::detail::set_error(e);
         return {};
     }
 }
@@ -812,7 +812,7 @@ void cost_assign_cost_item_quantity(
             }
         }
     } catch (const std::exception& e) {
-        ifcopenshell::capi::set_last_error(e.what());
+        ifcapi::detail::set_error(e);
     }
 }
 
@@ -864,7 +864,7 @@ void cost_unassign_cost_item_quantity(
             }
         }
     } catch (const std::exception& e) {
-        ifcopenshell::capi::set_last_error(e.what());
+        ifcapi::detail::set_error(e);
     }
 }
 
@@ -883,23 +883,23 @@ void cost_remove_cost_item_quantity(
         quantities.erase(std::remove(quantities.begin(), quantities.end(), physical_quantity), quantities.end());
         ifcapi::detail::write_ref_aggregate(cost_item, "CostQuantities", quantities);
     } catch (const std::exception& e) {
-        ifcopenshell::capi::set_last_error(e.what());
+        ifcapi::detail::set_error(e);
     }
 }
 
 void cost_edit_cost_item(ifcopenshell::file*, express::Base cost_item, ifcopenshell_pset_props_t* attributes) {
     ifcopenshell_clear_error();
-    try { ifcapi::detail::apply_attribute_props(cost_item, attributes); } catch (const std::exception& e) { ifcopenshell::capi::set_last_error(e.what()); }
+    try { ifcapi::detail::apply_attribute_props(cost_item, attributes); } catch (const std::exception& e) { ifcapi::detail::set_error(e); }
 }
 
 void cost_edit_cost_schedule(ifcopenshell::file*, express::Base cost_schedule, ifcopenshell_pset_props_t* attributes) {
     ifcopenshell_clear_error();
-    try { ifcapi::detail::apply_attribute_props(cost_schedule, attributes); } catch (const std::exception& e) { ifcopenshell::capi::set_last_error(e.what()); }
+    try { ifcapi::detail::apply_attribute_props(cost_schedule, attributes); } catch (const std::exception& e) { ifcapi::detail::set_error(e); }
 }
 
 void cost_edit_cost_item_quantity(ifcopenshell::file*, express::Base physical_quantity, ifcopenshell_pset_props_t* attributes) {
     ifcopenshell_clear_error();
-    try { ifcapi::detail::apply_attribute_props(physical_quantity, attributes); } catch (const std::exception& e) { ifcopenshell::capi::set_last_error(e.what()); }
+    try { ifcapi::detail::apply_attribute_props(physical_quantity, attributes); } catch (const std::exception& e) { ifcapi::detail::set_error(e); }
 }
 
 void cost_remove_cost_value(ifcopenshell::file* file, express::Base parent, express::Base cost_value) {
@@ -915,7 +915,7 @@ void cost_remove_cost_value(ifcopenshell::file* file, express::Base parent, expr
             remove_ref_or_clear(parent, "Components", cost_value);
         }
     } catch (const std::exception& e) {
-        ifcopenshell::capi::set_last_error(e.what());
+        ifcapi::detail::set_error(e);
     }
 }
 
@@ -932,7 +932,7 @@ void cost_copy_cost_item_values(ifcopenshell::file* file, express::Base source, 
         }
         ifcapi::detail::write_ref_aggregate(destination, "CostValues", copied);
     } catch (const std::exception& e) {
-        ifcopenshell::capi::set_last_error(e.what());
+        ifcapi::detail::set_error(e);
     }
 }
 
@@ -943,7 +943,7 @@ void cost_assign_cost_value(ifcopenshell::file* file, express::Base cost_item, e
         for (auto value : values) cost_remove_cost_value(file, cost_item, value);
         ifcapi::detail::write_ref_aggregate(cost_item, "CostValues", ifcapi::detail::read_ref_aggregate(cost_rate, "CostValues"));
     } catch (const std::exception& e) {
-        ifcopenshell::capi::set_last_error(e.what());
+        ifcapi::detail::set_error(e);
     }
 }
 
@@ -1037,7 +1037,7 @@ std::vector<express::Base> cost_copy_cost_item(ifcopenshell::file* file, express
     try {
         return CostItemCopier(file).execute(cost_item);
     } catch (const std::exception& e) {
-        ifcopenshell::capi::set_last_error(e.what());
+        ifcapi::detail::set_error(e);
         return {};
     }
 }
@@ -1068,7 +1068,7 @@ express::Base cost_copy_cost_schedule(
         }
         return new_schedule;
     } catch (const std::exception& e) {
-        ifcopenshell::capi::set_last_error(e.what());
+        ifcapi::detail::set_error(e);
         return {};
     }
 }
@@ -1095,7 +1095,7 @@ void cost_remove_cost_item(ifcopenshell::file* file, express::Base cost_item) {
         }
         ifcapi::detail::remove_with_history(file, cost_item);
     } catch (const std::exception& e) {
-        ifcopenshell::capi::set_last_error(e.what());
+        ifcapi::detail::set_error(e);
     }
 }
 
@@ -1110,7 +1110,7 @@ void cost_remove_cost_schedule(ifcopenshell::file* file, express::Base cost_sche
         }
         ifcapi::detail::remove_with_history(file, cost_schedule);
     } catch (const std::exception& e) {
-        ifcopenshell::capi::set_last_error(e.what());
+        ifcapi::detail::set_error(e);
     }
 }
 
@@ -1149,7 +1149,7 @@ void cost_calculate_cost_item_resource_value(ifcopenshell::file* file, express::
             cost_edit_cost_value_formula(file, value, std::to_string(cost.second.first) + "*" + std::to_string(quantity));
         }
     } catch (const std::exception& e) {
-        ifcopenshell::capi::set_last_error(e.what());
+        ifcapi::detail::set_error(e);
     }
 }
 
