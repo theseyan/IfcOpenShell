@@ -13,6 +13,8 @@
 #include <string>
 #include <vector>
 
+struct ifcopenshell_pset_props_t;
+
 namespace ifcapi {
 namespace bindings {
 
@@ -114,6 +116,18 @@ IFCAPI_BINDING void constraint_remove_constraint(
 IFCAPI_BINDING void constraint_remove_metric(
     ifcopenshell::file* file,
     express::Base* metric);
+
+/** Edit an IfcMetric using the shared attribute property writer. */
+IFCAPI_BINDING void constraint_edit_metric(
+    ifcopenshell::file* file,
+    express::Base metric,
+    ifcopenshell_pset_props_t* attributes);
+
+/** Edit an IfcObjective using the shared attribute property writer. */
+IFCAPI_BINDING void constraint_edit_objective(
+    ifcopenshell::file* file,
+    express::Base objective,
+    ifcopenshell_pset_props_t* attributes);
 
 } // namespace bindings
 } // namespace ifcapi

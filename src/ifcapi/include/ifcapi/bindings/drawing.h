@@ -11,6 +11,8 @@
 
 #include <optional>
 
+struct ifcopenshell_pset_props_t;
+
 namespace ifcapi {
 namespace bindings {
 
@@ -77,6 +79,12 @@ IFCAPI_BINDING express::Base drawing_assign_product(
 IFCAPI_BINDING void drawing_unassign_product(
     ifcopenshell::file* file,
     const DrawingUnassignProductOptions& options);
+
+/** Edit an IfcTextLiteral using the shared attribute property writer. */
+IFCAPI_BINDING void drawing_edit_text_literal(
+    ifcopenshell::file* file,
+    express::Base text_literal,
+    ifcopenshell_pset_props_t* attributes);
 
 } // namespace bindings
 } // namespace ifcapi

@@ -13,8 +13,19 @@
 #include <string>
 #include <vector>
 
+struct ifcopenshell_pset_props_t;
+
 namespace ifcapi {
 namespace detail {
+
+void edit_named_attributes(
+    ifcopenshell::file* file,
+    express::Base target,
+    ifcopenshell_pset_props_t* attributes);
+
+void apply_named_attributes(
+    express::Base target,
+    ifcopenshell_pset_props_t* attributes);
 
 inline express::Base deref_or_empty(express::Base* value) {
     return value ? *value : express::Base();

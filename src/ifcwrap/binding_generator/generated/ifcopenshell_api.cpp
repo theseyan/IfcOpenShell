@@ -5605,6 +5605,46 @@ bool ifcopenshell_classification_add_reference(ifcopenshell_file_t* file, const 
     }
 }
 
+bool ifcopenshell_classification_edit_classification(ifcopenshell_file_t* file, ifcopenshell_instance_t* classification, void* attributes) {
+    try {
+        ifcopenshell_clear_error();
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    if (classification == nullptr) { throw std::runtime_error("Handle parameter \"classification\" must not be null"); }
+    auto classification_cpp = classification->value;
+    if (attributes == nullptr) { throw std::runtime_error("Parameter \"attributes\" must not be null"); }
+    auto attributes_cpp = static_cast<ifcopenshell_pset_props_t*>(attributes);
+        ifcapi::bindings::classification_edit_classification(file_cpp, classification_cpp, attributes_cpp);
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_classification_edit_reference(ifcopenshell_file_t* file, ifcopenshell_instance_t* reference, void* attributes) {
+    try {
+        ifcopenshell_clear_error();
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    if (reference == nullptr) { throw std::runtime_error("Handle parameter \"reference\" must not be null"); }
+    auto reference_cpp = reference->value;
+    if (attributes == nullptr) { throw std::runtime_error("Parameter \"attributes\" must not be null"); }
+    auto attributes_cpp = static_cast<ifcopenshell_pset_props_t*>(attributes);
+        ifcapi::bindings::classification_edit_reference(file_cpp, reference_cpp, attributes_cpp);
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
 bool ifcopenshell_classification_get_references(ifcopenshell_instance_t* element, bool should_inherit, ifcopenshell_parse_instance_list_t** out_result) {
     try {
         ifcopenshell_clear_error();
@@ -5893,6 +5933,46 @@ bool ifcopenshell_constraint_assign_constraint(ifcopenshell_file_t* file, const 
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_constraint_edit_metric(ifcopenshell_file_t* file, ifcopenshell_instance_t* metric, void* attributes) {
+    try {
+        ifcopenshell_clear_error();
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    if (metric == nullptr) { throw std::runtime_error("Handle parameter \"metric\" must not be null"); }
+    auto metric_cpp = metric->value;
+    if (attributes == nullptr) { throw std::runtime_error("Parameter \"attributes\" must not be null"); }
+    auto attributes_cpp = static_cast<ifcopenshell_pset_props_t*>(attributes);
+        ifcapi::bindings::constraint_edit_metric(file_cpp, metric_cpp, attributes_cpp);
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_constraint_edit_objective(ifcopenshell_file_t* file, ifcopenshell_instance_t* objective, void* attributes) {
+    try {
+        ifcopenshell_clear_error();
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    if (objective == nullptr) { throw std::runtime_error("Handle parameter \"objective\" must not be null"); }
+    auto objective_cpp = objective->value;
+    if (attributes == nullptr) { throw std::runtime_error("Parameter \"attributes\" must not be null"); }
+    auto attributes_cpp = static_cast<ifcopenshell_pset_props_t*>(attributes);
+        ifcapi::bindings::constraint_edit_objective(file_cpp, objective_cpp, attributes_cpp);
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -6706,6 +6786,46 @@ bool ifcopenshell_document_assign_document(ifcopenshell_file_t* file, const ifco
     }
 }
 
+bool ifcopenshell_document_edit_information(ifcopenshell_file_t* file, ifcopenshell_instance_t* information, void* attributes) {
+    try {
+        ifcopenshell_clear_error();
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    if (information == nullptr) { throw std::runtime_error("Handle parameter \"information\" must not be null"); }
+    auto information_cpp = information->value;
+    if (attributes == nullptr) { throw std::runtime_error("Parameter \"attributes\" must not be null"); }
+    auto attributes_cpp = static_cast<ifcopenshell_pset_props_t*>(attributes);
+        ifcapi::bindings::document_edit_information(file_cpp, information_cpp, attributes_cpp);
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_document_edit_reference(ifcopenshell_file_t* file, ifcopenshell_instance_t* reference, void* attributes) {
+    try {
+        ifcopenshell_clear_error();
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    if (reference == nullptr) { throw std::runtime_error("Handle parameter \"reference\" must not be null"); }
+    auto reference_cpp = reference->value;
+    if (attributes == nullptr) { throw std::runtime_error("Parameter \"attributes\" must not be null"); }
+    auto attributes_cpp = static_cast<ifcopenshell_pset_props_t*>(attributes);
+        ifcapi::bindings::document_edit_reference(file_cpp, reference_cpp, attributes_cpp);
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
 bool ifcopenshell_document_remove_information(ifcopenshell_file_t* file, ifcopenshell_instance_t* information) {
     try {
         ifcopenshell_clear_error();
@@ -6802,6 +6922,26 @@ bool ifcopenshell_drawing_assign_product(ifcopenshell_file_t* file, const ifcope
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_drawing_edit_text_literal(ifcopenshell_file_t* file, ifcopenshell_instance_t* text_literal, void* attributes) {
+    try {
+        ifcopenshell_clear_error();
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    if (text_literal == nullptr) { throw std::runtime_error("Handle parameter \"text_literal\" must not be null"); }
+    auto text_literal_cpp = text_literal->value;
+    if (attributes == nullptr) { throw std::runtime_error("Parameter \"attributes\" must not be null"); }
+    auto attributes_cpp = static_cast<ifcopenshell_pset_props_t*>(attributes);
+        ifcapi::bindings::drawing_edit_text_literal(file_cpp, text_literal_cpp, attributes_cpp);
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -8969,6 +9109,26 @@ bool ifcopenshell_group_assign_group(ifcopenshell_file_t* file, const ifcopenshe
     }
 }
 
+bool ifcopenshell_group_edit_group(ifcopenshell_file_t* file, ifcopenshell_instance_t* group, void* attributes) {
+    try {
+        ifcopenshell_clear_error();
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    if (group == nullptr) { throw std::runtime_error("Handle parameter \"group\" must not be null"); }
+    auto group_cpp = group->value;
+    if (attributes == nullptr) { throw std::runtime_error("Parameter \"attributes\" must not be null"); }
+    auto attributes_cpp = static_cast<ifcopenshell_pset_props_t*>(attributes);
+        ifcapi::bindings::group_edit_group(file_cpp, group_cpp, attributes_cpp);
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
 bool ifcopenshell_group_remove_group(ifcopenshell_file_t* file, ifcopenshell_instance_t* group) {
     try {
         ifcopenshell_clear_error();
@@ -9187,6 +9347,26 @@ bool ifcopenshell_layer_assign_layer(ifcopenshell_file_t* file, const ifcopenshe
     }
 }
 
+bool ifcopenshell_layer_edit_layer(ifcopenshell_file_t* file, ifcopenshell_instance_t* layer, void* attributes) {
+    try {
+        ifcopenshell_clear_error();
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    if (layer == nullptr) { throw std::runtime_error("Handle parameter \"layer\" must not be null"); }
+    auto layer_cpp = layer->value;
+    if (attributes == nullptr) { throw std::runtime_error("Parameter \"attributes\" must not be null"); }
+    auto attributes_cpp = static_cast<ifcopenshell_pset_props_t*>(attributes);
+        ifcapi::bindings::layer_edit_layer(file_cpp, layer_cpp, attributes_cpp);
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
 bool ifcopenshell_layer_remove_layer(ifcopenshell_file_t* file, ifcopenshell_instance_t* layer) {
     try {
         ifcopenshell_clear_error();
@@ -9303,6 +9483,46 @@ bool ifcopenshell_library_assign_reference(ifcopenshell_file_t* file, const ifco
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_library_edit_library(ifcopenshell_file_t* file, ifcopenshell_instance_t* library, void* attributes) {
+    try {
+        ifcopenshell_clear_error();
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    if (library == nullptr) { throw std::runtime_error("Handle parameter \"library\" must not be null"); }
+    auto library_cpp = library->value;
+    if (attributes == nullptr) { throw std::runtime_error("Parameter \"attributes\" must not be null"); }
+    auto attributes_cpp = static_cast<ifcopenshell_pset_props_t*>(attributes);
+        ifcapi::bindings::library_edit_library(file_cpp, library_cpp, attributes_cpp);
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_library_edit_reference(ifcopenshell_file_t* file, ifcopenshell_instance_t* reference, void* attributes) {
+    try {
+        ifcopenshell_clear_error();
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    if (reference == nullptr) { throw std::runtime_error("Handle parameter \"reference\" must not be null"); }
+    auto reference_cpp = reference->value;
+    if (attributes == nullptr) { throw std::runtime_error("Parameter \"attributes\" must not be null"); }
+    auto attributes_cpp = static_cast<ifcopenshell_pset_props_t*>(attributes);
+        ifcapi::bindings::library_edit_reference(file_cpp, reference_cpp, attributes_cpp);
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -9664,6 +9884,134 @@ bool ifcopenshell_material_copy_material(ifcopenshell_file_t* file, ifcopenshell
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_material_edit_assigned_material(ifcopenshell_file_t* file, ifcopenshell_instance_t* element, void* attributes) {
+    try {
+        ifcopenshell_clear_error();
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    if (element == nullptr) { throw std::runtime_error("Handle parameter \"element\" must not be null"); }
+    auto element_cpp = element->value;
+    if (attributes == nullptr) { throw std::runtime_error("Parameter \"attributes\" must not be null"); }
+    auto attributes_cpp = static_cast<ifcopenshell_pset_props_t*>(attributes);
+        ifcapi::bindings::material_edit_assigned_material(file_cpp, element_cpp, attributes_cpp);
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_material_edit_constituent(ifcopenshell_file_t* file, ifcopenshell_instance_t* constituent, void* attributes, ifcopenshell_instance_t* material) {
+    try {
+        ifcopenshell_clear_error();
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    if (constituent == nullptr) { throw std::runtime_error("Handle parameter \"constituent\" must not be null"); }
+    auto constituent_cpp = constituent->value;
+    if (attributes == nullptr) { throw std::runtime_error("Parameter \"attributes\" must not be null"); }
+    auto attributes_cpp = static_cast<ifcopenshell_pset_props_t*>(attributes);
+    std::optional<express::Base> material_cpp;
+    if (material != nullptr) { material_cpp = material->value; }
+        ifcapi::bindings::material_edit_constituent(file_cpp, constituent_cpp, attributes_cpp, material_cpp);
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_material_edit_layer(ifcopenshell_file_t* file, ifcopenshell_instance_t* layer, void* attributes, ifcopenshell_instance_t* material) {
+    try {
+        ifcopenshell_clear_error();
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    if (layer == nullptr) { throw std::runtime_error("Handle parameter \"layer\" must not be null"); }
+    auto layer_cpp = layer->value;
+    if (attributes == nullptr) { throw std::runtime_error("Parameter \"attributes\" must not be null"); }
+    auto attributes_cpp = static_cast<ifcopenshell_pset_props_t*>(attributes);
+    std::optional<express::Base> material_cpp;
+    if (material != nullptr) { material_cpp = material->value; }
+        ifcapi::bindings::material_edit_layer(file_cpp, layer_cpp, attributes_cpp, material_cpp);
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_material_edit_layer_usage(ifcopenshell_file_t* file, ifcopenshell_instance_t* usage, void* attributes) {
+    try {
+        ifcopenshell_clear_error();
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    if (usage == nullptr) { throw std::runtime_error("Handle parameter \"usage\" must not be null"); }
+    auto usage_cpp = usage->value;
+    if (attributes == nullptr) { throw std::runtime_error("Parameter \"attributes\" must not be null"); }
+    auto attributes_cpp = static_cast<ifcopenshell_pset_props_t*>(attributes);
+        ifcapi::bindings::material_edit_layer_usage(file_cpp, usage_cpp, attributes_cpp);
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_material_edit_material(ifcopenshell_file_t* file, ifcopenshell_instance_t* material, void* attributes) {
+    try {
+        ifcopenshell_clear_error();
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    if (material == nullptr) { throw std::runtime_error("Handle parameter \"material\" must not be null"); }
+    auto material_cpp = material->value;
+    if (attributes == nullptr) { throw std::runtime_error("Parameter \"attributes\" must not be null"); }
+    auto attributes_cpp = static_cast<ifcopenshell_pset_props_t*>(attributes);
+        ifcapi::bindings::material_edit_material(file_cpp, material_cpp, attributes_cpp);
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_material_edit_profile(ifcopenshell_file_t* file, ifcopenshell_instance_t* profile, void* attributes, ifcopenshell_instance_t* profile_def, ifcopenshell_instance_t* material) {
+    try {
+        ifcopenshell_clear_error();
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    if (profile == nullptr) { throw std::runtime_error("Handle parameter \"profile\" must not be null"); }
+    auto profile_cpp = profile->value;
+    if (attributes == nullptr) { throw std::runtime_error("Parameter \"attributes\" must not be null"); }
+    auto attributes_cpp = static_cast<ifcopenshell_pset_props_t*>(attributes);
+    std::optional<express::Base> profile_def_cpp;
+    if (profile_def != nullptr) { profile_def_cpp = profile_def->value; }
+    std::optional<express::Base> material_cpp;
+    if (material != nullptr) { material_cpp = material->value; }
+        ifcapi::bindings::material_edit_profile(file_cpp, profile_cpp, attributes_cpp, profile_def_cpp, material_cpp);
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -10348,6 +10696,126 @@ bool ifcopenshell_owner_create_owner_history(ifcopenshell_file_t* file, const if
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_owner_edit_actor(ifcopenshell_file_t* file, ifcopenshell_instance_t* actor, void* attributes) {
+    try {
+        ifcopenshell_clear_error();
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    if (actor == nullptr) { throw std::runtime_error("Handle parameter \"actor\" must not be null"); }
+    auto actor_cpp = actor->value;
+    if (attributes == nullptr) { throw std::runtime_error("Parameter \"attributes\" must not be null"); }
+    auto attributes_cpp = static_cast<ifcopenshell_pset_props_t*>(attributes);
+        ifcapi::bindings::owner_edit_actor(file_cpp, actor_cpp, attributes_cpp);
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_owner_edit_address(ifcopenshell_file_t* file, ifcopenshell_instance_t* address, void* attributes) {
+    try {
+        ifcopenshell_clear_error();
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    if (address == nullptr) { throw std::runtime_error("Handle parameter \"address\" must not be null"); }
+    auto address_cpp = address->value;
+    if (attributes == nullptr) { throw std::runtime_error("Parameter \"attributes\" must not be null"); }
+    auto attributes_cpp = static_cast<ifcopenshell_pset_props_t*>(attributes);
+        ifcapi::bindings::owner_edit_address(file_cpp, address_cpp, attributes_cpp);
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_owner_edit_application(ifcopenshell_file_t* file, ifcopenshell_instance_t* application, void* attributes) {
+    try {
+        ifcopenshell_clear_error();
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    if (application == nullptr) { throw std::runtime_error("Handle parameter \"application\" must not be null"); }
+    auto application_cpp = application->value;
+    if (attributes == nullptr) { throw std::runtime_error("Parameter \"attributes\" must not be null"); }
+    auto attributes_cpp = static_cast<ifcopenshell_pset_props_t*>(attributes);
+        ifcapi::bindings::owner_edit_application(file_cpp, application_cpp, attributes_cpp);
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_owner_edit_organisation(ifcopenshell_file_t* file, ifcopenshell_instance_t* organisation, void* attributes) {
+    try {
+        ifcopenshell_clear_error();
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    if (organisation == nullptr) { throw std::runtime_error("Handle parameter \"organisation\" must not be null"); }
+    auto organisation_cpp = organisation->value;
+    if (attributes == nullptr) { throw std::runtime_error("Parameter \"attributes\" must not be null"); }
+    auto attributes_cpp = static_cast<ifcopenshell_pset_props_t*>(attributes);
+        ifcapi::bindings::owner_edit_organisation(file_cpp, organisation_cpp, attributes_cpp);
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_owner_edit_person(ifcopenshell_file_t* file, ifcopenshell_instance_t* person, void* attributes) {
+    try {
+        ifcopenshell_clear_error();
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    if (person == nullptr) { throw std::runtime_error("Handle parameter \"person\" must not be null"); }
+    auto person_cpp = person->value;
+    if (attributes == nullptr) { throw std::runtime_error("Parameter \"attributes\" must not be null"); }
+    auto attributes_cpp = static_cast<ifcopenshell_pset_props_t*>(attributes);
+        ifcapi::bindings::owner_edit_person(file_cpp, person_cpp, attributes_cpp);
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_owner_edit_role(ifcopenshell_file_t* file, ifcopenshell_instance_t* role, void* attributes) {
+    try {
+        ifcopenshell_clear_error();
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    if (role == nullptr) { throw std::runtime_error("Handle parameter \"role\" must not be null"); }
+    auto role_cpp = role->value;
+    if (attributes == nullptr) { throw std::runtime_error("Parameter \"attributes\" must not be null"); }
+    auto attributes_cpp = static_cast<ifcopenshell_pset_props_t*>(attributes);
+        ifcapi::bindings::owner_edit_role(file_cpp, role_cpp, attributes_cpp);
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -11767,6 +12235,26 @@ bool ifcopenshell_pset_template_edit_prop_template(ifcopenshell_file_t* file, co
     }
 }
 
+bool ifcopenshell_pset_template_edit_pset_template(ifcopenshell_file_t* file, ifcopenshell_instance_t* pset_template, void* attributes) {
+    try {
+        ifcopenshell_clear_error();
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    if (pset_template == nullptr) { throw std::runtime_error("Handle parameter \"pset_template\" must not be null"); }
+    auto pset_template_cpp = pset_template->value;
+    if (attributes == nullptr) { throw std::runtime_error("Parameter \"attributes\" must not be null"); }
+    auto attributes_cpp = static_cast<ifcopenshell_pset_props_t*>(attributes);
+        ifcapi::bindings::pset_template_edit_pset_template(file_cpp, pset_template_cpp, attributes_cpp);
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
 bool ifcopenshell_pset_template_get_applicable(ifcopenshell_pset_template_handle_t* pqt, const char* ifc_class, const char* predefined_type, bool pset_only, bool qto_only, const char* schema_name, ifcopenshell_parse_instance_list_t** out_result) {
     try {
         ifcopenshell_clear_error();
@@ -12305,6 +12793,46 @@ bool ifcopenshell_resource_calculate_resource_work(ifcopenshell_file_t* file, if
     if (resource == nullptr) { throw std::runtime_error("Handle parameter \"resource\" must not be null"); }
     auto resource_cpp = &resource->value;
         ifcapi::bindings::resource_calculate_resource_work(file_cpp, resource_cpp);
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_resource_edit_resource(ifcopenshell_file_t* file, ifcopenshell_instance_t* resource, void* attributes) {
+    try {
+        ifcopenshell_clear_error();
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    if (resource == nullptr) { throw std::runtime_error("Handle parameter \"resource\" must not be null"); }
+    auto resource_cpp = resource->value;
+    if (attributes == nullptr) { throw std::runtime_error("Parameter \"attributes\" must not be null"); }
+    auto attributes_cpp = static_cast<ifcopenshell_pset_props_t*>(attributes);
+        ifcapi::bindings::resource_edit_resource(file_cpp, resource_cpp, attributes_cpp);
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_resource_edit_resource_quantity(ifcopenshell_file_t* file, ifcopenshell_instance_t* physical_quantity, void* attributes) {
+    try {
+        ifcopenshell_clear_error();
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    if (physical_quantity == nullptr) { throw std::runtime_error("Handle parameter \"physical_quantity\" must not be null"); }
+    auto physical_quantity_cpp = physical_quantity->value;
+    if (attributes == nullptr) { throw std::runtime_error("Parameter \"attributes\" must not be null"); }
+    auto attributes_cpp = static_cast<ifcopenshell_pset_props_t*>(attributes);
+        ifcapi::bindings::resource_edit_resource_quantity(file_cpp, physical_quantity_cpp, attributes_cpp);
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -15510,6 +16038,26 @@ bool ifcopenshell_structural_assign_to_building(ifcopenshell_file_t* file, ifcop
     }
 }
 
+bool ifcopenshell_structural_edit_structural_analysis_model(ifcopenshell_file_t* file, ifcopenshell_instance_t* structural_analysis_model, void* attributes) {
+    try {
+        ifcopenshell_clear_error();
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    if (structural_analysis_model == nullptr) { throw std::runtime_error("Handle parameter \"structural_analysis_model\" must not be null"); }
+    auto structural_analysis_model_cpp = structural_analysis_model->value;
+    if (attributes == nullptr) { throw std::runtime_error("Parameter \"attributes\" must not be null"); }
+    auto attributes_cpp = static_cast<ifcopenshell_pset_props_t*>(attributes);
+        ifcapi::bindings::structural_edit_structural_analysis_model(file_cpp, structural_analysis_model_cpp, attributes_cpp);
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
 bool ifcopenshell_structural_edit_structural_boundary_condition(ifcopenshell_file_t* file, ifcopenshell_instance_t* condition, void* attributes) {
     try {
         ifcopenshell_clear_error();
@@ -15562,6 +16110,46 @@ bool ifcopenshell_structural_edit_structural_item_axis(ifcopenshell_file_t* file
     if (axis == nullptr) { throw std::runtime_error("Parameter \"axis\" must not be null"); }
     auto axis_cpp = to_cpp_double_list(axis);
         ifcapi::bindings::structural_edit_structural_item_axis(file_cpp, structural_item_cpp, axis_cpp);
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_structural_edit_structural_load(ifcopenshell_file_t* file, ifcopenshell_instance_t* structural_load, void* attributes) {
+    try {
+        ifcopenshell_clear_error();
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    if (structural_load == nullptr) { throw std::runtime_error("Handle parameter \"structural_load\" must not be null"); }
+    auto structural_load_cpp = structural_load->value;
+    if (attributes == nullptr) { throw std::runtime_error("Parameter \"attributes\" must not be null"); }
+    auto attributes_cpp = static_cast<ifcopenshell_pset_props_t*>(attributes);
+        ifcapi::bindings::structural_edit_structural_load(file_cpp, structural_load_cpp, attributes_cpp);
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_structural_edit_structural_load_case(ifcopenshell_file_t* file, ifcopenshell_instance_t* structural_load_case, void* attributes) {
+    try {
+        ifcopenshell_clear_error();
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    if (structural_load_case == nullptr) { throw std::runtime_error("Handle parameter \"structural_load_case\" must not be null"); }
+    auto structural_load_case_cpp = structural_load_case->value;
+    if (attributes == nullptr) { throw std::runtime_error("Parameter \"attributes\" must not be null"); }
+    auto attributes_cpp = static_cast<ifcopenshell_pset_props_t*>(attributes);
+        ifcapi::bindings::structural_edit_structural_load_case(file_cpp, structural_load_case_cpp, attributes_cpp);
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -15884,6 +16472,26 @@ bool ifcopenshell_style_assign_representation_styles(ifcopenshell_file_t* file, 
     auto should_use_presentation_style_assignment_cpp = static_cast<bool>(should_use_presentation_style_assignment);
     auto replace_previous_same_type_style_cpp = static_cast<bool>(replace_previous_same_type_style);
         *out_result = new ifcopenshell_parse_instance_list_t{ifcapi::bindings::style_assign_representation_styles(file_cpp, shape_representation_cpp, styles_cpp, should_use_presentation_style_assignment_cpp, replace_previous_same_type_style_cpp)};
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_style_edit_presentation_style(ifcopenshell_file_t* file, ifcopenshell_instance_t* style, void* attributes) {
+    try {
+        ifcopenshell_clear_error();
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    if (style == nullptr) { throw std::runtime_error("Handle parameter \"style\" must not be null"); }
+    auto style_cpp = style->value;
+    if (attributes == nullptr) { throw std::runtime_error("Parameter \"attributes\" must not be null"); }
+    auto attributes_cpp = static_cast<ifcopenshell_pset_props_t*>(attributes);
+        ifcapi::bindings::style_edit_presentation_style(file_cpp, style_cpp, attributes_cpp);
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -16249,6 +16857,26 @@ bool ifcopenshell_system_disconnect_port(ifcopenshell_file_t* file, ifcopenshell
     if (port == nullptr) { throw std::runtime_error("Handle parameter \"port\" must not be null"); }
     auto port_cpp = &port->value;
         ifcapi::bindings::system_disconnect_port(file_cpp, port_cpp);
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_system_edit_system(ifcopenshell_file_t* file, ifcopenshell_instance_t* system, void* attributes) {
+    try {
+        ifcopenshell_clear_error();
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    if (system == nullptr) { throw std::runtime_error("Handle parameter \"system\" must not be null"); }
+    auto system_cpp = system->value;
+    if (attributes == nullptr) { throw std::runtime_error("Parameter \"attributes\" must not be null"); }
+    auto attributes_cpp = static_cast<ifcopenshell_pset_props_t*>(attributes);
+        ifcapi::bindings::system_edit_system(file_cpp, system_cpp, attributes_cpp);
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -16698,6 +17326,46 @@ bool ifcopenshell_unit_convert_unit(double value, ifcopenshell_instance_t* from_
     if (to_unit == nullptr) { throw std::runtime_error("Handle parameter \"to_unit\" must not be null"); }
     auto to_unit_cpp = &to_unit->value;
         *out_result = static_cast<double>(ifcapi::bindings::unit_convert_unit(value_cpp, from_unit_cpp, to_unit_cpp));
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_unit_edit_derived_unit(ifcopenshell_file_t* file, ifcopenshell_instance_t* unit, void* attributes) {
+    try {
+        ifcopenshell_clear_error();
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    if (unit == nullptr) { throw std::runtime_error("Handle parameter \"unit\" must not be null"); }
+    auto unit_cpp = unit->value;
+    if (attributes == nullptr) { throw std::runtime_error("Parameter \"attributes\" must not be null"); }
+    auto attributes_cpp = static_cast<ifcopenshell_pset_props_t*>(attributes);
+        ifcapi::bindings::unit_edit_derived_unit(file_cpp, unit_cpp, attributes_cpp);
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_unit_edit_monetary_unit(ifcopenshell_file_t* file, ifcopenshell_instance_t* unit, void* attributes) {
+    try {
+        ifcopenshell_clear_error();
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    if (unit == nullptr) { throw std::runtime_error("Handle parameter \"unit\" must not be null"); }
+    auto unit_cpp = unit->value;
+    if (attributes == nullptr) { throw std::runtime_error("Parameter \"attributes\" must not be null"); }
+    auto attributes_cpp = static_cast<ifcopenshell_pset_props_t*>(attributes);
+        ifcapi::bindings::unit_edit_monetary_unit(file_cpp, unit_cpp, attributes_cpp);
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());

@@ -13,6 +13,8 @@
 #include <string>
 #include <vector>
 
+struct ifcopenshell_pset_props_t;
+
 namespace ifcapi {
 namespace bindings {
 
@@ -93,6 +95,12 @@ IFCAPI_BINDING void layer_unassign_layer(
 IFCAPI_BINDING void layer_remove_layer(
     ifcopenshell::file* file,
     express::Base* layer);
+
+/** Edit a presentation layer using the shared attribute property writer. */
+IFCAPI_BINDING void layer_edit_layer(
+    ifcopenshell::file* file,
+    express::Base layer,
+    ifcopenshell_pset_props_t* attributes);
 
 } // namespace bindings
 } // namespace ifcapi

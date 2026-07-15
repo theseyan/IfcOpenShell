@@ -18,7 +18,7 @@
 from typing import Any
 
 import ifcopenshell
-from ifcopenshell.api.attribute.edit_attributes import _edit_attributes
+from ifcopenshell.api.attribute.edit_attributes import _edit_named_attributes
 
 
 def edit_structural_analysis_model(
@@ -33,4 +33,4 @@ def edit_structural_analysis_model(
     :param attributes: a dictionary of attribute names and values.
     :return: None
     """
-    _edit_attributes(file, structural_analysis_model, attributes)
+    _edit_named_attributes(file, structural_analysis_model, attributes, "structural_edit_structural_analysis_model")

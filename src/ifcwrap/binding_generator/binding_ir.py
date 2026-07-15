@@ -219,6 +219,7 @@ class CallIR:
     params: tuple[ParamSpec, ...]
     operation: OperationIR
     doc: str | None = None
+    public_module: str | None = None
 
 
 @dataclass(frozen=True)
@@ -361,6 +362,7 @@ def lower_call(call: CallSpec) -> CallIR:
         params=call.params,
         operation=operation,
         doc=call.doc,
+        public_module=call.public_module,
     )
 
 

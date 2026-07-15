@@ -1086,6 +1086,14 @@ void style_edit_surface_style(
     style_edit_surface_style_impl(file, ifcapi::detail::deref_or_empty(style), attributes);
 }
 
+void style_edit_presentation_style(
+    ifcopenshell::file* file,
+    express::Base presentation_style,
+    ifcopenshell_pset_props_t* attributes)
+{
+    detail::edit_named_attributes(file, presentation_style, attributes);
+}
+
 express::Base style_assign_item_style(
     ifcopenshell::file* file,
     const StyleAssignItemStyleOptions& options) {

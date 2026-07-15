@@ -51,6 +51,7 @@ class CppSpecFunction:
     param_defaults: dict[str, bool]
     receiver: str | None = None
     doc: str | None = None
+    public_module: str | None = None
 
 
 @dataclass(frozen=True)
@@ -321,7 +322,13 @@ def discover_cpp_spec_result_structs(
 
 
 CppSpecSignature = tuple[
-    frozenset[str], dict[str, frozenset[str]], str | None, str | None, str | None
+    frozenset[str],
+    dict[str, frozenset[str]],
+    dict[str, bool],
+    str | None,
+    str | None,
+    str | None,
+    str | None,
 ]
 
 
@@ -388,6 +395,7 @@ def _discover_spec_signatures(
                 None,
                 first_param_type,
                 _clean_doc_comment(match.group("doc")),
+                None,
             )
         )
     return {name: tuple(entries) for name, entries in signatures.items()}
@@ -449,6 +457,7 @@ def discover_cpp_spec_functions(
                 None,
                 None,
                 function.doc,
+                function.header.stem,
             ),
         )
     if not combined:
@@ -468,6 +477,7 @@ def discover_cpp_spec_functions(
             receiver,
             first_param_type,
             doc,
+            public_module,
         ) in combined[name]:
             selected_overloads = overloads
             if len(overloads) != 1 and first_param_type is not None:
@@ -491,6 +501,7 @@ def discover_cpp_spec_functions(
                     param_defaults=param_defaults,
                     receiver=receiver,
                     doc=doc,
+                    public_module=public_module,
                 )
             )
     return tuple(result)
@@ -794,6 +805,7 @@ def lower_cpp_spec_functions_to_calls(
                     else DirectFunctionPolicyOp(cpp_name=cpp_name)
                 ),
                 doc=function.doc,
+                public_module=function.public_module,
             )
         )
     return tuple(calls)

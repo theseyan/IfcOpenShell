@@ -82,6 +82,7 @@ class CallSpec:
     params: tuple[ParamSpec, ...]
     policy_operation: object
     doc: str | None = None
+    public_module: str | None = None
 
 
 @dataclass(frozen=True)

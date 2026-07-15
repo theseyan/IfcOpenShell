@@ -17,10 +17,12 @@
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
 import ifcopenshell
-import ifcopenshell.util.element
+from ifcopenshell.api.boundary import _capi
 
 
-def remove_boundary(file: ifcopenshell.file, boundary: ifcopenshell.entity_instance) -> None:
+def remove_boundary(
+    file: ifcopenshell.file, boundary: ifcopenshell.entity_instance
+) -> None:
     """Removes a space boundary
 
     The relating space or related building element is untouched. Only the
@@ -38,11 +40,9 @@ def remove_boundary(file: ifcopenshell.file, boundary: ifcopenshell.entity_insta
         # Let's remove it!
         ifcopenshell.api.boundary.remove_boundary(model, boundary=boundary)
     """
-    geometry = boundary.ConnectionGeometry
-    if geometry:
-        boundary.ConnectionGeometry = None
-        ifcopenshell.util.element.remove_deep2(file, geometry)
-    history = boundary.OwnerHistory
-    file.remove(boundary)
-    if history:
-        ifcopenshell.util.element.remove_deep2(file, history)
+    _capi.call_status(
+        "boundary_remove_boundary",
+        "Failed to remove boundary",
+        _capi.file_handle(file),
+        _capi.instance_handle(boundary),
+    )

@@ -12,6 +12,8 @@
 #include <optional>
 #include <vector>
 
+struct ifcopenshell_pset_props_t;
+
 namespace ifcapi {
 namespace bindings {
 
@@ -116,6 +118,18 @@ IFCAPI_BINDING void document_remove_reference(
 IFCAPI_BINDING void document_remove_information(
     ifcopenshell::file* file,
     express::Base* information);
+
+/** Edit an IfcDocumentInformation using the shared attribute property writer. */
+IFCAPI_BINDING void document_edit_information(
+    ifcopenshell::file* file,
+    express::Base information,
+    ifcopenshell_pset_props_t* attributes);
+
+/** Edit an IfcDocumentReference using the shared attribute property writer. */
+IFCAPI_BINDING void document_edit_reference(
+    ifcopenshell::file* file,
+    express::Base reference,
+    ifcopenshell_pset_props_t* attributes);
 
 } // namespace bindings
 } // namespace ifcapi

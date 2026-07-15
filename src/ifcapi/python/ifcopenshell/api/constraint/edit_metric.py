@@ -18,7 +18,7 @@
 from typing import Any
 
 import ifcopenshell
-from ifcopenshell.api.attribute.edit_attributes import _edit_attributes
+from ifcopenshell.api.attribute.edit_attributes import _edit_named_attributes
 
 
 def edit_metric(file: ifcopenshell.file, metric: ifcopenshell.entity_instance, attributes: dict[str, Any]) -> None:
@@ -41,4 +41,4 @@ def edit_metric(file: ifcopenshell.file, metric: ifcopenshell.entity_instance, a
         ifcopenshell.api.constraint.edit_metric(model,
             metric=metric, attributes={"ConstraintGrade": "HARD"})
     """
-    _edit_attributes(file, metric, attributes)
+    _edit_named_attributes(file, metric, attributes, "constraint_edit_metric")

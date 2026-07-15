@@ -18,7 +18,7 @@
 from typing import Any
 
 import ifcopenshell
-from ifcopenshell.api.attribute.edit_attributes import _edit_attributes
+from ifcopenshell.api.attribute.edit_attributes import _edit_named_attributes
 
 
 def edit_reference(
@@ -43,4 +43,4 @@ def edit_reference(
         ifcopenshell.api.library.edit_reference(model,
             reference=reference, attributes={"Identification": "http://example.org/digitaltwin#AHU01"})
     """
-    _edit_attributes(file, reference, attributes)
+    _edit_named_attributes(file, reference, attributes, "library_edit_reference")

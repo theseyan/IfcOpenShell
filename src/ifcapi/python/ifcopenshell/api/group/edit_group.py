@@ -18,7 +18,7 @@
 from typing import Any
 
 import ifcopenshell
-from ifcopenshell.api.attribute.edit_attributes import _edit_attributes
+from ifcopenshell.api.attribute.edit_attributes import _edit_named_attributes
 
 
 def edit_group(file: ifcopenshell.file, group: ifcopenshell.entity_instance, attributes: dict[str, Any]) -> None:
@@ -39,4 +39,4 @@ def edit_group(file: ifcopenshell.file, group: ifcopenshell.entity_instance, att
         ifcopenshell.api.group.edit_group(model,
             group=group, attributes={"Description": "All furniture and joinery included in the unit"})
     """
-    _edit_attributes(file, group, attributes)
+    _edit_named_attributes(file, group, attributes, "group_edit_group")

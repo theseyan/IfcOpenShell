@@ -168,5 +168,13 @@ void drawing_unassign_product(
     }
 }
 
+void drawing_edit_text_literal(
+    ifcopenshell::file* file,
+    express::Base text_literal,
+    ifcopenshell_pset_props_t* attributes)
+{
+    detail::edit_named_attributes(file, text_literal, attributes);
+}
+
 } // namespace bindings
 } // namespace ifcapi

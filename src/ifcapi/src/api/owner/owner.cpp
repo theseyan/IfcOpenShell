@@ -419,5 +419,53 @@ void owner_unassign_actor(
     }
 }
 
+void owner_edit_actor(
+    ifcopenshell::file* file,
+    express::Base actor,
+    ifcopenshell_pset_props_t* attributes)
+{
+    detail::edit_named_attributes(file, actor, attributes);
+}
+
+void owner_edit_address(
+    ifcopenshell::file* file,
+    express::Base address,
+    ifcopenshell_pset_props_t* attributes)
+{
+    detail::edit_named_attributes(file, address, attributes);
+}
+
+void owner_edit_application(
+    ifcopenshell::file* file,
+    express::Base application,
+    ifcopenshell_pset_props_t* attributes)
+{
+    detail::edit_named_attributes(file, application, attributes);
+}
+
+void owner_edit_organisation(
+    ifcopenshell::file* file,
+    express::Base organisation,
+    ifcopenshell_pset_props_t* attributes)
+{
+    detail::edit_named_attributes(file, organisation, attributes);
+}
+
+void owner_edit_person(
+    ifcopenshell::file* file,
+    express::Base person,
+    ifcopenshell_pset_props_t* attributes)
+{
+    detail::edit_named_attributes(file, person, attributes);
+}
+
+void owner_edit_role(
+    ifcopenshell::file* file,
+    express::Base role,
+    ifcopenshell_pset_props_t* attributes)
+{
+    detail::edit_named_attributes(file, role, attributes);
+}
+
 } // namespace bindings
 } // namespace ifcapi

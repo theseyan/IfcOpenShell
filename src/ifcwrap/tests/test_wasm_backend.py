@@ -73,6 +73,7 @@ def _make_function(
     returns: TypeSpec | None = None,
     receiver: str | None = None,
     doc: str | None = None,
+    public_module: str | None = None,
 ) -> CFunctionIR:
     if returns is None:
         returns = TypeSpec(kind="void")
@@ -118,6 +119,7 @@ def _make_function(
         returns=returns,
         receiver=receiver,
         doc=doc,
+        public_module=public_module,
     )
 
 
@@ -162,6 +164,7 @@ class TestHostMetadata:
                 ),
             ),
             operation=DirectCallOp(cpp_name="demo_use"),
+            public_module="demo",
         )
 
         metadata = _finalize_function(call, _make_ir())
@@ -169,6 +172,7 @@ class TestHostMetadata:
 
         assert params["properties"].semantic == "property_map"
         assert params["opaque"].semantic is None
+        assert metadata.public_module == "demo"
 
 
 class TestWasmTypescript:
@@ -1211,6 +1215,57 @@ class TestWasmApiBridge:
         )
         assert "disposeAll(temps);" in code
         assert "return wrapEntity(shell, result) as Entity;" in code
+
+    def test_contract_modules_retain_first_prefix_compatibility_aliases(self):
+        functions = {
+            name: _make_function(c_name=name, public_module=public_module)
+            for name, public_module in (
+                ("ifcopenshell_material_edit_material", "material"),
+                ("ifcopenshell_material_reorder_set_item", "material"),
+                ("ifcopenshell_shape_assign_representation", "shape"),
+                ("ifcopenshell_shape_builder_get_polyline_coords", "shape_builder"),
+                ("ifcopenshell_shape_builder_set_polyline_coords", "shape_builder"),
+                ("ifcopenshell_pset_template_edit_pset_template", "pset_template"),
+            )
+        }
+        metadata = _make_metadata(c_prefix="ifcopenshell", functions=functions)
+
+        declarations = render_typescript_declarations(metadata)
+        glue = render_js_glue(metadata)
+        bridge = render_api_direct(metadata)
+
+        assert "export interface MaterialReorderApi" not in bridge
+        assert "editMaterial(): void;" in bridge
+        assert "reorderSetItem(): void;" in bridge
+        assert "export interface ShapeBuilderApi" in bridge
+        assert "getPolylineCoords(): void;" in bridge
+        assert "setPolylineCoords(): void;" in bridge
+        assert "assignRepresentation(): void;" in bridge
+        assert "builderGetPolylineCoords(): void;" in bridge
+        assert "builderSetPolylineCoords(): void;" in bridge
+        assert "export interface PsetTemplateApi" in bridge
+        assert "editPsetTemplate(): void;" in bridge
+        assert "templateEditPsetTemplate(): void;" in bridge
+        assert bridge.count("const shapeBuilderApi = Object.freeze({") == 1
+        assert "shapeBuilder: shapeBuilderApi," in bridge
+        assert "shape_builder: shapeBuilderApi," in bridge
+        assert "shape_builder: Object.freeze({" not in bridge
+        assert bridge.count("const psetTemplateApi = Object.freeze({") == 1
+        assert "psetTemplate: psetTemplateApi," in bridge
+        assert "pset_template: psetTemplateApi," in bridge
+        assert "pset_template: Object.freeze({" not in bridge
+
+        assert "material: IfcOpenshellMaterialModule;" in declarations
+        assert "material_reorder: IfcOpenshellMaterialReorderModule;" not in declarations
+        assert "shape_builder: IfcOpenshellShapeBuilderModule;" in declarations
+        assert "shape: IfcOpenshellShapeModule;" in declarations
+        assert "pset_template: IfcOpenshellPsetTemplateModule;" in declarations
+        assert "pset: IfcOpenshellPsetModule;" in declarations
+        assert "material: Object.freeze({" in glue
+        assert "shape_builder: Object.freeze({" in glue
+        assert "shape: Object.freeze({" in glue
+        assert "pset_template: Object.freeze({" in glue
+        assert "pset: Object.freeze({" in glue
 
     def test_generates_exact_raw_api_members_and_signatures(self):
         metadata = _make_metadata(

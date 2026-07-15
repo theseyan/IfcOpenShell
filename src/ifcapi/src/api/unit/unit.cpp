@@ -389,6 +389,22 @@ express::Base unit_add_derived_unit(
     return result;
 }
 
+void unit_edit_derived_unit(
+    ifcopenshell::file* file,
+    express::Base derived_unit,
+    ifcopenshell_pset_props_t* attributes)
+{
+    detail::edit_named_attributes(file, derived_unit, attributes);
+}
+
+void unit_edit_monetary_unit(
+    ifcopenshell::file* file,
+    express::Base monetary_unit,
+    ifcopenshell_pset_props_t* attributes)
+{
+    detail::edit_named_attributes(file, monetary_unit, attributes);
+}
+
 void unit_unassign_unit(
     ifcopenshell::file* file,
     const std::vector<express::Base>& units)

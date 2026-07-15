@@ -579,5 +579,21 @@ void classification_remove_classification(ifcopenshell::file* file, express::Bas
     }
 }
 
+void classification_edit_classification(
+    ifcopenshell::file* file,
+    express::Base classification,
+    ifcopenshell_pset_props_t* attributes)
+{
+    detail::edit_named_attributes(file, classification, attributes);
+}
+
+void classification_edit_reference(
+    ifcopenshell::file* file,
+    express::Base reference,
+    ifcopenshell_pset_props_t* attributes)
+{
+    detail::edit_named_attributes(file, reference, attributes);
+}
+
 } // namespace bindings
 } // namespace ifcapi

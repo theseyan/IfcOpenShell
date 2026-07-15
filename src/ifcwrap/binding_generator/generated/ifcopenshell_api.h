@@ -2380,6 +2380,10 @@ bool ifcopenshell_classification_add_classification(ifcopenshell_file_t* file, c
  * optional identification, name, and classification fields.
  */
 bool ifcopenshell_classification_add_reference(ifcopenshell_file_t* file, const ifcopenshell_classification_add_reference_options_t* options, ifcopenshell_instance_t** out_result);
+/** Edit an IfcClassification using the shared attribute property writer. */
+bool ifcopenshell_classification_edit_classification(ifcopenshell_file_t* file, ifcopenshell_instance_t* classification, void* attributes);
+/** Edit an IfcClassificationReference using the shared attribute property writer. */
+bool ifcopenshell_classification_edit_reference(ifcopenshell_file_t* file, ifcopenshell_instance_t* reference, void* attributes);
 /**
  * Return all classification references associated with an element.
  *
@@ -2492,6 +2496,10 @@ bool ifcopenshell_constraint_add_objective(ifcopenshell_file_t* file, ifcopenshe
  * new products are added to the existing relationship.
  */
 bool ifcopenshell_constraint_assign_constraint(ifcopenshell_file_t* file, const ifcopenshell_constraint_assign_constraint_options_t* options, ifcopenshell_instance_t** out_result);
+/** Edit an IfcMetric using the shared attribute property writer. */
+bool ifcopenshell_constraint_edit_metric(ifcopenshell_file_t* file, ifcopenshell_instance_t* metric, void* attributes);
+/** Edit an IfcObjective using the shared attribute property writer. */
+bool ifcopenshell_constraint_edit_objective(ifcopenshell_file_t* file, ifcopenshell_instance_t* objective, void* attributes);
 /**
  * Remove a constraint entity and clean up orphaned IfcRelAssociatesConstraint
  * relationships that reference it.
@@ -2820,6 +2828,10 @@ bool ifcopenshell_document_add_reference(ifcopenshell_file_t* file, ifcopenshell
  * already associated with the document are skipped.
  */
 bool ifcopenshell_document_assign_document(ifcopenshell_file_t* file, const ifcopenshell_document_assign_document_options_t* options, ifcopenshell_instance_t** out_result);
+/** Edit an IfcDocumentInformation using the shared attribute property writer. */
+bool ifcopenshell_document_edit_information(ifcopenshell_file_t* file, ifcopenshell_instance_t* information, void* attributes);
+/** Edit an IfcDocumentReference using the shared attribute property writer. */
+bool ifcopenshell_document_edit_reference(ifcopenshell_file_t* file, ifcopenshell_instance_t* reference, void* attributes);
 /**
  * Remove an IfcDocumentInformation and its entire document tree.
  *
@@ -2858,6 +2870,8 @@ bool ifcopenshell_document_unassign_document(ifcopenshell_file_t* file, const if
  * @return IfcRelAssignsToProduct relationship, or no result for a duplicate or failure.
  */
 bool ifcopenshell_drawing_assign_product(ifcopenshell_file_t* file, const ifcopenshell_drawing_assign_product_options_t* options, ifcopenshell_instance_t** out_result);
+/** Edit an IfcTextLiteral using the shared attribute property writer. */
+bool ifcopenshell_drawing_edit_text_literal(ifcopenshell_file_t* file, ifcopenshell_instance_t* text_literal, void* attributes);
 /**
  * Remove a product assignment from an annotation object.
  *
@@ -3701,6 +3715,8 @@ bool ifcopenshell_group_add_group(ifcopenshell_file_t* file, const ifcopenshell_
  * Products already in the group are skipped.
  */
 bool ifcopenshell_group_assign_group(ifcopenshell_file_t* file, const ifcopenshell_group_assign_group_options_t* options, ifcopenshell_instance_t** out_result);
+/** Edit an IfcGroup using the shared attribute property writer. */
+bool ifcopenshell_group_edit_group(ifcopenshell_file_t* file, ifcopenshell_instance_t* group, void* attributes);
 /**
  * Remove a group and its relationships.
  *
@@ -3753,6 +3769,8 @@ bool ifcopenshell_layer_add_layer_with_style(ifcopenshell_file_t* file, const ch
  * @param layer IfcPresentationLayerAssignment or IfcPresentationLayerWithStyle.
  */
 bool ifcopenshell_layer_assign_layer(ifcopenshell_file_t* file, const ifcopenshell_instance_list_t* items, ifcopenshell_instance_t* layer);
+/** Edit a presentation layer using the shared attribute property writer. */
+bool ifcopenshell_layer_edit_layer(ifcopenshell_file_t* file, ifcopenshell_instance_t* layer, void* attributes);
 /**
  * Remove a presentation layer entity from the file.
  *
@@ -3788,6 +3806,13 @@ bool ifcopenshell_library_add_reference(ifcopenshell_file_t* file, ifcopenshell_
  * existing relationship is present, new products are merged into it.
  */
 bool ifcopenshell_library_assign_reference(ifcopenshell_file_t* file, const ifcopenshell_library_assign_reference_options_t* options, ifcopenshell_instance_t** out_result);
+/**
+ * Edit an IfcLibraryInformation and apply VersionDate schema conversion.
+ * Date-time property entries are stored as IFC4 strings or IFC2X3 dates.
+ */
+bool ifcopenshell_library_edit_library(ifcopenshell_file_t* file, ifcopenshell_instance_t* library, void* attributes);
+/** Edit an IfcLibraryReference using the shared attribute property writer. */
+bool ifcopenshell_library_edit_reference(ifcopenshell_file_t* file, ifcopenshell_instance_t* reference, void* attributes);
 /**
  * Set an IfcLibraryInformation VersionDate from an ISO-8601 date-time.
  *
@@ -3862,6 +3887,18 @@ bool ifcopenshell_material_assign_profile(ifcopenshell_file_t* file, ifcopenshel
  * styles are reused.
  */
 bool ifcopenshell_material_copy_material(ifcopenshell_file_t* file, ifcopenshell_instance_t* material, ifcopenshell_instance_t** out_result);
+/** Edit an IfcMaterial entity assigned to an element. */
+bool ifcopenshell_material_edit_assigned_material(ifcopenshell_file_t* file, ifcopenshell_instance_t* element, void* attributes);
+/** Edit an IfcMaterialConstituent and replace its Material reference. */
+bool ifcopenshell_material_edit_constituent(ifcopenshell_file_t* file, ifcopenshell_instance_t* constituent, void* attributes, ifcopenshell_instance_t* material);
+/** Edit an IfcMaterialLayer and optionally replace its Material reference. */
+bool ifcopenshell_material_edit_layer(ifcopenshell_file_t* file, ifcopenshell_instance_t* layer, void* attributes, ifcopenshell_instance_t* material);
+/** Edit an IfcMaterialLayerSetUsage using the shared attribute property writer. */
+bool ifcopenshell_material_edit_layer_usage(ifcopenshell_file_t* file, ifcopenshell_instance_t* usage, void* attributes);
+/** Edit an IfcMaterial using the shared attribute property writer. */
+bool ifcopenshell_material_edit_material(ifcopenshell_file_t* file, ifcopenshell_instance_t* material, void* attributes);
+/** Edit an IfcMaterialProfile and optionally replace its profile or material. */
+bool ifcopenshell_material_edit_profile(ifcopenshell_file_t* file, ifcopenshell_instance_t* profile, void* attributes, ifcopenshell_instance_t* profile_def, ifcopenshell_instance_t* material);
 /**
  * Edit attributes of an IfcMaterialProfileSetUsage.
  *
@@ -4063,6 +4100,18 @@ bool ifcopenshell_owner_assign_actor(ifcopenshell_file_t* file, const ifcopenshe
  * @return Newly created IfcOwnerHistory, or no result if creation fails.
  */
 bool ifcopenshell_owner_create_owner_history(ifcopenshell_file_t* file, const ifcopenshell_owner_create_owner_history_options_t* options, ifcopenshell_instance_t** out_result);
+/** Edit an IfcActor using the shared attribute property writer. */
+bool ifcopenshell_owner_edit_actor(ifcopenshell_file_t* file, ifcopenshell_instance_t* actor, void* attributes);
+/** Edit an IfcAddress using the shared attribute property writer. */
+bool ifcopenshell_owner_edit_address(ifcopenshell_file_t* file, ifcopenshell_instance_t* address, void* attributes);
+/** Edit an IfcApplication using the shared attribute property writer. */
+bool ifcopenshell_owner_edit_application(ifcopenshell_file_t* file, ifcopenshell_instance_t* application, void* attributes);
+/** Edit an IfcOrganization using the shared attribute property writer. */
+bool ifcopenshell_owner_edit_organisation(ifcopenshell_file_t* file, ifcopenshell_instance_t* organisation, void* attributes);
+/** Edit an IfcPerson using the shared attribute property writer. */
+bool ifcopenshell_owner_edit_person(ifcopenshell_file_t* file, ifcopenshell_instance_t* person, void* attributes);
+/** Edit an IfcActorRole using the shared attribute property writer. */
+bool ifcopenshell_owner_edit_role(ifcopenshell_file_t* file, ifcopenshell_instance_t* role, void* attributes);
 /**
  * Remove an IfcActor (or subclass) from the file.
  *
@@ -4464,6 +4513,8 @@ bool ifcopenshell_pset_template_create_from_files(const char* schema_identifier,
  * Enumerators value leaves the current enumeration unchanged.
  */
 bool ifcopenshell_pset_template_edit_prop_template(ifcopenshell_file_t* file, const ifcopenshell_pset_template_edit_prop_template_options_t* options);
+/** Edit an IfcPropertySetTemplate using the shared attribute property writer. */
+bool ifcopenshell_pset_template_edit_pset_template(ifcopenshell_file_t* file, ifcopenshell_instance_t* pset_template, void* attributes);
 /**
  * Return property set templates applicable to an IFC class and predefined type.
  *
@@ -4625,6 +4676,10 @@ bool ifcopenshell_resource_assign_resource(ifcopenshell_file_t* file, const ifco
 bool ifcopenshell_resource_calculate_resource_usage(ifcopenshell_file_t* file, ifcopenshell_instance_t* resource);
 /** Calculate ScheduleWork from EPset_Productivity and the first applicable task/product assignments. */
 bool ifcopenshell_resource_calculate_resource_work(ifcopenshell_file_t* file, ifcopenshell_instance_t* resource);
+/** Edit an IfcResource using the shared attribute property writer. */
+bool ifcopenshell_resource_edit_resource(ifcopenshell_file_t* file, ifcopenshell_instance_t* resource, void* attributes);
+/** Edit an IfcPhysicalQuantity using the shared attribute property writer. */
+bool ifcopenshell_resource_edit_resource_quantity(ifcopenshell_file_t* file, ifcopenshell_instance_t* physical_quantity, void* attributes);
 /**
  * Edit attributes of an IfcResourceTime entity.
  *
@@ -5790,6 +5845,8 @@ bool ifcopenshell_structural_assign_structural_analysis_model(ifcopenshell_file_
  * @return The IfcRelServicesBuildings relationship.
  */
 bool ifcopenshell_structural_assign_to_building(ifcopenshell_file_t* file, ifcopenshell_instance_t* structural_analysis_model, ifcopenshell_instance_t* building, ifcopenshell_instance_t* owner_history, ifcopenshell_instance_t** out_result);
+/** Edit an IfcStructuralAnalysisModel using the shared attribute property writer. */
+bool ifcopenshell_structural_edit_structural_analysis_model(ifcopenshell_file_t* file, ifcopenshell_instance_t* structural_analysis_model, void* attributes);
 /**
  * Edit attributes of an IfcBoundaryCondition subclass.
  *
@@ -5827,6 +5884,10 @@ bool ifcopenshell_structural_edit_structural_connection_cs(ifcopenshell_file_t* 
  * @param axis 3-element direction ratios.
  */
 bool ifcopenshell_structural_edit_structural_item_axis(ifcopenshell_file_t* file, ifcopenshell_instance_t* structural_item, const ifcopenshell_double_list_t* axis);
+/** Edit an IfcStructuralLoad using the shared attribute property writer. */
+bool ifcopenshell_structural_edit_structural_load(ifcopenshell_file_t* file, ifcopenshell_instance_t* structural_load, void* attributes);
+/** Edit an IfcStructuralLoadCase using the shared attribute property writer. */
+bool ifcopenshell_structural_edit_structural_load_case(ifcopenshell_file_t* file, ifcopenshell_instance_t* structural_load_case, void* attributes);
 /**
  * Remove an IfcStructuralAnalysisModel from the file.
  *
@@ -5965,6 +6026,8 @@ bool ifcopenshell_style_assign_material_style(ifcopenshell_file_t* file, ifcopen
  * @return List of newly created IfcStyledItem entities.
  */
 bool ifcopenshell_style_assign_representation_styles(ifcopenshell_file_t* file, ifcopenshell_instance_t* shape_representation, const ifcopenshell_instance_list_t* styles, bool should_use_presentation_style_assignment, bool replace_previous_same_type_style, ifcopenshell_parse_instance_list_t** out_result);
+/** Edit an IfcPresentationStyle using the shared attribute property writer. */
+bool ifcopenshell_style_edit_presentation_style(ifcopenshell_file_t* file, ifcopenshell_instance_t* style, void* attributes);
 /**
  * Edit attributes of an IfcSurfaceStyle or its nested surface styles.
  *
@@ -6081,6 +6144,8 @@ bool ifcopenshell_system_connect_port(ifcopenshell_file_t* file, const ifcopensh
  * clears FlowDirection on both sides.
  */
 bool ifcopenshell_system_disconnect_port(ifcopenshell_file_t* file, ifcopenshell_instance_t* port);
+/** Edit an IfcSystem using the shared attribute property writer. */
+bool ifcopenshell_system_edit_system(ifcopenshell_file_t* file, ifcopenshell_instance_t* system, void* attributes);
 /**
  * Remove a system and its relationships.
  *
@@ -6232,6 +6297,10 @@ bool ifcopenshell_unit_convert(double value, const char* from_prefix, const char
  * @return The converted value.
  */
 bool ifcopenshell_unit_convert_unit(double value, ifcopenshell_instance_t* from_unit, ifcopenshell_instance_t* to_unit, double* out_result);
+/** Edit an IfcDerivedUnit using the shared attribute property writer. */
+bool ifcopenshell_unit_edit_derived_unit(ifcopenshell_file_t* file, ifcopenshell_instance_t* unit, void* attributes);
+/** Edit an IfcMonetaryUnit using the shared attribute property writer. */
+bool ifcopenshell_unit_edit_monetary_unit(ifcopenshell_file_t* file, ifcopenshell_instance_t* unit, void* attributes);
 /**
  * Edit a named unit without owner-history or predefined-type synchronization.
  *

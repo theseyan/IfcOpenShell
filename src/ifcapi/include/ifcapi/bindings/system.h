@@ -12,6 +12,8 @@
 #include <string>
 #include <vector>
 
+struct ifcopenshell_pset_props_t;
+
 namespace ifcapi {
 namespace bindings {
 
@@ -260,6 +262,12 @@ IFCAPI_BINDING void system_unassign_port(
 IFCAPI_BINDING void system_unassign_system(
     ifcopenshell::file* file,
     const SystemUnassignSystemOptions& options);
+
+/** Edit an IfcSystem using the shared attribute property writer. */
+IFCAPI_BINDING void system_edit_system(
+    ifcopenshell::file* file,
+    express::Base system,
+    ifcopenshell_pset_props_t* attributes);
 
 } // namespace bindings
 } // namespace ifcapi

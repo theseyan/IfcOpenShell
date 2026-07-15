@@ -151,6 +151,12 @@ IFCAPI_BINDING void pset_template_edit_prop_template(
     ifcopenshell::file* file,
     const PsetTemplateEditPropTemplateOptions& options);
 
+/** Edit an IfcPropertySetTemplate using the shared attribute property writer. */
+IFCAPI_BINDING void pset_template_edit_pset_template(
+    ifcopenshell::file* file,
+    express::Base pset_template,
+    ifcopenshell_pset_props_t* attributes);
+
 /**
  * Remove a property set template and its child property templates.
  *

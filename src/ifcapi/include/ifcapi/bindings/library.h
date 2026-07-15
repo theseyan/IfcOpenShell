@@ -13,6 +13,8 @@
 #include <string>
 #include <vector>
 
+struct ifcopenshell_pset_props_t;
+
 namespace ifcapi {
 namespace bindings {
 
@@ -108,6 +110,21 @@ IFCAPI_BINDING void library_remove_reference(
 IFCAPI_BINDING void library_remove_library(
     ifcopenshell::file* file,
     express::Base* library);
+
+/**
+ * Edit an IfcLibraryInformation and apply VersionDate schema conversion.
+ * Date-time property entries are stored as IFC4 strings or IFC2X3 dates.
+ */
+IFCAPI_BINDING void library_edit_library(
+    ifcopenshell::file* file,
+    express::Base library,
+    ifcopenshell_pset_props_t* attributes);
+
+/** Edit an IfcLibraryReference using the shared attribute property writer. */
+IFCAPI_BINDING void library_edit_reference(
+    ifcopenshell::file* file,
+    express::Base reference,
+    ifcopenshell_pset_props_t* attributes);
 
 } // namespace bindings
 } // namespace ifcapi

@@ -607,5 +607,29 @@ void structural_remove_structural_connection_condition(
     }
 }
 
+void structural_edit_structural_analysis_model(
+    ifcopenshell::file* file,
+    express::Base analysis_model,
+    ifcopenshell_pset_props_t* attributes)
+{
+    detail::edit_named_attributes(file, analysis_model, attributes);
+}
+
+void structural_edit_structural_load(
+    ifcopenshell::file* file,
+    express::Base load,
+    ifcopenshell_pset_props_t* attributes)
+{
+    detail::edit_named_attributes(file, load, attributes);
+}
+
+void structural_edit_structural_load_case(
+    ifcopenshell::file* file,
+    express::Base load_case,
+    ifcopenshell_pset_props_t* attributes)
+{
+    detail::edit_named_attributes(file, load_case, attributes);
+}
+
 } // namespace bindings
 } // namespace ifcapi

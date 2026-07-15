@@ -37,6 +37,14 @@ def _camel_name(name: str) -> str:
     return parts[0] + "".join(part.capitalize() for part in parts[1:])
 
 
+def _module_public_name(name: str) -> str:
+    return _camel_name(name)
+
+
+def _module_type_name(name: str) -> str:
+    return "".join(part.capitalize() for part in name.split("_") if part) + "Api"
+
+
 def _public_name(function: CFunctionIR, c_prefix: str) -> str:
     name = _method_name(function.c_name, c_prefix)
     if function.receiver is not None:
@@ -55,10 +63,34 @@ def _public_module_member(
         return "geom", _camel_name(function.c_name.removeprefix("ifcopenshell_geom_"))
     if c_prefix == "ifcopenshell" and function.c_name.startswith("ifcopenshell_"):
         rest = function.c_name.removeprefix("ifcopenshell_")
+        public_module = function.public_module
+        if public_module and rest.startswith(f"{public_module}_"):
+            return public_module, _camel_name(rest.removeprefix(f"{public_module}_"))
         module, sep, member = rest.partition("_")
         if sep and module and member:
             return module, _camel_name(member)
     return None
+
+
+def _public_module_members(
+    function: CFunctionIR, c_prefix: str
+) -> tuple[tuple[str, str], ...]:
+    """Return the canonical module member and retained compatibility aliases."""
+    member = _public_module_member(function, c_prefix)
+    if member is None:
+        return ()
+    result = [member]
+    if c_prefix == "ifcopenshell" and function.c_name.startswith("ifcopenshell_"):
+        rest = function.c_name.removeprefix("ifcopenshell_")
+        legacy_module, separator, legacy_member = rest.partition("_")
+        legacy = (
+            (legacy_module, _camel_name(legacy_member))
+            if separator and legacy_module and legacy_member
+            else None
+        )
+        if legacy is not None and legacy != member:
+            result.append(legacy)
+    return tuple(result)
 
 
 def _public_params(function: CFunctionIR) -> tuple[CParamIR, ...]:
@@ -124,7 +156,10 @@ __all__ = [
     "_buffer_size_function",
     "_camel_name",
     "_method_name",
+    "_module_public_name",
+    "_module_type_name",
     "_public_module_member",
+    "_public_module_members",
     "_public_name",
     "_public_params",
     "_snake_name",

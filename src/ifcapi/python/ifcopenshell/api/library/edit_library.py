@@ -15,12 +15,10 @@
 #
 # You should have received a copy of the GNU Lesser General Public License
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
-import datetime
 from typing import Any
 
 import ifcopenshell
-from ifcopenshell import _ifcopenshell_capi as _capi
-from ifcopenshell.api.attribute.edit_attributes import _edit_attributes
+from ifcopenshell.api.attribute.edit_attributes import _edit_named_attributes
 
 
 def edit_library(
@@ -46,13 +44,4 @@ def edit_library(
             attributes={"Description": "A Brickschema TTL including only mechanical distribution systems."})
     """
 
-    if "VersionDate" in attributes:
-        dt = attributes["VersionDate"]
-        if isinstance(dt, datetime.datetime):
-            _capi.library_edit_version_date(
-                file._handle, library._handle, dt.isoformat()
-            )
-            attributes = attributes.copy()
-            del attributes["VersionDate"]
-
-    _edit_attributes(file, library, attributes)
+    _edit_named_attributes(file, library, attributes, "library_edit_library")

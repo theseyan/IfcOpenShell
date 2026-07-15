@@ -349,5 +349,21 @@ void document_remove_information(
     remove_information_impl(file, detail::deref_or_empty(information));
 }
 
+void document_edit_information(
+    ifcopenshell::file* file,
+    express::Base information,
+    ifcopenshell_pset_props_t* attributes)
+{
+    detail::edit_named_attributes(file, information, attributes);
+}
+
+void document_edit_reference(
+    ifcopenshell::file* file,
+    express::Base reference,
+    ifcopenshell_pset_props_t* attributes)
+{
+    detail::edit_named_attributes(file, reference, attributes);
+}
+
 } // namespace bindings
 } // namespace ifcapi

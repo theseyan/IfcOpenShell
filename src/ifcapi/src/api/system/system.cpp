@@ -463,5 +463,13 @@ void system_unassign_system(
     group_unassign_group(file, opts);
 }
 
+void system_edit_system(
+    ifcopenshell::file* file,
+    express::Base system,
+    ifcopenshell_pset_props_t* attributes)
+{
+    detail::edit_named_attributes(file, system, attributes);
+}
+
 } // namespace bindings
 } // namespace ifcapi

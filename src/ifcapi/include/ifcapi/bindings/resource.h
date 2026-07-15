@@ -89,6 +89,18 @@ IFCAPI_BINDING void resource_edit_resource_time(
     express::Base* resource_time,
     ifcopenshell_pset_props_t* attributes);
 
+/** Edit an IfcResource using the shared attribute property writer. */
+IFCAPI_BINDING void resource_edit_resource(
+    ifcopenshell::file* file,
+    express::Base resource,
+    ifcopenshell_pset_props_t* attributes);
+
+/** Edit an IfcPhysicalQuantity using the shared attribute property writer. */
+IFCAPI_BINDING void resource_edit_resource_quantity(
+    ifcopenshell::file* file,
+    express::Base physical_quantity,
+    ifcopenshell_pset_props_t* attributes);
+
 } // namespace bindings
 } // namespace ifcapi
 

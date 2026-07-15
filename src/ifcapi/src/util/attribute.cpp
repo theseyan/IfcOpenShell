@@ -146,10 +146,7 @@ void attribute_edit_attributes(
         auto product_value = options.product;
         auto user_value = options.user.value_or(express::Base());
         auto application_value = options.application.value_or(express::Base());
-        if (!product_value) {
-            throw std::runtime_error("attribute_edit_attributes requires a product");
-        }
-        ifcapi::detail::apply_attribute_props(product_value, options.attributes);
+        ifcapi::detail::apply_named_attributes(product_value, options.attributes);
         if (options.sync_predefined_type) {
             sync_predefined_type(file, product_value);
         }
@@ -162,4 +159,29 @@ void attribute_edit_attributes(
 }
 
 } // namespace bindings
+
+namespace detail {
+
+void edit_named_attributes(
+    ifcopenshell::file* file,
+    express::Base target,
+    ifcopenshell_pset_props_t* attributes)
+{
+    ifcopenshell_clear_error();
+    try {
+        apply_named_attributes(target, attributes);
+    } catch (const std::exception& e) {
+        set_error(e.what());
+    }
+}
+
+void apply_named_attributes(express::Base target, ifcopenshell_pset_props_t* attributes)
+{
+    if (!target) {
+        throw std::runtime_error("Named attribute edit requires a target");
+    }
+    apply_attribute_props(target, attributes);
+}
+
+} // namespace detail
 } // namespace ifcapi

@@ -18,7 +18,7 @@
 from typing import Any
 
 import ifcopenshell
-from ifcopenshell.api.attribute.edit_attributes import _edit_attributes
+from ifcopenshell.api.attribute.edit_attributes import _edit_named_attributes
 
 
 def edit_derived_unit(file: ifcopenshell.file, unit: ifcopenshell.entity_instance, attributes: dict[str, Any]) -> None:
@@ -31,4 +31,4 @@ def edit_derived_unit(file: ifcopenshell.file, unit: ifcopenshell.entity_instanc
     :param attributes: a dictionary of attribute names and values.
     :return: None
     """
-    _edit_attributes(file, unit, attributes)
+    _edit_named_attributes(file, unit, attributes, "unit_edit_derived_unit")

@@ -800,6 +800,68 @@ void material_edit_profile_usage(
     }
 }
 
+void material_edit_material(
+    ifcopenshell::file* file,
+    express::Base material,
+    ifcopenshell_pset_props_t* attributes)
+{
+    detail::edit_named_attributes(file, material, attributes);
+}
+
+void material_edit_constituent(
+    ifcopenshell::file* file,
+    express::Base constituent,
+    ifcopenshell_pset_props_t* attributes,
+    std::optional<express::Base> material)
+{
+    detail::apply_named_attributes(constituent, attributes);
+    detail::write_ref_attr(constituent, "Material", material.value_or(express::Base()));
+}
+
+void material_edit_layer(
+    ifcopenshell::file* file,
+    express::Base layer,
+    ifcopenshell_pset_props_t* attributes,
+    std::optional<express::Base> material)
+{
+    detail::apply_named_attributes(layer, attributes);
+    if (material) {
+        detail::write_ref_attr(layer, "Material", material.value());
+    }
+}
+
+void material_edit_layer_usage(
+    ifcopenshell::file* file,
+    express::Base usage,
+    ifcopenshell_pset_props_t* attributes)
+{
+    detail::edit_named_attributes(file, usage, attributes);
+}
+
+void material_edit_assigned_material(
+    ifcopenshell::file* file,
+    express::Base element,
+    ifcopenshell_pset_props_t* attributes)
+{
+    detail::edit_named_attributes(file, element, attributes);
+}
+
+void material_edit_profile(
+    ifcopenshell::file* file,
+    express::Base profile,
+    ifcopenshell_pset_props_t* attributes,
+    std::optional<express::Base> profile_def,
+    std::optional<express::Base> material)
+{
+    detail::apply_named_attributes(profile, attributes);
+    if (material) {
+        detail::write_ref_attr(profile, "Material", material.value());
+    }
+    if (profile_def) {
+        detail::write_ref_attr(profile, "Profile", profile_def.value());
+    }
+}
+
 void material_assign_profile(
     ifcopenshell::file* file,
     express::Base* material_profile,

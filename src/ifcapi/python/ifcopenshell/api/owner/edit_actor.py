@@ -18,6 +18,7 @@
 from typing import Any
 
 import ifcopenshell
+from ifcopenshell.api.attribute.edit_attributes import _edit_named_attributes
 
 
 def edit_actor(file: ifcopenshell.file, actor: ifcopenshell.entity_instance, attributes: dict[str, Any]) -> None:
@@ -47,6 +48,4 @@ def edit_actor(file: ifcopenshell.file, actor: ifcopenshell.entity_instance, att
         ifcopenshell.api.actor.edit_actor(model,
             actor=actor, attributes={"Description": "Responsible for buildings A, B, and C."})
     """
-    from ifcopenshell.api.attribute.edit_attributes import _edit_attributes
-
-    _edit_attributes(file, actor, attributes)
+    _edit_named_attributes(file, actor, attributes, "owner_edit_actor")

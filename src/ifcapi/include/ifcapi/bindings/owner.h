@@ -11,6 +11,8 @@
 #include <optional>
 #include <string>
 
+struct ifcopenshell_pset_props_t;
+
 namespace ifcapi {
 namespace bindings {
 
@@ -327,6 +329,19 @@ IFCAPI_BINDING void owner_unassign_actor(
 IFCAPI_BINDING express::Base owner_update_owner_history(
     ifcopenshell::file* file,
     const OwnerUpdateOwnerHistoryOptions& options);
+
+/** Edit an IfcActor using the shared attribute property writer. */
+IFCAPI_BINDING void owner_edit_actor(ifcopenshell::file* file, express::Base actor, ifcopenshell_pset_props_t* attributes);
+/** Edit an IfcAddress using the shared attribute property writer. */
+IFCAPI_BINDING void owner_edit_address(ifcopenshell::file* file, express::Base address, ifcopenshell_pset_props_t* attributes);
+/** Edit an IfcApplication using the shared attribute property writer. */
+IFCAPI_BINDING void owner_edit_application(ifcopenshell::file* file, express::Base application, ifcopenshell_pset_props_t* attributes);
+/** Edit an IfcOrganization using the shared attribute property writer. */
+IFCAPI_BINDING void owner_edit_organisation(ifcopenshell::file* file, express::Base organisation, ifcopenshell_pset_props_t* attributes);
+/** Edit an IfcPerson using the shared attribute property writer. */
+IFCAPI_BINDING void owner_edit_person(ifcopenshell::file* file, express::Base person, ifcopenshell_pset_props_t* attributes);
+/** Edit an IfcActorRole using the shared attribute property writer. */
+IFCAPI_BINDING void owner_edit_role(ifcopenshell::file* file, express::Base role, ifcopenshell_pset_props_t* attributes);
 
 } // namespace bindings
 } // namespace ifcapi

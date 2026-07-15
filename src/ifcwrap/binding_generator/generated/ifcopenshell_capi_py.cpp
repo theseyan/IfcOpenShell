@@ -21607,6 +21607,100 @@ __cleanup:
     return __py_result;
 }
 
+static PyObject *py_ifcopenshell_classification_edit_classification(PyObject *self, PyObject *args) {
+    PyObject *__py_result = NULL;
+    bool ok = false;
+    PyObject *arg_file_obj = NULL;
+    ifcopenshell_file_t *arg_file = NULL;
+    PyObject *arg_classification_obj = NULL;
+    ifcopenshell_instance_t *arg_classification = NULL;
+    PyObject *arg_attributes_obj = NULL;
+    Py_buffer arg_attributes_view = {0};
+    void *arg_attributes = NULL;
+    int arg_attributes_has_view = 0;
+
+    if (!PyArg_ParseTuple(args, "OOO", &arg_file_obj, &arg_classification_obj, &arg_attributes_obj)) return NULL;
+
+    if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
+        goto __cleanup;
+    }
+    if (!extract_handle(arg_classification_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_classification, 0)) {
+        goto __cleanup;
+    }
+    if (PyCapsule_IsValid(arg_attributes_obj, NULL)) {
+        arg_attributes = PyCapsule_GetPointer(arg_attributes_obj, NULL);
+    } else if (PyObject_GetBuffer(arg_attributes_obj, &arg_attributes_view, PyBUF_SIMPLE) == 0) {
+        arg_attributes = arg_attributes_view.buf;
+        arg_attributes_has_view = 1;
+    } else {
+        PyErr_SetString(PyExc_TypeError, "Expected a capsule or buffer-compatible object");
+        goto __cleanup;
+    }
+
+    ifcopenshell_clear_error();
+    ok = ifcopenshell_classification_edit_classification(arg_file, arg_classification, arg_attributes);
+    if (!ok) {
+        raise_last_error("ifcopenshell_classification_edit_classification failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_classification_edit_classification failed");
+        goto __cleanup;
+    }
+    Py_INCREF(Py_None);
+    __py_result = Py_None;
+__cleanup:
+        if (arg_attributes_has_view) PyBuffer_Release(&arg_attributes_view);
+    return __py_result;
+}
+
+static PyObject *py_ifcopenshell_classification_edit_reference(PyObject *self, PyObject *args) {
+    PyObject *__py_result = NULL;
+    bool ok = false;
+    PyObject *arg_file_obj = NULL;
+    ifcopenshell_file_t *arg_file = NULL;
+    PyObject *arg_reference_obj = NULL;
+    ifcopenshell_instance_t *arg_reference = NULL;
+    PyObject *arg_attributes_obj = NULL;
+    Py_buffer arg_attributes_view = {0};
+    void *arg_attributes = NULL;
+    int arg_attributes_has_view = 0;
+
+    if (!PyArg_ParseTuple(args, "OOO", &arg_file_obj, &arg_reference_obj, &arg_attributes_obj)) return NULL;
+
+    if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
+        goto __cleanup;
+    }
+    if (!extract_handle(arg_reference_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_reference, 0)) {
+        goto __cleanup;
+    }
+    if (PyCapsule_IsValid(arg_attributes_obj, NULL)) {
+        arg_attributes = PyCapsule_GetPointer(arg_attributes_obj, NULL);
+    } else if (PyObject_GetBuffer(arg_attributes_obj, &arg_attributes_view, PyBUF_SIMPLE) == 0) {
+        arg_attributes = arg_attributes_view.buf;
+        arg_attributes_has_view = 1;
+    } else {
+        PyErr_SetString(PyExc_TypeError, "Expected a capsule or buffer-compatible object");
+        goto __cleanup;
+    }
+
+    ifcopenshell_clear_error();
+    ok = ifcopenshell_classification_edit_reference(arg_file, arg_reference, arg_attributes);
+    if (!ok) {
+        raise_last_error("ifcopenshell_classification_edit_reference failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_classification_edit_reference failed");
+        goto __cleanup;
+    }
+    Py_INCREF(Py_None);
+    __py_result = Py_None;
+__cleanup:
+        if (arg_attributes_has_view) PyBuffer_Release(&arg_attributes_view);
+    return __py_result;
+}
+
 static PyObject *py_ifcopenshell_classification_get_references(PyObject *self, PyObject *args) {
     PyObject *__py_result = NULL;
     bool ok = false;
@@ -21975,6 +22069,100 @@ static PyObject *py_ifcopenshell_constraint_assign_constraint(PyObject *self, Py
 __cleanup:
         release_option_refs(arg_options_refs, 5);
         free_input_constraint_assign_constraint_options(&arg_options);
+    return __py_result;
+}
+
+static PyObject *py_ifcopenshell_constraint_edit_metric(PyObject *self, PyObject *args) {
+    PyObject *__py_result = NULL;
+    bool ok = false;
+    PyObject *arg_file_obj = NULL;
+    ifcopenshell_file_t *arg_file = NULL;
+    PyObject *arg_metric_obj = NULL;
+    ifcopenshell_instance_t *arg_metric = NULL;
+    PyObject *arg_attributes_obj = NULL;
+    Py_buffer arg_attributes_view = {0};
+    void *arg_attributes = NULL;
+    int arg_attributes_has_view = 0;
+
+    if (!PyArg_ParseTuple(args, "OOO", &arg_file_obj, &arg_metric_obj, &arg_attributes_obj)) return NULL;
+
+    if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
+        goto __cleanup;
+    }
+    if (!extract_handle(arg_metric_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_metric, 0)) {
+        goto __cleanup;
+    }
+    if (PyCapsule_IsValid(arg_attributes_obj, NULL)) {
+        arg_attributes = PyCapsule_GetPointer(arg_attributes_obj, NULL);
+    } else if (PyObject_GetBuffer(arg_attributes_obj, &arg_attributes_view, PyBUF_SIMPLE) == 0) {
+        arg_attributes = arg_attributes_view.buf;
+        arg_attributes_has_view = 1;
+    } else {
+        PyErr_SetString(PyExc_TypeError, "Expected a capsule or buffer-compatible object");
+        goto __cleanup;
+    }
+
+    ifcopenshell_clear_error();
+    ok = ifcopenshell_constraint_edit_metric(arg_file, arg_metric, arg_attributes);
+    if (!ok) {
+        raise_last_error("ifcopenshell_constraint_edit_metric failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_constraint_edit_metric failed");
+        goto __cleanup;
+    }
+    Py_INCREF(Py_None);
+    __py_result = Py_None;
+__cleanup:
+        if (arg_attributes_has_view) PyBuffer_Release(&arg_attributes_view);
+    return __py_result;
+}
+
+static PyObject *py_ifcopenshell_constraint_edit_objective(PyObject *self, PyObject *args) {
+    PyObject *__py_result = NULL;
+    bool ok = false;
+    PyObject *arg_file_obj = NULL;
+    ifcopenshell_file_t *arg_file = NULL;
+    PyObject *arg_objective_obj = NULL;
+    ifcopenshell_instance_t *arg_objective = NULL;
+    PyObject *arg_attributes_obj = NULL;
+    Py_buffer arg_attributes_view = {0};
+    void *arg_attributes = NULL;
+    int arg_attributes_has_view = 0;
+
+    if (!PyArg_ParseTuple(args, "OOO", &arg_file_obj, &arg_objective_obj, &arg_attributes_obj)) return NULL;
+
+    if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
+        goto __cleanup;
+    }
+    if (!extract_handle(arg_objective_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_objective, 0)) {
+        goto __cleanup;
+    }
+    if (PyCapsule_IsValid(arg_attributes_obj, NULL)) {
+        arg_attributes = PyCapsule_GetPointer(arg_attributes_obj, NULL);
+    } else if (PyObject_GetBuffer(arg_attributes_obj, &arg_attributes_view, PyBUF_SIMPLE) == 0) {
+        arg_attributes = arg_attributes_view.buf;
+        arg_attributes_has_view = 1;
+    } else {
+        PyErr_SetString(PyExc_TypeError, "Expected a capsule or buffer-compatible object");
+        goto __cleanup;
+    }
+
+    ifcopenshell_clear_error();
+    ok = ifcopenshell_constraint_edit_objective(arg_file, arg_objective, arg_attributes);
+    if (!ok) {
+        raise_last_error("ifcopenshell_constraint_edit_objective failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_constraint_edit_objective failed");
+        goto __cleanup;
+    }
+    Py_INCREF(Py_None);
+    __py_result = Py_None;
+__cleanup:
+        if (arg_attributes_has_view) PyBuffer_Release(&arg_attributes_view);
     return __py_result;
 }
 
@@ -23400,6 +23588,100 @@ __cleanup:
     return __py_result;
 }
 
+static PyObject *py_ifcopenshell_document_edit_information(PyObject *self, PyObject *args) {
+    PyObject *__py_result = NULL;
+    bool ok = false;
+    PyObject *arg_file_obj = NULL;
+    ifcopenshell_file_t *arg_file = NULL;
+    PyObject *arg_information_obj = NULL;
+    ifcopenshell_instance_t *arg_information = NULL;
+    PyObject *arg_attributes_obj = NULL;
+    Py_buffer arg_attributes_view = {0};
+    void *arg_attributes = NULL;
+    int arg_attributes_has_view = 0;
+
+    if (!PyArg_ParseTuple(args, "OOO", &arg_file_obj, &arg_information_obj, &arg_attributes_obj)) return NULL;
+
+    if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
+        goto __cleanup;
+    }
+    if (!extract_handle(arg_information_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_information, 0)) {
+        goto __cleanup;
+    }
+    if (PyCapsule_IsValid(arg_attributes_obj, NULL)) {
+        arg_attributes = PyCapsule_GetPointer(arg_attributes_obj, NULL);
+    } else if (PyObject_GetBuffer(arg_attributes_obj, &arg_attributes_view, PyBUF_SIMPLE) == 0) {
+        arg_attributes = arg_attributes_view.buf;
+        arg_attributes_has_view = 1;
+    } else {
+        PyErr_SetString(PyExc_TypeError, "Expected a capsule or buffer-compatible object");
+        goto __cleanup;
+    }
+
+    ifcopenshell_clear_error();
+    ok = ifcopenshell_document_edit_information(arg_file, arg_information, arg_attributes);
+    if (!ok) {
+        raise_last_error("ifcopenshell_document_edit_information failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_document_edit_information failed");
+        goto __cleanup;
+    }
+    Py_INCREF(Py_None);
+    __py_result = Py_None;
+__cleanup:
+        if (arg_attributes_has_view) PyBuffer_Release(&arg_attributes_view);
+    return __py_result;
+}
+
+static PyObject *py_ifcopenshell_document_edit_reference(PyObject *self, PyObject *args) {
+    PyObject *__py_result = NULL;
+    bool ok = false;
+    PyObject *arg_file_obj = NULL;
+    ifcopenshell_file_t *arg_file = NULL;
+    PyObject *arg_reference_obj = NULL;
+    ifcopenshell_instance_t *arg_reference = NULL;
+    PyObject *arg_attributes_obj = NULL;
+    Py_buffer arg_attributes_view = {0};
+    void *arg_attributes = NULL;
+    int arg_attributes_has_view = 0;
+
+    if (!PyArg_ParseTuple(args, "OOO", &arg_file_obj, &arg_reference_obj, &arg_attributes_obj)) return NULL;
+
+    if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
+        goto __cleanup;
+    }
+    if (!extract_handle(arg_reference_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_reference, 0)) {
+        goto __cleanup;
+    }
+    if (PyCapsule_IsValid(arg_attributes_obj, NULL)) {
+        arg_attributes = PyCapsule_GetPointer(arg_attributes_obj, NULL);
+    } else if (PyObject_GetBuffer(arg_attributes_obj, &arg_attributes_view, PyBUF_SIMPLE) == 0) {
+        arg_attributes = arg_attributes_view.buf;
+        arg_attributes_has_view = 1;
+    } else {
+        PyErr_SetString(PyExc_TypeError, "Expected a capsule or buffer-compatible object");
+        goto __cleanup;
+    }
+
+    ifcopenshell_clear_error();
+    ok = ifcopenshell_document_edit_reference(arg_file, arg_reference, arg_attributes);
+    if (!ok) {
+        raise_last_error("ifcopenshell_document_edit_reference failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_document_edit_reference failed");
+        goto __cleanup;
+    }
+    Py_INCREF(Py_None);
+    __py_result = Py_None;
+__cleanup:
+        if (arg_attributes_has_view) PyBuffer_Release(&arg_attributes_view);
+    return __py_result;
+}
+
 static PyObject *py_ifcopenshell_document_remove_information(PyObject *self, PyObject *args) {
     PyObject *__py_result = NULL;
     bool ok = false;
@@ -23534,6 +23816,53 @@ static PyObject *py_ifcopenshell_drawing_assign_product(PyObject *self, PyObject
 __cleanup:
         release_option_refs(arg_options_refs, 5);
         free_input_drawing_assign_product_options(&arg_options);
+    return __py_result;
+}
+
+static PyObject *py_ifcopenshell_drawing_edit_text_literal(PyObject *self, PyObject *args) {
+    PyObject *__py_result = NULL;
+    bool ok = false;
+    PyObject *arg_file_obj = NULL;
+    ifcopenshell_file_t *arg_file = NULL;
+    PyObject *arg_text_literal_obj = NULL;
+    ifcopenshell_instance_t *arg_text_literal = NULL;
+    PyObject *arg_attributes_obj = NULL;
+    Py_buffer arg_attributes_view = {0};
+    void *arg_attributes = NULL;
+    int arg_attributes_has_view = 0;
+
+    if (!PyArg_ParseTuple(args, "OOO", &arg_file_obj, &arg_text_literal_obj, &arg_attributes_obj)) return NULL;
+
+    if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
+        goto __cleanup;
+    }
+    if (!extract_handle(arg_text_literal_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_text_literal, 0)) {
+        goto __cleanup;
+    }
+    if (PyCapsule_IsValid(arg_attributes_obj, NULL)) {
+        arg_attributes = PyCapsule_GetPointer(arg_attributes_obj, NULL);
+    } else if (PyObject_GetBuffer(arg_attributes_obj, &arg_attributes_view, PyBUF_SIMPLE) == 0) {
+        arg_attributes = arg_attributes_view.buf;
+        arg_attributes_has_view = 1;
+    } else {
+        PyErr_SetString(PyExc_TypeError, "Expected a capsule or buffer-compatible object");
+        goto __cleanup;
+    }
+
+    ifcopenshell_clear_error();
+    ok = ifcopenshell_drawing_edit_text_literal(arg_file, arg_text_literal, arg_attributes);
+    if (!ok) {
+        raise_last_error("ifcopenshell_drawing_edit_text_literal failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_drawing_edit_text_literal failed");
+        goto __cleanup;
+    }
+    Py_INCREF(Py_None);
+    __py_result = Py_None;
+__cleanup:
+        if (arg_attributes_has_view) PyBuffer_Release(&arg_attributes_view);
     return __py_result;
 }
 
@@ -38508,6 +38837,53 @@ __cleanup:
     return __py_result;
 }
 
+static PyObject *py_ifcopenshell_group_edit_group(PyObject *self, PyObject *args) {
+    PyObject *__py_result = NULL;
+    bool ok = false;
+    PyObject *arg_file_obj = NULL;
+    ifcopenshell_file_t *arg_file = NULL;
+    PyObject *arg_group_obj = NULL;
+    ifcopenshell_instance_t *arg_group = NULL;
+    PyObject *arg_attributes_obj = NULL;
+    Py_buffer arg_attributes_view = {0};
+    void *arg_attributes = NULL;
+    int arg_attributes_has_view = 0;
+
+    if (!PyArg_ParseTuple(args, "OOO", &arg_file_obj, &arg_group_obj, &arg_attributes_obj)) return NULL;
+
+    if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
+        goto __cleanup;
+    }
+    if (!extract_handle(arg_group_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_group, 0)) {
+        goto __cleanup;
+    }
+    if (PyCapsule_IsValid(arg_attributes_obj, NULL)) {
+        arg_attributes = PyCapsule_GetPointer(arg_attributes_obj, NULL);
+    } else if (PyObject_GetBuffer(arg_attributes_obj, &arg_attributes_view, PyBUF_SIMPLE) == 0) {
+        arg_attributes = arg_attributes_view.buf;
+        arg_attributes_has_view = 1;
+    } else {
+        PyErr_SetString(PyExc_TypeError, "Expected a capsule or buffer-compatible object");
+        goto __cleanup;
+    }
+
+    ifcopenshell_clear_error();
+    ok = ifcopenshell_group_edit_group(arg_file, arg_group, arg_attributes);
+    if (!ok) {
+        raise_last_error("ifcopenshell_group_edit_group failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_group_edit_group failed");
+        goto __cleanup;
+    }
+    Py_INCREF(Py_None);
+    __py_result = Py_None;
+__cleanup:
+        if (arg_attributes_has_view) PyBuffer_Release(&arg_attributes_view);
+    return __py_result;
+}
+
 static PyObject *py_ifcopenshell_group_remove_group(PyObject *self, PyObject *args) {
     PyObject *__py_result = NULL;
     bool ok = false;
@@ -40322,6 +40698,53 @@ __cleanup:
     return __py_result;
 }
 
+static PyObject *py_ifcopenshell_layer_edit_layer(PyObject *self, PyObject *args) {
+    PyObject *__py_result = NULL;
+    bool ok = false;
+    PyObject *arg_file_obj = NULL;
+    ifcopenshell_file_t *arg_file = NULL;
+    PyObject *arg_layer_obj = NULL;
+    ifcopenshell_instance_t *arg_layer = NULL;
+    PyObject *arg_attributes_obj = NULL;
+    Py_buffer arg_attributes_view = {0};
+    void *arg_attributes = NULL;
+    int arg_attributes_has_view = 0;
+
+    if (!PyArg_ParseTuple(args, "OOO", &arg_file_obj, &arg_layer_obj, &arg_attributes_obj)) return NULL;
+
+    if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
+        goto __cleanup;
+    }
+    if (!extract_handle(arg_layer_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_layer, 0)) {
+        goto __cleanup;
+    }
+    if (PyCapsule_IsValid(arg_attributes_obj, NULL)) {
+        arg_attributes = PyCapsule_GetPointer(arg_attributes_obj, NULL);
+    } else if (PyObject_GetBuffer(arg_attributes_obj, &arg_attributes_view, PyBUF_SIMPLE) == 0) {
+        arg_attributes = arg_attributes_view.buf;
+        arg_attributes_has_view = 1;
+    } else {
+        PyErr_SetString(PyExc_TypeError, "Expected a capsule or buffer-compatible object");
+        goto __cleanup;
+    }
+
+    ifcopenshell_clear_error();
+    ok = ifcopenshell_layer_edit_layer(arg_file, arg_layer, arg_attributes);
+    if (!ok) {
+        raise_last_error("ifcopenshell_layer_edit_layer failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_layer_edit_layer failed");
+        goto __cleanup;
+    }
+    Py_INCREF(Py_None);
+    __py_result = Py_None;
+__cleanup:
+        if (arg_attributes_has_view) PyBuffer_Release(&arg_attributes_view);
+    return __py_result;
+}
+
 static PyObject *py_ifcopenshell_layer_remove_layer(PyObject *self, PyObject *args) {
     PyObject *__py_result = NULL;
     bool ok = false;
@@ -40485,6 +40908,100 @@ static PyObject *py_ifcopenshell_library_assign_reference(PyObject *self, PyObje
 __cleanup:
         release_option_refs(arg_options_refs, 5);
         free_input_library_assign_reference_options(&arg_options);
+    return __py_result;
+}
+
+static PyObject *py_ifcopenshell_library_edit_library(PyObject *self, PyObject *args) {
+    PyObject *__py_result = NULL;
+    bool ok = false;
+    PyObject *arg_file_obj = NULL;
+    ifcopenshell_file_t *arg_file = NULL;
+    PyObject *arg_library_obj = NULL;
+    ifcopenshell_instance_t *arg_library = NULL;
+    PyObject *arg_attributes_obj = NULL;
+    Py_buffer arg_attributes_view = {0};
+    void *arg_attributes = NULL;
+    int arg_attributes_has_view = 0;
+
+    if (!PyArg_ParseTuple(args, "OOO", &arg_file_obj, &arg_library_obj, &arg_attributes_obj)) return NULL;
+
+    if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
+        goto __cleanup;
+    }
+    if (!extract_handle(arg_library_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_library, 0)) {
+        goto __cleanup;
+    }
+    if (PyCapsule_IsValid(arg_attributes_obj, NULL)) {
+        arg_attributes = PyCapsule_GetPointer(arg_attributes_obj, NULL);
+    } else if (PyObject_GetBuffer(arg_attributes_obj, &arg_attributes_view, PyBUF_SIMPLE) == 0) {
+        arg_attributes = arg_attributes_view.buf;
+        arg_attributes_has_view = 1;
+    } else {
+        PyErr_SetString(PyExc_TypeError, "Expected a capsule or buffer-compatible object");
+        goto __cleanup;
+    }
+
+    ifcopenshell_clear_error();
+    ok = ifcopenshell_library_edit_library(arg_file, arg_library, arg_attributes);
+    if (!ok) {
+        raise_last_error("ifcopenshell_library_edit_library failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_library_edit_library failed");
+        goto __cleanup;
+    }
+    Py_INCREF(Py_None);
+    __py_result = Py_None;
+__cleanup:
+        if (arg_attributes_has_view) PyBuffer_Release(&arg_attributes_view);
+    return __py_result;
+}
+
+static PyObject *py_ifcopenshell_library_edit_reference(PyObject *self, PyObject *args) {
+    PyObject *__py_result = NULL;
+    bool ok = false;
+    PyObject *arg_file_obj = NULL;
+    ifcopenshell_file_t *arg_file = NULL;
+    PyObject *arg_reference_obj = NULL;
+    ifcopenshell_instance_t *arg_reference = NULL;
+    PyObject *arg_attributes_obj = NULL;
+    Py_buffer arg_attributes_view = {0};
+    void *arg_attributes = NULL;
+    int arg_attributes_has_view = 0;
+
+    if (!PyArg_ParseTuple(args, "OOO", &arg_file_obj, &arg_reference_obj, &arg_attributes_obj)) return NULL;
+
+    if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
+        goto __cleanup;
+    }
+    if (!extract_handle(arg_reference_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_reference, 0)) {
+        goto __cleanup;
+    }
+    if (PyCapsule_IsValid(arg_attributes_obj, NULL)) {
+        arg_attributes = PyCapsule_GetPointer(arg_attributes_obj, NULL);
+    } else if (PyObject_GetBuffer(arg_attributes_obj, &arg_attributes_view, PyBUF_SIMPLE) == 0) {
+        arg_attributes = arg_attributes_view.buf;
+        arg_attributes_has_view = 1;
+    } else {
+        PyErr_SetString(PyExc_TypeError, "Expected a capsule or buffer-compatible object");
+        goto __cleanup;
+    }
+
+    ifcopenshell_clear_error();
+    ok = ifcopenshell_library_edit_reference(arg_file, arg_reference, arg_attributes);
+    if (!ok) {
+        raise_last_error("ifcopenshell_library_edit_reference failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_library_edit_reference failed");
+        goto __cleanup;
+    }
+    Py_INCREF(Py_None);
+    __py_result = Py_None;
+__cleanup:
+        if (arg_attributes_has_view) PyBuffer_Release(&arg_attributes_view);
     return __py_result;
 }
 
@@ -40959,6 +41476,308 @@ static PyObject *py_ifcopenshell_material_copy_material(PyObject *self, PyObject
     }
     __py_result = wrap_instance(result, 1);
 __cleanup:
+    return __py_result;
+}
+
+static PyObject *py_ifcopenshell_material_edit_assigned_material(PyObject *self, PyObject *args) {
+    PyObject *__py_result = NULL;
+    bool ok = false;
+    PyObject *arg_file_obj = NULL;
+    ifcopenshell_file_t *arg_file = NULL;
+    PyObject *arg_element_obj = NULL;
+    ifcopenshell_instance_t *arg_element = NULL;
+    PyObject *arg_attributes_obj = NULL;
+    Py_buffer arg_attributes_view = {0};
+    void *arg_attributes = NULL;
+    int arg_attributes_has_view = 0;
+
+    if (!PyArg_ParseTuple(args, "OOO", &arg_file_obj, &arg_element_obj, &arg_attributes_obj)) return NULL;
+
+    if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
+        goto __cleanup;
+    }
+    if (!extract_handle(arg_element_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_element, 0)) {
+        goto __cleanup;
+    }
+    if (PyCapsule_IsValid(arg_attributes_obj, NULL)) {
+        arg_attributes = PyCapsule_GetPointer(arg_attributes_obj, NULL);
+    } else if (PyObject_GetBuffer(arg_attributes_obj, &arg_attributes_view, PyBUF_SIMPLE) == 0) {
+        arg_attributes = arg_attributes_view.buf;
+        arg_attributes_has_view = 1;
+    } else {
+        PyErr_SetString(PyExc_TypeError, "Expected a capsule or buffer-compatible object");
+        goto __cleanup;
+    }
+
+    ifcopenshell_clear_error();
+    ok = ifcopenshell_material_edit_assigned_material(arg_file, arg_element, arg_attributes);
+    if (!ok) {
+        raise_last_error("ifcopenshell_material_edit_assigned_material failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_material_edit_assigned_material failed");
+        goto __cleanup;
+    }
+    Py_INCREF(Py_None);
+    __py_result = Py_None;
+__cleanup:
+        if (arg_attributes_has_view) PyBuffer_Release(&arg_attributes_view);
+    return __py_result;
+}
+
+static PyObject *py_ifcopenshell_material_edit_constituent(PyObject *self, PyObject *args) {
+    PyObject *__py_result = NULL;
+    bool ok = false;
+    PyObject *arg_file_obj = NULL;
+    ifcopenshell_file_t *arg_file = NULL;
+    PyObject *arg_constituent_obj = NULL;
+    ifcopenshell_instance_t *arg_constituent = NULL;
+    PyObject *arg_attributes_obj = NULL;
+    Py_buffer arg_attributes_view = {0};
+    void *arg_attributes = NULL;
+    int arg_attributes_has_view = 0;
+    PyObject *arg_material_obj = NULL;
+    ifcopenshell_instance_t *arg_material = NULL;
+
+    if (!PyArg_ParseTuple(args, "OOO|O", &arg_file_obj, &arg_constituent_obj, &arg_attributes_obj, &arg_material_obj)) return NULL;
+
+    if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
+        goto __cleanup;
+    }
+    if (!extract_handle(arg_constituent_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_constituent, 0)) {
+        goto __cleanup;
+    }
+    if (PyCapsule_IsValid(arg_attributes_obj, NULL)) {
+        arg_attributes = PyCapsule_GetPointer(arg_attributes_obj, NULL);
+    } else if (PyObject_GetBuffer(arg_attributes_obj, &arg_attributes_view, PyBUF_SIMPLE) == 0) {
+        arg_attributes = arg_attributes_view.buf;
+        arg_attributes_has_view = 1;
+    } else {
+        PyErr_SetString(PyExc_TypeError, "Expected a capsule or buffer-compatible object");
+        goto __cleanup;
+    }
+    if (!extract_handle(arg_material_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_material, 1)) {
+        goto __cleanup;
+    }
+
+    ifcopenshell_clear_error();
+    ok = ifcopenshell_material_edit_constituent(arg_file, arg_constituent, arg_attributes, arg_material);
+    if (!ok) {
+        raise_last_error("ifcopenshell_material_edit_constituent failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_material_edit_constituent failed");
+        goto __cleanup;
+    }
+    Py_INCREF(Py_None);
+    __py_result = Py_None;
+__cleanup:
+        if (arg_attributes_has_view) PyBuffer_Release(&arg_attributes_view);
+    return __py_result;
+}
+
+static PyObject *py_ifcopenshell_material_edit_layer(PyObject *self, PyObject *args) {
+    PyObject *__py_result = NULL;
+    bool ok = false;
+    PyObject *arg_file_obj = NULL;
+    ifcopenshell_file_t *arg_file = NULL;
+    PyObject *arg_layer_obj = NULL;
+    ifcopenshell_instance_t *arg_layer = NULL;
+    PyObject *arg_attributes_obj = NULL;
+    Py_buffer arg_attributes_view = {0};
+    void *arg_attributes = NULL;
+    int arg_attributes_has_view = 0;
+    PyObject *arg_material_obj = NULL;
+    ifcopenshell_instance_t *arg_material = NULL;
+
+    if (!PyArg_ParseTuple(args, "OOO|O", &arg_file_obj, &arg_layer_obj, &arg_attributes_obj, &arg_material_obj)) return NULL;
+
+    if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
+        goto __cleanup;
+    }
+    if (!extract_handle(arg_layer_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_layer, 0)) {
+        goto __cleanup;
+    }
+    if (PyCapsule_IsValid(arg_attributes_obj, NULL)) {
+        arg_attributes = PyCapsule_GetPointer(arg_attributes_obj, NULL);
+    } else if (PyObject_GetBuffer(arg_attributes_obj, &arg_attributes_view, PyBUF_SIMPLE) == 0) {
+        arg_attributes = arg_attributes_view.buf;
+        arg_attributes_has_view = 1;
+    } else {
+        PyErr_SetString(PyExc_TypeError, "Expected a capsule or buffer-compatible object");
+        goto __cleanup;
+    }
+    if (!extract_handle(arg_material_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_material, 1)) {
+        goto __cleanup;
+    }
+
+    ifcopenshell_clear_error();
+    ok = ifcopenshell_material_edit_layer(arg_file, arg_layer, arg_attributes, arg_material);
+    if (!ok) {
+        raise_last_error("ifcopenshell_material_edit_layer failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_material_edit_layer failed");
+        goto __cleanup;
+    }
+    Py_INCREF(Py_None);
+    __py_result = Py_None;
+__cleanup:
+        if (arg_attributes_has_view) PyBuffer_Release(&arg_attributes_view);
+    return __py_result;
+}
+
+static PyObject *py_ifcopenshell_material_edit_layer_usage(PyObject *self, PyObject *args) {
+    PyObject *__py_result = NULL;
+    bool ok = false;
+    PyObject *arg_file_obj = NULL;
+    ifcopenshell_file_t *arg_file = NULL;
+    PyObject *arg_usage_obj = NULL;
+    ifcopenshell_instance_t *arg_usage = NULL;
+    PyObject *arg_attributes_obj = NULL;
+    Py_buffer arg_attributes_view = {0};
+    void *arg_attributes = NULL;
+    int arg_attributes_has_view = 0;
+
+    if (!PyArg_ParseTuple(args, "OOO", &arg_file_obj, &arg_usage_obj, &arg_attributes_obj)) return NULL;
+
+    if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
+        goto __cleanup;
+    }
+    if (!extract_handle(arg_usage_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_usage, 0)) {
+        goto __cleanup;
+    }
+    if (PyCapsule_IsValid(arg_attributes_obj, NULL)) {
+        arg_attributes = PyCapsule_GetPointer(arg_attributes_obj, NULL);
+    } else if (PyObject_GetBuffer(arg_attributes_obj, &arg_attributes_view, PyBUF_SIMPLE) == 0) {
+        arg_attributes = arg_attributes_view.buf;
+        arg_attributes_has_view = 1;
+    } else {
+        PyErr_SetString(PyExc_TypeError, "Expected a capsule or buffer-compatible object");
+        goto __cleanup;
+    }
+
+    ifcopenshell_clear_error();
+    ok = ifcopenshell_material_edit_layer_usage(arg_file, arg_usage, arg_attributes);
+    if (!ok) {
+        raise_last_error("ifcopenshell_material_edit_layer_usage failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_material_edit_layer_usage failed");
+        goto __cleanup;
+    }
+    Py_INCREF(Py_None);
+    __py_result = Py_None;
+__cleanup:
+        if (arg_attributes_has_view) PyBuffer_Release(&arg_attributes_view);
+    return __py_result;
+}
+
+static PyObject *py_ifcopenshell_material_edit_material(PyObject *self, PyObject *args) {
+    PyObject *__py_result = NULL;
+    bool ok = false;
+    PyObject *arg_file_obj = NULL;
+    ifcopenshell_file_t *arg_file = NULL;
+    PyObject *arg_material_obj = NULL;
+    ifcopenshell_instance_t *arg_material = NULL;
+    PyObject *arg_attributes_obj = NULL;
+    Py_buffer arg_attributes_view = {0};
+    void *arg_attributes = NULL;
+    int arg_attributes_has_view = 0;
+
+    if (!PyArg_ParseTuple(args, "OOO", &arg_file_obj, &arg_material_obj, &arg_attributes_obj)) return NULL;
+
+    if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
+        goto __cleanup;
+    }
+    if (!extract_handle(arg_material_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_material, 0)) {
+        goto __cleanup;
+    }
+    if (PyCapsule_IsValid(arg_attributes_obj, NULL)) {
+        arg_attributes = PyCapsule_GetPointer(arg_attributes_obj, NULL);
+    } else if (PyObject_GetBuffer(arg_attributes_obj, &arg_attributes_view, PyBUF_SIMPLE) == 0) {
+        arg_attributes = arg_attributes_view.buf;
+        arg_attributes_has_view = 1;
+    } else {
+        PyErr_SetString(PyExc_TypeError, "Expected a capsule or buffer-compatible object");
+        goto __cleanup;
+    }
+
+    ifcopenshell_clear_error();
+    ok = ifcopenshell_material_edit_material(arg_file, arg_material, arg_attributes);
+    if (!ok) {
+        raise_last_error("ifcopenshell_material_edit_material failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_material_edit_material failed");
+        goto __cleanup;
+    }
+    Py_INCREF(Py_None);
+    __py_result = Py_None;
+__cleanup:
+        if (arg_attributes_has_view) PyBuffer_Release(&arg_attributes_view);
+    return __py_result;
+}
+
+static PyObject *py_ifcopenshell_material_edit_profile(PyObject *self, PyObject *args) {
+    PyObject *__py_result = NULL;
+    bool ok = false;
+    PyObject *arg_file_obj = NULL;
+    ifcopenshell_file_t *arg_file = NULL;
+    PyObject *arg_profile_obj = NULL;
+    ifcopenshell_instance_t *arg_profile = NULL;
+    PyObject *arg_attributes_obj = NULL;
+    Py_buffer arg_attributes_view = {0};
+    void *arg_attributes = NULL;
+    int arg_attributes_has_view = 0;
+    PyObject *arg_profile_def_obj = NULL;
+    ifcopenshell_instance_t *arg_profile_def = NULL;
+    PyObject *arg_material_obj = NULL;
+    ifcopenshell_instance_t *arg_material = NULL;
+
+    if (!PyArg_ParseTuple(args, "OOO|OO", &arg_file_obj, &arg_profile_obj, &arg_attributes_obj, &arg_profile_def_obj, &arg_material_obj)) return NULL;
+
+    if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
+        goto __cleanup;
+    }
+    if (!extract_handle(arg_profile_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_profile, 0)) {
+        goto __cleanup;
+    }
+    if (PyCapsule_IsValid(arg_attributes_obj, NULL)) {
+        arg_attributes = PyCapsule_GetPointer(arg_attributes_obj, NULL);
+    } else if (PyObject_GetBuffer(arg_attributes_obj, &arg_attributes_view, PyBUF_SIMPLE) == 0) {
+        arg_attributes = arg_attributes_view.buf;
+        arg_attributes_has_view = 1;
+    } else {
+        PyErr_SetString(PyExc_TypeError, "Expected a capsule or buffer-compatible object");
+        goto __cleanup;
+    }
+    if (!extract_handle(arg_profile_def_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_profile_def, 1)) {
+        goto __cleanup;
+    }
+    if (!extract_handle(arg_material_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_material, 1)) {
+        goto __cleanup;
+    }
+
+    ifcopenshell_clear_error();
+    ok = ifcopenshell_material_edit_profile(arg_file, arg_profile, arg_attributes, arg_profile_def, arg_material);
+    if (!ok) {
+        raise_last_error("ifcopenshell_material_edit_profile failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_material_edit_profile failed");
+        goto __cleanup;
+    }
+    Py_INCREF(Py_None);
+    __py_result = Py_None;
+__cleanup:
+        if (arg_attributes_has_view) PyBuffer_Release(&arg_attributes_view);
     return __py_result;
 }
 
@@ -41886,6 +42705,288 @@ static PyObject *py_ifcopenshell_owner_create_owner_history(PyObject *self, PyOb
 __cleanup:
         release_option_refs(arg_options_refs, 2);
         free_input_owner_create_owner_history_options(&arg_options);
+    return __py_result;
+}
+
+static PyObject *py_ifcopenshell_owner_edit_actor(PyObject *self, PyObject *args) {
+    PyObject *__py_result = NULL;
+    bool ok = false;
+    PyObject *arg_file_obj = NULL;
+    ifcopenshell_file_t *arg_file = NULL;
+    PyObject *arg_actor_obj = NULL;
+    ifcopenshell_instance_t *arg_actor = NULL;
+    PyObject *arg_attributes_obj = NULL;
+    Py_buffer arg_attributes_view = {0};
+    void *arg_attributes = NULL;
+    int arg_attributes_has_view = 0;
+
+    if (!PyArg_ParseTuple(args, "OOO", &arg_file_obj, &arg_actor_obj, &arg_attributes_obj)) return NULL;
+
+    if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
+        goto __cleanup;
+    }
+    if (!extract_handle(arg_actor_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_actor, 0)) {
+        goto __cleanup;
+    }
+    if (PyCapsule_IsValid(arg_attributes_obj, NULL)) {
+        arg_attributes = PyCapsule_GetPointer(arg_attributes_obj, NULL);
+    } else if (PyObject_GetBuffer(arg_attributes_obj, &arg_attributes_view, PyBUF_SIMPLE) == 0) {
+        arg_attributes = arg_attributes_view.buf;
+        arg_attributes_has_view = 1;
+    } else {
+        PyErr_SetString(PyExc_TypeError, "Expected a capsule or buffer-compatible object");
+        goto __cleanup;
+    }
+
+    ifcopenshell_clear_error();
+    ok = ifcopenshell_owner_edit_actor(arg_file, arg_actor, arg_attributes);
+    if (!ok) {
+        raise_last_error("ifcopenshell_owner_edit_actor failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_owner_edit_actor failed");
+        goto __cleanup;
+    }
+    Py_INCREF(Py_None);
+    __py_result = Py_None;
+__cleanup:
+        if (arg_attributes_has_view) PyBuffer_Release(&arg_attributes_view);
+    return __py_result;
+}
+
+static PyObject *py_ifcopenshell_owner_edit_address(PyObject *self, PyObject *args) {
+    PyObject *__py_result = NULL;
+    bool ok = false;
+    PyObject *arg_file_obj = NULL;
+    ifcopenshell_file_t *arg_file = NULL;
+    PyObject *arg_address_obj = NULL;
+    ifcopenshell_instance_t *arg_address = NULL;
+    PyObject *arg_attributes_obj = NULL;
+    Py_buffer arg_attributes_view = {0};
+    void *arg_attributes = NULL;
+    int arg_attributes_has_view = 0;
+
+    if (!PyArg_ParseTuple(args, "OOO", &arg_file_obj, &arg_address_obj, &arg_attributes_obj)) return NULL;
+
+    if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
+        goto __cleanup;
+    }
+    if (!extract_handle(arg_address_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_address, 0)) {
+        goto __cleanup;
+    }
+    if (PyCapsule_IsValid(arg_attributes_obj, NULL)) {
+        arg_attributes = PyCapsule_GetPointer(arg_attributes_obj, NULL);
+    } else if (PyObject_GetBuffer(arg_attributes_obj, &arg_attributes_view, PyBUF_SIMPLE) == 0) {
+        arg_attributes = arg_attributes_view.buf;
+        arg_attributes_has_view = 1;
+    } else {
+        PyErr_SetString(PyExc_TypeError, "Expected a capsule or buffer-compatible object");
+        goto __cleanup;
+    }
+
+    ifcopenshell_clear_error();
+    ok = ifcopenshell_owner_edit_address(arg_file, arg_address, arg_attributes);
+    if (!ok) {
+        raise_last_error("ifcopenshell_owner_edit_address failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_owner_edit_address failed");
+        goto __cleanup;
+    }
+    Py_INCREF(Py_None);
+    __py_result = Py_None;
+__cleanup:
+        if (arg_attributes_has_view) PyBuffer_Release(&arg_attributes_view);
+    return __py_result;
+}
+
+static PyObject *py_ifcopenshell_owner_edit_application(PyObject *self, PyObject *args) {
+    PyObject *__py_result = NULL;
+    bool ok = false;
+    PyObject *arg_file_obj = NULL;
+    ifcopenshell_file_t *arg_file = NULL;
+    PyObject *arg_application_obj = NULL;
+    ifcopenshell_instance_t *arg_application = NULL;
+    PyObject *arg_attributes_obj = NULL;
+    Py_buffer arg_attributes_view = {0};
+    void *arg_attributes = NULL;
+    int arg_attributes_has_view = 0;
+
+    if (!PyArg_ParseTuple(args, "OOO", &arg_file_obj, &arg_application_obj, &arg_attributes_obj)) return NULL;
+
+    if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
+        goto __cleanup;
+    }
+    if (!extract_handle(arg_application_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_application, 0)) {
+        goto __cleanup;
+    }
+    if (PyCapsule_IsValid(arg_attributes_obj, NULL)) {
+        arg_attributes = PyCapsule_GetPointer(arg_attributes_obj, NULL);
+    } else if (PyObject_GetBuffer(arg_attributes_obj, &arg_attributes_view, PyBUF_SIMPLE) == 0) {
+        arg_attributes = arg_attributes_view.buf;
+        arg_attributes_has_view = 1;
+    } else {
+        PyErr_SetString(PyExc_TypeError, "Expected a capsule or buffer-compatible object");
+        goto __cleanup;
+    }
+
+    ifcopenshell_clear_error();
+    ok = ifcopenshell_owner_edit_application(arg_file, arg_application, arg_attributes);
+    if (!ok) {
+        raise_last_error("ifcopenshell_owner_edit_application failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_owner_edit_application failed");
+        goto __cleanup;
+    }
+    Py_INCREF(Py_None);
+    __py_result = Py_None;
+__cleanup:
+        if (arg_attributes_has_view) PyBuffer_Release(&arg_attributes_view);
+    return __py_result;
+}
+
+static PyObject *py_ifcopenshell_owner_edit_organisation(PyObject *self, PyObject *args) {
+    PyObject *__py_result = NULL;
+    bool ok = false;
+    PyObject *arg_file_obj = NULL;
+    ifcopenshell_file_t *arg_file = NULL;
+    PyObject *arg_organisation_obj = NULL;
+    ifcopenshell_instance_t *arg_organisation = NULL;
+    PyObject *arg_attributes_obj = NULL;
+    Py_buffer arg_attributes_view = {0};
+    void *arg_attributes = NULL;
+    int arg_attributes_has_view = 0;
+
+    if (!PyArg_ParseTuple(args, "OOO", &arg_file_obj, &arg_organisation_obj, &arg_attributes_obj)) return NULL;
+
+    if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
+        goto __cleanup;
+    }
+    if (!extract_handle(arg_organisation_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_organisation, 0)) {
+        goto __cleanup;
+    }
+    if (PyCapsule_IsValid(arg_attributes_obj, NULL)) {
+        arg_attributes = PyCapsule_GetPointer(arg_attributes_obj, NULL);
+    } else if (PyObject_GetBuffer(arg_attributes_obj, &arg_attributes_view, PyBUF_SIMPLE) == 0) {
+        arg_attributes = arg_attributes_view.buf;
+        arg_attributes_has_view = 1;
+    } else {
+        PyErr_SetString(PyExc_TypeError, "Expected a capsule or buffer-compatible object");
+        goto __cleanup;
+    }
+
+    ifcopenshell_clear_error();
+    ok = ifcopenshell_owner_edit_organisation(arg_file, arg_organisation, arg_attributes);
+    if (!ok) {
+        raise_last_error("ifcopenshell_owner_edit_organisation failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_owner_edit_organisation failed");
+        goto __cleanup;
+    }
+    Py_INCREF(Py_None);
+    __py_result = Py_None;
+__cleanup:
+        if (arg_attributes_has_view) PyBuffer_Release(&arg_attributes_view);
+    return __py_result;
+}
+
+static PyObject *py_ifcopenshell_owner_edit_person(PyObject *self, PyObject *args) {
+    PyObject *__py_result = NULL;
+    bool ok = false;
+    PyObject *arg_file_obj = NULL;
+    ifcopenshell_file_t *arg_file = NULL;
+    PyObject *arg_person_obj = NULL;
+    ifcopenshell_instance_t *arg_person = NULL;
+    PyObject *arg_attributes_obj = NULL;
+    Py_buffer arg_attributes_view = {0};
+    void *arg_attributes = NULL;
+    int arg_attributes_has_view = 0;
+
+    if (!PyArg_ParseTuple(args, "OOO", &arg_file_obj, &arg_person_obj, &arg_attributes_obj)) return NULL;
+
+    if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
+        goto __cleanup;
+    }
+    if (!extract_handle(arg_person_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_person, 0)) {
+        goto __cleanup;
+    }
+    if (PyCapsule_IsValid(arg_attributes_obj, NULL)) {
+        arg_attributes = PyCapsule_GetPointer(arg_attributes_obj, NULL);
+    } else if (PyObject_GetBuffer(arg_attributes_obj, &arg_attributes_view, PyBUF_SIMPLE) == 0) {
+        arg_attributes = arg_attributes_view.buf;
+        arg_attributes_has_view = 1;
+    } else {
+        PyErr_SetString(PyExc_TypeError, "Expected a capsule or buffer-compatible object");
+        goto __cleanup;
+    }
+
+    ifcopenshell_clear_error();
+    ok = ifcopenshell_owner_edit_person(arg_file, arg_person, arg_attributes);
+    if (!ok) {
+        raise_last_error("ifcopenshell_owner_edit_person failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_owner_edit_person failed");
+        goto __cleanup;
+    }
+    Py_INCREF(Py_None);
+    __py_result = Py_None;
+__cleanup:
+        if (arg_attributes_has_view) PyBuffer_Release(&arg_attributes_view);
+    return __py_result;
+}
+
+static PyObject *py_ifcopenshell_owner_edit_role(PyObject *self, PyObject *args) {
+    PyObject *__py_result = NULL;
+    bool ok = false;
+    PyObject *arg_file_obj = NULL;
+    ifcopenshell_file_t *arg_file = NULL;
+    PyObject *arg_role_obj = NULL;
+    ifcopenshell_instance_t *arg_role = NULL;
+    PyObject *arg_attributes_obj = NULL;
+    Py_buffer arg_attributes_view = {0};
+    void *arg_attributes = NULL;
+    int arg_attributes_has_view = 0;
+
+    if (!PyArg_ParseTuple(args, "OOO", &arg_file_obj, &arg_role_obj, &arg_attributes_obj)) return NULL;
+
+    if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
+        goto __cleanup;
+    }
+    if (!extract_handle(arg_role_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_role, 0)) {
+        goto __cleanup;
+    }
+    if (PyCapsule_IsValid(arg_attributes_obj, NULL)) {
+        arg_attributes = PyCapsule_GetPointer(arg_attributes_obj, NULL);
+    } else if (PyObject_GetBuffer(arg_attributes_obj, &arg_attributes_view, PyBUF_SIMPLE) == 0) {
+        arg_attributes = arg_attributes_view.buf;
+        arg_attributes_has_view = 1;
+    } else {
+        PyErr_SetString(PyExc_TypeError, "Expected a capsule or buffer-compatible object");
+        goto __cleanup;
+    }
+
+    ifcopenshell_clear_error();
+    ok = ifcopenshell_owner_edit_role(arg_file, arg_role, arg_attributes);
+    if (!ok) {
+        raise_last_error("ifcopenshell_owner_edit_role failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_owner_edit_role failed");
+        goto __cleanup;
+    }
+    Py_INCREF(Py_None);
+    __py_result = Py_None;
+__cleanup:
+        if (arg_attributes_has_view) PyBuffer_Release(&arg_attributes_view);
     return __py_result;
 }
 
@@ -45544,6 +46645,53 @@ __cleanup:
     return __py_result;
 }
 
+static PyObject *py_ifcopenshell_pset_template_edit_pset_template(PyObject *self, PyObject *args) {
+    PyObject *__py_result = NULL;
+    bool ok = false;
+    PyObject *arg_file_obj = NULL;
+    ifcopenshell_file_t *arg_file = NULL;
+    PyObject *arg_pset_template_obj = NULL;
+    ifcopenshell_instance_t *arg_pset_template = NULL;
+    PyObject *arg_attributes_obj = NULL;
+    Py_buffer arg_attributes_view = {0};
+    void *arg_attributes = NULL;
+    int arg_attributes_has_view = 0;
+
+    if (!PyArg_ParseTuple(args, "OOO", &arg_file_obj, &arg_pset_template_obj, &arg_attributes_obj)) return NULL;
+
+    if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
+        goto __cleanup;
+    }
+    if (!extract_handle(arg_pset_template_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_pset_template, 0)) {
+        goto __cleanup;
+    }
+    if (PyCapsule_IsValid(arg_attributes_obj, NULL)) {
+        arg_attributes = PyCapsule_GetPointer(arg_attributes_obj, NULL);
+    } else if (PyObject_GetBuffer(arg_attributes_obj, &arg_attributes_view, PyBUF_SIMPLE) == 0) {
+        arg_attributes = arg_attributes_view.buf;
+        arg_attributes_has_view = 1;
+    } else {
+        PyErr_SetString(PyExc_TypeError, "Expected a capsule or buffer-compatible object");
+        goto __cleanup;
+    }
+
+    ifcopenshell_clear_error();
+    ok = ifcopenshell_pset_template_edit_pset_template(arg_file, arg_pset_template, arg_attributes);
+    if (!ok) {
+        raise_last_error("ifcopenshell_pset_template_edit_pset_template failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_pset_template_edit_pset_template failed");
+        goto __cleanup;
+    }
+    Py_INCREF(Py_None);
+    __py_result = Py_None;
+__cleanup:
+        if (arg_attributes_has_view) PyBuffer_Release(&arg_attributes_view);
+    return __py_result;
+}
+
 static PyObject *py_ifcopenshell_pset_template_get_applicable(PyObject *self, PyObject *args) {
     PyObject *__py_result = NULL;
     bool ok = false;
@@ -46230,6 +47378,100 @@ static PyObject *py_ifcopenshell_resource_calculate_resource_work(PyObject *self
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
+    return __py_result;
+}
+
+static PyObject *py_ifcopenshell_resource_edit_resource(PyObject *self, PyObject *args) {
+    PyObject *__py_result = NULL;
+    bool ok = false;
+    PyObject *arg_file_obj = NULL;
+    ifcopenshell_file_t *arg_file = NULL;
+    PyObject *arg_resource_obj = NULL;
+    ifcopenshell_instance_t *arg_resource = NULL;
+    PyObject *arg_attributes_obj = NULL;
+    Py_buffer arg_attributes_view = {0};
+    void *arg_attributes = NULL;
+    int arg_attributes_has_view = 0;
+
+    if (!PyArg_ParseTuple(args, "OOO", &arg_file_obj, &arg_resource_obj, &arg_attributes_obj)) return NULL;
+
+    if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
+        goto __cleanup;
+    }
+    if (!extract_handle(arg_resource_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_resource, 0)) {
+        goto __cleanup;
+    }
+    if (PyCapsule_IsValid(arg_attributes_obj, NULL)) {
+        arg_attributes = PyCapsule_GetPointer(arg_attributes_obj, NULL);
+    } else if (PyObject_GetBuffer(arg_attributes_obj, &arg_attributes_view, PyBUF_SIMPLE) == 0) {
+        arg_attributes = arg_attributes_view.buf;
+        arg_attributes_has_view = 1;
+    } else {
+        PyErr_SetString(PyExc_TypeError, "Expected a capsule or buffer-compatible object");
+        goto __cleanup;
+    }
+
+    ifcopenshell_clear_error();
+    ok = ifcopenshell_resource_edit_resource(arg_file, arg_resource, arg_attributes);
+    if (!ok) {
+        raise_last_error("ifcopenshell_resource_edit_resource failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_resource_edit_resource failed");
+        goto __cleanup;
+    }
+    Py_INCREF(Py_None);
+    __py_result = Py_None;
+__cleanup:
+        if (arg_attributes_has_view) PyBuffer_Release(&arg_attributes_view);
+    return __py_result;
+}
+
+static PyObject *py_ifcopenshell_resource_edit_resource_quantity(PyObject *self, PyObject *args) {
+    PyObject *__py_result = NULL;
+    bool ok = false;
+    PyObject *arg_file_obj = NULL;
+    ifcopenshell_file_t *arg_file = NULL;
+    PyObject *arg_physical_quantity_obj = NULL;
+    ifcopenshell_instance_t *arg_physical_quantity = NULL;
+    PyObject *arg_attributes_obj = NULL;
+    Py_buffer arg_attributes_view = {0};
+    void *arg_attributes = NULL;
+    int arg_attributes_has_view = 0;
+
+    if (!PyArg_ParseTuple(args, "OOO", &arg_file_obj, &arg_physical_quantity_obj, &arg_attributes_obj)) return NULL;
+
+    if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
+        goto __cleanup;
+    }
+    if (!extract_handle(arg_physical_quantity_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_physical_quantity, 0)) {
+        goto __cleanup;
+    }
+    if (PyCapsule_IsValid(arg_attributes_obj, NULL)) {
+        arg_attributes = PyCapsule_GetPointer(arg_attributes_obj, NULL);
+    } else if (PyObject_GetBuffer(arg_attributes_obj, &arg_attributes_view, PyBUF_SIMPLE) == 0) {
+        arg_attributes = arg_attributes_view.buf;
+        arg_attributes_has_view = 1;
+    } else {
+        PyErr_SetString(PyExc_TypeError, "Expected a capsule or buffer-compatible object");
+        goto __cleanup;
+    }
+
+    ifcopenshell_clear_error();
+    ok = ifcopenshell_resource_edit_resource_quantity(arg_file, arg_physical_quantity, arg_attributes);
+    if (!ok) {
+        raise_last_error("ifcopenshell_resource_edit_resource_quantity failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_resource_edit_resource_quantity failed");
+        goto __cleanup;
+    }
+    Py_INCREF(Py_None);
+    __py_result = Py_None;
+__cleanup:
+        if (arg_attributes_has_view) PyBuffer_Release(&arg_attributes_view);
     return __py_result;
 }
 
@@ -50668,6 +51910,53 @@ __cleanup:
     return __py_result;
 }
 
+static PyObject *py_ifcopenshell_structural_edit_structural_analysis_model(PyObject *self, PyObject *args) {
+    PyObject *__py_result = NULL;
+    bool ok = false;
+    PyObject *arg_file_obj = NULL;
+    ifcopenshell_file_t *arg_file = NULL;
+    PyObject *arg_structural_analysis_model_obj = NULL;
+    ifcopenshell_instance_t *arg_structural_analysis_model = NULL;
+    PyObject *arg_attributes_obj = NULL;
+    Py_buffer arg_attributes_view = {0};
+    void *arg_attributes = NULL;
+    int arg_attributes_has_view = 0;
+
+    if (!PyArg_ParseTuple(args, "OOO", &arg_file_obj, &arg_structural_analysis_model_obj, &arg_attributes_obj)) return NULL;
+
+    if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
+        goto __cleanup;
+    }
+    if (!extract_handle(arg_structural_analysis_model_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_structural_analysis_model, 0)) {
+        goto __cleanup;
+    }
+    if (PyCapsule_IsValid(arg_attributes_obj, NULL)) {
+        arg_attributes = PyCapsule_GetPointer(arg_attributes_obj, NULL);
+    } else if (PyObject_GetBuffer(arg_attributes_obj, &arg_attributes_view, PyBUF_SIMPLE) == 0) {
+        arg_attributes = arg_attributes_view.buf;
+        arg_attributes_has_view = 1;
+    } else {
+        PyErr_SetString(PyExc_TypeError, "Expected a capsule or buffer-compatible object");
+        goto __cleanup;
+    }
+
+    ifcopenshell_clear_error();
+    ok = ifcopenshell_structural_edit_structural_analysis_model(arg_file, arg_structural_analysis_model, arg_attributes);
+    if (!ok) {
+        raise_last_error("ifcopenshell_structural_edit_structural_analysis_model failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_structural_edit_structural_analysis_model failed");
+        goto __cleanup;
+    }
+    Py_INCREF(Py_None);
+    __py_result = Py_None;
+__cleanup:
+        if (arg_attributes_has_view) PyBuffer_Release(&arg_attributes_view);
+    return __py_result;
+}
+
 static PyObject *py_ifcopenshell_structural_edit_structural_boundary_condition(PyObject *self, PyObject *args) {
     PyObject *__py_result = NULL;
     bool ok = false;
@@ -50794,6 +52083,100 @@ static PyObject *py_ifcopenshell_structural_edit_structural_item_axis(PyObject *
     __py_result = Py_None;
 __cleanup:
         free_input_double_list(&arg_axis);
+    return __py_result;
+}
+
+static PyObject *py_ifcopenshell_structural_edit_structural_load(PyObject *self, PyObject *args) {
+    PyObject *__py_result = NULL;
+    bool ok = false;
+    PyObject *arg_file_obj = NULL;
+    ifcopenshell_file_t *arg_file = NULL;
+    PyObject *arg_structural_load_obj = NULL;
+    ifcopenshell_instance_t *arg_structural_load = NULL;
+    PyObject *arg_attributes_obj = NULL;
+    Py_buffer arg_attributes_view = {0};
+    void *arg_attributes = NULL;
+    int arg_attributes_has_view = 0;
+
+    if (!PyArg_ParseTuple(args, "OOO", &arg_file_obj, &arg_structural_load_obj, &arg_attributes_obj)) return NULL;
+
+    if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
+        goto __cleanup;
+    }
+    if (!extract_handle(arg_structural_load_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_structural_load, 0)) {
+        goto __cleanup;
+    }
+    if (PyCapsule_IsValid(arg_attributes_obj, NULL)) {
+        arg_attributes = PyCapsule_GetPointer(arg_attributes_obj, NULL);
+    } else if (PyObject_GetBuffer(arg_attributes_obj, &arg_attributes_view, PyBUF_SIMPLE) == 0) {
+        arg_attributes = arg_attributes_view.buf;
+        arg_attributes_has_view = 1;
+    } else {
+        PyErr_SetString(PyExc_TypeError, "Expected a capsule or buffer-compatible object");
+        goto __cleanup;
+    }
+
+    ifcopenshell_clear_error();
+    ok = ifcopenshell_structural_edit_structural_load(arg_file, arg_structural_load, arg_attributes);
+    if (!ok) {
+        raise_last_error("ifcopenshell_structural_edit_structural_load failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_structural_edit_structural_load failed");
+        goto __cleanup;
+    }
+    Py_INCREF(Py_None);
+    __py_result = Py_None;
+__cleanup:
+        if (arg_attributes_has_view) PyBuffer_Release(&arg_attributes_view);
+    return __py_result;
+}
+
+static PyObject *py_ifcopenshell_structural_edit_structural_load_case(PyObject *self, PyObject *args) {
+    PyObject *__py_result = NULL;
+    bool ok = false;
+    PyObject *arg_file_obj = NULL;
+    ifcopenshell_file_t *arg_file = NULL;
+    PyObject *arg_structural_load_case_obj = NULL;
+    ifcopenshell_instance_t *arg_structural_load_case = NULL;
+    PyObject *arg_attributes_obj = NULL;
+    Py_buffer arg_attributes_view = {0};
+    void *arg_attributes = NULL;
+    int arg_attributes_has_view = 0;
+
+    if (!PyArg_ParseTuple(args, "OOO", &arg_file_obj, &arg_structural_load_case_obj, &arg_attributes_obj)) return NULL;
+
+    if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
+        goto __cleanup;
+    }
+    if (!extract_handle(arg_structural_load_case_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_structural_load_case, 0)) {
+        goto __cleanup;
+    }
+    if (PyCapsule_IsValid(arg_attributes_obj, NULL)) {
+        arg_attributes = PyCapsule_GetPointer(arg_attributes_obj, NULL);
+    } else if (PyObject_GetBuffer(arg_attributes_obj, &arg_attributes_view, PyBUF_SIMPLE) == 0) {
+        arg_attributes = arg_attributes_view.buf;
+        arg_attributes_has_view = 1;
+    } else {
+        PyErr_SetString(PyExc_TypeError, "Expected a capsule or buffer-compatible object");
+        goto __cleanup;
+    }
+
+    ifcopenshell_clear_error();
+    ok = ifcopenshell_structural_edit_structural_load_case(arg_file, arg_structural_load_case, arg_attributes);
+    if (!ok) {
+        raise_last_error("ifcopenshell_structural_edit_structural_load_case failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_structural_edit_structural_load_case failed");
+        goto __cleanup;
+    }
+    Py_INCREF(Py_None);
+    __py_result = Py_None;
+__cleanup:
+        if (arg_attributes_has_view) PyBuffer_Release(&arg_attributes_view);
     return __py_result;
 }
 
@@ -51276,6 +52659,53 @@ __cleanup:
     return __py_result;
 }
 
+static PyObject *py_ifcopenshell_style_edit_presentation_style(PyObject *self, PyObject *args) {
+    PyObject *__py_result = NULL;
+    bool ok = false;
+    PyObject *arg_file_obj = NULL;
+    ifcopenshell_file_t *arg_file = NULL;
+    PyObject *arg_style_obj = NULL;
+    ifcopenshell_instance_t *arg_style = NULL;
+    PyObject *arg_attributes_obj = NULL;
+    Py_buffer arg_attributes_view = {0};
+    void *arg_attributes = NULL;
+    int arg_attributes_has_view = 0;
+
+    if (!PyArg_ParseTuple(args, "OOO", &arg_file_obj, &arg_style_obj, &arg_attributes_obj)) return NULL;
+
+    if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
+        goto __cleanup;
+    }
+    if (!extract_handle(arg_style_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_style, 0)) {
+        goto __cleanup;
+    }
+    if (PyCapsule_IsValid(arg_attributes_obj, NULL)) {
+        arg_attributes = PyCapsule_GetPointer(arg_attributes_obj, NULL);
+    } else if (PyObject_GetBuffer(arg_attributes_obj, &arg_attributes_view, PyBUF_SIMPLE) == 0) {
+        arg_attributes = arg_attributes_view.buf;
+        arg_attributes_has_view = 1;
+    } else {
+        PyErr_SetString(PyExc_TypeError, "Expected a capsule or buffer-compatible object");
+        goto __cleanup;
+    }
+
+    ifcopenshell_clear_error();
+    ok = ifcopenshell_style_edit_presentation_style(arg_file, arg_style, arg_attributes);
+    if (!ok) {
+        raise_last_error("ifcopenshell_style_edit_presentation_style failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_style_edit_presentation_style failed");
+        goto __cleanup;
+    }
+    Py_INCREF(Py_None);
+    __py_result = Py_None;
+__cleanup:
+        if (arg_attributes_has_view) PyBuffer_Release(&arg_attributes_view);
+    return __py_result;
+}
+
 static PyObject *py_ifcopenshell_style_edit_surface_style(PyObject *self, PyObject *args) {
     PyObject *__py_result = NULL;
     bool ok = false;
@@ -51745,6 +53175,53 @@ static PyObject *py_ifcopenshell_system_disconnect_port(PyObject *self, PyObject
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
+    return __py_result;
+}
+
+static PyObject *py_ifcopenshell_system_edit_system(PyObject *self, PyObject *args) {
+    PyObject *__py_result = NULL;
+    bool ok = false;
+    PyObject *arg_file_obj = NULL;
+    ifcopenshell_file_t *arg_file = NULL;
+    PyObject *arg_system_obj = NULL;
+    ifcopenshell_instance_t *arg_system = NULL;
+    PyObject *arg_attributes_obj = NULL;
+    Py_buffer arg_attributes_view = {0};
+    void *arg_attributes = NULL;
+    int arg_attributes_has_view = 0;
+
+    if (!PyArg_ParseTuple(args, "OOO", &arg_file_obj, &arg_system_obj, &arg_attributes_obj)) return NULL;
+
+    if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
+        goto __cleanup;
+    }
+    if (!extract_handle(arg_system_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_system, 0)) {
+        goto __cleanup;
+    }
+    if (PyCapsule_IsValid(arg_attributes_obj, NULL)) {
+        arg_attributes = PyCapsule_GetPointer(arg_attributes_obj, NULL);
+    } else if (PyObject_GetBuffer(arg_attributes_obj, &arg_attributes_view, PyBUF_SIMPLE) == 0) {
+        arg_attributes = arg_attributes_view.buf;
+        arg_attributes_has_view = 1;
+    } else {
+        PyErr_SetString(PyExc_TypeError, "Expected a capsule or buffer-compatible object");
+        goto __cleanup;
+    }
+
+    ifcopenshell_clear_error();
+    ok = ifcopenshell_system_edit_system(arg_file, arg_system, arg_attributes);
+    if (!ok) {
+        raise_last_error("ifcopenshell_system_edit_system failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_system_edit_system failed");
+        goto __cleanup;
+    }
+    Py_INCREF(Py_None);
+    __py_result = Py_None;
+__cleanup:
+        if (arg_attributes_has_view) PyBuffer_Release(&arg_attributes_view);
     return __py_result;
 }
 
@@ -52345,6 +53822,100 @@ static PyObject *py_ifcopenshell_unit_convert_unit(PyObject *self, PyObject *arg
     }
     __py_result = PyFloat_FromDouble(result);
 __cleanup:
+    return __py_result;
+}
+
+static PyObject *py_ifcopenshell_unit_edit_derived_unit(PyObject *self, PyObject *args) {
+    PyObject *__py_result = NULL;
+    bool ok = false;
+    PyObject *arg_file_obj = NULL;
+    ifcopenshell_file_t *arg_file = NULL;
+    PyObject *arg_unit_obj = NULL;
+    ifcopenshell_instance_t *arg_unit = NULL;
+    PyObject *arg_attributes_obj = NULL;
+    Py_buffer arg_attributes_view = {0};
+    void *arg_attributes = NULL;
+    int arg_attributes_has_view = 0;
+
+    if (!PyArg_ParseTuple(args, "OOO", &arg_file_obj, &arg_unit_obj, &arg_attributes_obj)) return NULL;
+
+    if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
+        goto __cleanup;
+    }
+    if (!extract_handle(arg_unit_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_unit, 0)) {
+        goto __cleanup;
+    }
+    if (PyCapsule_IsValid(arg_attributes_obj, NULL)) {
+        arg_attributes = PyCapsule_GetPointer(arg_attributes_obj, NULL);
+    } else if (PyObject_GetBuffer(arg_attributes_obj, &arg_attributes_view, PyBUF_SIMPLE) == 0) {
+        arg_attributes = arg_attributes_view.buf;
+        arg_attributes_has_view = 1;
+    } else {
+        PyErr_SetString(PyExc_TypeError, "Expected a capsule or buffer-compatible object");
+        goto __cleanup;
+    }
+
+    ifcopenshell_clear_error();
+    ok = ifcopenshell_unit_edit_derived_unit(arg_file, arg_unit, arg_attributes);
+    if (!ok) {
+        raise_last_error("ifcopenshell_unit_edit_derived_unit failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_unit_edit_derived_unit failed");
+        goto __cleanup;
+    }
+    Py_INCREF(Py_None);
+    __py_result = Py_None;
+__cleanup:
+        if (arg_attributes_has_view) PyBuffer_Release(&arg_attributes_view);
+    return __py_result;
+}
+
+static PyObject *py_ifcopenshell_unit_edit_monetary_unit(PyObject *self, PyObject *args) {
+    PyObject *__py_result = NULL;
+    bool ok = false;
+    PyObject *arg_file_obj = NULL;
+    ifcopenshell_file_t *arg_file = NULL;
+    PyObject *arg_unit_obj = NULL;
+    ifcopenshell_instance_t *arg_unit = NULL;
+    PyObject *arg_attributes_obj = NULL;
+    Py_buffer arg_attributes_view = {0};
+    void *arg_attributes = NULL;
+    int arg_attributes_has_view = 0;
+
+    if (!PyArg_ParseTuple(args, "OOO", &arg_file_obj, &arg_unit_obj, &arg_attributes_obj)) return NULL;
+
+    if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
+        goto __cleanup;
+    }
+    if (!extract_handle(arg_unit_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_unit, 0)) {
+        goto __cleanup;
+    }
+    if (PyCapsule_IsValid(arg_attributes_obj, NULL)) {
+        arg_attributes = PyCapsule_GetPointer(arg_attributes_obj, NULL);
+    } else if (PyObject_GetBuffer(arg_attributes_obj, &arg_attributes_view, PyBUF_SIMPLE) == 0) {
+        arg_attributes = arg_attributes_view.buf;
+        arg_attributes_has_view = 1;
+    } else {
+        PyErr_SetString(PyExc_TypeError, "Expected a capsule or buffer-compatible object");
+        goto __cleanup;
+    }
+
+    ifcopenshell_clear_error();
+    ok = ifcopenshell_unit_edit_monetary_unit(arg_file, arg_unit, arg_attributes);
+    if (!ok) {
+        raise_last_error("ifcopenshell_unit_edit_monetary_unit failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_unit_edit_monetary_unit failed");
+        goto __cleanup;
+    }
+    Py_INCREF(Py_None);
+    __py_result = Py_None;
+__cleanup:
+        if (arg_attributes_has_view) PyBuffer_Release(&arg_attributes_view);
     return __py_result;
 }
 
@@ -53604,6 +55175,8 @@ static PyMethodDef module_methods[] = {
     {"boundary_remove_boundary", py_ifcopenshell_boundary_remove_boundary, METH_VARARGS, "Wrap ifcopenshell_boundary_remove_boundary"},
     {"classification_add_classification", py_ifcopenshell_classification_add_classification, METH_VARARGS, "Wrap ifcopenshell_classification_add_classification"},
     {"classification_add_reference", py_ifcopenshell_classification_add_reference, METH_VARARGS, "Wrap ifcopenshell_classification_add_reference"},
+    {"classification_edit_classification", py_ifcopenshell_classification_edit_classification, METH_VARARGS, "Wrap ifcopenshell_classification_edit_classification"},
+    {"classification_edit_reference", py_ifcopenshell_classification_edit_reference, METH_VARARGS, "Wrap ifcopenshell_classification_edit_reference"},
     {"classification_get_references", py_ifcopenshell_classification_get_references, METH_VARARGS, "Wrap ifcopenshell_classification_get_references"},
     {"classification_remove_classification", py_ifcopenshell_classification_remove_classification, METH_VARARGS, "Wrap ifcopenshell_classification_remove_classification"},
     {"classification_remove_reference", py_ifcopenshell_classification_remove_reference, METH_VARARGS, "Wrap ifcopenshell_classification_remove_reference"},
@@ -53616,6 +55189,8 @@ static PyMethodDef module_methods[] = {
     {"constraint_add_metric_reference", py_ifcopenshell_constraint_add_metric_reference, METH_VARARGS, "Wrap ifcopenshell_constraint_add_metric_reference"},
     {"constraint_add_objective", py_ifcopenshell_constraint_add_objective, METH_VARARGS, "Wrap ifcopenshell_constraint_add_objective"},
     {"constraint_assign_constraint", py_ifcopenshell_constraint_assign_constraint, METH_VARARGS, "Wrap ifcopenshell_constraint_assign_constraint"},
+    {"constraint_edit_metric", py_ifcopenshell_constraint_edit_metric, METH_VARARGS, "Wrap ifcopenshell_constraint_edit_metric"},
+    {"constraint_edit_objective", py_ifcopenshell_constraint_edit_objective, METH_VARARGS, "Wrap ifcopenshell_constraint_edit_objective"},
     {"constraint_remove_constraint", py_ifcopenshell_constraint_remove_constraint, METH_VARARGS, "Wrap ifcopenshell_constraint_remove_constraint"},
     {"constraint_remove_metric", py_ifcopenshell_constraint_remove_metric, METH_VARARGS, "Wrap ifcopenshell_constraint_remove_metric"},
     {"constraint_unassign_constraint", py_ifcopenshell_constraint_unassign_constraint, METH_VARARGS, "Wrap ifcopenshell_constraint_unassign_constraint"},
@@ -53657,10 +55232,13 @@ static PyMethodDef module_methods[] = {
     {"document_add_information", py_ifcopenshell_document_add_information, METH_VARARGS, "Wrap ifcopenshell_document_add_information"},
     {"document_add_reference", py_ifcopenshell_document_add_reference, METH_VARARGS, "Wrap ifcopenshell_document_add_reference"},
     {"document_assign_document", py_ifcopenshell_document_assign_document, METH_VARARGS, "Wrap ifcopenshell_document_assign_document"},
+    {"document_edit_information", py_ifcopenshell_document_edit_information, METH_VARARGS, "Wrap ifcopenshell_document_edit_information"},
+    {"document_edit_reference", py_ifcopenshell_document_edit_reference, METH_VARARGS, "Wrap ifcopenshell_document_edit_reference"},
     {"document_remove_information", py_ifcopenshell_document_remove_information, METH_VARARGS, "Wrap ifcopenshell_document_remove_information"},
     {"document_remove_reference", py_ifcopenshell_document_remove_reference, METH_VARARGS, "Wrap ifcopenshell_document_remove_reference"},
     {"document_unassign_document", py_ifcopenshell_document_unassign_document, METH_VARARGS, "Wrap ifcopenshell_document_unassign_document"},
     {"drawing_assign_product", py_ifcopenshell_drawing_assign_product, METH_VARARGS, "Wrap ifcopenshell_drawing_assign_product"},
+    {"drawing_edit_text_literal", py_ifcopenshell_drawing_edit_text_literal, METH_VARARGS, "Wrap ifcopenshell_drawing_edit_text_literal"},
     {"drawing_unassign_product", py_ifcopenshell_drawing_unassign_product, METH_VARARGS, "Wrap ifcopenshell_drawing_unassign_product"},
     {"element_get_aggregate", py_ifcopenshell_element_get_aggregate, METH_VARARGS, "Wrap ifcopenshell_element_get_aggregate"},
     {"element_get_contained", py_ifcopenshell_element_get_contained, METH_VARARGS, "Wrap ifcopenshell_element_get_contained"},
@@ -54207,6 +55785,7 @@ static PyMethodDef module_methods[] = {
     {"grid_remove_grid_axis", py_ifcopenshell_grid_remove_grid_axis, METH_VARARGS, "Wrap ifcopenshell_grid_remove_grid_axis"},
     {"group_add_group", py_ifcopenshell_group_add_group, METH_VARARGS, "Wrap ifcopenshell_group_add_group"},
     {"group_assign_group", py_ifcopenshell_group_assign_group, METH_VARARGS, "Wrap ifcopenshell_group_assign_group"},
+    {"group_edit_group", py_ifcopenshell_group_edit_group, METH_VARARGS, "Wrap ifcopenshell_group_edit_group"},
     {"group_remove_group", py_ifcopenshell_group_remove_group, METH_VARARGS, "Wrap ifcopenshell_group_remove_group"},
     {"group_unassign_group", py_ifcopenshell_group_unassign_group, METH_VARARGS, "Wrap ifcopenshell_group_unassign_group"},
     {"group_update_group_products", py_ifcopenshell_group_update_group_products, METH_VARARGS, "Wrap ifcopenshell_group_update_group_products"},
@@ -54273,11 +55852,14 @@ static PyMethodDef module_methods[] = {
     {"layer_add_layer", py_ifcopenshell_layer_add_layer, METH_VARARGS, "Wrap ifcopenshell_layer_add_layer"},
     {"layer_add_layer_with_style", py_ifcopenshell_layer_add_layer_with_style, METH_VARARGS, "Wrap ifcopenshell_layer_add_layer_with_style"},
     {"layer_assign_layer", py_ifcopenshell_layer_assign_layer, METH_VARARGS, "Wrap ifcopenshell_layer_assign_layer"},
+    {"layer_edit_layer", py_ifcopenshell_layer_edit_layer, METH_VARARGS, "Wrap ifcopenshell_layer_edit_layer"},
     {"layer_remove_layer", py_ifcopenshell_layer_remove_layer, METH_VARARGS, "Wrap ifcopenshell_layer_remove_layer"},
     {"layer_unassign_layer", py_ifcopenshell_layer_unassign_layer, METH_VARARGS, "Wrap ifcopenshell_layer_unassign_layer"},
     {"library_add_library", py_ifcopenshell_library_add_library, METH_VARARGS, "Wrap ifcopenshell_library_add_library"},
     {"library_add_reference", py_ifcopenshell_library_add_reference, METH_VARARGS, "Wrap ifcopenshell_library_add_reference"},
     {"library_assign_reference", py_ifcopenshell_library_assign_reference, METH_VARARGS, "Wrap ifcopenshell_library_assign_reference"},
+    {"library_edit_library", py_ifcopenshell_library_edit_library, METH_VARARGS, "Wrap ifcopenshell_library_edit_library"},
+    {"library_edit_reference", py_ifcopenshell_library_edit_reference, METH_VARARGS, "Wrap ifcopenshell_library_edit_reference"},
     {"library_edit_version_date", py_ifcopenshell_library_edit_version_date, METH_VARARGS, "Wrap ifcopenshell_library_edit_version_date"},
     {"library_remove_library", py_ifcopenshell_library_remove_library, METH_VARARGS, "Wrap ifcopenshell_library_remove_library"},
     {"library_remove_reference", py_ifcopenshell_library_remove_reference, METH_VARARGS, "Wrap ifcopenshell_library_remove_reference"},
@@ -54291,6 +55873,12 @@ static PyMethodDef module_methods[] = {
     {"material_assign_material", py_ifcopenshell_material_assign_material, METH_VARARGS, "Wrap ifcopenshell_material_assign_material"},
     {"material_assign_profile", py_ifcopenshell_material_assign_profile, METH_VARARGS, "Wrap ifcopenshell_material_assign_profile"},
     {"material_copy_material", py_ifcopenshell_material_copy_material, METH_VARARGS, "Wrap ifcopenshell_material_copy_material"},
+    {"material_edit_assigned_material", py_ifcopenshell_material_edit_assigned_material, METH_VARARGS, "Wrap ifcopenshell_material_edit_assigned_material"},
+    {"material_edit_constituent", py_ifcopenshell_material_edit_constituent, METH_VARARGS, "Wrap ifcopenshell_material_edit_constituent"},
+    {"material_edit_layer", py_ifcopenshell_material_edit_layer, METH_VARARGS, "Wrap ifcopenshell_material_edit_layer"},
+    {"material_edit_layer_usage", py_ifcopenshell_material_edit_layer_usage, METH_VARARGS, "Wrap ifcopenshell_material_edit_layer_usage"},
+    {"material_edit_material", py_ifcopenshell_material_edit_material, METH_VARARGS, "Wrap ifcopenshell_material_edit_material"},
+    {"material_edit_profile", py_ifcopenshell_material_edit_profile, METH_VARARGS, "Wrap ifcopenshell_material_edit_profile"},
     {"material_edit_profile_usage", py_ifcopenshell_material_edit_profile_usage, METH_VARARGS, "Wrap ifcopenshell_material_edit_profile_usage"},
     {"material_remove_constituent", py_ifcopenshell_material_remove_constituent, METH_VARARGS, "Wrap ifcopenshell_material_remove_constituent"},
     {"material_remove_layer", py_ifcopenshell_material_remove_layer, METH_VARARGS, "Wrap ifcopenshell_material_remove_layer"},
@@ -54317,6 +55905,12 @@ static PyMethodDef module_methods[] = {
     {"owner_add_role", py_ifcopenshell_owner_add_role, METH_VARARGS, "Wrap ifcopenshell_owner_add_role"},
     {"owner_assign_actor", py_ifcopenshell_owner_assign_actor, METH_VARARGS, "Wrap ifcopenshell_owner_assign_actor"},
     {"owner_create_owner_history", py_ifcopenshell_owner_create_owner_history, METH_VARARGS, "Wrap ifcopenshell_owner_create_owner_history"},
+    {"owner_edit_actor", py_ifcopenshell_owner_edit_actor, METH_VARARGS, "Wrap ifcopenshell_owner_edit_actor"},
+    {"owner_edit_address", py_ifcopenshell_owner_edit_address, METH_VARARGS, "Wrap ifcopenshell_owner_edit_address"},
+    {"owner_edit_application", py_ifcopenshell_owner_edit_application, METH_VARARGS, "Wrap ifcopenshell_owner_edit_application"},
+    {"owner_edit_organisation", py_ifcopenshell_owner_edit_organisation, METH_VARARGS, "Wrap ifcopenshell_owner_edit_organisation"},
+    {"owner_edit_person", py_ifcopenshell_owner_edit_person, METH_VARARGS, "Wrap ifcopenshell_owner_edit_person"},
+    {"owner_edit_role", py_ifcopenshell_owner_edit_role, METH_VARARGS, "Wrap ifcopenshell_owner_edit_role"},
     {"owner_remove_actor", py_ifcopenshell_owner_remove_actor, METH_VARARGS, "Wrap ifcopenshell_owner_remove_actor"},
     {"owner_remove_address", py_ifcopenshell_owner_remove_address, METH_VARARGS, "Wrap ifcopenshell_owner_remove_address"},
     {"owner_remove_application", py_ifcopenshell_owner_remove_application, METH_VARARGS, "Wrap ifcopenshell_owner_remove_application"},
@@ -54441,6 +56035,7 @@ static PyMethodDef module_methods[] = {
     {"pset_template_add_pset_template", py_ifcopenshell_pset_template_add_pset_template, METH_VARARGS, "Wrap ifcopenshell_pset_template_add_pset_template"},
     {"pset_template_create_from_files", py_ifcopenshell_pset_template_create_from_files, METH_VARARGS, "Wrap ifcopenshell_pset_template_create_from_files"},
     {"pset_template_edit_prop_template", py_ifcopenshell_pset_template_edit_prop_template, METH_VARARGS, "Wrap ifcopenshell_pset_template_edit_prop_template"},
+    {"pset_template_edit_pset_template", py_ifcopenshell_pset_template_edit_pset_template, METH_VARARGS, "Wrap ifcopenshell_pset_template_edit_pset_template"},
     {"pset_template_get_applicable", py_ifcopenshell_pset_template_get_applicable, METH_VARARGS, "Wrap ifcopenshell_pset_template_get_applicable"},
     {"pset_template_get_applicable_names", py_ifcopenshell_pset_template_get_applicable_names, METH_VARARGS, "Wrap ifcopenshell_pset_template_get_applicable_names"},
     {"pset_template_get_by_name", py_ifcopenshell_pset_template_get_by_name, METH_VARARGS, "Wrap ifcopenshell_pset_template_get_by_name"},
@@ -54464,6 +56059,8 @@ static PyMethodDef module_methods[] = {
     {"resource_assign_resource", py_ifcopenshell_resource_assign_resource, METH_VARARGS, "Wrap ifcopenshell_resource_assign_resource"},
     {"resource_calculate_resource_usage", py_ifcopenshell_resource_calculate_resource_usage, METH_VARARGS, "Wrap ifcopenshell_resource_calculate_resource_usage"},
     {"resource_calculate_resource_work", py_ifcopenshell_resource_calculate_resource_work, METH_VARARGS, "Wrap ifcopenshell_resource_calculate_resource_work"},
+    {"resource_edit_resource", py_ifcopenshell_resource_edit_resource, METH_VARARGS, "Wrap ifcopenshell_resource_edit_resource"},
+    {"resource_edit_resource_quantity", py_ifcopenshell_resource_edit_resource_quantity, METH_VARARGS, "Wrap ifcopenshell_resource_edit_resource_quantity"},
     {"resource_edit_resource_time", py_ifcopenshell_resource_edit_resource_time, METH_VARARGS, "Wrap ifcopenshell_resource_edit_resource_time"},
     {"resource_remove_resource", py_ifcopenshell_resource_remove_resource, METH_VARARGS, "Wrap ifcopenshell_resource_remove_resource"},
     {"resource_remove_resource_quantity", py_ifcopenshell_resource_remove_resource_quantity, METH_VARARGS, "Wrap ifcopenshell_resource_remove_resource_quantity"},
@@ -54592,9 +56189,12 @@ static PyMethodDef module_methods[] = {
     {"structural_assign_product", py_ifcopenshell_structural_assign_product, METH_VARARGS, "Wrap ifcopenshell_structural_assign_product"},
     {"structural_assign_structural_analysis_model", py_ifcopenshell_structural_assign_structural_analysis_model, METH_VARARGS, "Wrap ifcopenshell_structural_assign_structural_analysis_model"},
     {"structural_assign_to_building", py_ifcopenshell_structural_assign_to_building, METH_VARARGS, "Wrap ifcopenshell_structural_assign_to_building"},
+    {"structural_edit_structural_analysis_model", py_ifcopenshell_structural_edit_structural_analysis_model, METH_VARARGS, "Wrap ifcopenshell_structural_edit_structural_analysis_model"},
     {"structural_edit_structural_boundary_condition", py_ifcopenshell_structural_edit_structural_boundary_condition, METH_VARARGS, "Wrap ifcopenshell_structural_edit_structural_boundary_condition"},
     {"structural_edit_structural_connection_cs", py_ifcopenshell_structural_edit_structural_connection_cs, METH_VARARGS, "Wrap ifcopenshell_structural_edit_structural_connection_cs"},
     {"structural_edit_structural_item_axis", py_ifcopenshell_structural_edit_structural_item_axis, METH_VARARGS, "Wrap ifcopenshell_structural_edit_structural_item_axis"},
+    {"structural_edit_structural_load", py_ifcopenshell_structural_edit_structural_load, METH_VARARGS, "Wrap ifcopenshell_structural_edit_structural_load"},
+    {"structural_edit_structural_load_case", py_ifcopenshell_structural_edit_structural_load_case, METH_VARARGS, "Wrap ifcopenshell_structural_edit_structural_load_case"},
     {"structural_remove_structural_analysis_model", py_ifcopenshell_structural_remove_structural_analysis_model, METH_VARARGS, "Wrap ifcopenshell_structural_remove_structural_analysis_model"},
     {"structural_remove_structural_boundary_condition", py_ifcopenshell_structural_remove_structural_boundary_condition, METH_VARARGS, "Wrap ifcopenshell_structural_remove_structural_boundary_condition"},
     {"structural_remove_structural_connection_condition", py_ifcopenshell_structural_remove_structural_connection_condition, METH_VARARGS, "Wrap ifcopenshell_structural_remove_structural_connection_condition"},
@@ -54608,6 +56208,7 @@ static PyMethodDef module_methods[] = {
     {"style_assign_item_style", py_ifcopenshell_style_assign_item_style, METH_VARARGS, "Wrap ifcopenshell_style_assign_item_style"},
     {"style_assign_material_style", py_ifcopenshell_style_assign_material_style, METH_VARARGS, "Wrap ifcopenshell_style_assign_material_style"},
     {"style_assign_representation_styles", py_ifcopenshell_style_assign_representation_styles, METH_VARARGS, "Wrap ifcopenshell_style_assign_representation_styles"},
+    {"style_edit_presentation_style", py_ifcopenshell_style_edit_presentation_style, METH_VARARGS, "Wrap ifcopenshell_style_edit_presentation_style"},
     {"style_edit_surface_style", py_ifcopenshell_style_edit_surface_style, METH_VARARGS, "Wrap ifcopenshell_style_edit_surface_style"},
     {"style_remove_style", py_ifcopenshell_style_remove_style, METH_VARARGS, "Wrap ifcopenshell_style_remove_style"},
     {"style_remove_styled_representation", py_ifcopenshell_style_remove_styled_representation, METH_VARARGS, "Wrap ifcopenshell_style_remove_styled_representation"},
@@ -54621,6 +56222,7 @@ static PyMethodDef module_methods[] = {
     {"system_assign_system", py_ifcopenshell_system_assign_system, METH_VARARGS, "Wrap ifcopenshell_system_assign_system"},
     {"system_connect_port", py_ifcopenshell_system_connect_port, METH_VARARGS, "Wrap ifcopenshell_system_connect_port"},
     {"system_disconnect_port", py_ifcopenshell_system_disconnect_port, METH_VARARGS, "Wrap ifcopenshell_system_disconnect_port"},
+    {"system_edit_system", py_ifcopenshell_system_edit_system, METH_VARARGS, "Wrap ifcopenshell_system_edit_system"},
     {"system_remove_system", py_ifcopenshell_system_remove_system, METH_VARARGS, "Wrap ifcopenshell_system_remove_system"},
     {"system_unassign_flow_control", py_ifcopenshell_system_unassign_flow_control, METH_VARARGS, "Wrap ifcopenshell_system_unassign_flow_control"},
     {"system_unassign_port", py_ifcopenshell_system_unassign_port, METH_VARARGS, "Wrap ifcopenshell_system_unassign_port"},
@@ -54640,6 +56242,8 @@ static PyMethodDef module_methods[] = {
     {"unit_calculate_unit_scale", py_ifcopenshell_unit_calculate_unit_scale, METH_VARARGS, "Wrap ifcopenshell_unit_calculate_unit_scale"},
     {"unit_convert", py_ifcopenshell_unit_convert, METH_VARARGS, "Wrap ifcopenshell_unit_convert"},
     {"unit_convert_unit", py_ifcopenshell_unit_convert_unit, METH_VARARGS, "Wrap ifcopenshell_unit_convert_unit"},
+    {"unit_edit_derived_unit", py_ifcopenshell_unit_edit_derived_unit, METH_VARARGS, "Wrap ifcopenshell_unit_edit_derived_unit"},
+    {"unit_edit_monetary_unit", py_ifcopenshell_unit_edit_monetary_unit, METH_VARARGS, "Wrap ifcopenshell_unit_edit_monetary_unit"},
     {"unit_edit_named_unit", py_ifcopenshell_unit_edit_named_unit, METH_VARARGS, "Wrap ifcopenshell_unit_edit_named_unit"},
     {"unit_format_length", py_ifcopenshell_unit_format_length, METH_VARARGS, "Wrap ifcopenshell_unit_format_length"},
     {"unit_get_full_unit_name", py_ifcopenshell_unit_get_full_unit_name, METH_VARARGS, "Wrap ifcopenshell_unit_get_full_unit_name"},
@@ -54747,6 +56351,8 @@ static PyMethodDef module_methods[] = {
     {"ifcopenshell_boundary_remove_boundary", py_ifcopenshell_boundary_remove_boundary, METH_VARARGS, "Wrap ifcopenshell_boundary_remove_boundary"},
     {"ifcopenshell_classification_add_classification", py_ifcopenshell_classification_add_classification, METH_VARARGS, "Wrap ifcopenshell_classification_add_classification"},
     {"ifcopenshell_classification_add_reference", py_ifcopenshell_classification_add_reference, METH_VARARGS, "Wrap ifcopenshell_classification_add_reference"},
+    {"ifcopenshell_classification_edit_classification", py_ifcopenshell_classification_edit_classification, METH_VARARGS, "Wrap ifcopenshell_classification_edit_classification"},
+    {"ifcopenshell_classification_edit_reference", py_ifcopenshell_classification_edit_reference, METH_VARARGS, "Wrap ifcopenshell_classification_edit_reference"},
     {"ifcopenshell_classification_get_references", py_ifcopenshell_classification_get_references, METH_VARARGS, "Wrap ifcopenshell_classification_get_references"},
     {"ifcopenshell_classification_remove_classification", py_ifcopenshell_classification_remove_classification, METH_VARARGS, "Wrap ifcopenshell_classification_remove_classification"},
     {"ifcopenshell_classification_remove_reference", py_ifcopenshell_classification_remove_reference, METH_VARARGS, "Wrap ifcopenshell_classification_remove_reference"},
@@ -54759,6 +56365,8 @@ static PyMethodDef module_methods[] = {
     {"ifcopenshell_constraint_add_metric_reference", py_ifcopenshell_constraint_add_metric_reference, METH_VARARGS, "Wrap ifcopenshell_constraint_add_metric_reference"},
     {"ifcopenshell_constraint_add_objective", py_ifcopenshell_constraint_add_objective, METH_VARARGS, "Wrap ifcopenshell_constraint_add_objective"},
     {"ifcopenshell_constraint_assign_constraint", py_ifcopenshell_constraint_assign_constraint, METH_VARARGS, "Wrap ifcopenshell_constraint_assign_constraint"},
+    {"ifcopenshell_constraint_edit_metric", py_ifcopenshell_constraint_edit_metric, METH_VARARGS, "Wrap ifcopenshell_constraint_edit_metric"},
+    {"ifcopenshell_constraint_edit_objective", py_ifcopenshell_constraint_edit_objective, METH_VARARGS, "Wrap ifcopenshell_constraint_edit_objective"},
     {"ifcopenshell_constraint_remove_constraint", py_ifcopenshell_constraint_remove_constraint, METH_VARARGS, "Wrap ifcopenshell_constraint_remove_constraint"},
     {"ifcopenshell_constraint_remove_metric", py_ifcopenshell_constraint_remove_metric, METH_VARARGS, "Wrap ifcopenshell_constraint_remove_metric"},
     {"ifcopenshell_constraint_unassign_constraint", py_ifcopenshell_constraint_unassign_constraint, METH_VARARGS, "Wrap ifcopenshell_constraint_unassign_constraint"},
@@ -54800,10 +56408,13 @@ static PyMethodDef module_methods[] = {
     {"ifcopenshell_document_add_information", py_ifcopenshell_document_add_information, METH_VARARGS, "Wrap ifcopenshell_document_add_information"},
     {"ifcopenshell_document_add_reference", py_ifcopenshell_document_add_reference, METH_VARARGS, "Wrap ifcopenshell_document_add_reference"},
     {"ifcopenshell_document_assign_document", py_ifcopenshell_document_assign_document, METH_VARARGS, "Wrap ifcopenshell_document_assign_document"},
+    {"ifcopenshell_document_edit_information", py_ifcopenshell_document_edit_information, METH_VARARGS, "Wrap ifcopenshell_document_edit_information"},
+    {"ifcopenshell_document_edit_reference", py_ifcopenshell_document_edit_reference, METH_VARARGS, "Wrap ifcopenshell_document_edit_reference"},
     {"ifcopenshell_document_remove_information", py_ifcopenshell_document_remove_information, METH_VARARGS, "Wrap ifcopenshell_document_remove_information"},
     {"ifcopenshell_document_remove_reference", py_ifcopenshell_document_remove_reference, METH_VARARGS, "Wrap ifcopenshell_document_remove_reference"},
     {"ifcopenshell_document_unassign_document", py_ifcopenshell_document_unassign_document, METH_VARARGS, "Wrap ifcopenshell_document_unassign_document"},
     {"ifcopenshell_drawing_assign_product", py_ifcopenshell_drawing_assign_product, METH_VARARGS, "Wrap ifcopenshell_drawing_assign_product"},
+    {"ifcopenshell_drawing_edit_text_literal", py_ifcopenshell_drawing_edit_text_literal, METH_VARARGS, "Wrap ifcopenshell_drawing_edit_text_literal"},
     {"ifcopenshell_drawing_unassign_product", py_ifcopenshell_drawing_unassign_product, METH_VARARGS, "Wrap ifcopenshell_drawing_unassign_product"},
     {"ifcopenshell_element_get_aggregate", py_ifcopenshell_element_get_aggregate, METH_VARARGS, "Wrap ifcopenshell_element_get_aggregate"},
     {"ifcopenshell_element_get_contained", py_ifcopenshell_element_get_contained, METH_VARARGS, "Wrap ifcopenshell_element_get_contained"},
@@ -55350,6 +56961,7 @@ static PyMethodDef module_methods[] = {
     {"ifcopenshell_grid_remove_grid_axis", py_ifcopenshell_grid_remove_grid_axis, METH_VARARGS, "Wrap ifcopenshell_grid_remove_grid_axis"},
     {"ifcopenshell_group_add_group", py_ifcopenshell_group_add_group, METH_VARARGS, "Wrap ifcopenshell_group_add_group"},
     {"ifcopenshell_group_assign_group", py_ifcopenshell_group_assign_group, METH_VARARGS, "Wrap ifcopenshell_group_assign_group"},
+    {"ifcopenshell_group_edit_group", py_ifcopenshell_group_edit_group, METH_VARARGS, "Wrap ifcopenshell_group_edit_group"},
     {"ifcopenshell_group_remove_group", py_ifcopenshell_group_remove_group, METH_VARARGS, "Wrap ifcopenshell_group_remove_group"},
     {"ifcopenshell_group_unassign_group", py_ifcopenshell_group_unassign_group, METH_VARARGS, "Wrap ifcopenshell_group_unassign_group"},
     {"ifcopenshell_group_update_group_products", py_ifcopenshell_group_update_group_products, METH_VARARGS, "Wrap ifcopenshell_group_update_group_products"},
@@ -55416,11 +57028,14 @@ static PyMethodDef module_methods[] = {
     {"ifcopenshell_layer_add_layer", py_ifcopenshell_layer_add_layer, METH_VARARGS, "Wrap ifcopenshell_layer_add_layer"},
     {"ifcopenshell_layer_add_layer_with_style", py_ifcopenshell_layer_add_layer_with_style, METH_VARARGS, "Wrap ifcopenshell_layer_add_layer_with_style"},
     {"ifcopenshell_layer_assign_layer", py_ifcopenshell_layer_assign_layer, METH_VARARGS, "Wrap ifcopenshell_layer_assign_layer"},
+    {"ifcopenshell_layer_edit_layer", py_ifcopenshell_layer_edit_layer, METH_VARARGS, "Wrap ifcopenshell_layer_edit_layer"},
     {"ifcopenshell_layer_remove_layer", py_ifcopenshell_layer_remove_layer, METH_VARARGS, "Wrap ifcopenshell_layer_remove_layer"},
     {"ifcopenshell_layer_unassign_layer", py_ifcopenshell_layer_unassign_layer, METH_VARARGS, "Wrap ifcopenshell_layer_unassign_layer"},
     {"ifcopenshell_library_add_library", py_ifcopenshell_library_add_library, METH_VARARGS, "Wrap ifcopenshell_library_add_library"},
     {"ifcopenshell_library_add_reference", py_ifcopenshell_library_add_reference, METH_VARARGS, "Wrap ifcopenshell_library_add_reference"},
     {"ifcopenshell_library_assign_reference", py_ifcopenshell_library_assign_reference, METH_VARARGS, "Wrap ifcopenshell_library_assign_reference"},
+    {"ifcopenshell_library_edit_library", py_ifcopenshell_library_edit_library, METH_VARARGS, "Wrap ifcopenshell_library_edit_library"},
+    {"ifcopenshell_library_edit_reference", py_ifcopenshell_library_edit_reference, METH_VARARGS, "Wrap ifcopenshell_library_edit_reference"},
     {"ifcopenshell_library_edit_version_date", py_ifcopenshell_library_edit_version_date, METH_VARARGS, "Wrap ifcopenshell_library_edit_version_date"},
     {"ifcopenshell_library_remove_library", py_ifcopenshell_library_remove_library, METH_VARARGS, "Wrap ifcopenshell_library_remove_library"},
     {"ifcopenshell_library_remove_reference", py_ifcopenshell_library_remove_reference, METH_VARARGS, "Wrap ifcopenshell_library_remove_reference"},
@@ -55434,6 +57049,12 @@ static PyMethodDef module_methods[] = {
     {"ifcopenshell_material_assign_material", py_ifcopenshell_material_assign_material, METH_VARARGS, "Wrap ifcopenshell_material_assign_material"},
     {"ifcopenshell_material_assign_profile", py_ifcopenshell_material_assign_profile, METH_VARARGS, "Wrap ifcopenshell_material_assign_profile"},
     {"ifcopenshell_material_copy_material", py_ifcopenshell_material_copy_material, METH_VARARGS, "Wrap ifcopenshell_material_copy_material"},
+    {"ifcopenshell_material_edit_assigned_material", py_ifcopenshell_material_edit_assigned_material, METH_VARARGS, "Wrap ifcopenshell_material_edit_assigned_material"},
+    {"ifcopenshell_material_edit_constituent", py_ifcopenshell_material_edit_constituent, METH_VARARGS, "Wrap ifcopenshell_material_edit_constituent"},
+    {"ifcopenshell_material_edit_layer", py_ifcopenshell_material_edit_layer, METH_VARARGS, "Wrap ifcopenshell_material_edit_layer"},
+    {"ifcopenshell_material_edit_layer_usage", py_ifcopenshell_material_edit_layer_usage, METH_VARARGS, "Wrap ifcopenshell_material_edit_layer_usage"},
+    {"ifcopenshell_material_edit_material", py_ifcopenshell_material_edit_material, METH_VARARGS, "Wrap ifcopenshell_material_edit_material"},
+    {"ifcopenshell_material_edit_profile", py_ifcopenshell_material_edit_profile, METH_VARARGS, "Wrap ifcopenshell_material_edit_profile"},
     {"ifcopenshell_material_edit_profile_usage", py_ifcopenshell_material_edit_profile_usage, METH_VARARGS, "Wrap ifcopenshell_material_edit_profile_usage"},
     {"ifcopenshell_material_remove_constituent", py_ifcopenshell_material_remove_constituent, METH_VARARGS, "Wrap ifcopenshell_material_remove_constituent"},
     {"ifcopenshell_material_remove_layer", py_ifcopenshell_material_remove_layer, METH_VARARGS, "Wrap ifcopenshell_material_remove_layer"},
@@ -55460,6 +57081,12 @@ static PyMethodDef module_methods[] = {
     {"ifcopenshell_owner_add_role", py_ifcopenshell_owner_add_role, METH_VARARGS, "Wrap ifcopenshell_owner_add_role"},
     {"ifcopenshell_owner_assign_actor", py_ifcopenshell_owner_assign_actor, METH_VARARGS, "Wrap ifcopenshell_owner_assign_actor"},
     {"ifcopenshell_owner_create_owner_history", py_ifcopenshell_owner_create_owner_history, METH_VARARGS, "Wrap ifcopenshell_owner_create_owner_history"},
+    {"ifcopenshell_owner_edit_actor", py_ifcopenshell_owner_edit_actor, METH_VARARGS, "Wrap ifcopenshell_owner_edit_actor"},
+    {"ifcopenshell_owner_edit_address", py_ifcopenshell_owner_edit_address, METH_VARARGS, "Wrap ifcopenshell_owner_edit_address"},
+    {"ifcopenshell_owner_edit_application", py_ifcopenshell_owner_edit_application, METH_VARARGS, "Wrap ifcopenshell_owner_edit_application"},
+    {"ifcopenshell_owner_edit_organisation", py_ifcopenshell_owner_edit_organisation, METH_VARARGS, "Wrap ifcopenshell_owner_edit_organisation"},
+    {"ifcopenshell_owner_edit_person", py_ifcopenshell_owner_edit_person, METH_VARARGS, "Wrap ifcopenshell_owner_edit_person"},
+    {"ifcopenshell_owner_edit_role", py_ifcopenshell_owner_edit_role, METH_VARARGS, "Wrap ifcopenshell_owner_edit_role"},
     {"ifcopenshell_owner_remove_actor", py_ifcopenshell_owner_remove_actor, METH_VARARGS, "Wrap ifcopenshell_owner_remove_actor"},
     {"ifcopenshell_owner_remove_address", py_ifcopenshell_owner_remove_address, METH_VARARGS, "Wrap ifcopenshell_owner_remove_address"},
     {"ifcopenshell_owner_remove_application", py_ifcopenshell_owner_remove_application, METH_VARARGS, "Wrap ifcopenshell_owner_remove_application"},
@@ -55584,6 +57211,7 @@ static PyMethodDef module_methods[] = {
     {"ifcopenshell_pset_template_add_pset_template", py_ifcopenshell_pset_template_add_pset_template, METH_VARARGS, "Wrap ifcopenshell_pset_template_add_pset_template"},
     {"ifcopenshell_pset_template_create_from_files", py_ifcopenshell_pset_template_create_from_files, METH_VARARGS, "Wrap ifcopenshell_pset_template_create_from_files"},
     {"ifcopenshell_pset_template_edit_prop_template", py_ifcopenshell_pset_template_edit_prop_template, METH_VARARGS, "Wrap ifcopenshell_pset_template_edit_prop_template"},
+    {"ifcopenshell_pset_template_edit_pset_template", py_ifcopenshell_pset_template_edit_pset_template, METH_VARARGS, "Wrap ifcopenshell_pset_template_edit_pset_template"},
     {"ifcopenshell_pset_template_get_applicable", py_ifcopenshell_pset_template_get_applicable, METH_VARARGS, "Wrap ifcopenshell_pset_template_get_applicable"},
     {"ifcopenshell_pset_template_get_applicable_names", py_ifcopenshell_pset_template_get_applicable_names, METH_VARARGS, "Wrap ifcopenshell_pset_template_get_applicable_names"},
     {"ifcopenshell_pset_template_get_by_name", py_ifcopenshell_pset_template_get_by_name, METH_VARARGS, "Wrap ifcopenshell_pset_template_get_by_name"},
@@ -55607,6 +57235,8 @@ static PyMethodDef module_methods[] = {
     {"ifcopenshell_resource_assign_resource", py_ifcopenshell_resource_assign_resource, METH_VARARGS, "Wrap ifcopenshell_resource_assign_resource"},
     {"ifcopenshell_resource_calculate_resource_usage", py_ifcopenshell_resource_calculate_resource_usage, METH_VARARGS, "Wrap ifcopenshell_resource_calculate_resource_usage"},
     {"ifcopenshell_resource_calculate_resource_work", py_ifcopenshell_resource_calculate_resource_work, METH_VARARGS, "Wrap ifcopenshell_resource_calculate_resource_work"},
+    {"ifcopenshell_resource_edit_resource", py_ifcopenshell_resource_edit_resource, METH_VARARGS, "Wrap ifcopenshell_resource_edit_resource"},
+    {"ifcopenshell_resource_edit_resource_quantity", py_ifcopenshell_resource_edit_resource_quantity, METH_VARARGS, "Wrap ifcopenshell_resource_edit_resource_quantity"},
     {"ifcopenshell_resource_edit_resource_time", py_ifcopenshell_resource_edit_resource_time, METH_VARARGS, "Wrap ifcopenshell_resource_edit_resource_time"},
     {"ifcopenshell_resource_remove_resource", py_ifcopenshell_resource_remove_resource, METH_VARARGS, "Wrap ifcopenshell_resource_remove_resource"},
     {"ifcopenshell_resource_remove_resource_quantity", py_ifcopenshell_resource_remove_resource_quantity, METH_VARARGS, "Wrap ifcopenshell_resource_remove_resource_quantity"},
@@ -55735,9 +57365,12 @@ static PyMethodDef module_methods[] = {
     {"ifcopenshell_structural_assign_product", py_ifcopenshell_structural_assign_product, METH_VARARGS, "Wrap ifcopenshell_structural_assign_product"},
     {"ifcopenshell_structural_assign_structural_analysis_model", py_ifcopenshell_structural_assign_structural_analysis_model, METH_VARARGS, "Wrap ifcopenshell_structural_assign_structural_analysis_model"},
     {"ifcopenshell_structural_assign_to_building", py_ifcopenshell_structural_assign_to_building, METH_VARARGS, "Wrap ifcopenshell_structural_assign_to_building"},
+    {"ifcopenshell_structural_edit_structural_analysis_model", py_ifcopenshell_structural_edit_structural_analysis_model, METH_VARARGS, "Wrap ifcopenshell_structural_edit_structural_analysis_model"},
     {"ifcopenshell_structural_edit_structural_boundary_condition", py_ifcopenshell_structural_edit_structural_boundary_condition, METH_VARARGS, "Wrap ifcopenshell_structural_edit_structural_boundary_condition"},
     {"ifcopenshell_structural_edit_structural_connection_cs", py_ifcopenshell_structural_edit_structural_connection_cs, METH_VARARGS, "Wrap ifcopenshell_structural_edit_structural_connection_cs"},
     {"ifcopenshell_structural_edit_structural_item_axis", py_ifcopenshell_structural_edit_structural_item_axis, METH_VARARGS, "Wrap ifcopenshell_structural_edit_structural_item_axis"},
+    {"ifcopenshell_structural_edit_structural_load", py_ifcopenshell_structural_edit_structural_load, METH_VARARGS, "Wrap ifcopenshell_structural_edit_structural_load"},
+    {"ifcopenshell_structural_edit_structural_load_case", py_ifcopenshell_structural_edit_structural_load_case, METH_VARARGS, "Wrap ifcopenshell_structural_edit_structural_load_case"},
     {"ifcopenshell_structural_remove_structural_analysis_model", py_ifcopenshell_structural_remove_structural_analysis_model, METH_VARARGS, "Wrap ifcopenshell_structural_remove_structural_analysis_model"},
     {"ifcopenshell_structural_remove_structural_boundary_condition", py_ifcopenshell_structural_remove_structural_boundary_condition, METH_VARARGS, "Wrap ifcopenshell_structural_remove_structural_boundary_condition"},
     {"ifcopenshell_structural_remove_structural_connection_condition", py_ifcopenshell_structural_remove_structural_connection_condition, METH_VARARGS, "Wrap ifcopenshell_structural_remove_structural_connection_condition"},
@@ -55751,6 +57384,7 @@ static PyMethodDef module_methods[] = {
     {"ifcopenshell_style_assign_item_style", py_ifcopenshell_style_assign_item_style, METH_VARARGS, "Wrap ifcopenshell_style_assign_item_style"},
     {"ifcopenshell_style_assign_material_style", py_ifcopenshell_style_assign_material_style, METH_VARARGS, "Wrap ifcopenshell_style_assign_material_style"},
     {"ifcopenshell_style_assign_representation_styles", py_ifcopenshell_style_assign_representation_styles, METH_VARARGS, "Wrap ifcopenshell_style_assign_representation_styles"},
+    {"ifcopenshell_style_edit_presentation_style", py_ifcopenshell_style_edit_presentation_style, METH_VARARGS, "Wrap ifcopenshell_style_edit_presentation_style"},
     {"ifcopenshell_style_edit_surface_style", py_ifcopenshell_style_edit_surface_style, METH_VARARGS, "Wrap ifcopenshell_style_edit_surface_style"},
     {"ifcopenshell_style_remove_style", py_ifcopenshell_style_remove_style, METH_VARARGS, "Wrap ifcopenshell_style_remove_style"},
     {"ifcopenshell_style_remove_styled_representation", py_ifcopenshell_style_remove_styled_representation, METH_VARARGS, "Wrap ifcopenshell_style_remove_styled_representation"},
@@ -55764,6 +57398,7 @@ static PyMethodDef module_methods[] = {
     {"ifcopenshell_system_assign_system", py_ifcopenshell_system_assign_system, METH_VARARGS, "Wrap ifcopenshell_system_assign_system"},
     {"ifcopenshell_system_connect_port", py_ifcopenshell_system_connect_port, METH_VARARGS, "Wrap ifcopenshell_system_connect_port"},
     {"ifcopenshell_system_disconnect_port", py_ifcopenshell_system_disconnect_port, METH_VARARGS, "Wrap ifcopenshell_system_disconnect_port"},
+    {"ifcopenshell_system_edit_system", py_ifcopenshell_system_edit_system, METH_VARARGS, "Wrap ifcopenshell_system_edit_system"},
     {"ifcopenshell_system_remove_system", py_ifcopenshell_system_remove_system, METH_VARARGS, "Wrap ifcopenshell_system_remove_system"},
     {"ifcopenshell_system_unassign_flow_control", py_ifcopenshell_system_unassign_flow_control, METH_VARARGS, "Wrap ifcopenshell_system_unassign_flow_control"},
     {"ifcopenshell_system_unassign_port", py_ifcopenshell_system_unassign_port, METH_VARARGS, "Wrap ifcopenshell_system_unassign_port"},
@@ -55783,6 +57418,8 @@ static PyMethodDef module_methods[] = {
     {"ifcopenshell_unit_calculate_unit_scale", py_ifcopenshell_unit_calculate_unit_scale, METH_VARARGS, "Wrap ifcopenshell_unit_calculate_unit_scale"},
     {"ifcopenshell_unit_convert", py_ifcopenshell_unit_convert, METH_VARARGS, "Wrap ifcopenshell_unit_convert"},
     {"ifcopenshell_unit_convert_unit", py_ifcopenshell_unit_convert_unit, METH_VARARGS, "Wrap ifcopenshell_unit_convert_unit"},
+    {"ifcopenshell_unit_edit_derived_unit", py_ifcopenshell_unit_edit_derived_unit, METH_VARARGS, "Wrap ifcopenshell_unit_edit_derived_unit"},
+    {"ifcopenshell_unit_edit_monetary_unit", py_ifcopenshell_unit_edit_monetary_unit, METH_VARARGS, "Wrap ifcopenshell_unit_edit_monetary_unit"},
     {"ifcopenshell_unit_edit_named_unit", py_ifcopenshell_unit_edit_named_unit, METH_VARARGS, "Wrap ifcopenshell_unit_edit_named_unit"},
     {"ifcopenshell_unit_format_length", py_ifcopenshell_unit_format_length, METH_VARARGS, "Wrap ifcopenshell_unit_format_length"},
     {"ifcopenshell_unit_get_full_unit_name", py_ifcopenshell_unit_get_full_unit_name, METH_VARARGS, "Wrap ifcopenshell_unit_get_full_unit_name"},

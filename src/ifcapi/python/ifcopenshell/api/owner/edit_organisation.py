@@ -18,6 +18,7 @@
 from typing import Any
 
 import ifcopenshell
+from ifcopenshell.api.attribute.edit_attributes import _edit_named_attributes
 
 
 def edit_organisation(
@@ -41,6 +42,4 @@ def edit_organisation(
         ifcopenshell.api.owner.edit_organisation(model, organisation=organisation,
             attributes={"name": "Architects Without Ballpens"})
     """
-    from ifcopenshell.api.attribute.edit_attributes import _edit_attributes
-
-    _edit_attributes(file, organisation, attributes)
+    _edit_named_attributes(file, organisation, attributes, "owner_edit_organisation")

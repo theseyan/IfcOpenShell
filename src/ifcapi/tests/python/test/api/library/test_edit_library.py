@@ -20,6 +20,7 @@ import datetime
 
 import ifcopenshell.api.library
 import ifcopenshell.util.date
+import pytest
 
 import test.bootstrap
 
@@ -91,6 +92,19 @@ class TestEditLibrary(test.bootstrap.IFC4):
             self.file, library=library, attributes={"VersionDate": value}
         )
         assert library.VersionDate == value
+
+    def test_preserving_attribute_order_when_an_earlier_attribute_is_invalid(self):
+        library = self.file.createIfcLibraryInformation()
+        dt = datetime.datetime(2024, 2, 29, 1, 2, 3)
+
+        with pytest.raises(RuntimeError, match="Attribute Missing not found"):
+            ifcopenshell.api.library.edit_library(
+                self.file,
+                library=library,
+                attributes={"Missing": "invalid", "VersionDate": dt},
+            )
+
+        assert library.VersionDate is None
 
 
 class TestEditLibraryIFC2X3(test.bootstrap.IFC2X3, TestEditLibrary):

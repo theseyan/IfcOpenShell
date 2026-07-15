@@ -18,6 +18,7 @@
 from typing import Any
 
 import ifcopenshell
+from ifcopenshell.api.attribute.edit_attributes import _edit_named_attributes
 
 
 def edit_person(file: ifcopenshell.file, person: ifcopenshell.entity_instance, attributes: dict[str, Any]) -> None:
@@ -39,6 +40,4 @@ def edit_person(file: ifcopenshell.file, person: ifcopenshell.entity_instance, a
         ifcopenshell.api.owner.edit_person(model, person=person,
             attributes={"MiddleNames": ["The"], "FamilyName": "Builder"})
     """
-    from ifcopenshell.api.attribute.edit_attributes import _edit_attributes
-
-    _edit_attributes(file, person, attributes)
+    _edit_named_attributes(file, person, attributes, "owner_edit_person")

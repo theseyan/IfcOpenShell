@@ -18,7 +18,7 @@
 from typing import Any
 
 import ifcopenshell
-from ifcopenshell.api.attribute.edit_attributes import _edit_attributes
+from ifcopenshell.api.attribute.edit_attributes import _edit_named_attributes
 
 
 def edit_layer_usage(file: ifcopenshell.file, usage: ifcopenshell.entity_instance, attributes: dict[str, Any]) -> None:
@@ -74,4 +74,4 @@ def edit_layer_usage(file: ifcopenshell.file, usage: ifcopenshell.entity_instanc
         ifcopenshell.api.material.edit_layer_usage(model,
             usage=rel.RelatingMaterial, attributes={"OffsetFromReferenceLine": 200})
     """
-    _edit_attributes(file, usage, attributes)
+    _edit_named_attributes(file, usage, attributes, "material_edit_layer_usage")

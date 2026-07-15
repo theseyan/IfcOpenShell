@@ -10,7 +10,9 @@ from ...binding_model import TypeSpec
 from .._shared import (
     _INTERNAL_C_FUNCTIONS,
     _camel_name,
-    _public_module_member,
+    _module_public_name,
+    _module_type_name,
+    _public_module_members,
     _public_params,
 )
 from .typescript import _render_doc_comment, _ts_type
@@ -127,15 +129,15 @@ def _api_functions(
             or function.c_name in _HIDDEN_FUNCTIONS
         ):
             continue
-        member = _public_module_member(function, metadata.c_prefix)
-        if member is None:
+        members = _public_module_members(function, metadata.c_prefix)
+        if not members:
             continue
-        module_name, function_name = member
-        if module_name in {"parse", "geom"}:
-            continue
-        if not _is_public_api_module(module_name):
-            continue
-        modules.setdefault(module_name, []).append((function_name, function))
+        for module_name, function_name in members:
+            if module_name in {"parse", "geom"}:
+                continue
+            if not _is_public_api_module(module_name):
+                continue
+            modules.setdefault(module_name, []).append((function_name, function))
     return modules
 
 
@@ -398,11 +400,14 @@ def _param_ts_type(
     handle = _handle_kind_from_c_type(param.c_type, metadata)
     if handle is not None:
         if handle == "value" and module_name != "value":
-            return "ValueInput | null" if param.nullable else "ValueInput"
-        return _handle_name(handle)
+            result = "ValueInput"
+        else:
+            result = _handle_name(handle)
+        return f"{result} | null" if param.nullable else result
     option = _option_by_c_type(param.c_type, metadata)
     if option is not None:
-        return _option_type_name(option)
+        result = _option_type_name(option)
+        return f"{result} | null" if param.nullable else result
     if param.type_kind == "string":
         return "string"
     if param.type_kind == "bool":
@@ -548,9 +553,10 @@ def _param_expr(
     if handle == "value" and module_name != "value":
         return f"{param.name} == null ? null : toRawValue(shell, {param.name}, temps)"
     if _uses_generated_handle(handle):
-        return param.name
+        return f"{param.name} == null ? null : {param.name}" if param.nullable else param.name
     if handle is not None:
-        return f"{param.name}.raw"
+        raw = f"{param.name}.raw"
+        return f"{param.name} == null ? null : {raw}" if param.nullable else raw
     option = _option_by_c_type(param.c_type, metadata)
     if option is not None:
         fields = {_camel_name(field.name): field.name for field in option.fields}
@@ -800,7 +806,7 @@ def _render_direct_interface(
             signature = _render_doc_comment(function.doc, "    ") + "\n" + signature
         methods.append(signature)
     return (
-        f"export interface {_camel_name(module_name).capitalize()}Api {{\n"
+        f"export interface {_module_type_name(module_name)} {{\n"
         + "\n".join(methods)
         + "\n}"
     )
@@ -824,18 +830,33 @@ def render_api_direct(metadata: BindingABI) -> str:
         _render_direct_interface(name, functions, metadata)
         for name, functions in sorted(modules.items())
     ]
-    api_members = "\n".join(
-        f"  {name}: {_camel_name(name).capitalize()}Api;" for name in sorted(modules)
-    )
+    api_member_lines = []
+    for name in sorted(modules):
+        public_name = _module_public_name(name)
+        interface_name = _module_type_name(name)
+        api_member_lines.append(f"  {public_name}: {interface_name};")
+        if public_name != name:
+            api_member_lines.append(f"  {name}: {interface_name};")
+    api_members = "\n".join(api_member_lines)
+    module_definitions = []
     module_values = []
     for module_name, functions in sorted(modules.items()):
         methods = "\n".join(
             _render_direct_method(module_name, name, function, metadata)
             for name, function in functions
         )
-        module_values.append(
-            f"    {module_name}: Object.freeze({{\n{methods}\n    }}),"
-        )
+        public_name = _module_public_name(module_name)
+        if public_name != module_name:
+            value_name = f"{public_name}Api"
+            module_definitions.append(
+                f"  const {value_name} = Object.freeze({{\n{methods}\n  }});"
+            )
+            module_values.append(f"    {public_name}: {value_name},")
+            module_values.append(f"    {module_name}: {value_name},")
+        else:
+            module_values.append(
+                f"    {public_name}: Object.freeze({{\n{methods}\n    }}),"
+            )
     return "\n".join(
         [
             "// This file was generated with the assistance of an AI coding tool.",
@@ -881,6 +902,7 @@ def render_api_direct(metadata: BindingABI) -> str:
             " */",
             "export function createApi(shell: IfcOpenShell): Api {",
             "  const raw = shell.raw as object as RawApi;",
+            *module_definitions,
             "  return Object.freeze({",
             "\n".join(module_values),
             "  });",

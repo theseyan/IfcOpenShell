@@ -18,6 +18,7 @@
 from typing import Any
 
 import ifcopenshell
+from ifcopenshell.api.attribute.edit_attributes import _edit_named_attributes
 
 
 def edit_role(file: ifcopenshell.file, role: ifcopenshell.entity_instance, attributes: dict[str, Any]) -> None:
@@ -43,6 +44,4 @@ def edit_role(file: ifcopenshell.file, role: ifcopenshell.entity_instance, attri
         # But Bob is not an architect
         ifcopenshell.api.owner.edit_role(model, role=role, attributes={"Role": "CONSTRUCTIONMANAGER"})
     """
-    from ifcopenshell.api.attribute.edit_attributes import _edit_attributes
-
-    _edit_attributes(file, role, attributes)
+    _edit_named_attributes(file, role, attributes, "owner_edit_role")

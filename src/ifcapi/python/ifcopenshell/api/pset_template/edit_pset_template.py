@@ -18,7 +18,7 @@
 from typing import Any
 
 import ifcopenshell
-from ifcopenshell.api.attribute.edit_attributes import _edit_attributes
+from ifcopenshell.api.attribute.edit_attributes import _edit_named_attributes
 
 
 def edit_pset_template(
@@ -44,4 +44,4 @@ def edit_pset_template(
         ifcopenshell.api.pset_template.edit_pset_template(model,
             pset_template=template, attributes={"Name": "ABC_RiskFactors"})
     """
-    _edit_attributes(file, pset_template, attributes)
+    _edit_named_attributes(file, pset_template, attributes, "pset_template_edit_pset_template")

@@ -455,6 +455,18 @@ IFCAPI_BINDING void unit_remove_unit(
     ifcopenshell::file* file,
     express::Base* unit);
 
+/** Edit an IfcDerivedUnit using the shared attribute property writer. */
+IFCAPI_BINDING void unit_edit_derived_unit(
+    ifcopenshell::file* file,
+    express::Base unit,
+    ifcopenshell_pset_props_t* attributes);
+
+/** Edit an IfcMonetaryUnit using the shared attribute property writer. */
+IFCAPI_BINDING void unit_edit_monetary_unit(
+    ifcopenshell::file* file,
+    express::Base unit,
+    ifcopenshell_pset_props_t* attributes);
+
 } // namespace bindings
 } // namespace ifcapi
 

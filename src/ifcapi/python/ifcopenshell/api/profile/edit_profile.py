@@ -18,7 +18,8 @@
 from typing import Any
 
 import ifcopenshell
-from ifcopenshell.api.attribute.edit_attributes import _edit_attributes
+from ifcopenshell import _ifcopenshell_capi as _capi
+from ifcopenshell.api.pset import _capi as pset_capi
 
 
 def edit_profile(
@@ -46,4 +47,8 @@ def edit_profile(
         ifcopenshell.api.profile.edit_profile(model,
             profile=circle, attributes={"ProfileName": "1000mm Dia"})
     """
-    _edit_attributes(file, profile, attributes)
+    props = pset_capi.build_props(attributes)
+    try:
+        _capi.profile_edit_profile(profile._handle, props)
+    finally:
+        pset_capi.free_props(props)

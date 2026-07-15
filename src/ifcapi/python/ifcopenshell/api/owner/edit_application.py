@@ -18,6 +18,7 @@
 from typing import Any
 
 import ifcopenshell
+from ifcopenshell.api.attribute.edit_attributes import _edit_named_attributes
 
 
 def edit_application(
@@ -41,6 +42,4 @@ def edit_application(
         ifcopenshell.api.owner.edit_application(model, application=application,
             attributes={"ApplicationFullName": "My App New Name"})
     """
-    from ifcopenshell.api.attribute.edit_attributes import _edit_attributes
-
-    _edit_attributes(file, application, attributes)
+    _edit_named_attributes(file, application, attributes, "owner_edit_application")

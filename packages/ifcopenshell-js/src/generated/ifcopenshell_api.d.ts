@@ -2380,6 +2380,10 @@ declare module 'ifcopenshell-api' {
      * optional identification, name, and classification fields.
      */
     addReference(file: IfcOpenshellFile, options: IfcOpenshellClassificationAddReferenceOptions): IfcOpenshellInstance;
+    /** Edit an IfcClassification using the shared attribute property writer. */
+    editClassification(file: IfcOpenshellFile, classification: IfcOpenshellInstance, attributes: number): void;
+    /** Edit an IfcClassificationReference using the shared attribute property writer. */
+    editReference(file: IfcOpenshellFile, reference: IfcOpenshellInstance, attributes: number): void;
     /**
      * Return all classification references associated with an element.
      *
@@ -2501,6 +2505,10 @@ declare module 'ifcopenshell-api' {
      * new products are added to the existing relationship.
      */
     assignConstraint(file: IfcOpenshellFile, options: IfcOpenshellConstraintAssignConstraintOptions): IfcOpenshellInstance;
+    /** Edit an IfcMetric using the shared attribute property writer. */
+    editMetric(file: IfcOpenshellFile, metric: IfcOpenshellInstance, attributes: number): void;
+    /** Edit an IfcObjective using the shared attribute property writer. */
+    editObjective(file: IfcOpenshellFile, objective: IfcOpenshellInstance, attributes: number): void;
     /**
      * Remove a constraint entity and clean up orphaned IfcRelAssociatesConstraint
      * relationships that reference it.
@@ -2841,6 +2849,10 @@ declare module 'ifcopenshell-api' {
      * already associated with the document are skipped.
      */
     assignDocument(file: IfcOpenshellFile, options: IfcOpenshellDocumentAssignDocumentOptions): IfcOpenshellInstance;
+    /** Edit an IfcDocumentInformation using the shared attribute property writer. */
+    editInformation(file: IfcOpenshellFile, information: IfcOpenshellInstance, attributes: number): void;
+    /** Edit an IfcDocumentReference using the shared attribute property writer. */
+    editReference(file: IfcOpenshellFile, reference: IfcOpenshellInstance, attributes: number): void;
     /**
      * Remove an IfcDocumentInformation and its entire document tree.
      *
@@ -2882,6 +2894,8 @@ declare module 'ifcopenshell-api' {
      * @return IfcRelAssignsToProduct relationship, or no result for a duplicate or failure.
      */
     assignProduct(file: IfcOpenshellFile, options: IfcOpenshellDrawingAssignProductOptions): IfcOpenshellInstance;
+    /** Edit an IfcTextLiteral using the shared attribute property writer. */
+    editTextLiteral(file: IfcOpenshellFile, text_literal: IfcOpenshellInstance, attributes: number): void;
     /**
      * Remove a product assignment from an annotation object.
      *
@@ -3801,6 +3815,8 @@ declare module 'ifcopenshell-api' {
      * Products already in the group are skipped.
      */
     assignGroup(file: IfcOpenshellFile, options: IfcOpenshellGroupAssignGroupOptions): IfcOpenshellInstance;
+    /** Edit an IfcGroup using the shared attribute property writer. */
+    editGroup(file: IfcOpenshellFile, group: IfcOpenshellInstance, attributes: number): void;
     /**
      * Remove a group and its relationships.
      *
@@ -3859,6 +3875,8 @@ declare module 'ifcopenshell-api' {
      * @param layer IfcPresentationLayerAssignment or IfcPresentationLayerWithStyle.
      */
     assignLayer(file: IfcOpenshellFile, items: IfcOpenshellInstance[], layer: IfcOpenshellInstance): void;
+    /** Edit a presentation layer using the shared attribute property writer. */
+    editLayer(file: IfcOpenshellFile, layer: IfcOpenshellInstance, attributes: number): void;
     /**
      * Remove a presentation layer entity from the file.
      *
@@ -3897,6 +3915,13 @@ declare module 'ifcopenshell-api' {
      * existing relationship is present, new products are merged into it.
      */
     assignReference(file: IfcOpenshellFile, options: IfcOpenshellLibraryAssignReferenceOptions): IfcOpenshellInstance;
+    /**
+     * Edit an IfcLibraryInformation and apply VersionDate schema conversion.
+     * Date-time property entries are stored as IFC4 strings or IFC2X3 dates.
+     */
+    editLibrary(file: IfcOpenshellFile, library: IfcOpenshellInstance, attributes: number): void;
+    /** Edit an IfcLibraryReference using the shared attribute property writer. */
+    editReference(file: IfcOpenshellFile, reference: IfcOpenshellInstance, attributes: number): void;
     /**
      * Set an IfcLibraryInformation VersionDate from an ISO-8601 date-time.
      *
@@ -3974,6 +3999,18 @@ declare module 'ifcopenshell-api' {
      * styles are reused.
      */
     copyMaterial(file: IfcOpenshellFile, material: IfcOpenshellInstance): IfcOpenshellInstance;
+    /** Edit an IfcMaterial entity assigned to an element. */
+    editAssignedMaterial(file: IfcOpenshellFile, element: IfcOpenshellInstance, attributes: number): void;
+    /** Edit an IfcMaterialConstituent and replace its Material reference. */
+    editConstituent(file: IfcOpenshellFile, constituent: IfcOpenshellInstance, attributes: number, material: IfcOpenshellInstance | null): void;
+    /** Edit an IfcMaterialLayer and optionally replace its Material reference. */
+    editLayer(file: IfcOpenshellFile, layer: IfcOpenshellInstance, attributes: number, material: IfcOpenshellInstance | null): void;
+    /** Edit an IfcMaterialLayerSetUsage using the shared attribute property writer. */
+    editLayerUsage(file: IfcOpenshellFile, usage: IfcOpenshellInstance, attributes: number): void;
+    /** Edit an IfcMaterial using the shared attribute property writer. */
+    editMaterial(file: IfcOpenshellFile, material: IfcOpenshellInstance, attributes: number): void;
+    /** Edit an IfcMaterialProfile and optionally replace its profile or material. */
+    editProfile(file: IfcOpenshellFile, profile: IfcOpenshellInstance, attributes: number, profile_def: IfcOpenshellInstance | null, material: IfcOpenshellInstance | null): void;
     /**
      * Edit attributes of an IfcMaterialProfileSetUsage.
      *
@@ -4181,6 +4218,18 @@ declare module 'ifcopenshell-api' {
      * @return Newly created IfcOwnerHistory, or no result if creation fails.
      */
     createOwnerHistory(file: IfcOpenshellFile, options: IfcOpenshellOwnerCreateOwnerHistoryOptions): IfcOpenshellInstance;
+    /** Edit an IfcActor using the shared attribute property writer. */
+    editActor(file: IfcOpenshellFile, actor: IfcOpenshellInstance, attributes: number): void;
+    /** Edit an IfcAddress using the shared attribute property writer. */
+    editAddress(file: IfcOpenshellFile, address: IfcOpenshellInstance, attributes: number): void;
+    /** Edit an IfcApplication using the shared attribute property writer. */
+    editApplication(file: IfcOpenshellFile, application: IfcOpenshellInstance, attributes: number): void;
+    /** Edit an IfcOrganization using the shared attribute property writer. */
+    editOrganisation(file: IfcOpenshellFile, organisation: IfcOpenshellInstance, attributes: number): void;
+    /** Edit an IfcPerson using the shared attribute property writer. */
+    editPerson(file: IfcOpenshellFile, person: IfcOpenshellInstance, attributes: number): void;
+    /** Edit an IfcActorRole using the shared attribute property writer. */
+    editRole(file: IfcOpenshellFile, role: IfcOpenshellInstance, attributes: number): void;
     /**
      * Remove an IfcActor (or subclass) from the file.
      *
@@ -4633,6 +4682,8 @@ declare module 'ifcopenshell-api' {
      * Enumerators value leaves the current enumeration unchanged.
      */
     templateEditPropTemplate(file: IfcOpenshellFile, options: IfcOpenshellPsetTemplateEditPropTemplateOptions): void;
+    /** Edit an IfcPropertySetTemplate using the shared attribute property writer. */
+    templateEditPsetTemplate(file: IfcOpenshellFile, pset_template: IfcOpenshellInstance, attributes: number): void;
     /**
      * Return property set templates applicable to an IFC class and predefined type.
      *
@@ -4710,6 +4761,105 @@ declare module 'ifcopenshell-api' {
      * assigned to the unselected products. Returns the newly created copies.
      */
     unsharePset(file: IfcOpenshellFile, options: IfcOpenshellPsetUnsharePsetOptions): IfcOpenshellParseInstanceList;
+  }
+
+  export interface IfcOpenshellPsetTemplateModule {
+    /**
+     * Create a new IfcSimplePropertyTemplate and add it to a property set template.
+     *
+     * Property templates are kept sorted by name within the parent template.
+     * If template_type is omitted, defaults to "P_SINGLEVALUE" for psets or
+     * "Q_LENGTH" for qtos. If primary_measure_type is omitted, defaults to
+     * "IfcLabel" for psets.
+     */
+    addPropTemplate(file: IfcOpenshellFile, pset_template: IfcOpenshellInstance, name: string, description: string | null, template_type: string | null, primary_measure_type: string | null): IfcOpenshellInstance;
+    /**
+     * Create a new IfcPropertySetTemplate in the file.
+     *
+     * @param file The IFC file.
+     * @param name Template name (e.g. "Pset_WallCommon").
+     * @param template_type Template type string (e.g. "PSET_TYPEDRIVENOVERRIDE", "QTO").
+     * @param applicable_entity Applicable IFC entity name (e.g. "IfcWall").
+     */
+    addPsetTemplate(file: IfcOpenshellFile, name: string, template_type: string, applicable_entity: string): IfcOpenshellInstance;
+    /**
+     * Create a property template collection from custom IFC template files.
+     *
+     * Loads IfcPropertySetTemplate and IfcSimplePropertyTemplate entities from
+     * the provided files. The returned collection remains valid until it is
+     * released with pset_template_free.
+     */
+    createFromFiles(schema_identifier: string, template_files: IfcOpenshellFile[]): IfcOpenshellPsetTemplateHandle | null;
+    /**
+     * Edit a simple property template and its property enumeration.
+     *
+     * A populated Enumerators sequence is converted to wrapped IFC values using
+     * the incoming PrimaryMeasureType, the existing type, or IfcLabel. Existing
+     * IfcPropertyEnumeration entities are reused. An omitted, blank, or empty
+     * Enumerators value leaves the current enumeration unchanged.
+     */
+    editPropTemplate(file: IfcOpenshellFile, options: IfcOpenshellPsetTemplateEditPropTemplateOptions): void;
+    /** Edit an IfcPropertySetTemplate using the shared attribute property writer. */
+    editPsetTemplate(file: IfcOpenshellFile, pset_template: IfcOpenshellInstance, attributes: number): void;
+    /**
+     * Return property set templates applicable to an IFC class and predefined type.
+     *
+     * Filters by pset_only (PSET templates) or qto_only (QTO templates).
+     * If neither flag is set, returns both types. When predefined_type or
+     * schema_name is omitted, the default is used.
+     */
+    getApplicable(pqt: IfcOpenshellPsetTemplateHandle, ifc_class: string | null, predefined_type: string | null, pset_only: boolean, qto_only: boolean, schema_name: string | null): IfcOpenshellParseInstanceList;
+    /**
+     * Return names of property set templates applicable to an IFC class.
+     *
+     * Same filtering as pset_template_get_applicable but returns only the
+     * Name strings.
+     */
+    getApplicableNames(pqt: IfcOpenshellPsetTemplateHandle, ifc_class: string | null, predefined_type: string | null, pset_only: boolean, qto_only: boolean, schema_name: string | null): string[];
+    /**
+     * Look up a property set template by name.
+     *
+     * Returns the IfcPropertySetTemplate entity with the given name, or a
+     * no result if the template is not found.
+     */
+    getByName(pqt: IfcOpenshellPsetTemplateHandle, name: string): IfcOpenshellInstance;
+    /**
+     * Return the cached property template collection for the given schema (e.g. "IFC4", "IFC2X3").
+     *
+     * Loads and caches the built-in templates on first call. Returns no result
+     * if the schema is unknown or templates are not available.
+     */
+    getTemplate(schema_identifier: string): IfcOpenshellPsetTemplateHandle | null;
+    /** Return true if a property set template with the given name exists. */
+    isTemplated(pqt: IfcOpenshellPsetTemplateHandle, name: string): boolean;
+    /**
+     * Return the template type category for a property set template.
+     *
+     * Returns "PSET" for property set templates, "QTO" for quantity templates,
+     * or an empty string if unknown.
+     */
+    psetType(pset_template: IfcOpenshellInstance): string;
+    /**
+     * Remove a property template from its parent set template.
+     *
+     * Removes the IfcSimplePropertyTemplate from its parent and deletes the
+     * template entity.
+     */
+    removePropTemplate(file: IfcOpenshellFile, prop_template: IfcOpenshellInstance): void;
+    /**
+     * Remove a property set template and its child property templates.
+     *
+     * Deletes the IfcPropertySetTemplate and all its child
+     * IfcSimplePropertyTemplate entities.
+     */
+    removePsetTemplate(pset_template: IfcOpenshellInstance): void;
+    /**
+     * Set the directory used to locate built-in pset/qto template files.
+     *
+     * Must be called before pset_template_get_template to override the default
+     * search path for IFC property set template files.
+     */
+    setTemplateDir(dir: string): void;
   }
 
   export interface IfcOpenshellRegisterModule {
@@ -4803,6 +4953,10 @@ declare module 'ifcopenshell-api' {
     calculateResourceUsage(file: IfcOpenshellFile, resource: IfcOpenshellInstance): void;
     /** Calculate ScheduleWork from EPset_Productivity and the first applicable task/product assignments. */
     calculateResourceWork(file: IfcOpenshellFile, resource: IfcOpenshellInstance): void;
+    /** Edit an IfcResource using the shared attribute property writer. */
+    editResource(file: IfcOpenshellFile, resource: IfcOpenshellInstance, attributes: number): void;
+    /** Edit an IfcPhysicalQuantity using the shared attribute property writer. */
+    editResourceQuantity(file: IfcOpenshellFile, physical_quantity: IfcOpenshellInstance, attributes: number): void;
     /**
      * Edit attributes of an IfcResourceTime entity.
      *
@@ -5828,6 +5982,316 @@ declare module 'ifcopenshell-api' {
     isAlmostEqual(value: number, x: number, tolerance: number): boolean;
   }
 
+  export interface IfcOpenshellShapeBuilderModule {
+    /**
+     * Create an IfcAxis2Placement2D from position and optional reference direction.
+     *
+     * @param file IFC file that receives the placement.
+     * @param options Position and optional X direction.
+     * @return IfcAxis2Placement2D entity.
+     */
+    axis2Placement2d(file: IfcOpenshellFile, options: IfcOpenshellShapeBuilderAxis2Placement2dOptions): IfcOpenshellInstance;
+    /**
+     * Create an IfcAxis2Placement3D from position and axes.
+     *
+     * @param file IFC file that receives the placement.
+     * @param options Position, Z axis, and X axis direction ratios.
+     * @return IfcAxis2Placement3D entity.
+     */
+    axis2Placement3d(file: IfcOpenshellFile, options: IfcOpenshellShapeBuilderAxis2Placement3dOptions): IfcOpenshellInstance;
+    /**
+     * Create an IfcBlock (rectangular parallelepiped).
+     *
+     * @param file IFC file that receives the geometry.
+     * @param options Position and XYZ dimensions.
+     * @return IfcBlock entity.
+     */
+    block(file: IfcOpenshellFile, options: IfcOpenshellShapeBuilderBlockOptions): IfcOpenshellInstance;
+    /**
+     * Create an IfcCircle centred at the given position.
+     *
+     * @param file IFC file that receives the geometry.
+     * @param center XY coordinates of the circle centre.
+     * @param radius Circle radius in model units.
+     * @return IfcCircle entity.
+     */
+    circle(file: IfcOpenshellFile, center: number[], radius: number): IfcOpenshellInstance;
+    /**
+     * Create a 2D IfcIndexedPolyCurve arc between two points.
+     *
+     * Inserts a midpoint slightly offset along the dominant axis to form a
+     * three-point arc segment.
+     *
+     * @param file IFC file that receives the geometry.
+     * @param points Two XY endpoints.
+     * @return IfcIndexedPolyCurve entity with one arc segment.
+     */
+    curveBetweenTwoPoints(file: IfcOpenshellFile, points: number[][]): IfcOpenshellInstance;
+    /**
+     * Create an independent copy of an IFC entity and the entities it references.
+     *
+     * New GlobalId attributes are generated for the copied entities.
+     *
+     * @param file IFC file that receives the copy.
+     * @param element Entity to copy.
+     * @return Root entity of the copied subgraph.
+     */
+    deepCopy(file: IfcOpenshellFile, element: IfcOpenshellInstance): IfcOpenshellInstance;
+    /**
+     * Create an IfcEdge between two vertex positions.
+     *
+     * @param file IFC file that receives the geometry.
+     * @param start XYZ coordinates of the edge start.
+     * @param end XYZ coordinates of the edge end.
+     * @return IfcEdge entity.
+     */
+    edge(file: IfcOpenshellFile, start: number[], end: number[]): IfcOpenshellInstance;
+    /**
+     * Create an IfcEllipse, optionally trimmed to an IfcTrimmedCurve.
+     *
+     * @param file IFC file that receives the geometry.
+     * @param options Radii, position, trim points, and reference direction.
+     * @return IfcEllipse or IfcTrimmedCurve entity.
+     */
+    ellipseCurve(file: IfcOpenshellFile, options: IfcOpenshellShapeBuilderEllipseCurveOptions): IfcOpenshellInstance;
+    /**
+     * Create an IfcExtrudedAreaSolid by extruding a profile along a direction.
+     *
+     * If the profile_or_curve is a bare IfcCurve (not an IfcProfileDef), it is
+     * wrapped in an IfcArbitraryClosedProfileDef automatically.
+     *
+     * @param file IFC file that receives the geometry.
+     * @param options Profile, depth, position, and extrusion direction.
+     * @return IfcExtrudedAreaSolid entity.
+     */
+    extrude(file: IfcOpenshellFile, options: IfcOpenshellShapeBuilderExtrudeOptions): IfcOpenshellInstance;
+    /**
+     * Create an IfcFace from an ordered list of polygon vertices.
+     *
+     * @param file IFC file that receives the geometry.
+     * @param points XYZ coordinates defining the face outer boundary.
+     * @return IfcFace entity with an IfcFaceOuterBound.
+     */
+    face(file: IfcOpenshellFile, points: number[][]): IfcOpenshellInstance;
+    /**
+     * Create an IfcFacetedBrep from vertices and face index lists.
+     *
+     * @param file IFC file that receives the geometry.
+     * @param points XYZ vertex coordinates.
+     * @param faces Face index lists (zero-based). Each face is a single outer loop.
+     * @return IfcFacetedBrep entity with an IfcClosedShell.
+     */
+    facetedBrep(file: IfcOpenshellFile, points: number[][], faces: number[][]): IfcOpenshellInstance;
+    /**
+     * Read the coordinate list from an IfcPolyline or IfcIndexedPolyCurve.
+     *
+     * @param polyline IfcPolyline or IfcIndexedPolyCurve entity.
+     * @return Ordered XY or XYZ coordinate sequences.
+     */
+    getPolylineCoords(polyline: IfcOpenshellInstance): number[][];
+    /**
+     * Create an IfcHalfSpaceSolid bounded by a plane.
+     *
+     * @param file IFC file that receives the geometry.
+     * @param options Bounding plane and agreement flag.
+     * @return IfcHalfSpaceSolid entity.
+     */
+    halfSpaceSolid(file: IfcOpenshellFile, options: IfcOpenshellShapeBuilderHalfSpaceSolidOptions): IfcOpenshellInstance;
+    /**
+     * Create a 2D IfcIndexedPolyCurve from explicit points and segment indices.
+     *
+     * Segments with two indices are line segments; segments with three indices
+     * are arc segments.
+     *
+     * @param file IFC file that receives the geometry.
+     * @param points XY coordinates for the point list.
+     * @param segments Segment index arrays (1-based).
+     * @return IfcIndexedPolyCurve entity.
+     */
+    indexedPolycurve2d(file: IfcOpenshellFile, points: number[][], segments: number[][]): IfcOpenshellInstance;
+    /**
+     * Build MEP bend geometry for a duct segment.
+     *
+     * Generates a swept disk solid (for circular profiles) or an extruded bend
+     * shape (for rectangular profiles), plus optional start and end straight
+     * extensions.
+     *
+     * @param file IFC file that receives the geometry.
+     * @param options Segment, lengths, angle, radius, bend direction, and Z flip.
+     * @return Bend result with representation and computed parameters.
+     */
+    mepBendShape(file: IfcOpenshellFile, options: IfcOpenshellShapeBuilderMepBendShapeOptions): IfcOpenshellShapeBuilderMepBendShapeResult;
+    /**
+     * Compute the transition angle or length between two MEP duct profiles.
+     *
+     * Provide either length or angle (not both) to solve for the other.
+     * Returns NaN when no valid solution exists.
+     *
+     * @param options Profile half-dimensions, offset, and one of length or angle.
+     * @return The solved angle (degrees) or length (model units), or NaN.
+     */
+    mepTransitionCalculate(options: IfcOpenshellShapeBuilderMepTransitionCalculateOptions): number;
+    /**
+     * Compute the minimum transition length between two MEP duct profiles at a given angle.
+     *
+     * @param options Profile half-dimensions, angle in degrees, and profile offset.
+     * @return Required transition length in model units, or NaN if no valid solution.
+     */
+    mepTransitionLength(options: IfcOpenshellShapeBuilderMepTransitionLengthOptions): number;
+    /**
+     * Build MEP transition geometry between two duct segments.
+     *
+     * Generates start/end extrusions and a connecting transition mesh.
+     * Returns no result when the segments lack material profiles or the
+     * transition cannot be computed.
+     *
+     * @param file IFC file that receives the geometry.
+     * @param options Start/end segments, lengths, angle, and profile offset.
+     * @return Transition result with representation and dimensions, or no result.
+     */
+    mepTransitionShape(file: IfcOpenshellFile, options: IfcOpenshellShapeBuilderMepTransitionShapeOptions): IfcOpenshellShapeBuilderMepTransitionShapeResult | null;
+    /**
+     * Create a mesh representation using IfcPolygonalFaceSet (IFC4+) or IfcFacetedBrep (IFC2X3).
+     *
+     * @param file IFC file that receives the geometry.
+     * @param points XYZ vertex coordinates.
+     * @param faces Face index lists (zero-based).
+     * @return IfcPolygonalFaceSet or IfcFacetedBrep entity.
+     */
+    mesh(file: IfcOpenshellFile, points: number[][], faces: number[][]): IfcOpenshellInstance;
+    /**
+     * Mirror a geometry item across 2D axes.
+     *
+     * Supports IfcIndexedPolyCurve, IfcPolyline, IfcCircle, IfcEllipse,
+     * IfcTrimmedCurve, and IfcExtrudedAreaSolid. A non-zero value in
+     * mirror_axes at index 0 or 1 flips the corresponding coordinate.
+     *
+     * @param file IFC file containing the item.
+     * @param options Item, axes, point, copy flag, and optional placement matrix.
+     * @return The mirrored item, either the supplied entity or an independent copy.
+     */
+    mirror(file: IfcOpenshellFile, options: IfcOpenshellShapeBuilderMirrorOptions): IfcOpenshellInstance;
+    /**
+     * Create an IfcPlane from a point and normal direction.
+     *
+     * The reference direction is computed automatically from the normal.
+     *
+     * @param file IFC file that receives the geometry.
+     * @param location XYZ point on the plane.
+     * @param normal Direction ratios of the plane normal.
+     * @return IfcPlane entity.
+     */
+    plane(file: IfcOpenshellFile, location: number[], normal: number[]): IfcOpenshellInstance;
+    /**
+     * Create an IfcPolygonalFaceSet from vertices and polygonal face loops.
+     *
+     * Each face may contain one outer loop and optional inner loops (voids).
+     * Faces with multiple loops create IfcIndexedPolygonalFaceWithVoids entities.
+     *
+     * @param file IFC file that receives the geometry.
+     * @param points XYZ vertex coordinates.
+     * @param faces Per-face loop index lists (zero-based).
+     * @return IfcPolygonalFaceSet entity.
+     */
+    polygonalFaceSet(file: IfcOpenshellFile, points: number[][], faces: number[][][]): IfcOpenshellInstance;
+    /**
+     * Create a 2D or 3D polyline (IfcPolyline for IFC2X3, IfcIndexedPolyCurve otherwise).
+     *
+     * @param file IFC file that receives the geometry.
+     * @param options Points, closure, offset, and arc segment indices.
+     * @return IfcPolyline or IfcIndexedPolyCurve entity.
+     */
+    polyline(file: IfcOpenshellFile, options: IfcOpenshellShapeBuilderPolylineOptions): IfcOpenshellInstance;
+    /**
+     * Create an IfcArbitraryClosedProfileDef or IfcArbitraryProfileDefWithVoids.
+     *
+     * @param file IFC file that receives the profile.
+     * @param options Outer curve, optional inner curves, name, and profile type.
+     * @return IfcProfileDef entity.
+     */
+    profile(file: IfcOpenshellFile, options: IfcOpenshellShapeBuilderProfileOptions): IfcOpenshellInstance;
+    /**
+     * Create an IfcShapeRepresentation or IfcTopologyRepresentation.
+     *
+     * The representation type is auto-detected from the items when omitted.
+     * Topology types (Vertex, Edge, Path, Face, Shell) produce IfcTopologyRepresentation;
+     * all others produce IfcShapeRepresentation.
+     *
+     * @param file IFC file that receives the representation.
+     * @param options Context, items, and optional representation type.
+     * @return IfcShapeRepresentation or IfcTopologyRepresentation entity.
+     */
+    representation(file: IfcOpenshellFile, options: IfcOpenshellShapeBuilderRepresentationOptions): IfcOpenshellInstance;
+    /**
+     * Rotate a geometry item around a 2D pivot point.
+     *
+     * Supports IfcIndexedPolyCurve, IfcPolyline, IfcCircle, and
+     * IfcExtrudedAreaSolid. The angle is in degrees.
+     *
+     * @param file IFC file containing the item.
+     * @param options Item, angle, pivot, direction, and copy flag.
+     * @return The rotated item, either the supplied entity or an independent copy.
+     */
+    rotate(file: IfcOpenshellFile, options: IfcOpenshellShapeBuilderRotateOptions): IfcOpenshellInstance;
+    /**
+     * Replace the coordinate list of an IfcPolyline or IfcIndexedPolyCurve.
+     *
+     * For IfcPolyline, the new coordinate count must match the existing point count.
+     *
+     * @param file IFC file containing the polyline.
+     * @param polyline IfcPolyline or IfcIndexedPolyCurve entity.
+     * @param coords Replacement coordinates.
+     * @return The modified polyline entity.
+     */
+    setPolylineCoords(file: IfcOpenshellFile, polyline: IfcOpenshellInstance, coords: number[][]): IfcOpenshellInstance;
+    /**
+     * Create an IfcSphere.
+     *
+     * @param file IFC file that receives the geometry.
+     * @param options Radius and centre position.
+     * @return IfcSphere entity.
+     */
+    sphere(file: IfcOpenshellFile, options: IfcOpenshellShapeBuilderSphereOptions): IfcOpenshellInstance;
+    /**
+     * Create an IfcSweptDiskSolid along a directrix curve.
+     *
+     * @param file IFC file that receives the geometry.
+     * @param path_curve IfcCurve entity defining the sweep path.
+     * @param radius Disk radius in model units.
+     * @return IfcSweptDiskSolid entity.
+     */
+    sweptDiskSolid(file: IfcOpenshellFile, path_curve: IfcOpenshellInstance, radius: number): IfcOpenshellInstance;
+    /**
+     * Translate a geometry item by a direction and distance.
+     *
+     * Supports IfcIndexedPolyCurve, IfcPolyline, IfcCircle, IfcEllipse,
+     * IfcExtrudedAreaSolid, IfcTessellatedFaceSet, IfcShapeRepresentation,
+     * and IfcTrimmedCurve.
+     *
+     * @param file IFC file containing the item.
+     * @param options Item, translation, and copy flag.
+     * @return The translated item, either the supplied entity or an independent copy.
+     */
+    translate(file: IfcOpenshellFile, options: IfcOpenshellShapeBuilderTranslateOptions): IfcOpenshellInstance;
+    /**
+     * Create an IfcTriangulatedFaceSet from vertices and triangle index lists.
+     *
+     * @param file IFC file that receives the geometry.
+     * @param points XYZ vertex coordinates.
+     * @param faces Triangle index lists (zero-based, truncated to 3 vertices each).
+     * @return IfcTriangulatedFaceSet entity.
+     */
+    triangulatedFaceSet(file: IfcOpenshellFile, points: number[][], faces: number[][]): IfcOpenshellInstance;
+    /**
+     * Create an IfcVertexPoint at the given position.
+     *
+     * @param file IFC file that receives the geometry.
+     * @param position XYZ coordinates of the vertex.
+     * @return IfcVertexPoint entity.
+     */
+    vertex(file: IfcOpenshellFile, position: number[]): IfcOpenshellInstance;
+  }
+
   export interface IfcOpenshellSpatialModule {
     /**
      * Contain products in a spatial structure via IfcRelContainedInSpatialStructure.
@@ -5989,6 +6453,8 @@ declare module 'ifcopenshell-api' {
      * @return The IfcRelServicesBuildings relationship.
      */
     assignToBuilding(file: IfcOpenshellFile, structural_analysis_model: IfcOpenshellInstance, building: IfcOpenshellInstance, owner_history: IfcOpenshellInstance | null): IfcOpenshellInstance;
+    /** Edit an IfcStructuralAnalysisModel using the shared attribute property writer. */
+    editStructuralAnalysisModel(file: IfcOpenshellFile, structural_analysis_model: IfcOpenshellInstance, attributes: number): void;
     /**
      * Edit attributes of an IfcBoundaryCondition subclass.
      *
@@ -6026,6 +6492,10 @@ declare module 'ifcopenshell-api' {
      * @param axis 3-element direction ratios.
      */
     editStructuralItemAxis(file: IfcOpenshellFile, structural_item: IfcOpenshellInstance, axis: number[]): void;
+    /** Edit an IfcStructuralLoad using the shared attribute property writer. */
+    editStructuralLoad(file: IfcOpenshellFile, structural_load: IfcOpenshellInstance, attributes: number): void;
+    /** Edit an IfcStructuralLoadCase using the shared attribute property writer. */
+    editStructuralLoadCase(file: IfcOpenshellFile, structural_load_case: IfcOpenshellInstance, attributes: number): void;
     /**
      * Remove an IfcStructuralAnalysisModel from the file.
      *
@@ -6167,6 +6637,8 @@ declare module 'ifcopenshell-api' {
      * @return List of newly created IfcStyledItem entities.
      */
     assignRepresentationStyles(file: IfcOpenshellFile, shape_representation: IfcOpenshellInstance, styles: IfcOpenshellInstance[], should_use_presentation_style_assignment: boolean, replace_previous_same_type_style: boolean): IfcOpenshellParseInstanceList;
+    /** Edit an IfcPresentationStyle using the shared attribute property writer. */
+    editPresentationStyle(file: IfcOpenshellFile, style: IfcOpenshellInstance, attributes: number): void;
     /**
      * Edit attributes of an IfcSurfaceStyle or its nested surface styles.
      *
@@ -6286,6 +6758,8 @@ declare module 'ifcopenshell-api' {
      * clears FlowDirection on both sides.
      */
     disconnectPort(file: IfcOpenshellFile, port: IfcOpenshellInstance): void;
+    /** Edit an IfcSystem using the shared attribute property writer. */
+    editSystem(file: IfcOpenshellFile, system: IfcOpenshellInstance, attributes: number): void;
     /**
      * Remove a system and its relationships.
      *
@@ -6443,6 +6917,10 @@ declare module 'ifcopenshell-api' {
      * @return The converted value.
      */
     convertUnit(value: number, from_unit: IfcOpenshellInstance, to_unit: IfcOpenshellInstance): number;
+    /** Edit an IfcDerivedUnit using the shared attribute property writer. */
+    editDerivedUnit(file: IfcOpenshellFile, unit: IfcOpenshellInstance, attributes: number): void;
+    /** Edit an IfcMonetaryUnit using the shared attribute property writer. */
+    editMonetaryUnit(file: IfcOpenshellFile, unit: IfcOpenshellInstance, attributes: number): void;
     /**
      * Edit a named unit without owner-history or predefined-type synchronization.
      *
@@ -6961,6 +7439,7 @@ declare module 'ifcopenshell-api' {
     profile: IfcOpenshellProfileModule;
     project: IfcOpenshellProjectModule;
     pset: IfcOpenshellPsetModule;
+    pset_template: IfcOpenshellPsetTemplateModule;
     register: IfcOpenshellRegisterModule;
     representation: IfcOpenshellRepresentationModule;
     resource: IfcOpenshellResourceModule;
@@ -6969,6 +7448,7 @@ declare module 'ifcopenshell-api' {
     selector: IfcOpenshellSelectorModule;
     sequence: IfcOpenshellSequenceModule;
     shape: IfcOpenshellShapeModule;
+    shape_builder: IfcOpenshellShapeBuilderModule;
     spatial: IfcOpenshellSpatialModule;
     structural: IfcOpenshellStructuralModule;
     style: IfcOpenshellStyleModule;

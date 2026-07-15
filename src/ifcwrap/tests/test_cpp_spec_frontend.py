@@ -215,6 +215,39 @@ def test_contract_discovery_preserves_source_docs(tmp_path: Path) -> None:
     )
 
 
+def test_cpp_spec_frontend_preserves_contract_header_module(tmp_path: Path) -> None:
+    header = tmp_path / "shape_builder.h"
+    header.write_text(
+        dedent(
+            """
+            #define IFCAPI_BINDING
+
+            namespace demo {
+            IFCAPI_BINDING void shape_builder_get_polyline_coords();
+            }
+            """
+        ),
+        encoding="utf-8",
+    )
+    spec_path = tmp_path / "demo_spec.cpp"
+    spec_path.write_text('#include "shape_builder.h"\n', encoding="utf-8")
+
+    functions = discover_cpp_spec_functions(
+        _environment(tmp_path),
+        spec_path,
+        "demo",
+        contract_headers=(header,),
+    )
+    calls = lower_cpp_spec_functions_to_calls(
+        functions,
+        {},
+        c_prefix="ifcopenshell",
+    )
+
+    assert functions[0].public_module == "shape_builder"
+    assert calls[0].public_module == "shape_builder"
+
+
 def test_contract_discovery_uses_only_adjacent_function_docs(tmp_path: Path) -> None:
     header = tmp_path / "demo.h"
     header.write_text(

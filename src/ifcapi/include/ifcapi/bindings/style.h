@@ -159,6 +159,12 @@ IFCAPI_BINDING void style_edit_surface_style(
     express::Base* style,
     ifcopenshell_pset_props_t* attributes);
 
+/** Edit an IfcPresentationStyle using the shared attribute property writer. */
+IFCAPI_BINDING void style_edit_presentation_style(
+    ifcopenshell::file* file,
+    express::Base style,
+    ifcopenshell_pset_props_t* attributes);
+
 /**
  * Remove a presentation style and clean up all references to it.
  *

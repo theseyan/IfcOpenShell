@@ -326,6 +326,46 @@ IFCAPI_BINDING void material_remove_material(ifcopenshell::file* file, express::
  */
 IFCAPI_BINDING void material_remove_material_set(ifcopenshell::file* file, express::Base* material);
 
+/** Edit an IfcMaterial using the shared attribute property writer. */
+IFCAPI_BINDING void material_edit_material(
+    ifcopenshell::file* file,
+    express::Base material,
+    ifcopenshell_pset_props_t* attributes);
+
+/** Edit an IfcMaterialConstituent and replace its Material reference. */
+IFCAPI_BINDING void material_edit_constituent(
+    ifcopenshell::file* file,
+    express::Base constituent,
+    ifcopenshell_pset_props_t* attributes,
+    std::optional<express::Base> material);
+
+/** Edit an IfcMaterialLayer and optionally replace its Material reference. */
+IFCAPI_BINDING void material_edit_layer(
+    ifcopenshell::file* file,
+    express::Base layer,
+    ifcopenshell_pset_props_t* attributes,
+    std::optional<express::Base> material);
+
+/** Edit an IfcMaterialLayerSetUsage using the shared attribute property writer. */
+IFCAPI_BINDING void material_edit_layer_usage(
+    ifcopenshell::file* file,
+    express::Base usage,
+    ifcopenshell_pset_props_t* attributes);
+
+/** Edit an IfcMaterial entity assigned to an element. */
+IFCAPI_BINDING void material_edit_assigned_material(
+    ifcopenshell::file* file,
+    express::Base element,
+    ifcopenshell_pset_props_t* attributes);
+
+/** Edit an IfcMaterialProfile and optionally replace its profile or material. */
+IFCAPI_BINDING void material_edit_profile(
+    ifcopenshell::file* file,
+    express::Base profile,
+    ifcopenshell_pset_props_t* attributes,
+    std::optional<express::Base> profile_def,
+    std::optional<express::Base> material);
+
 /**
  * Remove an IfcMaterialProfile from its set.
  *

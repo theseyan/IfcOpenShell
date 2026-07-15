@@ -12,6 +12,8 @@
 #include <string>
 #include <vector>
 
+struct ifcopenshell_pset_props_t;
+
 namespace ifcapi {
 namespace bindings {
 
@@ -125,6 +127,12 @@ IFCAPI_BINDING void group_unassign_group(
 IFCAPI_BINDING void group_remove_group(
     ifcopenshell::file* file,
     express::Base* group);
+
+/** Edit an IfcGroup using the shared attribute property writer. */
+IFCAPI_BINDING void group_edit_group(
+    ifcopenshell::file* file,
+    express::Base group,
+    ifcopenshell_pset_props_t* attributes);
 
 } // namespace bindings
 } // namespace ifcapi

@@ -18,7 +18,7 @@
 from typing import Any
 
 import ifcopenshell
-from ifcopenshell.api.attribute.edit_attributes import _edit_attributes
+from ifcopenshell.api.attribute.edit_attributes import _edit_named_attributes
 
 
 def edit_resource(file: ifcopenshell.file, resource: ifcopenshell.entity_instance, attributes: dict[str, Any]) -> None:
@@ -41,4 +41,4 @@ def edit_resource(file: ifcopenshell.file, resource: ifcopenshell.entity_instanc
         # Change the name of the resource to "Zone A Crew"
         ifcopenshell.api.resource.edit_resource(model, resource=resource, attributes={"Name": "Foo"})
     """
-    _edit_attributes(file, resource, attributes)
+    _edit_named_attributes(file, resource, attributes, "resource_edit_resource")

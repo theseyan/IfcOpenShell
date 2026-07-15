@@ -5,12 +5,15 @@
 #include "ifcapi/detail/attribute.h"
 #include "ifcapi/detail/relationship.h"
 #include "guid.h"
+#include "../pset/props.hpp"
 
 #include "ifcparse/file.h"
 #include "ifcparse/schema.h"
 
 #include <algorithm>
+#include <iomanip>
 #include <regex>
+#include <sstream>
 #include <stdexcept>
 #include <string>
 #include <unordered_set>
@@ -61,6 +64,27 @@ IsoDate parse_iso_date_time(const std::string& value) {
         }
     }
     return {year, month, day};
+}
+
+std::string iso_date_time(const ifcapi_pset::Entry& entry) {
+    std::ostringstream value;
+    value << std::setfill('0')
+          << std::setw(4) << entry.year << '-'
+          << std::setw(2) << entry.month << '-'
+          << std::setw(2) << entry.day << 'T'
+          << std::setw(2) << entry.hour << ':'
+          << std::setw(2) << entry.minute << ':'
+          << std::setw(2) << entry.second;
+    if (entry.microsecond != 0) {
+        value << '.' << std::setw(6) << entry.microsecond;
+    }
+    if (entry.has_timezone) {
+        const int offset = entry.timezone_offset_minutes;
+        value << (offset < 0 ? '-' : '+')
+              << std::setw(2) << std::abs(offset) / 60 << ':'
+              << std::setw(2) << std::abs(offset) % 60;
+    }
+    return value.str();
 }
 
 std::vector<express::Base> mutable_entities(
@@ -209,6 +233,42 @@ express::Base library_add_reference(
         detail::write_ref_attr(reference, "ReferencedLibrary", library_value);
     }
     return reference;
+}
+
+void library_edit_library(
+    ifcopenshell::file* file,
+    express::Base library,
+    ifcopenshell_pset_props_t* attributes)
+{
+    if (!attributes) {
+        detail::apply_named_attributes(library, attributes);
+        return;
+    }
+
+    ifcopenshell_pset_props_t current;
+    current.entries.reserve(1);
+    detail::apply_named_attributes(library, &current);
+    for (const auto& entry : attributes->entries) {
+        if (entry.key == "VersionDate" &&
+            ((entry.kind == ifcapi_pset::Kind::TYPED_STRING && entry.ifc_type == "IfcDateTime") ||
+             entry.kind == ifcapi_pset::Kind::DATETIME)) {
+            library_edit_version_date(file, &library, entry.kind == ifcapi_pset::Kind::DATETIME
+                ? iso_date_time(entry)
+                : entry.s_val);
+        } else {
+            current.entries.clear();
+            current.entries.push_back(entry);
+            detail::apply_named_attributes(library, &current);
+        }
+    }
+}
+
+void library_edit_reference(
+    ifcopenshell::file* file,
+    express::Base reference,
+    ifcopenshell_pset_props_t* attributes)
+{
+    detail::edit_named_attributes(file, reference, attributes);
 }
 
 express::Base library_assign_reference(

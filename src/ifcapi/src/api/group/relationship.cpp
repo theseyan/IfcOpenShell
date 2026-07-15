@@ -4,6 +4,7 @@
 #include "ifcapi/ifcapi.h"
 #include "ifcapi/bindings/group.h"
 #include "ifcapi/bindings/pset.h"
+#include "ifcapi/detail/attribute.h"
 #include "ifcapi/detail/relationship.h"
 #include "guid.h"
 
@@ -288,6 +289,14 @@ void group_remove_group(
     }
 
     remove_with_history(file, *group);
+}
+
+void group_edit_group(
+    ifcopenshell::file* file,
+    express::Base group,
+    ifcopenshell_pset_props_t* attributes)
+{
+    detail::edit_named_attributes(file, group, attributes);
 }
 
 } // namespace bindings

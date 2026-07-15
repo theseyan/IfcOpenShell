@@ -18,7 +18,7 @@
 from typing import Any, Optional
 
 import ifcopenshell
-from ifcopenshell.api.attribute.edit_attributes import _edit_attributes
+from ifcopenshell.api.attribute.edit_attributes import _edit_named_attributes
 
 
 def edit_constituent(
@@ -63,5 +63,4 @@ def edit_constituent(
         ifcopenshell.api.material.edit_constituent(model,
             constituent=constituent, attributes={"Name": "Glazing"})
     """
-    _edit_attributes(file, constituent, attributes or {})
-    constituent.Material = material
+    _edit_named_attributes(file, constituent, attributes or {}, "material_edit_constituent", material)

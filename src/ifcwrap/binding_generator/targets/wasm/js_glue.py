@@ -11,7 +11,7 @@ from .._shared import (
     _buffer_size_function,
     _camel_name,
     _method_name,
-    _public_module_member,
+    _public_module_members,
     _public_name,
     _public_params,
     _snake_name,
@@ -546,12 +546,12 @@ def _render_module_factory(metadata: BindingABI) -> str:
             param_names.append("arrayType")
         params = ", ".join(param_names)
         call = f"({params}) => invoke_{function.c_name}(module{', ' if params else ''}{params})"
-        module_member = _public_module_member(function, metadata.c_prefix)
-        if module_member is not None:
-            module_name, member_name = module_member
-            module_members.setdefault(module_name, []).append(
-                f"            {member_name}: {call},"
-            )
+        module_members_for_function = _public_module_members(function, metadata.c_prefix)
+        if module_members_for_function:
+            for module_name, member_name in module_members_for_function:
+                module_members.setdefault(module_name, []).append(
+                    f"            {member_name}: {call},"
+                )
         else:
             members.append(f"        {name}: {call},")
     if "ifcopenshell_parse_open" in metadata.functions:

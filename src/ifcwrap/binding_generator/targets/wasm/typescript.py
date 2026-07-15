@@ -10,7 +10,7 @@ from .._shared import (
     _INTERNAL_C_FUNCTIONS,
     _camel_name,
     _method_name,
-    _public_module_member,
+    _public_module_members,
     _public_name,
     _public_params,
     _snake_name,
@@ -318,13 +318,13 @@ def _collect_module_members(metadata: BindingABI) -> dict[str, list[str]]:
             or function.c_name in _HIDDEN_FUNCTIONS
         ):
             continue
-        module_member = _public_module_member(function, metadata.c_prefix)
-        if module_member is None:
+        module_members_for_function = _public_module_members(function, metadata.c_prefix)
+        if not module_members_for_function:
             continue
-        module_name, member_name = module_member
-        module_members.setdefault(module_name, []).append(
-            _render_function_signature(member_name, function, metadata)
-        )
+        for module_name, member_name in module_members_for_function:
+            module_members.setdefault(module_name, []).append(
+                _render_function_signature(member_name, function, metadata)
+            )
     parse_open = metadata.functions.get("ifcopenshell_parse_open")
     if parse_open is not None:
         returns = _ts_type(parse_open.returns, metadata)
@@ -361,7 +361,7 @@ def _render_module_interface(
             or function.c_name in _HIDDEN_FUNCTIONS
         ):
             continue
-        if _public_module_member(function, metadata.c_prefix) is not None:
+        if _public_module_members(function, metadata.c_prefix):
             continue
         name = _public_name(function, metadata.c_prefix)
         members.append(_render_function_signature(name, function, metadata))

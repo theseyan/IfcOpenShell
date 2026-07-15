@@ -20,7 +20,6 @@ from typing import Any
 
 import ifcopenshell
 from ifcopenshell.api.attribute import _capi
-from ifcopenshell.api.pset import _capi as pset_capi
 
 
 def _edit_attributes(
@@ -31,6 +30,8 @@ def _edit_attributes(
     sync_predefined_type: bool = False,
     update_owner_history: bool = False,
 ) -> None:
+    from ifcopenshell.api.pset import _capi as pset_capi
+
     props = pset_capi.build_props(attributes)
     try:
         user, application = _capi.owner_context(file)
@@ -45,6 +46,28 @@ def _edit_attributes(
                 "user": _capi.instance_handle(user),
                 "application": _capi.instance_handle(application),
             },
+        )
+    finally:
+        pset_capi.free_props(props)
+
+
+def _edit_named_attributes(
+    file: ifcopenshell.file,
+    target: ifcopenshell.entity_instance,
+    attributes: dict[str, Any],
+    operation: str,
+    *entity_arguments,
+) -> None:
+    from ifcopenshell.api.pset import _capi as pset_capi
+
+    props = pset_capi.build_props(attributes)
+    try:
+        _capi.call_status(
+            operation,
+            _capi.file_handle(file),
+            _capi.instance_handle(target),
+            props,
+            *(_capi.instance_handle(argument) for argument in entity_arguments),
         )
     finally:
         pset_capi.free_props(props)

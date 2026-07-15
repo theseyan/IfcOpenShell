@@ -84,6 +84,8 @@ type RawApi = {
   classification: {
     addClassification: (file: RawValue, name: string) => RawValue;
     addReference: (file: RawValue, options: RawValue) => RawValue;
+    editClassification: (file: RawValue, classification: RawValue, attributes: RawValue) => void;
+    editReference: (file: RawValue, reference: RawValue, attributes: RawValue) => void;
     getReferences: (element: RawValue, should_inherit: boolean) => RawValue;
     removeClassification: (file: RawValue, classification: RawValue) => void;
     removeReference: (file: RawValue, options: RawValue) => void;
@@ -102,6 +104,8 @@ type RawApi = {
     addMetricReference: (file: RawValue, metric: RawValue, reference_path: string) => RawValue;
     addObjective: (file: RawValue) => RawValue;
     assignConstraint: (file: RawValue, options: RawValue) => RawValue;
+    editMetric: (file: RawValue, metric: RawValue, attributes: RawValue) => void;
+    editObjective: (file: RawValue, objective: RawValue, attributes: RawValue) => void;
     removeConstraint: (file: RawValue, constraint: RawValue) => void;
     removeMetric: (file: RawValue, metric: RawValue) => void;
     unassignConstraint: (file: RawValue, options: RawValue) => void;
@@ -141,12 +145,15 @@ type RawApi = {
     addInformation: (file: RawValue, options: RawValue) => RawValue;
     addReference: (file: RawValue, information: RawValue) => RawValue;
     assignDocument: (file: RawValue, options: RawValue) => RawValue;
+    editInformation: (file: RawValue, information: RawValue, attributes: RawValue) => void;
+    editReference: (file: RawValue, reference: RawValue, attributes: RawValue) => void;
     removeInformation: (file: RawValue, information: RawValue) => void;
     removeReference: (file: RawValue, reference: RawValue) => void;
     unassignDocument: (file: RawValue, options: RawValue) => void;
   };
   drawing: {
     assignProduct: (file: RawValue, options: RawValue) => RawValue;
+    editTextLiteral: (file: RawValue, text_literal: RawValue, attributes: RawValue) => void;
     unassignProduct: (file: RawValue, options: RawValue) => void;
   };
   element: {
@@ -239,6 +246,7 @@ type RawApi = {
   group: {
     addGroup: (file: RawValue, options: RawValue) => RawValue;
     assignGroup: (file: RawValue, options: RawValue) => RawValue;
+    editGroup: (file: RawValue, group: RawValue, attributes: RawValue) => void;
     removeGroup: (file: RawValue, group: RawValue) => void;
     unassignGroup: (file: RawValue, options: RawValue) => void;
     updateGroupProducts: (file: RawValue, options: RawValue) => RawValue;
@@ -252,6 +260,7 @@ type RawApi = {
     addLayer: (file: RawValue, name: string) => RawValue;
     addLayerWithStyle: (file: RawValue, name: string, options: RawValue) => RawValue;
     assignLayer: (file: RawValue, items: RawValue, layer: RawValue) => void;
+    editLayer: (file: RawValue, layer: RawValue, attributes: RawValue) => void;
     removeLayer: (file: RawValue, layer: RawValue) => void;
     unassignLayer: (file: RawValue, items: RawValue, layer: RawValue) => void;
   };
@@ -259,6 +268,8 @@ type RawApi = {
     addLibrary: (file: RawValue, name: string) => RawValue;
     addReference: (file: RawValue, library: RawValue) => RawValue;
     assignReference: (file: RawValue, options: RawValue) => RawValue;
+    editLibrary: (file: RawValue, library: RawValue, attributes: RawValue) => void;
+    editReference: (file: RawValue, reference: RawValue, attributes: RawValue) => void;
     editVersionDate: (file: RawValue, library: RawValue, iso_date_time: string) => void;
     removeLibrary: (file: RawValue, library: RawValue) => void;
     removeReference: (file: RawValue, reference: RawValue) => void;
@@ -274,6 +285,12 @@ type RawApi = {
     assignMaterial: (file: RawValue, products: RawValue, options: RawValue) => RawValue;
     assignProfile: (file: RawValue, material_profile: RawValue, profile: RawValue) => void;
     copyMaterial: (file: RawValue, material: RawValue) => RawValue;
+    editAssignedMaterial: (file: RawValue, element: RawValue, attributes: RawValue) => void;
+    editConstituent: (file: RawValue, constituent: RawValue, attributes: RawValue, material: RawValue) => void;
+    editLayer: (file: RawValue, layer: RawValue, attributes: RawValue, material: RawValue) => void;
+    editLayerUsage: (file: RawValue, usage: RawValue, attributes: RawValue) => void;
+    editMaterial: (file: RawValue, material: RawValue, attributes: RawValue) => void;
+    editProfile: (file: RawValue, profile: RawValue, attributes: RawValue, profile_def: RawValue, material: RawValue) => void;
     editProfileUsage: (file: RawValue, usage: RawValue, options: RawValue) => void;
     removeConstituent: (file: RawValue, constituent: RawValue, options: RawValue) => void;
     removeLayer: (file: RawValue, layer: RawValue, options: RawValue) => void;
@@ -301,6 +318,12 @@ type RawApi = {
     addRole: (file: RawValue, assigned_object: RawValue, role: string) => RawValue;
     assignActor: (file: RawValue, options: RawValue) => RawValue;
     createOwnerHistory: (file: RawValue, options: RawValue) => RawValue;
+    editActor: (file: RawValue, actor: RawValue, attributes: RawValue) => void;
+    editAddress: (file: RawValue, address: RawValue, attributes: RawValue) => void;
+    editApplication: (file: RawValue, application: RawValue, attributes: RawValue) => void;
+    editOrganisation: (file: RawValue, organisation: RawValue, attributes: RawValue) => void;
+    editPerson: (file: RawValue, person: RawValue, attributes: RawValue) => void;
+    editRole: (file: RawValue, role: RawValue, attributes: RawValue) => void;
     removeActor: (file: RawValue, actor: RawValue) => void;
     removeAddress: (file: RawValue, address: RawValue) => void;
     removeApplication: (file: RawValue, application: RawValue) => void;
@@ -348,6 +371,7 @@ type RawApi = {
     templateAddPsetTemplate: (file: RawValue, name: string, template_type: string, applicable_entity: string) => RawValue;
     templateCreateFromFiles: (schema_identifier: string, template_files: RawValue) => RawValue;
     templateEditPropTemplate: (file: RawValue, options: RawValue) => void;
+    templateEditPsetTemplate: (file: RawValue, pset_template: RawValue, attributes: RawValue) => void;
     templateGetApplicable: (pqt: RawValue, ifc_class: string | null, predefined_type: string | null, pset_only: boolean, qto_only: boolean, schema_name: string | null) => RawValue;
     templateGetApplicableNames: (pqt: RawValue, ifc_class: string | null, predefined_type: string | null, pset_only: boolean, qto_only: boolean, schema_name: string | null) => RawValue;
     templateGetByName: (pqt: RawValue, name: string) => RawValue;
@@ -359,6 +383,22 @@ type RawApi = {
     templateSetTemplateDir: (dir: string) => void;
     unassignPset: (file: RawValue, products: RawValue, pset: RawValue) => void;
     unsharePset: (file: RawValue, options: RawValue) => RawValue;
+  };
+  pset_template: {
+    addPropTemplate: (file: RawValue, pset_template: RawValue, name: string, description: string | null, template_type: string | null, primary_measure_type: string | null) => RawValue;
+    addPsetTemplate: (file: RawValue, name: string, template_type: string, applicable_entity: string) => RawValue;
+    createFromFiles: (schema_identifier: string, template_files: RawValue) => RawValue;
+    editPropTemplate: (file: RawValue, options: RawValue) => void;
+    editPsetTemplate: (file: RawValue, pset_template: RawValue, attributes: RawValue) => void;
+    getApplicable: (pqt: RawValue, ifc_class: string | null, predefined_type: string | null, pset_only: boolean, qto_only: boolean, schema_name: string | null) => RawValue;
+    getApplicableNames: (pqt: RawValue, ifc_class: string | null, predefined_type: string | null, pset_only: boolean, qto_only: boolean, schema_name: string | null) => RawValue;
+    getByName: (pqt: RawValue, name: string) => RawValue;
+    getTemplate: (schema_identifier: string) => RawValue;
+    isTemplated: (pqt: RawValue, name: string) => boolean;
+    psetType: (pset_template: RawValue) => string;
+    removePropTemplate: (file: RawValue, prop_template: RawValue) => void;
+    removePsetTemplate: (pset_template: RawValue) => void;
+    setTemplateDir: (dir: string) => void;
   };
   register: {
     scratchFile: (schema_name: string | null, file: RawValue) => boolean;
@@ -377,6 +417,8 @@ type RawApi = {
     assignResource: (file: RawValue, options: RawValue) => RawValue;
     calculateResourceUsage: (file: RawValue, resource: RawValue) => void;
     calculateResourceWork: (file: RawValue, resource: RawValue) => void;
+    editResource: (file: RawValue, resource: RawValue, attributes: RawValue) => void;
+    editResourceQuantity: (file: RawValue, physical_quantity: RawValue, attributes: RawValue) => void;
     editResourceTime: (file: RawValue, resource_time: RawValue, attributes: RawValue) => void;
     removeResource: (file: RawValue, options: RawValue) => void;
     removeResourceQuantity: (file: RawValue, resource: RawValue) => void;
@@ -475,6 +517,40 @@ type RawApi = {
     builderVertex: (file: RawValue, position: RawValue) => RawValue;
     isAlmostEqual: (value: number, x: number, tolerance: number) => boolean;
   };
+  shape_builder: {
+    axis2Placement2d: (file: RawValue, options: RawValue) => RawValue;
+    axis2Placement3d: (file: RawValue, options: RawValue) => RawValue;
+    block: (file: RawValue, options: RawValue) => RawValue;
+    circle: (file: RawValue, center: RawValue, radius: number) => RawValue;
+    curveBetweenTwoPoints: (file: RawValue, points: RawValue) => RawValue;
+    deepCopy: (file: RawValue, element: RawValue) => RawValue;
+    edge: (file: RawValue, start: RawValue, end: RawValue) => RawValue;
+    ellipseCurve: (file: RawValue, options: RawValue) => RawValue;
+    extrude: (file: RawValue, options: RawValue) => RawValue;
+    face: (file: RawValue, points: RawValue) => RawValue;
+    facetedBrep: (file: RawValue, points: RawValue, faces: RawValue) => RawValue;
+    getPolylineCoords: (polyline: RawValue) => RawValue;
+    halfSpaceSolid: (file: RawValue, options: RawValue) => RawValue;
+    indexedPolycurve2d: (file: RawValue, points: RawValue, segments: RawValue) => RawValue;
+    mepBendShape: (file: RawValue, options: RawValue) => RawValue;
+    mepTransitionCalculate: (options: RawValue) => number;
+    mepTransitionLength: (options: RawValue) => number;
+    mepTransitionShape: (file: RawValue, options: RawValue) => RawValue;
+    mesh: (file: RawValue, points: RawValue, faces: RawValue) => RawValue;
+    mirror: (file: RawValue, options: RawValue) => RawValue;
+    plane: (file: RawValue, location: RawValue, normal: RawValue) => RawValue;
+    polygonalFaceSet: (file: RawValue, points: RawValue, faces: RawValue) => RawValue;
+    polyline: (file: RawValue, options: RawValue) => RawValue;
+    profile: (file: RawValue, options: RawValue) => RawValue;
+    representation: (file: RawValue, options: RawValue) => RawValue;
+    rotate: (file: RawValue, options: RawValue) => RawValue;
+    setPolylineCoords: (file: RawValue, polyline: RawValue, coords: RawValue) => RawValue;
+    sphere: (file: RawValue, options: RawValue) => RawValue;
+    sweptDiskSolid: (file: RawValue, path_curve: RawValue, radius: number) => RawValue;
+    translate: (file: RawValue, options: RawValue) => RawValue;
+    triangulatedFaceSet: (file: RawValue, points: RawValue, faces: RawValue) => RawValue;
+    vertex: (file: RawValue, position: RawValue) => RawValue;
+  };
   spatial: {
     assignContainer: (file: RawValue, options: RawValue) => RawValue;
     dereferenceStructure: (file: RawValue, options: RawValue) => void;
@@ -492,9 +568,12 @@ type RawApi = {
     assignProduct: (file: RawValue, relating_product: RawValue, related_object: RawValue, owner_history: RawValue) => RawValue;
     assignStructuralAnalysisModel: (file: RawValue, products: RawValue, structural_analysis_model: RawValue, options: RawValue) => RawValue;
     assignToBuilding: (file: RawValue, structural_analysis_model: RawValue, building: RawValue, owner_history: RawValue) => RawValue;
+    editStructuralAnalysisModel: (file: RawValue, structural_analysis_model: RawValue, attributes: RawValue) => void;
     editStructuralBoundaryCondition: (file: RawValue, condition: RawValue, attributes: RawValue) => void;
     editStructuralConnectionCs: (file: RawValue, structural_item: RawValue, axis: RawValue, ref_direction: RawValue) => void;
     editStructuralItemAxis: (file: RawValue, structural_item: RawValue, axis: RawValue) => void;
+    editStructuralLoad: (file: RawValue, structural_load: RawValue, attributes: RawValue) => void;
+    editStructuralLoadCase: (file: RawValue, structural_load_case: RawValue, attributes: RawValue) => void;
     removeStructuralAnalysisModel: (file: RawValue, structural_analysis_model: RawValue) => void;
     removeStructuralBoundaryCondition: (file: RawValue, options: RawValue) => void;
     removeStructuralConnectionCondition: (file: RawValue, relation: RawValue) => void;
@@ -510,6 +589,7 @@ type RawApi = {
     assignItemStyle: (file: RawValue, options: RawValue) => RawValue;
     assignMaterialStyle: (file: RawValue, material: RawValue, style: RawValue, context: RawValue, should_use_presentation_style_assignment: boolean) => void;
     assignRepresentationStyles: (file: RawValue, shape_representation: RawValue, styles: RawValue, should_use_presentation_style_assignment: boolean, replace_previous_same_type_style: boolean) => RawValue;
+    editPresentationStyle: (file: RawValue, style: RawValue, attributes: RawValue) => void;
     editSurfaceStyle: (file: RawValue, style: RawValue, attributes: RawValue) => void;
     removeStyle: (file: RawValue, style: RawValue) => void;
     removeStyledRepresentation: (file: RawValue, representation: RawValue) => void;
@@ -525,6 +605,7 @@ type RawApi = {
     assignSystem: (file: RawValue, options: RawValue) => RawValue;
     connectPort: (file: RawValue, options: RawValue) => void;
     disconnectPort: (file: RawValue, port: RawValue) => void;
+    editSystem: (file: RawValue, system: RawValue, attributes: RawValue) => void;
     removeSystem: (file: RawValue, system: RawValue) => void;
     unassignFlowControl: (file: RawValue, options: RawValue) => void;
     unassignPort: (file: RawValue, options: RawValue) => void;
@@ -545,6 +626,8 @@ type RawApi = {
     calculateUnitScale: (file: RawValue, unit_type: string) => number;
     convert: (value: number, from_prefix: string, from_unit: string, to_prefix: string, to_unit: string) => number;
     convertUnit: (value: number, from_unit: RawValue, to_unit: RawValue) => number;
+    editDerivedUnit: (file: RawValue, unit: RawValue, attributes: RawValue) => void;
+    editMonetaryUnit: (file: RawValue, unit: RawValue, attributes: RawValue) => void;
     editNamedUnit: (file: RawValue, options: RawValue) => void;
     formatLength: (value: number, precision: number, decimal_places: number, suppress_zero_inches: boolean, unit_system: string, input_unit: string, output_unit: string) => string;
     getFullUnitName: (unit: RawValue) => string;
@@ -2707,7 +2790,7 @@ export interface AlignmentApi {
     createRepresentation(file: IfcFile, alignment: Entity): void;
     /** Create per-segment product representations; Helmert 1:2 mappings are rejected. */
     createSegmentRepresentations(file: IfcFile, alignment: Entity): void;
-    defaultReferentLabel(previous_segment: Entity, segment: Entity): string;
+    defaultReferentLabel(previous_segment: Entity | null, segment: Entity | null): string;
     distanceAlongFromStation(file: IfcFile, alignment: Entity, station: number): number;
     getAlignment(layout: Entity): Entity | null;
     getAlignmentLayoutNest(alignment: Entity): Entity | null;
@@ -2802,6 +2885,10 @@ export interface ClassificationApi {
      * optional identification, name, and classification fields.
      */
     addReference(file: IfcFile, options: IfcOpenShellClassificationAddReferenceOptions): Entity;
+    /** Edit an IfcClassification using the shared attribute property writer. */
+    editClassification(file: IfcFile, classification: Entity, attributes: PsetProperties | PsetInput): void;
+    /** Edit an IfcClassificationReference using the shared attribute property writer. */
+    editReference(file: IfcFile, reference: Entity, attributes: PsetProperties | PsetInput): void;
     /**
      * Return all classification references associated with an element.
      *
@@ -2895,7 +2982,7 @@ export interface ConstraintApi {
      * Add a new IfcMetric constraint. If an objective is provided, the metric
      * is appended to the objective's benchmark values.
      */
-    addMetric(file: IfcFile, objective: Entity): Entity;
+    addMetric(file: IfcFile, objective: Entity | null): Entity;
     /**
      * Create a chain of IfcReference entities from a dot-separated path and
      * assign it to a metric's ReferencePath attribute.
@@ -2920,6 +3007,10 @@ export interface ConstraintApi {
      * new products are added to the existing relationship.
      */
     assignConstraint(file: IfcFile, options: IfcOpenShellConstraintAssignConstraintOptions): Entity;
+    /** Edit an IfcMetric using the shared attribute property writer. */
+    editMetric(file: IfcFile, metric: Entity, attributes: PsetProperties | PsetInput): void;
+    /** Edit an IfcObjective using the shared attribute property writer. */
+    editObjective(file: IfcFile, objective: Entity, attributes: PsetProperties | PsetInput): void;
     /**
      * Remove a constraint entity and clean up orphaned IfcRelAssociatesConstraint
      * relationships that reference it.
@@ -3028,7 +3119,7 @@ export interface CostApi {
      * @param owner_history Owner history for the new entity. When omitted, no owner history is assigned.
      * @return Newly created IfcCostSchedule.
      */
-    addCostSchedule(file: IfcFile, name: string, predefined_type: string, update_date: string, owner_history: Entity): Entity;
+    addCostSchedule(file: IfcFile, name: string, predefined_type: string, update_date: string, owner_history: Entity | null): Entity;
     /**
      * Create an IfcCostValue and attach it to a parent entity.
      *
@@ -3248,7 +3339,7 @@ export interface DocumentApi {
      * If an IfcDocumentInformation is provided, the reference is linked to it
      * (via ReferencedDocument in IFC4+ or DocumentReferences in IFC2X3).
      */
-    addReference(file: IfcFile, information: Entity): Entity;
+    addReference(file: IfcFile, information: Entity | null): Entity;
     /**
      * Assign a document (IfcDocumentInformation or IfcDocumentReference) to products.
      *
@@ -3256,6 +3347,10 @@ export interface DocumentApi {
      * already associated with the document are skipped.
      */
     assignDocument(file: IfcFile, options: IfcOpenShellDocumentAssignDocumentOptions): Entity;
+    /** Edit an IfcDocumentInformation using the shared attribute property writer. */
+    editInformation(file: IfcFile, information: Entity, attributes: PsetProperties | PsetInput): void;
+    /** Edit an IfcDocumentReference using the shared attribute property writer. */
+    editReference(file: IfcFile, reference: Entity, attributes: PsetProperties | PsetInput): void;
     /**
      * Remove an IfcDocumentInformation and its entire document tree.
      *
@@ -3296,6 +3391,8 @@ export interface DrawingApi {
      * @return IfcRelAssignsToProduct relationship, or no result for a duplicate or failure.
      */
     assignProduct(file: IfcFile, options: IfcOpenShellDrawingAssignProductOptions): Entity;
+    /** Edit an IfcTextLiteral using the shared attribute property writer. */
+    editTextLiteral(file: IfcFile, text_literal: Entity, attributes: PsetProperties | PsetInput): void;
     /**
      * Remove a product assignment from an annotation object.
      *
@@ -4153,6 +4250,8 @@ export interface GroupApi {
      * Products already in the group are skipped.
      */
     assignGroup(file: IfcFile, options: IfcOpenShellGroupAssignGroupOptions): Entity;
+    /** Edit an IfcGroup using the shared attribute property writer. */
+    editGroup(file: IfcFile, group: Entity, attributes: PsetProperties | PsetInput): void;
     /**
      * Remove a group and its relationships.
      *
@@ -4209,6 +4308,8 @@ export interface LayerApi {
      * @param layer IfcPresentationLayerAssignment or IfcPresentationLayerWithStyle.
      */
     assignLayer(file: IfcFile, items: Entity[], layer: Entity): void;
+    /** Edit a presentation layer using the shared attribute property writer. */
+    editLayer(file: IfcFile, layer: Entity, attributes: PsetProperties | PsetInput): void;
     /**
      * Remove a presentation layer entity from the file.
      *
@@ -4246,6 +4347,13 @@ export interface LibraryApi {
      * existing relationship is present, new products are merged into it.
      */
     assignReference(file: IfcFile, options: IfcOpenShellLibraryAssignReferenceOptions): Entity;
+    /**
+     * Edit an IfcLibraryInformation and apply VersionDate schema conversion.
+     * Date-time property entries are stored as IFC4 strings or IFC2X3 dates.
+     */
+    editLibrary(file: IfcFile, library: Entity, attributes: PsetProperties | PsetInput): void;
+    /** Edit an IfcLibraryReference using the shared attribute property writer. */
+    editReference(file: IfcFile, reference: Entity, attributes: PsetProperties | PsetInput): void;
     /**
      * Set an IfcLibraryInformation VersionDate from an ISO-8601 date-time.
      *
@@ -4322,6 +4430,18 @@ export interface MaterialApi {
      * styles are reused.
      */
     copyMaterial(file: IfcFile, material: Entity): Entity;
+    /** Edit an IfcMaterial entity assigned to an element. */
+    editAssignedMaterial(file: IfcFile, element: Entity, attributes: PsetProperties | PsetInput): void;
+    /** Edit an IfcMaterialConstituent and replace its Material reference. */
+    editConstituent(file: IfcFile, constituent: Entity, attributes: PsetProperties | PsetInput, material: Entity | null): void;
+    /** Edit an IfcMaterialLayer and optionally replace its Material reference. */
+    editLayer(file: IfcFile, layer: Entity, attributes: PsetProperties | PsetInput, material: Entity | null): void;
+    /** Edit an IfcMaterialLayerSetUsage using the shared attribute property writer. */
+    editLayerUsage(file: IfcFile, usage: Entity, attributes: PsetProperties | PsetInput): void;
+    /** Edit an IfcMaterial using the shared attribute property writer. */
+    editMaterial(file: IfcFile, material: Entity, attributes: PsetProperties | PsetInput): void;
+    /** Edit an IfcMaterialProfile and optionally replace its profile or material. */
+    editProfile(file: IfcFile, profile: Entity, attributes: PsetProperties | PsetInput, profile_def: Entity | null, material: Entity | null): void;
     /**
      * Edit attributes of an IfcMaterialProfileSetUsage.
      *
@@ -4527,6 +4647,18 @@ export interface OwnerApi {
      * @return Newly created IfcOwnerHistory, or no result if creation fails.
      */
     createOwnerHistory(file: IfcFile, options: IfcOpenShellOwnerCreateOwnerHistoryOptions): Entity;
+    /** Edit an IfcActor using the shared attribute property writer. */
+    editActor(file: IfcFile, actor: Entity, attributes: PsetProperties | PsetInput): void;
+    /** Edit an IfcAddress using the shared attribute property writer. */
+    editAddress(file: IfcFile, address: Entity, attributes: PsetProperties | PsetInput): void;
+    /** Edit an IfcApplication using the shared attribute property writer. */
+    editApplication(file: IfcFile, application: Entity, attributes: PsetProperties | PsetInput): void;
+    /** Edit an IfcOrganization using the shared attribute property writer. */
+    editOrganisation(file: IfcFile, organisation: Entity, attributes: PsetProperties | PsetInput): void;
+    /** Edit an IfcPerson using the shared attribute property writer. */
+    editPerson(file: IfcFile, person: Entity, attributes: PsetProperties | PsetInput): void;
+    /** Edit an IfcActorRole using the shared attribute property writer. */
+    editRole(file: IfcFile, role: Entity, attributes: PsetProperties | PsetInput): void;
     /**
      * Remove an IfcActor (or subclass) from the file.
      *
@@ -4651,7 +4783,7 @@ export interface PlacementApi {
      * @param instance IfcLocalPlacement entity. When omitted, returns the identity matrix.
      * @return 16-element row-major 4x4 matrix.
      */
-    getLocalPlacement(instance: Entity): number[];
+    getLocalPlacement(instance: Entity | null): number[];
     /**
      * Compute the combined 4x4 row-major matrix for an IfcMappedItem.
      *
@@ -4877,6 +5009,8 @@ export interface PsetApi {
      * Enumerators value leaves the current enumeration unchanged.
      */
     templateEditPropTemplate(file: IfcFile, options: IfcOpenShellPsetTemplateEditPropTemplateOptions): void;
+    /** Edit an IfcPropertySetTemplate using the shared attribute property writer. */
+    templateEditPsetTemplate(file: IfcFile, pset_template: Entity, attributes: PsetProperties | PsetInput): void;
     /**
      * Return property set templates applicable to an IFC class and predefined type.
      *
@@ -4954,6 +5088,104 @@ export interface PsetApi {
      * assigned to the unselected products. Returns the newly created copies.
      */
     unsharePset(file: IfcFile, options: IfcOpenShellPsetUnsharePsetOptions): Entity[];
+}
+export interface PsetTemplateApi {
+    /**
+     * Create a new IfcSimplePropertyTemplate and add it to a property set template.
+     *
+     * Property templates are kept sorted by name within the parent template.
+     * If template_type is omitted, defaults to "P_SINGLEVALUE" for psets or
+     * "Q_LENGTH" for qtos. If primary_measure_type is omitted, defaults to
+     * "IfcLabel" for psets.
+     */
+    addPropTemplate(file: IfcFile, pset_template: Entity, name: string, description: string, template_type: string, primary_measure_type: string): Entity;
+    /**
+     * Create a new IfcPropertySetTemplate in the file.
+     *
+     * @param file The IFC file.
+     * @param name Template name (e.g. "Pset_WallCommon").
+     * @param template_type Template type string (e.g. "PSET_TYPEDRIVENOVERRIDE", "QTO").
+     * @param applicable_entity Applicable IFC entity name (e.g. "IfcWall").
+     */
+    addPsetTemplate(file: IfcFile, name: string, template_type: string, applicable_entity: string): Entity;
+    /**
+     * Create a property template collection from custom IFC template files.
+     *
+     * Loads IfcPropertySetTemplate and IfcSimplePropertyTemplate entities from
+     * the provided files. The returned collection remains valid until it is
+     * released with pset_template_free.
+     */
+    createFromFiles(schema_identifier: string, template_files: IfcFile[]): PsetTemplate | null;
+    /**
+     * Edit a simple property template and its property enumeration.
+     *
+     * A populated Enumerators sequence is converted to wrapped IFC values using
+     * the incoming PrimaryMeasureType, the existing type, or IfcLabel. Existing
+     * IfcPropertyEnumeration entities are reused. An omitted, blank, or empty
+     * Enumerators value leaves the current enumeration unchanged.
+     */
+    editPropTemplate(file: IfcFile, options: IfcOpenShellPsetTemplateEditPropTemplateOptions): void;
+    /** Edit an IfcPropertySetTemplate using the shared attribute property writer. */
+    editPsetTemplate(file: IfcFile, pset_template: Entity, attributes: PsetProperties | PsetInput): void;
+    /**
+     * Return property set templates applicable to an IFC class and predefined type.
+     *
+     * Filters by pset_only (PSET templates) or qto_only (QTO templates).
+     * If neither flag is set, returns both types. When predefined_type or
+     * schema_name is omitted, the default is used.
+     */
+    getApplicable(pqt: PsetTemplate, ifc_class: string, predefined_type: string, pset_only: boolean, qto_only: boolean, schema_name: string): Entity[];
+    /**
+     * Return names of property set templates applicable to an IFC class.
+     *
+     * Same filtering as pset_template_get_applicable but returns only the
+     * Name strings.
+     */
+    getApplicableNames(pqt: PsetTemplate, ifc_class: string, predefined_type: string, pset_only: boolean, qto_only: boolean, schema_name: string): string[];
+    /**
+     * Look up a property set template by name.
+     *
+     * Returns the IfcPropertySetTemplate entity with the given name, or a
+     * no result if the template is not found.
+     */
+    getByName(pqt: PsetTemplate, name: string): Entity;
+    /**
+     * Return the cached property template collection for the given schema (e.g. "IFC4", "IFC2X3").
+     *
+     * Loads and caches the built-in templates on first call. Returns no result
+     * if the schema is unknown or templates are not available.
+     */
+    getTemplate(schema_identifier: string): PsetTemplate | null;
+    /** Return true if a property set template with the given name exists. */
+    isTemplated(pqt: PsetTemplate, name: string): boolean;
+    /**
+     * Return the template type category for a property set template.
+     *
+     * Returns "PSET" for property set templates, "QTO" for quantity templates,
+     * or an empty string if unknown.
+     */
+    psetType(pset_template: Entity): string;
+    /**
+     * Remove a property template from its parent set template.
+     *
+     * Removes the IfcSimplePropertyTemplate from its parent and deletes the
+     * template entity.
+     */
+    removePropTemplate(file: IfcFile, prop_template: Entity): void;
+    /**
+     * Remove a property set template and its child property templates.
+     *
+     * Deletes the IfcPropertySetTemplate and all its child
+     * IfcSimplePropertyTemplate entities.
+     */
+    removePsetTemplate(pset_template: Entity): void;
+    /**
+     * Set the directory used to locate built-in pset/qto template files.
+     *
+     * Must be called before pset_template_get_template to override the default
+     * search path for IFC property set template files.
+     */
+    setTemplateDir(dir: string): void;
 }
 export interface RegisterApi {
     /**
@@ -5044,6 +5276,10 @@ export interface ResourceApi {
     calculateResourceUsage(file: IfcFile, resource: Entity): void;
     /** Calculate ScheduleWork from EPset_Productivity and the first applicable task/product assignments. */
     calculateResourceWork(file: IfcFile, resource: Entity): void;
+    /** Edit an IfcResource using the shared attribute property writer. */
+    editResource(file: IfcFile, resource: Entity, attributes: PsetProperties | PsetInput): void;
+    /** Edit an IfcPhysicalQuantity using the shared attribute property writer. */
+    editResourceQuantity(file: IfcFile, physical_quantity: Entity, attributes: PsetProperties | PsetInput): void;
     /**
      * Edit attributes of an IfcResourceTime entity.
      *
@@ -5128,7 +5364,7 @@ export interface SchemaApi {
      * @param new_class The target IFC class name (e.g. "IfcWall").
      * @return The new entity of the requested class, or no result if the operation fails.
      */
-    reassignClass(file: IfcFile, element: Entity, new_class: string): Entity;
+    reassignClass(file: IfcFile | null, element: Entity, new_class: string): Entity;
 }
 export interface SelectorApi {
     /**
@@ -5165,7 +5401,7 @@ export interface SelectorApi {
      * @param query The format expression string.
      * @return The formatted result, or no result if evaluation fails.
      */
-    format(file: IfcFile, instance: Entity, query: string): string | null;
+    format(file: IfcFile | null, instance: Entity | null, query: string): string | null;
     /**
      * Get a value from an element using a selector query.
      *
@@ -5177,7 +5413,7 @@ export interface SelectorApi {
      * @param query The selector key path (e.g. "Name", "Pset_WallCommon.FireRating").
      * @return The extracted value, or no result if the query cannot be evaluated. Release it with value_free.
      */
-    getElementValue(file: IfcFile, element: Entity, query: string): ValueData | null;
+    getElementValue(file: IfcFile | null, element: Entity, query: string): ValueData | null;
     /**
      * Set a value on an element using a selector query.
      *
@@ -5190,7 +5426,7 @@ export interface SelectorApi {
      * @param value The value to set. When omitted, the target is unset.
      * @param concat When provided and non-empty, it is prepended to the value.
      */
-    setElementValue(file: IfcFile, element: Entity, query: string, value: ValueInput | null, concat: string): void;
+    setElementValue(file: IfcFile, element: Entity | null, query: string, value: ValueInput | null, concat: string): void;
 }
 export interface SequenceApi {
     /**
@@ -5948,6 +6184,315 @@ export interface ShapeApi {
      */
     isAlmostEqual(value: number, x: number, tolerance: number): boolean;
 }
+export interface ShapeBuilderApi {
+    /**
+     * Create an IfcAxis2Placement2D from position and optional reference direction.
+     *
+     * @param file IFC file that receives the placement.
+     * @param options Position and optional X direction.
+     * @return IfcAxis2Placement2D entity.
+     */
+    axis2Placement2d(file: IfcFile, options: IfcOpenShellShapeBuilderAxis2Placement2dOptions): Entity;
+    /**
+     * Create an IfcAxis2Placement3D from position and axes.
+     *
+     * @param file IFC file that receives the placement.
+     * @param options Position, Z axis, and X axis direction ratios.
+     * @return IfcAxis2Placement3D entity.
+     */
+    axis2Placement3d(file: IfcFile, options: IfcOpenShellShapeBuilderAxis2Placement3dOptions): Entity;
+    /**
+     * Create an IfcBlock (rectangular parallelepiped).
+     *
+     * @param file IFC file that receives the geometry.
+     * @param options Position and XYZ dimensions.
+     * @return IfcBlock entity.
+     */
+    block(file: IfcFile, options: IfcOpenShellShapeBuilderBlockOptions): Entity;
+    /**
+     * Create an IfcCircle centred at the given position.
+     *
+     * @param file IFC file that receives the geometry.
+     * @param center XY coordinates of the circle centre.
+     * @param radius Circle radius in model units.
+     * @return IfcCircle entity.
+     */
+    circle(file: IfcFile, center: number[], radius: number): Entity;
+    /**
+     * Create a 2D IfcIndexedPolyCurve arc between two points.
+     *
+     * Inserts a midpoint slightly offset along the dominant axis to form a
+     * three-point arc segment.
+     *
+     * @param file IFC file that receives the geometry.
+     * @param points Two XY endpoints.
+     * @return IfcIndexedPolyCurve entity with one arc segment.
+     */
+    curveBetweenTwoPoints(file: IfcFile, points: number[][]): Entity;
+    /**
+     * Create an independent copy of an IFC entity and the entities it references.
+     *
+     * New GlobalId attributes are generated for the copied entities.
+     *
+     * @param file IFC file that receives the copy.
+     * @param element Entity to copy.
+     * @return Root entity of the copied subgraph.
+     */
+    deepCopy(file: IfcFile, element: Entity): Entity;
+    /**
+     * Create an IfcEdge between two vertex positions.
+     *
+     * @param file IFC file that receives the geometry.
+     * @param start XYZ coordinates of the edge start.
+     * @param end XYZ coordinates of the edge end.
+     * @return IfcEdge entity.
+     */
+    edge(file: IfcFile, start: number[], end: number[]): Entity;
+    /**
+     * Create an IfcEllipse, optionally trimmed to an IfcTrimmedCurve.
+     *
+     * @param file IFC file that receives the geometry.
+     * @param options Radii, position, trim points, and reference direction.
+     * @return IfcEllipse or IfcTrimmedCurve entity.
+     */
+    ellipseCurve(file: IfcFile, options: IfcOpenShellShapeBuilderEllipseCurveOptions): Entity;
+    /**
+     * Create an IfcExtrudedAreaSolid by extruding a profile along a direction.
+     *
+     * If the profile_or_curve is a bare IfcCurve (not an IfcProfileDef), it is
+     * wrapped in an IfcArbitraryClosedProfileDef automatically.
+     *
+     * @param file IFC file that receives the geometry.
+     * @param options Profile, depth, position, and extrusion direction.
+     * @return IfcExtrudedAreaSolid entity.
+     */
+    extrude(file: IfcFile, options: IfcOpenShellShapeBuilderExtrudeOptions): Entity;
+    /**
+     * Create an IfcFace from an ordered list of polygon vertices.
+     *
+     * @param file IFC file that receives the geometry.
+     * @param points XYZ coordinates defining the face outer boundary.
+     * @return IfcFace entity with an IfcFaceOuterBound.
+     */
+    face(file: IfcFile, points: number[][]): Entity;
+    /**
+     * Create an IfcFacetedBrep from vertices and face index lists.
+     *
+     * @param file IFC file that receives the geometry.
+     * @param points XYZ vertex coordinates.
+     * @param faces Face index lists (zero-based). Each face is a single outer loop.
+     * @return IfcFacetedBrep entity with an IfcClosedShell.
+     */
+    facetedBrep(file: IfcFile, points: number[][], faces: number[][]): Entity;
+    /**
+     * Read the coordinate list from an IfcPolyline or IfcIndexedPolyCurve.
+     *
+     * @param polyline IfcPolyline or IfcIndexedPolyCurve entity.
+     * @return Ordered XY or XYZ coordinate sequences.
+     */
+    getPolylineCoords(polyline: Entity): number[][];
+    /**
+     * Create an IfcHalfSpaceSolid bounded by a plane.
+     *
+     * @param file IFC file that receives the geometry.
+     * @param options Bounding plane and agreement flag.
+     * @return IfcHalfSpaceSolid entity.
+     */
+    halfSpaceSolid(file: IfcFile, options: IfcOpenShellShapeBuilderHalfSpaceSolidOptions): Entity;
+    /**
+     * Create a 2D IfcIndexedPolyCurve from explicit points and segment indices.
+     *
+     * Segments with two indices are line segments; segments with three indices
+     * are arc segments.
+     *
+     * @param file IFC file that receives the geometry.
+     * @param points XY coordinates for the point list.
+     * @param segments Segment index arrays (1-based).
+     * @return IfcIndexedPolyCurve entity.
+     */
+    indexedPolycurve2d(file: IfcFile, points: number[][], segments: number[][]): Entity;
+    /**
+     * Build MEP bend geometry for a duct segment.
+     *
+     * Generates a swept disk solid (for circular profiles) or an extruded bend
+     * shape (for rectangular profiles), plus optional start and end straight
+     * extensions.
+     *
+     * @param file IFC file that receives the geometry.
+     * @param options Segment, lengths, angle, radius, bend direction, and Z flip.
+     * @return Bend result with representation and computed parameters.
+     */
+    mepBendShape(file: IfcFile, options: IfcOpenShellShapeBuilderMepBendShapeOptions): IfcOpenShellShapeBuilderMepBendShapeResult;
+    /**
+     * Compute the transition angle or length between two MEP duct profiles.
+     *
+     * Provide either length or angle (not both) to solve for the other.
+     * Returns NaN when no valid solution exists.
+     *
+     * @param options Profile half-dimensions, offset, and one of length or angle.
+     * @return The solved angle (degrees) or length (model units), or NaN.
+     */
+    mepTransitionCalculate(options: IfcOpenShellShapeBuilderMepTransitionCalculateOptions): number;
+    /**
+     * Compute the minimum transition length between two MEP duct profiles at a given angle.
+     *
+     * @param options Profile half-dimensions, angle in degrees, and profile offset.
+     * @return Required transition length in model units, or NaN if no valid solution.
+     */
+    mepTransitionLength(options: IfcOpenShellShapeBuilderMepTransitionLengthOptions): number;
+    /**
+     * Build MEP transition geometry between two duct segments.
+     *
+     * Generates start/end extrusions and a connecting transition mesh.
+     * Returns no result when the segments lack material profiles or the
+     * transition cannot be computed.
+     *
+     * @param file IFC file that receives the geometry.
+     * @param options Start/end segments, lengths, angle, and profile offset.
+     * @return Transition result with representation and dimensions, or no result.
+     */
+    mepTransitionShape(file: IfcFile, options: IfcOpenShellShapeBuilderMepTransitionShapeOptions): IfcOpenShellShapeBuilderMepTransitionShapeResult | null;
+    /**
+     * Create a mesh representation using IfcPolygonalFaceSet (IFC4+) or IfcFacetedBrep (IFC2X3).
+     *
+     * @param file IFC file that receives the geometry.
+     * @param points XYZ vertex coordinates.
+     * @param faces Face index lists (zero-based).
+     * @return IfcPolygonalFaceSet or IfcFacetedBrep entity.
+     */
+    mesh(file: IfcFile, points: number[][], faces: number[][]): Entity;
+    /**
+     * Mirror a geometry item across 2D axes.
+     *
+     * Supports IfcIndexedPolyCurve, IfcPolyline, IfcCircle, IfcEllipse,
+     * IfcTrimmedCurve, and IfcExtrudedAreaSolid. A non-zero value in
+     * mirror_axes at index 0 or 1 flips the corresponding coordinate.
+     *
+     * @param file IFC file containing the item.
+     * @param options Item, axes, point, copy flag, and optional placement matrix.
+     * @return The mirrored item, either the supplied entity or an independent copy.
+     */
+    mirror(file: IfcFile, options: IfcOpenShellShapeBuilderMirrorOptions): Entity;
+    /**
+     * Create an IfcPlane from a point and normal direction.
+     *
+     * The reference direction is computed automatically from the normal.
+     *
+     * @param file IFC file that receives the geometry.
+     * @param location XYZ point on the plane.
+     * @param normal Direction ratios of the plane normal.
+     * @return IfcPlane entity.
+     */
+    plane(file: IfcFile, location: number[], normal: number[]): Entity;
+    /**
+     * Create an IfcPolygonalFaceSet from vertices and polygonal face loops.
+     *
+     * Each face may contain one outer loop and optional inner loops (voids).
+     * Faces with multiple loops create IfcIndexedPolygonalFaceWithVoids entities.
+     *
+     * @param file IFC file that receives the geometry.
+     * @param points XYZ vertex coordinates.
+     * @param faces Per-face loop index lists (zero-based).
+     * @return IfcPolygonalFaceSet entity.
+     */
+    polygonalFaceSet(file: IfcFile, points: number[][], faces: number[][][]): Entity;
+    /**
+     * Create a 2D or 3D polyline (IfcPolyline for IFC2X3, IfcIndexedPolyCurve otherwise).
+     *
+     * @param file IFC file that receives the geometry.
+     * @param options Points, closure, offset, and arc segment indices.
+     * @return IfcPolyline or IfcIndexedPolyCurve entity.
+     */
+    polyline(file: IfcFile, options: IfcOpenShellShapeBuilderPolylineOptions): Entity;
+    /**
+     * Create an IfcArbitraryClosedProfileDef or IfcArbitraryProfileDefWithVoids.
+     *
+     * @param file IFC file that receives the profile.
+     * @param options Outer curve, optional inner curves, name, and profile type.
+     * @return IfcProfileDef entity.
+     */
+    profile(file: IfcFile, options: IfcOpenShellShapeBuilderProfileOptions): Entity;
+    /**
+     * Create an IfcShapeRepresentation or IfcTopologyRepresentation.
+     *
+     * The representation type is auto-detected from the items when omitted.
+     * Topology types (Vertex, Edge, Path, Face, Shell) produce IfcTopologyRepresentation;
+     * all others produce IfcShapeRepresentation.
+     *
+     * @param file IFC file that receives the representation.
+     * @param options Context, items, and optional representation type.
+     * @return IfcShapeRepresentation or IfcTopologyRepresentation entity.
+     */
+    representation(file: IfcFile, options: IfcOpenShellShapeBuilderRepresentationOptions): Entity;
+    /**
+     * Rotate a geometry item around a 2D pivot point.
+     *
+     * Supports IfcIndexedPolyCurve, IfcPolyline, IfcCircle, and
+     * IfcExtrudedAreaSolid. The angle is in degrees.
+     *
+     * @param file IFC file containing the item.
+     * @param options Item, angle, pivot, direction, and copy flag.
+     * @return The rotated item, either the supplied entity or an independent copy.
+     */
+    rotate(file: IfcFile, options: IfcOpenShellShapeBuilderRotateOptions): Entity;
+    /**
+     * Replace the coordinate list of an IfcPolyline or IfcIndexedPolyCurve.
+     *
+     * For IfcPolyline, the new coordinate count must match the existing point count.
+     *
+     * @param file IFC file containing the polyline.
+     * @param polyline IfcPolyline or IfcIndexedPolyCurve entity.
+     * @param coords Replacement coordinates.
+     * @return The modified polyline entity.
+     */
+    setPolylineCoords(file: IfcFile, polyline: Entity, coords: number[][]): Entity;
+    /**
+     * Create an IfcSphere.
+     *
+     * @param file IFC file that receives the geometry.
+     * @param options Radius and centre position.
+     * @return IfcSphere entity.
+     */
+    sphere(file: IfcFile, options: IfcOpenShellShapeBuilderSphereOptions): Entity;
+    /**
+     * Create an IfcSweptDiskSolid along a directrix curve.
+     *
+     * @param file IFC file that receives the geometry.
+     * @param path_curve IfcCurve entity defining the sweep path.
+     * @param radius Disk radius in model units.
+     * @return IfcSweptDiskSolid entity.
+     */
+    sweptDiskSolid(file: IfcFile, path_curve: Entity, radius: number): Entity;
+    /**
+     * Translate a geometry item by a direction and distance.
+     *
+     * Supports IfcIndexedPolyCurve, IfcPolyline, IfcCircle, IfcEllipse,
+     * IfcExtrudedAreaSolid, IfcTessellatedFaceSet, IfcShapeRepresentation,
+     * and IfcTrimmedCurve.
+     *
+     * @param file IFC file containing the item.
+     * @param options Item, translation, and copy flag.
+     * @return The translated item, either the supplied entity or an independent copy.
+     */
+    translate(file: IfcFile, options: IfcOpenShellShapeBuilderTranslateOptions): Entity;
+    /**
+     * Create an IfcTriangulatedFaceSet from vertices and triangle index lists.
+     *
+     * @param file IFC file that receives the geometry.
+     * @param points XYZ vertex coordinates.
+     * @param faces Triangle index lists (zero-based, truncated to 3 vertices each).
+     * @return IfcTriangulatedFaceSet entity.
+     */
+    triangulatedFaceSet(file: IfcFile, points: number[][], faces: number[][]): Entity;
+    /**
+     * Create an IfcVertexPoint at the given position.
+     *
+     * @param file IFC file that receives the geometry.
+     * @param position XYZ coordinates of the vertex.
+     * @return IfcVertexPoint entity.
+     */
+    vertex(file: IfcFile, position: number[]): Entity;
+}
 export interface SpatialApi {
     /**
      * Contain products in a spatial structure via IfcRelContainedInSpatialStructure.
@@ -6005,7 +6550,7 @@ export interface StructuralApi {
      * @param owner_history Owner history for the new entity. When omitted, no owner history is assigned.
      * @return Newly created IfcStructuralAnalysisModel.
      */
-    addStructuralAnalysisModel(file: IfcFile, owner_history: Entity): Entity;
+    addStructuralAnalysisModel(file: IfcFile, owner_history: Entity | null): Entity;
     /**
      * Create an IfcBoundaryCondition subclass entity.
      *
@@ -6043,7 +6588,7 @@ export interface StructuralApi {
      * @param owner_history Owner history for the new entity. When omitted, no owner history is assigned.
      * @return Newly created IfcStructuralLoadCase.
      */
-    addStructuralLoadCase(file: IfcFile, name: string, action_type: string, action_source: string, owner_history: Entity): Entity;
+    addStructuralLoadCase(file: IfcFile, name: string, action_type: string, action_source: string, owner_history: Entity | null): Entity;
     /**
      * Create an IfcStructuralLoadGroup entity.
      *
@@ -6057,7 +6602,7 @@ export interface StructuralApi {
      * @param owner_history Owner history for the new entity. When omitted, no owner history is assigned.
      * @return Newly created IfcStructuralLoadGroup.
      */
-    addStructuralLoadGroup(file: IfcFile, name: string, action_type: string, action_source: string, owner_history: Entity): Entity;
+    addStructuralLoadGroup(file: IfcFile, name: string, action_type: string, action_source: string, owner_history: Entity | null): Entity;
     /**
      * Connect a structural member to a structural connection via IfcRelConnectsStructuralMember.
      *
@@ -6070,7 +6615,7 @@ export interface StructuralApi {
      * @param owner_history Owner history for the new relationship. When omitted, no owner history is assigned.
      * @return The IfcRelConnectsStructuralMember relationship.
      */
-    addStructuralMemberConnection(file: IfcFile, relating_structural_member: Entity, related_structural_connection: Entity, owner_history: Entity): Entity;
+    addStructuralMemberConnection(file: IfcFile, relating_structural_member: Entity, related_structural_connection: Entity, owner_history: Entity | null): Entity;
     /**
      * Assign a structural member or connection to a product via IfcRelAssignsToProduct.
      *
@@ -6084,7 +6629,7 @@ export interface StructuralApi {
      * @param owner_history Owner history for new relationships. When omitted, no owner history is assigned.
      * @return The IfcRelAssignsToProduct relationship.
      */
-    assignProduct(file: IfcFile, relating_product: Entity, related_object: Entity, owner_history: Entity): Entity;
+    assignProduct(file: IfcFile, relating_product: Entity, related_object: Entity, owner_history: Entity | null): Entity;
     /**
      * Assign products to an IfcStructuralAnalysisModel via IfcRelAssignsToGroup.
      *
@@ -6107,7 +6652,9 @@ export interface StructuralApi {
      * @param owner_history Owner history for the new relationship. When omitted, no owner history is assigned.
      * @return The IfcRelServicesBuildings relationship.
      */
-    assignToBuilding(file: IfcFile, structural_analysis_model: Entity, building: Entity, owner_history: Entity): Entity;
+    assignToBuilding(file: IfcFile, structural_analysis_model: Entity, building: Entity, owner_history: Entity | null): Entity;
+    /** Edit an IfcStructuralAnalysisModel using the shared attribute property writer. */
+    editStructuralAnalysisModel(file: IfcFile, structural_analysis_model: Entity, attributes: PsetProperties | PsetInput): void;
     /**
      * Edit attributes of an IfcBoundaryCondition subclass.
      *
@@ -6145,6 +6692,10 @@ export interface StructuralApi {
      * @param axis 3-element direction ratios.
      */
     editStructuralItemAxis(file: IfcFile, structural_item: Entity, axis: number[]): void;
+    /** Edit an IfcStructuralLoad using the shared attribute property writer. */
+    editStructuralLoad(file: IfcFile, structural_load: Entity, attributes: PsetProperties | PsetInput): void;
+    /** Edit an IfcStructuralLoadCase using the shared attribute property writer. */
+    editStructuralLoadCase(file: IfcFile, structural_load_case: Entity, attributes: PsetProperties | PsetInput): void;
     /**
      * Remove an IfcStructuralAnalysisModel from the file.
      *
@@ -6285,6 +6836,8 @@ export interface StyleApi {
      * @return List of newly created IfcStyledItem entities.
      */
     assignRepresentationStyles(file: IfcFile, shape_representation: Entity, styles: Entity[], should_use_presentation_style_assignment: boolean, replace_previous_same_type_style: boolean): Entity[];
+    /** Edit an IfcPresentationStyle using the shared attribute property writer. */
+    editPresentationStyle(file: IfcFile, style: Entity, attributes: PsetProperties | PsetInput): void;
     /**
      * Edit attributes of an IfcSurfaceStyle or its nested surface styles.
      *
@@ -6403,6 +6956,8 @@ export interface SystemApi {
      * clears FlowDirection on both sides.
      */
     disconnectPort(file: IfcFile, port: Entity): void;
+    /** Edit an IfcSystem using the shared attribute property writer. */
+    editSystem(file: IfcFile, system: Entity, attributes: PsetProperties | PsetInput): void;
     /**
      * Remove a system and its relationships.
      *
@@ -6558,6 +7113,10 @@ export interface UnitApi {
      * @return The converted value.
      */
     convertUnit(value: number, from_unit: Entity, to_unit: Entity): number;
+    /** Edit an IfcDerivedUnit using the shared attribute property writer. */
+    editDerivedUnit(file: IfcFile, unit: Entity, attributes: PsetProperties | PsetInput): void;
+    /** Edit an IfcMonetaryUnit using the shared attribute property writer. */
+    editMonetaryUnit(file: IfcFile, unit: Entity, attributes: PsetProperties | PsetInput): void;
     /**
      * Edit a named unit without owner-history or predefined-type synchronization.
      *
@@ -6844,6 +7403,8 @@ export interface Api {
   profile: ProfileApi;
   project: ProjectApi;
   pset: PsetApi;
+  psetTemplate: PsetTemplateApi;
+  pset_template: PsetTemplateApi;
   register: RegisterApi;
   representation: RepresentationApi;
   resource: ResourceApi;
@@ -6852,6 +7413,8 @@ export interface Api {
   selector: SelectorApi;
   sequence: SequenceApi;
   shape: ShapeApi;
+  shapeBuilder: ShapeBuilderApi;
+  shape_builder: ShapeBuilderApi;
   spatial: SpatialApi;
   structural: StructuralApi;
   style: StyleApi;
@@ -6865,6 +7428,779 @@ export interface Api {
  */
 export function createApi(shell: IfcOpenShell): Api {
   const raw = shell.raw as object as RawApi;
+  const psetTemplateApi = Object.freeze({
+    /**
+     * Create a new IfcSimplePropertyTemplate and add it to a property set template.
+     *
+     * Property templates are kept sorted by name within the parent template.
+     * If template_type is omitted, defaults to "P_SINGLEVALUE" for psets or
+     * "Q_LENGTH" for qtos. If primary_measure_type is omitted, defaults to
+     * "IfcLabel" for psets.
+     */
+    addPropTemplate(file: IfcFile, pset_template: Entity, name: string, description: string, template_type: string, primary_measure_type: string): Entity {
+      const temps: Disposable[] = [];
+      try {
+        const result = raw.pset_template.addPropTemplate(file.raw, pset_template.raw, name, description, template_type, primary_measure_type);
+        return wrapEntity(shell, result) as Entity;
+      } finally {
+        disposeAll(temps);
+      }
+    },
+    /**
+     * Create a new IfcPropertySetTemplate in the file.
+     *
+     * @param file The IFC file.
+     * @param name Template name (e.g. "Pset_WallCommon").
+     * @param template_type Template type string (e.g. "PSET_TYPEDRIVENOVERRIDE", "QTO").
+     * @param applicable_entity Applicable IFC entity name (e.g. "IfcWall").
+     */
+    addPsetTemplate(file: IfcFile, name: string, template_type: string, applicable_entity: string): Entity {
+      const temps: Disposable[] = [];
+      try {
+        const result = raw.pset_template.addPsetTemplate(file.raw, name, template_type, applicable_entity);
+        return wrapEntity(shell, result) as Entity;
+      } finally {
+        disposeAll(temps);
+      }
+    },
+    /**
+     * Create a property template collection from custom IFC template files.
+     *
+     * Loads IfcPropertySetTemplate and IfcSimplePropertyTemplate entities from
+     * the provided files. The returned collection remains valid until it is
+     * released with pset_template_free.
+     */
+    createFromFiles(schema_identifier: string, template_files: IfcFile[]): PsetTemplate | null {
+      const temps: Disposable[] = [];
+      try {
+        const result = raw.pset_template.createFromFiles(schema_identifier, toRawSequence(template_files, shell, temps));
+        return result as PsetTemplate | null;
+      } finally {
+        disposeAll(temps);
+      }
+    },
+    /**
+     * Edit a simple property template and its property enumeration.
+     *
+     * A populated Enumerators sequence is converted to wrapped IFC values using
+     * the incoming PrimaryMeasureType, the existing type, or IfcLabel. Existing
+     * IfcPropertyEnumeration entities are reused. An omitted, blank, or empty
+     * Enumerators value leaves the current enumeration unchanged.
+     */
+    editPropTemplate(file: IfcFile, options: IfcOpenShellPsetTemplateEditPropTemplateOptions): void {
+      const temps: Disposable[] = [];
+      try {
+        raw.pset_template.editPropTemplate(file.raw, encodeOptions(options, {"attributes": "attributes", "propTemplate": "prop_template"}, shell, temps, ["attributes"]));
+      } finally {
+        disposeAll(temps);
+      }
+    },
+    /** Edit an IfcPropertySetTemplate using the shared attribute property writer. */
+    editPsetTemplate(file: IfcFile, pset_template: Entity, attributes: PsetProperties | PsetInput): void {
+      const temps: Disposable[] = [];
+      try {
+        raw.pset_template.editPsetTemplate(file.raw, pset_template.raw, toRawPsetProperties(shell, attributes as PsetProperties | PsetInput, temps));
+      } finally {
+        disposeAll(temps);
+      }
+    },
+    /**
+     * Return property set templates applicable to an IFC class and predefined type.
+     *
+     * Filters by pset_only (PSET templates) or qto_only (QTO templates).
+     * If neither flag is set, returns both types. When predefined_type or
+     * schema_name is omitted, the default is used.
+     */
+    getApplicable(pqt: PsetTemplate, ifc_class: string, predefined_type: string, pset_only: boolean, qto_only: boolean, schema_name: string): Entity[] {
+      const temps: Disposable[] = [];
+      try {
+        const result = raw.pset_template.getApplicable(pqt, ifc_class, predefined_type, pset_only, qto_only, schema_name);
+        return wrapEntities(shell, result as never) as Entity[];
+      } finally {
+        disposeAll(temps);
+      }
+    },
+    /**
+     * Return names of property set templates applicable to an IFC class.
+     *
+     * Same filtering as pset_template_get_applicable but returns only the
+     * Name strings.
+     */
+    getApplicableNames(pqt: PsetTemplate, ifc_class: string, predefined_type: string, pset_only: boolean, qto_only: boolean, schema_name: string): string[] {
+      const temps: Disposable[] = [];
+      try {
+        const result = raw.pset_template.getApplicableNames(pqt, ifc_class, predefined_type, pset_only, qto_only, schema_name);
+        return wrap(shell, result) as string[];
+      } finally {
+        disposeAll(temps);
+      }
+    },
+    /**
+     * Look up a property set template by name.
+     *
+     * Returns the IfcPropertySetTemplate entity with the given name, or a
+     * no result if the template is not found.
+     */
+    getByName(pqt: PsetTemplate, name: string): Entity {
+      const temps: Disposable[] = [];
+      try {
+        const result = raw.pset_template.getByName(pqt, name);
+        return wrapEntity(shell, result) as Entity;
+      } finally {
+        disposeAll(temps);
+      }
+    },
+    /**
+     * Return the cached property template collection for the given schema (e.g. "IFC4", "IFC2X3").
+     *
+     * Loads and caches the built-in templates on first call. Returns no result
+     * if the schema is unknown or templates are not available.
+     */
+    getTemplate(schema_identifier: string): PsetTemplate | null {
+      const temps: Disposable[] = [];
+      try {
+        const result = raw.pset_template.getTemplate(schema_identifier);
+        return result as PsetTemplate | null;
+      } finally {
+        disposeAll(temps);
+      }
+    },
+    /** Return true if a property set template with the given name exists. */
+    isTemplated(pqt: PsetTemplate, name: string): boolean {
+      const temps: Disposable[] = [];
+      try {
+        const result = raw.pset_template.isTemplated(pqt, name);
+        return wrap(shell, result) as boolean;
+      } finally {
+        disposeAll(temps);
+      }
+    },
+    /**
+     * Return the template type category for a property set template.
+     *
+     * Returns "PSET" for property set templates, "QTO" for quantity templates,
+     * or an empty string if unknown.
+     */
+    psetType(pset_template: Entity): string {
+      const temps: Disposable[] = [];
+      try {
+        const result = raw.pset_template.psetType(pset_template.raw);
+        return wrap(shell, result) as string;
+      } finally {
+        disposeAll(temps);
+      }
+    },
+    /**
+     * Remove a property template from its parent set template.
+     *
+     * Removes the IfcSimplePropertyTemplate from its parent and deletes the
+     * template entity.
+     */
+    removePropTemplate(file: IfcFile, prop_template: Entity): void {
+      const temps: Disposable[] = [];
+      try {
+        raw.pset_template.removePropTemplate(file.raw, prop_template.raw);
+      } finally {
+        disposeAll(temps);
+      }
+    },
+    /**
+     * Remove a property set template and its child property templates.
+     *
+     * Deletes the IfcPropertySetTemplate and all its child
+     * IfcSimplePropertyTemplate entities.
+     */
+    removePsetTemplate(pset_template: Entity): void {
+      const temps: Disposable[] = [];
+      try {
+        raw.pset_template.removePsetTemplate(pset_template.raw);
+      } finally {
+        disposeAll(temps);
+      }
+    },
+    /**
+     * Set the directory used to locate built-in pset/qto template files.
+     *
+     * Must be called before pset_template_get_template to override the default
+     * search path for IFC property set template files.
+     */
+    setTemplateDir(dir: string): void {
+      const temps: Disposable[] = [];
+      try {
+        raw.pset_template.setTemplateDir(dir);
+      } finally {
+        disposeAll(temps);
+      }
+    },
+  });
+  const shapeBuilderApi = Object.freeze({
+    /**
+     * Create an IfcAxis2Placement2D from position and optional reference direction.
+     *
+     * @param file IFC file that receives the placement.
+     * @param options Position and optional X direction.
+     * @return IfcAxis2Placement2D entity.
+     */
+    axis2Placement2d(file: IfcFile, options: IfcOpenShellShapeBuilderAxis2Placement2dOptions): Entity {
+      const temps: Disposable[] = [];
+      try {
+        const result = raw.shape_builder.axis2Placement2d(file.raw, encodeOptions(options, {"position": "position", "xDirection": "x_direction"}, shell, temps));
+        return wrapEntity(shell, result) as Entity;
+      } finally {
+        disposeAll(temps);
+      }
+    },
+    /**
+     * Create an IfcAxis2Placement3D from position and axes.
+     *
+     * @param file IFC file that receives the placement.
+     * @param options Position, Z axis, and X axis direction ratios.
+     * @return IfcAxis2Placement3D entity.
+     */
+    axis2Placement3d(file: IfcFile, options: IfcOpenShellShapeBuilderAxis2Placement3dOptions): Entity {
+      const temps: Disposable[] = [];
+      try {
+        const result = raw.shape_builder.axis2Placement3d(file.raw, encodeOptions(options, {"position": "position", "xAxis": "x_axis", "zAxis": "z_axis"}, shell, temps));
+        return wrapEntity(shell, result) as Entity;
+      } finally {
+        disposeAll(temps);
+      }
+    },
+    /**
+     * Create an IfcBlock (rectangular parallelepiped).
+     *
+     * @param file IFC file that receives the geometry.
+     * @param options Position and XYZ dimensions.
+     * @return IfcBlock entity.
+     */
+    block(file: IfcFile, options: IfcOpenShellShapeBuilderBlockOptions): Entity {
+      const temps: Disposable[] = [];
+      try {
+        const result = raw.shape_builder.block(file.raw, encodeOptions(options, {"position": "position", "xLength": "x_length", "yLength": "y_length", "zLength": "z_length"}, shell, temps));
+        return wrapEntity(shell, result) as Entity;
+      } finally {
+        disposeAll(temps);
+      }
+    },
+    /**
+     * Create an IfcCircle centred at the given position.
+     *
+     * @param file IFC file that receives the geometry.
+     * @param center XY coordinates of the circle centre.
+     * @param radius Circle radius in model units.
+     * @return IfcCircle entity.
+     */
+    circle(file: IfcFile, center: number[], radius: number): Entity {
+      const temps: Disposable[] = [];
+      try {
+        const result = raw.shape_builder.circle(file.raw, toRawSequence(center, shell, temps), radius);
+        return wrapEntity(shell, result) as Entity;
+      } finally {
+        disposeAll(temps);
+      }
+    },
+    /**
+     * Create a 2D IfcIndexedPolyCurve arc between two points.
+     *
+     * Inserts a midpoint slightly offset along the dominant axis to form a
+     * three-point arc segment.
+     *
+     * @param file IFC file that receives the geometry.
+     * @param points Two XY endpoints.
+     * @return IfcIndexedPolyCurve entity with one arc segment.
+     */
+    curveBetweenTwoPoints(file: IfcFile, points: number[][]): Entity {
+      const temps: Disposable[] = [];
+      try {
+        const result = raw.shape_builder.curveBetweenTwoPoints(file.raw, toRawSequence(points, shell, temps));
+        return wrapEntity(shell, result) as Entity;
+      } finally {
+        disposeAll(temps);
+      }
+    },
+    /**
+     * Create an independent copy of an IFC entity and the entities it references.
+     *
+     * New GlobalId attributes are generated for the copied entities.
+     *
+     * @param file IFC file that receives the copy.
+     * @param element Entity to copy.
+     * @return Root entity of the copied subgraph.
+     */
+    deepCopy(file: IfcFile, element: Entity): Entity {
+      const temps: Disposable[] = [];
+      try {
+        const result = raw.shape_builder.deepCopy(file.raw, element.raw);
+        return wrapEntity(shell, result) as Entity;
+      } finally {
+        disposeAll(temps);
+      }
+    },
+    /**
+     * Create an IfcEdge between two vertex positions.
+     *
+     * @param file IFC file that receives the geometry.
+     * @param start XYZ coordinates of the edge start.
+     * @param end XYZ coordinates of the edge end.
+     * @return IfcEdge entity.
+     */
+    edge(file: IfcFile, start: number[], end: number[]): Entity {
+      const temps: Disposable[] = [];
+      try {
+        const result = raw.shape_builder.edge(file.raw, toRawSequence(start, shell, temps), toRawSequence(end, shell, temps));
+        return wrapEntity(shell, result) as Entity;
+      } finally {
+        disposeAll(temps);
+      }
+    },
+    /**
+     * Create an IfcEllipse, optionally trimmed to an IfcTrimmedCurve.
+     *
+     * @param file IFC file that receives the geometry.
+     * @param options Radii, position, trim points, and reference direction.
+     * @return IfcEllipse or IfcTrimmedCurve entity.
+     */
+    ellipseCurve(file: IfcFile, options: IfcOpenShellShapeBuilderEllipseCurveOptions): Entity {
+      const temps: Disposable[] = [];
+      try {
+        const result = raw.shape_builder.ellipseCurve(file.raw, encodeOptions(options, {"position": "position", "refXDirection": "ref_x_direction", "trimPoints": "trim_points", "trimPointsMask": "trim_points_mask", "xAxisRadius": "x_axis_radius", "yAxisRadius": "y_axis_radius"}, shell, temps));
+        return wrapEntity(shell, result) as Entity;
+      } finally {
+        disposeAll(temps);
+      }
+    },
+    /**
+     * Create an IfcExtrudedAreaSolid by extruding a profile along a direction.
+     *
+     * If the profile_or_curve is a bare IfcCurve (not an IfcProfileDef), it is
+     * wrapped in an IfcArbitraryClosedProfileDef automatically.
+     *
+     * @param file IFC file that receives the geometry.
+     * @param options Profile, depth, position, and extrusion direction.
+     * @return IfcExtrudedAreaSolid entity.
+     */
+    extrude(file: IfcFile, options: IfcOpenShellShapeBuilderExtrudeOptions): Entity {
+      const temps: Disposable[] = [];
+      try {
+        const result = raw.shape_builder.extrude(file.raw, encodeOptions(options, {"extrusionVector": "extrusion_vector", "magnitude": "magnitude", "position": "position", "positionXAxis": "position_x_axis", "positionYAxis": "position_y_axis", "positionZAxis": "position_z_axis", "profileOrCurve": "profile_or_curve"}, shell, temps));
+        return wrapEntity(shell, result) as Entity;
+      } finally {
+        disposeAll(temps);
+      }
+    },
+    /**
+     * Create an IfcFace from an ordered list of polygon vertices.
+     *
+     * @param file IFC file that receives the geometry.
+     * @param points XYZ coordinates defining the face outer boundary.
+     * @return IfcFace entity with an IfcFaceOuterBound.
+     */
+    face(file: IfcFile, points: number[][]): Entity {
+      const temps: Disposable[] = [];
+      try {
+        const result = raw.shape_builder.face(file.raw, toRawSequence(points, shell, temps));
+        return wrapEntity(shell, result) as Entity;
+      } finally {
+        disposeAll(temps);
+      }
+    },
+    /**
+     * Create an IfcFacetedBrep from vertices and face index lists.
+     *
+     * @param file IFC file that receives the geometry.
+     * @param points XYZ vertex coordinates.
+     * @param faces Face index lists (zero-based). Each face is a single outer loop.
+     * @return IfcFacetedBrep entity with an IfcClosedShell.
+     */
+    facetedBrep(file: IfcFile, points: number[][], faces: number[][]): Entity {
+      const temps: Disposable[] = [];
+      try {
+        const result = raw.shape_builder.facetedBrep(file.raw, toRawSequence(points, shell, temps), toRawSequence(faces, shell, temps));
+        return wrapEntity(shell, result) as Entity;
+      } finally {
+        disposeAll(temps);
+      }
+    },
+    /**
+     * Read the coordinate list from an IfcPolyline or IfcIndexedPolyCurve.
+     *
+     * @param polyline IfcPolyline or IfcIndexedPolyCurve entity.
+     * @return Ordered XY or XYZ coordinate sequences.
+     */
+    getPolylineCoords(polyline: Entity): number[][] {
+      const temps: Disposable[] = [];
+      try {
+        const result = raw.shape_builder.getPolylineCoords(polyline.raw);
+        return wrap(shell, result) as number[][];
+      } finally {
+        disposeAll(temps);
+      }
+    },
+    /**
+     * Create an IfcHalfSpaceSolid bounded by a plane.
+     *
+     * @param file IFC file that receives the geometry.
+     * @param options Bounding plane and agreement flag.
+     * @return IfcHalfSpaceSolid entity.
+     */
+    halfSpaceSolid(file: IfcFile, options: IfcOpenShellShapeBuilderHalfSpaceSolidOptions): Entity {
+      const temps: Disposable[] = [];
+      try {
+        const result = raw.shape_builder.halfSpaceSolid(file.raw, encodeOptions(options, {"agreementFlag": "agreement_flag", "plane": "plane"}, shell, temps));
+        return wrapEntity(shell, result) as Entity;
+      } finally {
+        disposeAll(temps);
+      }
+    },
+    /**
+     * Create a 2D IfcIndexedPolyCurve from explicit points and segment indices.
+     *
+     * Segments with two indices are line segments; segments with three indices
+     * are arc segments.
+     *
+     * @param file IFC file that receives the geometry.
+     * @param points XY coordinates for the point list.
+     * @param segments Segment index arrays (1-based).
+     * @return IfcIndexedPolyCurve entity.
+     */
+    indexedPolycurve2d(file: IfcFile, points: number[][], segments: number[][]): Entity {
+      const temps: Disposable[] = [];
+      try {
+        const result = raw.shape_builder.indexedPolycurve2d(file.raw, toRawSequence(points, shell, temps), toRawSequence(segments, shell, temps));
+        return wrapEntity(shell, result) as Entity;
+      } finally {
+        disposeAll(temps);
+      }
+    },
+    /**
+     * Build MEP bend geometry for a duct segment.
+     *
+     * Generates a swept disk solid (for circular profiles) or an extruded bend
+     * shape (for rectangular profiles), plus optional start and end straight
+     * extensions.
+     *
+     * @param file IFC file that receives the geometry.
+     * @param options Segment, lengths, angle, radius, bend direction, and Z flip.
+     * @return Bend result with representation and computed parameters.
+     */
+    mepBendShape(file: IfcFile, options: IfcOpenShellShapeBuilderMepBendShapeOptions): IfcOpenShellShapeBuilderMepBendShapeResult {
+      const temps: Disposable[] = [];
+      try {
+        const result = raw.shape_builder.mepBendShape(file.raw, encodeOptions(options, {"angle": "angle", "bendVector": "bend_vector", "endLength": "end_length", "flipZAxis": "flip_z_axis", "radius": "radius", "segment": "segment", "startLength": "start_length"}, shell, temps));
+        const data = result as { representation: RawValue; start_length: number; end_length: number; radius: number; angle: number; lateral_axis: number; lateral_sign: number; z_axis_sign: number; main_profile_dimension: number };
+        return { representation: wrapEntity(shell, data.representation), startLength: data.start_length as number, endLength: data.end_length as number, radius: data.radius as number, angle: data.angle as number, lateralAxis: data.lateral_axis as number, lateralSign: data.lateral_sign as number, zAxisSign: data.z_axis_sign as number, mainProfileDimension: data.main_profile_dimension as number } as IfcOpenShellShapeBuilderMepBendShapeResult;
+      } finally {
+        disposeAll(temps);
+      }
+    },
+    /**
+     * Compute the transition angle or length between two MEP duct profiles.
+     *
+     * Provide either length or angle (not both) to solve for the other.
+     * Returns NaN when no valid solution exists.
+     *
+     * @param options Profile half-dimensions, offset, and one of length or angle.
+     * @return The solved angle (degrees) or length (model units), or NaN.
+     */
+    mepTransitionCalculate(options: IfcOpenShellShapeBuilderMepTransitionCalculateOptions): number {
+      const temps: Disposable[] = [];
+      try {
+        const result = raw.shape_builder.mepTransitionCalculate(encodeOptions(options, {"angle": "angle", "diff": "diff", "endHalfDim": "end_half_dim", "endProfile": "end_profile", "length": "length", "offset": "offset", "startHalfDim": "start_half_dim"}, shell, temps));
+        return wrap(shell, result) as number;
+      } finally {
+        disposeAll(temps);
+      }
+    },
+    /**
+     * Compute the minimum transition length between two MEP duct profiles at a given angle.
+     *
+     * @param options Profile half-dimensions, angle in degrees, and profile offset.
+     * @return Required transition length in model units, or NaN if no valid solution.
+     */
+    mepTransitionLength(options: IfcOpenShellShapeBuilderMepTransitionLengthOptions): number {
+      const temps: Disposable[] = [];
+      try {
+        const result = raw.shape_builder.mepTransitionLength(encodeOptions(options, {"angle": "angle", "endHalfDim": "end_half_dim", "profileOffset": "profile_offset", "startHalfDim": "start_half_dim"}, shell, temps));
+        return wrap(shell, result) as number;
+      } finally {
+        disposeAll(temps);
+      }
+    },
+    /**
+     * Build MEP transition geometry between two duct segments.
+     *
+     * Generates start/end extrusions and a connecting transition mesh.
+     * Returns no result when the segments lack material profiles or the
+     * transition cannot be computed.
+     *
+     * @param file IFC file that receives the geometry.
+     * @param options Start/end segments, lengths, angle, and profile offset.
+     * @return Transition result with representation and dimensions, or no result.
+     */
+    mepTransitionShape(file: IfcFile, options: IfcOpenShellShapeBuilderMepTransitionShapeOptions): IfcOpenShellShapeBuilderMepTransitionShapeResult | null {
+      const temps: Disposable[] = [];
+      try {
+        const result = raw.shape_builder.mepTransitionShape(file.raw, encodeOptions(options, {"angle": "angle", "endLength": "end_length", "endSegment": "end_segment", "profileOffset": "profile_offset", "startLength": "start_length", "startSegment": "start_segment"}, shell, temps));
+        if (result === null) return null;
+        const data = result as { representation: RawValue; start_length: number; end_length: number; angle: number; profile_offset: RawValue; transition_length: number; full_transition_length: number };
+        return { representation: wrapEntity(shell, data.representation), startLength: data.start_length as number, endLength: data.end_length as number, angle: data.angle as number, profileOffset: wrap(shell, data.profile_offset), transitionLength: data.transition_length as number, fullTransitionLength: data.full_transition_length as number } as IfcOpenShellShapeBuilderMepTransitionShapeResult | null;
+      } finally {
+        disposeAll(temps);
+      }
+    },
+    /**
+     * Create a mesh representation using IfcPolygonalFaceSet (IFC4+) or IfcFacetedBrep (IFC2X3).
+     *
+     * @param file IFC file that receives the geometry.
+     * @param points XYZ vertex coordinates.
+     * @param faces Face index lists (zero-based).
+     * @return IfcPolygonalFaceSet or IfcFacetedBrep entity.
+     */
+    mesh(file: IfcFile, points: number[][], faces: number[][]): Entity {
+      const temps: Disposable[] = [];
+      try {
+        const result = raw.shape_builder.mesh(file.raw, toRawSequence(points, shell, temps), toRawSequence(faces, shell, temps));
+        return wrapEntity(shell, result) as Entity;
+      } finally {
+        disposeAll(temps);
+      }
+    },
+    /**
+     * Mirror a geometry item across 2D axes.
+     *
+     * Supports IfcIndexedPolyCurve, IfcPolyline, IfcCircle, IfcEllipse,
+     * IfcTrimmedCurve, and IfcExtrudedAreaSolid. A non-zero value in
+     * mirror_axes at index 0 or 1 flips the corresponding coordinate.
+     *
+     * @param file IFC file containing the item.
+     * @param options Item, axes, point, copy flag, and optional placement matrix.
+     * @return The mirrored item, either the supplied entity or an independent copy.
+     */
+    mirror(file: IfcFile, options: IfcOpenShellShapeBuilderMirrorOptions): Entity {
+      const temps: Disposable[] = [];
+      try {
+        const result = raw.shape_builder.mirror(file.raw, encodeOptions(options, {"createCopy": "create_copy", "item": "item", "mirrorAxes": "mirror_axes", "mirrorPoint": "mirror_point", "placementMatrix": "placement_matrix"}, shell, temps));
+        return wrapEntity(shell, result) as Entity;
+      } finally {
+        disposeAll(temps);
+      }
+    },
+    /**
+     * Create an IfcPlane from a point and normal direction.
+     *
+     * The reference direction is computed automatically from the normal.
+     *
+     * @param file IFC file that receives the geometry.
+     * @param location XYZ point on the plane.
+     * @param normal Direction ratios of the plane normal.
+     * @return IfcPlane entity.
+     */
+    plane(file: IfcFile, location: number[], normal: number[]): Entity {
+      const temps: Disposable[] = [];
+      try {
+        const result = raw.shape_builder.plane(file.raw, toRawSequence(location, shell, temps), toRawSequence(normal, shell, temps));
+        return wrapEntity(shell, result) as Entity;
+      } finally {
+        disposeAll(temps);
+      }
+    },
+    /**
+     * Create an IfcPolygonalFaceSet from vertices and polygonal face loops.
+     *
+     * Each face may contain one outer loop and optional inner loops (voids).
+     * Faces with multiple loops create IfcIndexedPolygonalFaceWithVoids entities.
+     *
+     * @param file IFC file that receives the geometry.
+     * @param points XYZ vertex coordinates.
+     * @param faces Per-face loop index lists (zero-based).
+     * @return IfcPolygonalFaceSet entity.
+     */
+    polygonalFaceSet(file: IfcFile, points: number[][], faces: number[][][]): Entity {
+      const temps: Disposable[] = [];
+      try {
+        const result = raw.shape_builder.polygonalFaceSet(file.raw, toRawSequence(points, shell, temps), toRawSequence(faces, shell, temps));
+        return wrapEntity(shell, result) as Entity;
+      } finally {
+        disposeAll(temps);
+      }
+    },
+    /**
+     * Create a 2D or 3D polyline (IfcPolyline for IFC2X3, IfcIndexedPolyCurve otherwise).
+     *
+     * @param file IFC file that receives the geometry.
+     * @param options Points, closure, offset, and arc segment indices.
+     * @return IfcPolyline or IfcIndexedPolyCurve entity.
+     */
+    polyline(file: IfcFile, options: IfcOpenShellShapeBuilderPolylineOptions): Entity {
+      const temps: Disposable[] = [];
+      try {
+        const result = raw.shape_builder.polyline(file.raw, encodeOptions(options, {"arcPoints": "arc_points", "closed": "closed", "points": "points", "positionOffset": "position_offset"}, shell, temps));
+        return wrapEntity(shell, result) as Entity;
+      } finally {
+        disposeAll(temps);
+      }
+    },
+    /**
+     * Create an IfcArbitraryClosedProfileDef or IfcArbitraryProfileDefWithVoids.
+     *
+     * @param file IFC file that receives the profile.
+     * @param options Outer curve, optional inner curves, name, and profile type.
+     * @return IfcProfileDef entity.
+     */
+    profile(file: IfcFile, options: IfcOpenShellShapeBuilderProfileOptions): Entity {
+      const temps: Disposable[] = [];
+      try {
+        const result = raw.shape_builder.profile(file.raw, encodeOptions(options, {"innerCurves": "inner_curves", "name": "name", "outerCurve": "outer_curve", "profileType": "profile_type"}, shell, temps, [], ["innerCurves"]));
+        return wrapEntity(shell, result) as Entity;
+      } finally {
+        disposeAll(temps);
+      }
+    },
+    /**
+     * Create an IfcShapeRepresentation or IfcTopologyRepresentation.
+     *
+     * The representation type is auto-detected from the items when omitted.
+     * Topology types (Vertex, Edge, Path, Face, Shell) produce IfcTopologyRepresentation;
+     * all others produce IfcShapeRepresentation.
+     *
+     * @param file IFC file that receives the representation.
+     * @param options Context, items, and optional representation type.
+     * @return IfcShapeRepresentation or IfcTopologyRepresentation entity.
+     */
+    representation(file: IfcFile, options: IfcOpenShellShapeBuilderRepresentationOptions): Entity {
+      const temps: Disposable[] = [];
+      try {
+        const result = raw.shape_builder.representation(file.raw, encodeOptions(options, {"context": "context", "items": "items", "representationType": "representation_type"}, shell, temps, [], ["items"]));
+        return wrapEntity(shell, result) as Entity;
+      } finally {
+        disposeAll(temps);
+      }
+    },
+    /**
+     * Rotate a geometry item around a 2D pivot point.
+     *
+     * Supports IfcIndexedPolyCurve, IfcPolyline, IfcCircle, and
+     * IfcExtrudedAreaSolid. The angle is in degrees.
+     *
+     * @param file IFC file containing the item.
+     * @param options Item, angle, pivot, direction, and copy flag.
+     * @return The rotated item, either the supplied entity or an independent copy.
+     */
+    rotate(file: IfcFile, options: IfcOpenShellShapeBuilderRotateOptions): Entity {
+      const temps: Disposable[] = [];
+      try {
+        const result = raw.shape_builder.rotate(file.raw, encodeOptions(options, {"angle": "angle", "counterClockwise": "counter_clockwise", "createCopy": "create_copy", "item": "item", "pivotPoint": "pivot_point"}, shell, temps));
+        return wrapEntity(shell, result) as Entity;
+      } finally {
+        disposeAll(temps);
+      }
+    },
+    /**
+     * Replace the coordinate list of an IfcPolyline or IfcIndexedPolyCurve.
+     *
+     * For IfcPolyline, the new coordinate count must match the existing point count.
+     *
+     * @param file IFC file containing the polyline.
+     * @param polyline IfcPolyline or IfcIndexedPolyCurve entity.
+     * @param coords Replacement coordinates.
+     * @return The modified polyline entity.
+     */
+    setPolylineCoords(file: IfcFile, polyline: Entity, coords: number[][]): Entity {
+      const temps: Disposable[] = [];
+      try {
+        const result = raw.shape_builder.setPolylineCoords(file.raw, polyline.raw, toRawSequence(coords, shell, temps));
+        return wrapEntity(shell, result) as Entity;
+      } finally {
+        disposeAll(temps);
+      }
+    },
+    /**
+     * Create an IfcSphere.
+     *
+     * @param file IFC file that receives the geometry.
+     * @param options Radius and centre position.
+     * @return IfcSphere entity.
+     */
+    sphere(file: IfcFile, options: IfcOpenShellShapeBuilderSphereOptions): Entity {
+      const temps: Disposable[] = [];
+      try {
+        const result = raw.shape_builder.sphere(file.raw, encodeOptions(options, {"center": "center", "radius": "radius"}, shell, temps));
+        return wrapEntity(shell, result) as Entity;
+      } finally {
+        disposeAll(temps);
+      }
+    },
+    /**
+     * Create an IfcSweptDiskSolid along a directrix curve.
+     *
+     * @param file IFC file that receives the geometry.
+     * @param path_curve IfcCurve entity defining the sweep path.
+     * @param radius Disk radius in model units.
+     * @return IfcSweptDiskSolid entity.
+     */
+    sweptDiskSolid(file: IfcFile, path_curve: Entity, radius: number): Entity {
+      const temps: Disposable[] = [];
+      try {
+        const result = raw.shape_builder.sweptDiskSolid(file.raw, path_curve.raw, radius);
+        return wrapEntity(shell, result) as Entity;
+      } finally {
+        disposeAll(temps);
+      }
+    },
+    /**
+     * Translate a geometry item by a direction and distance.
+     *
+     * Supports IfcIndexedPolyCurve, IfcPolyline, IfcCircle, IfcEllipse,
+     * IfcExtrudedAreaSolid, IfcTessellatedFaceSet, IfcShapeRepresentation,
+     * and IfcTrimmedCurve.
+     *
+     * @param file IFC file containing the item.
+     * @param options Item, translation, and copy flag.
+     * @return The translated item, either the supplied entity or an independent copy.
+     */
+    translate(file: IfcFile, options: IfcOpenShellShapeBuilderTranslateOptions): Entity {
+      const temps: Disposable[] = [];
+      try {
+        const result = raw.shape_builder.translate(file.raw, encodeOptions(options, {"createCopy": "create_copy", "item": "item", "translation": "translation"}, shell, temps));
+        return wrapEntity(shell, result) as Entity;
+      } finally {
+        disposeAll(temps);
+      }
+    },
+    /**
+     * Create an IfcTriangulatedFaceSet from vertices and triangle index lists.
+     *
+     * @param file IFC file that receives the geometry.
+     * @param points XYZ vertex coordinates.
+     * @param faces Triangle index lists (zero-based, truncated to 3 vertices each).
+     * @return IfcTriangulatedFaceSet entity.
+     */
+    triangulatedFaceSet(file: IfcFile, points: number[][], faces: number[][]): Entity {
+      const temps: Disposable[] = [];
+      try {
+        const result = raw.shape_builder.triangulatedFaceSet(file.raw, toRawSequence(points, shell, temps), toRawSequence(faces, shell, temps));
+        return wrapEntity(shell, result) as Entity;
+      } finally {
+        disposeAll(temps);
+      }
+    },
+    /**
+     * Create an IfcVertexPoint at the given position.
+     *
+     * @param file IFC file that receives the geometry.
+     * @param position XYZ coordinates of the vertex.
+     * @return IfcVertexPoint entity.
+     */
+    vertex(file: IfcFile, position: number[]): Entity {
+      const temps: Disposable[] = [];
+      try {
+        const result = raw.shape_builder.vertex(file.raw, toRawSequence(position, shell, temps));
+        return wrapEntity(shell, result) as Entity;
+      } finally {
+        disposeAll(temps);
+      }
+    },
+  });
   return Object.freeze({
     aggregate: Object.freeze({
     /**
@@ -7020,10 +8356,10 @@ export function createApi(shell: IfcOpenShell): Api {
         disposeAll(temps);
       }
     },
-    defaultReferentLabel(previous_segment: Entity, segment: Entity): string {
+    defaultReferentLabel(previous_segment: Entity | null, segment: Entity | null): string {
       const temps: Disposable[] = [];
       try {
-        const result = raw.alignment.defaultReferentLabel(previous_segment.raw, segment.raw);
+        const result = raw.alignment.defaultReferentLabel(previous_segment == null ? null : previous_segment.raw, segment == null ? null : segment.raw);
         return wrap(shell, result) as string;
       } finally {
         disposeAll(temps);
@@ -7409,6 +8745,24 @@ export function createApi(shell: IfcOpenShell): Api {
         disposeAll(temps);
       }
     },
+    /** Edit an IfcClassification using the shared attribute property writer. */
+    editClassification(file: IfcFile, classification: Entity, attributes: PsetProperties | PsetInput): void {
+      const temps: Disposable[] = [];
+      try {
+        raw.classification.editClassification(file.raw, classification.raw, toRawPsetProperties(shell, attributes as PsetProperties | PsetInput, temps));
+      } finally {
+        disposeAll(temps);
+      }
+    },
+    /** Edit an IfcClassificationReference using the shared attribute property writer. */
+    editReference(file: IfcFile, reference: Entity, attributes: PsetProperties | PsetInput): void {
+      const temps: Disposable[] = [];
+      try {
+        raw.classification.editReference(file.raw, reference.raw, toRawPsetProperties(shell, attributes as PsetProperties | PsetInput, temps));
+      } finally {
+        disposeAll(temps);
+      }
+    },
     /**
      * Return all classification references associated with an element.
      *
@@ -7562,10 +8916,10 @@ export function createApi(shell: IfcOpenShell): Api {
      * Add a new IfcMetric constraint. If an objective is provided, the metric
      * is appended to the objective's benchmark values.
      */
-    addMetric(file: IfcFile, objective: Entity): Entity {
+    addMetric(file: IfcFile, objective: Entity | null): Entity {
       const temps: Disposable[] = [];
       try {
-        const result = raw.constraint.addMetric(file.raw, objective.raw);
+        const result = raw.constraint.addMetric(file.raw, objective == null ? null : objective.raw);
         return wrapEntity(shell, result) as Entity;
       } finally {
         disposeAll(temps);
@@ -7615,6 +8969,24 @@ export function createApi(shell: IfcOpenShell): Api {
       try {
         const result = raw.constraint.assignConstraint(file.raw, encodeOptions(options, {"application": "application", "constraint": "constraint", "ownerHistory": "owner_history", "products": "products", "user": "user"}, shell, temps, [], ["products"]));
         return wrapEntity(shell, result) as Entity;
+      } finally {
+        disposeAll(temps);
+      }
+    },
+    /** Edit an IfcMetric using the shared attribute property writer. */
+    editMetric(file: IfcFile, metric: Entity, attributes: PsetProperties | PsetInput): void {
+      const temps: Disposable[] = [];
+      try {
+        raw.constraint.editMetric(file.raw, metric.raw, toRawPsetProperties(shell, attributes as PsetProperties | PsetInput, temps));
+      } finally {
+        disposeAll(temps);
+      }
+    },
+    /** Edit an IfcObjective using the shared attribute property writer. */
+    editObjective(file: IfcFile, objective: Entity, attributes: PsetProperties | PsetInput): void {
+      const temps: Disposable[] = [];
+      try {
+        raw.constraint.editObjective(file.raw, objective.raw, toRawPsetProperties(shell, attributes as PsetProperties | PsetInput, temps));
       } finally {
         disposeAll(temps);
       }
@@ -7801,10 +9173,10 @@ export function createApi(shell: IfcOpenShell): Api {
      * @param owner_history Owner history for the new entity. When omitted, no owner history is assigned.
      * @return Newly created IfcCostSchedule.
      */
-    addCostSchedule(file: IfcFile, name: string, predefined_type: string, update_date: string, owner_history: Entity): Entity {
+    addCostSchedule(file: IfcFile, name: string, predefined_type: string, update_date: string, owner_history: Entity | null): Entity {
       const temps: Disposable[] = [];
       try {
-        const result = raw.cost.addCostSchedule(file.raw, name, predefined_type, update_date, owner_history.raw);
+        const result = raw.cost.addCostSchedule(file.raw, name, predefined_type, update_date, owner_history == null ? null : owner_history.raw);
         return wrapEntity(shell, result) as Entity;
       } finally {
         disposeAll(temps);
@@ -8159,10 +9531,10 @@ export function createApi(shell: IfcOpenShell): Api {
      * If an IfcDocumentInformation is provided, the reference is linked to it
      * (via ReferencedDocument in IFC4+ or DocumentReferences in IFC2X3).
      */
-    addReference(file: IfcFile, information: Entity): Entity {
+    addReference(file: IfcFile, information: Entity | null): Entity {
       const temps: Disposable[] = [];
       try {
-        const result = raw.document.addReference(file.raw, information.raw);
+        const result = raw.document.addReference(file.raw, information == null ? null : information.raw);
         return wrapEntity(shell, result) as Entity;
       } finally {
         disposeAll(temps);
@@ -8179,6 +9551,24 @@ export function createApi(shell: IfcOpenShell): Api {
       try {
         const result = raw.document.assignDocument(file.raw, encodeOptions(options, {"application": "application", "document": "document", "ownerHistory": "owner_history", "products": "products", "user": "user"}, shell, temps, [], ["products"]));
         return wrapEntity(shell, result) as Entity;
+      } finally {
+        disposeAll(temps);
+      }
+    },
+    /** Edit an IfcDocumentInformation using the shared attribute property writer. */
+    editInformation(file: IfcFile, information: Entity, attributes: PsetProperties | PsetInput): void {
+      const temps: Disposable[] = [];
+      try {
+        raw.document.editInformation(file.raw, information.raw, toRawPsetProperties(shell, attributes as PsetProperties | PsetInput, temps));
+      } finally {
+        disposeAll(temps);
+      }
+    },
+    /** Edit an IfcDocumentReference using the shared attribute property writer. */
+    editReference(file: IfcFile, reference: Entity, attributes: PsetProperties | PsetInput): void {
+      const temps: Disposable[] = [];
+      try {
+        raw.document.editReference(file.raw, reference.raw, toRawPsetProperties(shell, attributes as PsetProperties | PsetInput, temps));
       } finally {
         disposeAll(temps);
       }
@@ -8248,6 +9638,15 @@ export function createApi(shell: IfcOpenShell): Api {
       try {
         const result = raw.drawing.assignProduct(file.raw, encodeOptions(options, {"application": "application", "ownerHistory": "owner_history", "relatedObject": "related_object", "relatingProduct": "relating_product", "user": "user"}, shell, temps));
         return wrapEntity(shell, result) as Entity;
+      } finally {
+        disposeAll(temps);
+      }
+    },
+    /** Edit an IfcTextLiteral using the shared attribute property writer. */
+    editTextLiteral(file: IfcFile, text_literal: Entity, attributes: PsetProperties | PsetInput): void {
+      const temps: Disposable[] = [];
+      try {
+        raw.drawing.editTextLiteral(file.raw, text_literal.raw, toRawPsetProperties(shell, attributes as PsetProperties | PsetInput, temps));
       } finally {
         disposeAll(temps);
       }
@@ -9715,6 +11114,15 @@ export function createApi(shell: IfcOpenShell): Api {
         disposeAll(temps);
       }
     },
+    /** Edit an IfcGroup using the shared attribute property writer. */
+    editGroup(file: IfcFile, group: Entity, attributes: PsetProperties | PsetInput): void {
+      const temps: Disposable[] = [];
+      try {
+        raw.group.editGroup(file.raw, group.raw, toRawPsetProperties(shell, attributes as PsetProperties | PsetInput, temps));
+      } finally {
+        disposeAll(temps);
+      }
+    },
     /**
      * Remove a group and its relationships.
      *
@@ -9840,6 +11248,15 @@ export function createApi(shell: IfcOpenShell): Api {
         disposeAll(temps);
       }
     },
+    /** Edit a presentation layer using the shared attribute property writer. */
+    editLayer(file: IfcFile, layer: Entity, attributes: PsetProperties | PsetInput): void {
+      const temps: Disposable[] = [];
+      try {
+        raw.layer.editLayer(file.raw, layer.raw, toRawPsetProperties(shell, attributes as PsetProperties | PsetInput, temps));
+      } finally {
+        disposeAll(temps);
+      }
+    },
     /**
      * Remove a presentation layer entity from the file.
      *
@@ -9911,6 +11328,27 @@ export function createApi(shell: IfcOpenShell): Api {
       try {
         const result = raw.library.assignReference(file.raw, encodeOptions(options, {"application": "application", "ownerHistory": "owner_history", "products": "products", "reference": "reference", "user": "user"}, shell, temps, [], ["products"]));
         return wrapEntity(shell, result) as Entity;
+      } finally {
+        disposeAll(temps);
+      }
+    },
+    /**
+     * Edit an IfcLibraryInformation and apply VersionDate schema conversion.
+     * Date-time property entries are stored as IFC4 strings or IFC2X3 dates.
+     */
+    editLibrary(file: IfcFile, library: Entity, attributes: PsetProperties | PsetInput): void {
+      const temps: Disposable[] = [];
+      try {
+        raw.library.editLibrary(file.raw, library.raw, toRawPsetProperties(shell, attributes as PsetProperties | PsetInput, temps));
+      } finally {
+        disposeAll(temps);
+      }
+    },
+    /** Edit an IfcLibraryReference using the shared attribute property writer. */
+    editReference(file: IfcFile, reference: Entity, attributes: PsetProperties | PsetInput): void {
+      const temps: Disposable[] = [];
+      try {
+        raw.library.editReference(file.raw, reference.raw, toRawPsetProperties(shell, attributes as PsetProperties | PsetInput, temps));
       } finally {
         disposeAll(temps);
       }
@@ -10085,6 +11523,60 @@ export function createApi(shell: IfcOpenShell): Api {
       try {
         const result = raw.material.copyMaterial(file.raw, material.raw);
         return wrapEntity(shell, result) as Entity;
+      } finally {
+        disposeAll(temps);
+      }
+    },
+    /** Edit an IfcMaterial entity assigned to an element. */
+    editAssignedMaterial(file: IfcFile, element: Entity, attributes: PsetProperties | PsetInput): void {
+      const temps: Disposable[] = [];
+      try {
+        raw.material.editAssignedMaterial(file.raw, element.raw, toRawPsetProperties(shell, attributes as PsetProperties | PsetInput, temps));
+      } finally {
+        disposeAll(temps);
+      }
+    },
+    /** Edit an IfcMaterialConstituent and replace its Material reference. */
+    editConstituent(file: IfcFile, constituent: Entity, attributes: PsetProperties | PsetInput, material: Entity | null): void {
+      const temps: Disposable[] = [];
+      try {
+        raw.material.editConstituent(file.raw, constituent.raw, toRawPsetProperties(shell, attributes as PsetProperties | PsetInput, temps), material == null ? null : material.raw);
+      } finally {
+        disposeAll(temps);
+      }
+    },
+    /** Edit an IfcMaterialLayer and optionally replace its Material reference. */
+    editLayer(file: IfcFile, layer: Entity, attributes: PsetProperties | PsetInput, material: Entity | null): void {
+      const temps: Disposable[] = [];
+      try {
+        raw.material.editLayer(file.raw, layer.raw, toRawPsetProperties(shell, attributes as PsetProperties | PsetInput, temps), material == null ? null : material.raw);
+      } finally {
+        disposeAll(temps);
+      }
+    },
+    /** Edit an IfcMaterialLayerSetUsage using the shared attribute property writer. */
+    editLayerUsage(file: IfcFile, usage: Entity, attributes: PsetProperties | PsetInput): void {
+      const temps: Disposable[] = [];
+      try {
+        raw.material.editLayerUsage(file.raw, usage.raw, toRawPsetProperties(shell, attributes as PsetProperties | PsetInput, temps));
+      } finally {
+        disposeAll(temps);
+      }
+    },
+    /** Edit an IfcMaterial using the shared attribute property writer. */
+    editMaterial(file: IfcFile, material: Entity, attributes: PsetProperties | PsetInput): void {
+      const temps: Disposable[] = [];
+      try {
+        raw.material.editMaterial(file.raw, material.raw, toRawPsetProperties(shell, attributes as PsetProperties | PsetInput, temps));
+      } finally {
+        disposeAll(temps);
+      }
+    },
+    /** Edit an IfcMaterialProfile and optionally replace its profile or material. */
+    editProfile(file: IfcFile, profile: Entity, attributes: PsetProperties | PsetInput, profile_def: Entity | null, material: Entity | null): void {
+      const temps: Disposable[] = [];
+      try {
+        raw.material.editProfile(file.raw, profile.raw, toRawPsetProperties(shell, attributes as PsetProperties | PsetInput, temps), profile_def == null ? null : profile_def.raw, material == null ? null : material.raw);
       } finally {
         disposeAll(temps);
       }
@@ -10465,6 +11957,60 @@ export function createApi(shell: IfcOpenShell): Api {
         disposeAll(temps);
       }
     },
+    /** Edit an IfcActor using the shared attribute property writer. */
+    editActor(file: IfcFile, actor: Entity, attributes: PsetProperties | PsetInput): void {
+      const temps: Disposable[] = [];
+      try {
+        raw.owner.editActor(file.raw, actor.raw, toRawPsetProperties(shell, attributes as PsetProperties | PsetInput, temps));
+      } finally {
+        disposeAll(temps);
+      }
+    },
+    /** Edit an IfcAddress using the shared attribute property writer. */
+    editAddress(file: IfcFile, address: Entity, attributes: PsetProperties | PsetInput): void {
+      const temps: Disposable[] = [];
+      try {
+        raw.owner.editAddress(file.raw, address.raw, toRawPsetProperties(shell, attributes as PsetProperties | PsetInput, temps));
+      } finally {
+        disposeAll(temps);
+      }
+    },
+    /** Edit an IfcApplication using the shared attribute property writer. */
+    editApplication(file: IfcFile, application: Entity, attributes: PsetProperties | PsetInput): void {
+      const temps: Disposable[] = [];
+      try {
+        raw.owner.editApplication(file.raw, application.raw, toRawPsetProperties(shell, attributes as PsetProperties | PsetInput, temps));
+      } finally {
+        disposeAll(temps);
+      }
+    },
+    /** Edit an IfcOrganization using the shared attribute property writer. */
+    editOrganisation(file: IfcFile, organisation: Entity, attributes: PsetProperties | PsetInput): void {
+      const temps: Disposable[] = [];
+      try {
+        raw.owner.editOrganisation(file.raw, organisation.raw, toRawPsetProperties(shell, attributes as PsetProperties | PsetInput, temps));
+      } finally {
+        disposeAll(temps);
+      }
+    },
+    /** Edit an IfcPerson using the shared attribute property writer. */
+    editPerson(file: IfcFile, person: Entity, attributes: PsetProperties | PsetInput): void {
+      const temps: Disposable[] = [];
+      try {
+        raw.owner.editPerson(file.raw, person.raw, toRawPsetProperties(shell, attributes as PsetProperties | PsetInput, temps));
+      } finally {
+        disposeAll(temps);
+      }
+    },
+    /** Edit an IfcActorRole using the shared attribute property writer. */
+    editRole(file: IfcFile, role: Entity, attributes: PsetProperties | PsetInput): void {
+      const temps: Disposable[] = [];
+      try {
+        raw.owner.editRole(file.raw, role.raw, toRawPsetProperties(shell, attributes as PsetProperties | PsetInput, temps));
+      } finally {
+        disposeAll(temps);
+      }
+    },
     /**
      * Remove an IfcActor (or subclass) from the file.
      *
@@ -10669,10 +12215,10 @@ export function createApi(shell: IfcOpenShell): Api {
      * @param instance IfcLocalPlacement entity. When omitted, returns the identity matrix.
      * @return 16-element row-major 4x4 matrix.
      */
-    getLocalPlacement(instance: Entity): number[] {
+    getLocalPlacement(instance: Entity | null): number[] {
       const temps: Disposable[] = [];
       try {
-        const result = raw.placement.getLocalPlacement(instance.raw);
+        const result = raw.placement.getLocalPlacement(instance == null ? null : instance.raw);
         return wrap(shell, result) as number[];
       } finally {
         disposeAll(temps);
@@ -11113,6 +12659,15 @@ export function createApi(shell: IfcOpenShell): Api {
         disposeAll(temps);
       }
     },
+    /** Edit an IfcPropertySetTemplate using the shared attribute property writer. */
+    templateEditPsetTemplate(file: IfcFile, pset_template: Entity, attributes: PsetProperties | PsetInput): void {
+      const temps: Disposable[] = [];
+      try {
+        raw.pset.templateEditPsetTemplate(file.raw, pset_template.raw, toRawPsetProperties(shell, attributes as PsetProperties | PsetInput, temps));
+      } finally {
+        disposeAll(temps);
+      }
+    },
     /**
      * Return property set templates applicable to an IFC class and predefined type.
      *
@@ -11275,6 +12830,8 @@ export function createApi(shell: IfcOpenShell): Api {
       }
     },
     }),
+    psetTemplate: psetTemplateApi,
+    pset_template: psetTemplateApi,
     register: Object.freeze({
     /**
      * Register an IFC file for schema-aware derived-value evaluation.
@@ -11458,6 +13015,24 @@ export function createApi(shell: IfcOpenShell): Api {
         disposeAll(temps);
       }
     },
+    /** Edit an IfcResource using the shared attribute property writer. */
+    editResource(file: IfcFile, resource: Entity, attributes: PsetProperties | PsetInput): void {
+      const temps: Disposable[] = [];
+      try {
+        raw.resource.editResource(file.raw, resource.raw, toRawPsetProperties(shell, attributes as PsetProperties | PsetInput, temps));
+      } finally {
+        disposeAll(temps);
+      }
+    },
+    /** Edit an IfcPhysicalQuantity using the shared attribute property writer. */
+    editResourceQuantity(file: IfcFile, physical_quantity: Entity, attributes: PsetProperties | PsetInput): void {
+      const temps: Disposable[] = [];
+      try {
+        raw.resource.editResourceQuantity(file.raw, physical_quantity.raw, toRawPsetProperties(shell, attributes as PsetProperties | PsetInput, temps));
+      } finally {
+        disposeAll(temps);
+      }
+    },
     /**
      * Edit attributes of an IfcResourceTime entity.
      *
@@ -11601,10 +13176,10 @@ export function createApi(shell: IfcOpenShell): Api {
      * @param new_class The target IFC class name (e.g. "IfcWall").
      * @return The new entity of the requested class, or no result if the operation fails.
      */
-    reassignClass(file: IfcFile, element: Entity, new_class: string): Entity {
+    reassignClass(file: IfcFile | null, element: Entity, new_class: string): Entity {
       const temps: Disposable[] = [];
       try {
-        const result = raw.schema.reassignClass(file.raw, element.raw, new_class);
+        const result = raw.schema.reassignClass(file == null ? null : file.raw, element.raw, new_class);
         return wrapEntity(shell, result) as Entity;
       } finally {
         disposeAll(temps);
@@ -11662,10 +13237,10 @@ export function createApi(shell: IfcOpenShell): Api {
      * @param query The format expression string.
      * @return The formatted result, or no result if evaluation fails.
      */
-    format(file: IfcFile, instance: Entity, query: string): string | null {
+    format(file: IfcFile | null, instance: Entity | null, query: string): string | null {
       const temps: Disposable[] = [];
       try {
-        const result = raw.selector.format(file.raw, instance.raw, query);
+        const result = raw.selector.format(file == null ? null : file.raw, instance == null ? null : instance.raw, query);
         return wrap(shell, result) as string | null;
       } finally {
         disposeAll(temps);
@@ -11682,10 +13257,10 @@ export function createApi(shell: IfcOpenShell): Api {
      * @param query The selector key path (e.g. "Name", "Pset_WallCommon.FireRating").
      * @return The extracted value, or no result if the query cannot be evaluated. Release it with value_free.
      */
-    getElementValue(file: IfcFile, element: Entity, query: string): ValueData | null {
+    getElementValue(file: IfcFile | null, element: Entity, query: string): ValueData | null {
       const temps: Disposable[] = [];
       try {
-        const result = raw.selector.getElementValue(file.raw, element.raw, query);
+        const result = raw.selector.getElementValue(file == null ? null : file.raw, element.raw, query);
         return fromRawValue(shell, result as never) as ValueData | null;
       } finally {
         disposeAll(temps);
@@ -11703,10 +13278,10 @@ export function createApi(shell: IfcOpenShell): Api {
      * @param value The value to set. When omitted, the target is unset.
      * @param concat When provided and non-empty, it is prepended to the value.
      */
-    setElementValue(file: IfcFile, element: Entity, query: string, value: ValueInput | null, concat: string): void {
+    setElementValue(file: IfcFile, element: Entity | null, query: string, value: ValueInput | null, concat: string): void {
       const temps: Disposable[] = [];
       try {
-        raw.selector.setElementValue(file.raw, element.raw, query, value == null ? null : toRawValue(shell, value, temps), concat);
+        raw.selector.setElementValue(file.raw, element == null ? null : element.raw, query, value == null ? null : toRawValue(shell, value, temps), concat);
       } finally {
         disposeAll(temps);
       }
@@ -13034,6 +14609,8 @@ export function createApi(shell: IfcOpenShell): Api {
       }
     },
     }),
+    shapeBuilder: shapeBuilderApi,
+    shape_builder: shapeBuilderApi,
     spatial: Object.freeze({
     /**
      * Contain products in a spatial structure via IfcRelContainedInSpatialStructure.
@@ -13129,10 +14706,10 @@ export function createApi(shell: IfcOpenShell): Api {
      * @param owner_history Owner history for the new entity. When omitted, no owner history is assigned.
      * @return Newly created IfcStructuralAnalysisModel.
      */
-    addStructuralAnalysisModel(file: IfcFile, owner_history: Entity): Entity {
+    addStructuralAnalysisModel(file: IfcFile, owner_history: Entity | null): Entity {
       const temps: Disposable[] = [];
       try {
-        const result = raw.structural.addStructuralAnalysisModel(file.raw, owner_history.raw);
+        const result = raw.structural.addStructuralAnalysisModel(file.raw, owner_history == null ? null : owner_history.raw);
         return wrapEntity(shell, result) as Entity;
       } finally {
         disposeAll(temps);
@@ -13191,10 +14768,10 @@ export function createApi(shell: IfcOpenShell): Api {
      * @param owner_history Owner history for the new entity. When omitted, no owner history is assigned.
      * @return Newly created IfcStructuralLoadCase.
      */
-    addStructuralLoadCase(file: IfcFile, name: string, action_type: string, action_source: string, owner_history: Entity): Entity {
+    addStructuralLoadCase(file: IfcFile, name: string, action_type: string, action_source: string, owner_history: Entity | null): Entity {
       const temps: Disposable[] = [];
       try {
-        const result = raw.structural.addStructuralLoadCase(file.raw, name, action_type, action_source, owner_history.raw);
+        const result = raw.structural.addStructuralLoadCase(file.raw, name, action_type, action_source, owner_history == null ? null : owner_history.raw);
         return wrapEntity(shell, result) as Entity;
       } finally {
         disposeAll(temps);
@@ -13213,10 +14790,10 @@ export function createApi(shell: IfcOpenShell): Api {
      * @param owner_history Owner history for the new entity. When omitted, no owner history is assigned.
      * @return Newly created IfcStructuralLoadGroup.
      */
-    addStructuralLoadGroup(file: IfcFile, name: string, action_type: string, action_source: string, owner_history: Entity): Entity {
+    addStructuralLoadGroup(file: IfcFile, name: string, action_type: string, action_source: string, owner_history: Entity | null): Entity {
       const temps: Disposable[] = [];
       try {
-        const result = raw.structural.addStructuralLoadGroup(file.raw, name, action_type, action_source, owner_history.raw);
+        const result = raw.structural.addStructuralLoadGroup(file.raw, name, action_type, action_source, owner_history == null ? null : owner_history.raw);
         return wrapEntity(shell, result) as Entity;
       } finally {
         disposeAll(temps);
@@ -13234,10 +14811,10 @@ export function createApi(shell: IfcOpenShell): Api {
      * @param owner_history Owner history for the new relationship. When omitted, no owner history is assigned.
      * @return The IfcRelConnectsStructuralMember relationship.
      */
-    addStructuralMemberConnection(file: IfcFile, relating_structural_member: Entity, related_structural_connection: Entity, owner_history: Entity): Entity {
+    addStructuralMemberConnection(file: IfcFile, relating_structural_member: Entity, related_structural_connection: Entity, owner_history: Entity | null): Entity {
       const temps: Disposable[] = [];
       try {
-        const result = raw.structural.addStructuralMemberConnection(file.raw, relating_structural_member.raw, related_structural_connection.raw, owner_history.raw);
+        const result = raw.structural.addStructuralMemberConnection(file.raw, relating_structural_member.raw, related_structural_connection.raw, owner_history == null ? null : owner_history.raw);
         return wrapEntity(shell, result) as Entity;
       } finally {
         disposeAll(temps);
@@ -13256,10 +14833,10 @@ export function createApi(shell: IfcOpenShell): Api {
      * @param owner_history Owner history for new relationships. When omitted, no owner history is assigned.
      * @return The IfcRelAssignsToProduct relationship.
      */
-    assignProduct(file: IfcFile, relating_product: Entity, related_object: Entity, owner_history: Entity): Entity {
+    assignProduct(file: IfcFile, relating_product: Entity, related_object: Entity, owner_history: Entity | null): Entity {
       const temps: Disposable[] = [];
       try {
-        const result = raw.structural.assignProduct(file.raw, relating_product.raw, related_object.raw, owner_history.raw);
+        const result = raw.structural.assignProduct(file.raw, relating_product.raw, related_object.raw, owner_history == null ? null : owner_history.raw);
         return wrapEntity(shell, result) as Entity;
       } finally {
         disposeAll(temps);
@@ -13295,11 +14872,20 @@ export function createApi(shell: IfcOpenShell): Api {
      * @param owner_history Owner history for the new relationship. When omitted, no owner history is assigned.
      * @return The IfcRelServicesBuildings relationship.
      */
-    assignToBuilding(file: IfcFile, structural_analysis_model: Entity, building: Entity, owner_history: Entity): Entity {
+    assignToBuilding(file: IfcFile, structural_analysis_model: Entity, building: Entity, owner_history: Entity | null): Entity {
       const temps: Disposable[] = [];
       try {
-        const result = raw.structural.assignToBuilding(file.raw, structural_analysis_model.raw, building.raw, owner_history.raw);
+        const result = raw.structural.assignToBuilding(file.raw, structural_analysis_model.raw, building.raw, owner_history == null ? null : owner_history.raw);
         return wrapEntity(shell, result) as Entity;
+      } finally {
+        disposeAll(temps);
+      }
+    },
+    /** Edit an IfcStructuralAnalysisModel using the shared attribute property writer. */
+    editStructuralAnalysisModel(file: IfcFile, structural_analysis_model: Entity, attributes: PsetProperties | PsetInput): void {
+      const temps: Disposable[] = [];
+      try {
+        raw.structural.editStructuralAnalysisModel(file.raw, structural_analysis_model.raw, toRawPsetProperties(shell, attributes as PsetProperties | PsetInput, temps));
       } finally {
         disposeAll(temps);
       }
@@ -13358,6 +14944,24 @@ export function createApi(shell: IfcOpenShell): Api {
       const temps: Disposable[] = [];
       try {
         raw.structural.editStructuralItemAxis(file.raw, structural_item.raw, toRawSequence(axis, shell, temps));
+      } finally {
+        disposeAll(temps);
+      }
+    },
+    /** Edit an IfcStructuralLoad using the shared attribute property writer. */
+    editStructuralLoad(file: IfcFile, structural_load: Entity, attributes: PsetProperties | PsetInput): void {
+      const temps: Disposable[] = [];
+      try {
+        raw.structural.editStructuralLoad(file.raw, structural_load.raw, toRawPsetProperties(shell, attributes as PsetProperties | PsetInput, temps));
+      } finally {
+        disposeAll(temps);
+      }
+    },
+    /** Edit an IfcStructuralLoadCase using the shared attribute property writer. */
+    editStructuralLoadCase(file: IfcFile, structural_load_case: Entity, attributes: PsetProperties | PsetInput): void {
+      const temps: Disposable[] = [];
+      try {
+        raw.structural.editStructuralLoadCase(file.raw, structural_load_case.raw, toRawPsetProperties(shell, attributes as PsetProperties | PsetInput, temps));
       } finally {
         disposeAll(temps);
       }
@@ -13598,6 +15202,15 @@ export function createApi(shell: IfcOpenShell): Api {
         disposeAll(temps);
       }
     },
+    /** Edit an IfcPresentationStyle using the shared attribute property writer. */
+    editPresentationStyle(file: IfcFile, style: Entity, attributes: PsetProperties | PsetInput): void {
+      const temps: Disposable[] = [];
+      try {
+        raw.style.editPresentationStyle(file.raw, style.raw, toRawPsetProperties(shell, attributes as PsetProperties | PsetInput, temps));
+      } finally {
+        disposeAll(temps);
+      }
+    },
     /**
      * Edit attributes of an IfcSurfaceStyle or its nested surface styles.
      *
@@ -13808,6 +15421,15 @@ export function createApi(shell: IfcOpenShell): Api {
       const temps: Disposable[] = [];
       try {
         raw.system.disconnectPort(file.raw, port.raw);
+      } finally {
+        disposeAll(temps);
+      }
+    },
+    /** Edit an IfcSystem using the shared attribute property writer. */
+    editSystem(file: IfcFile, system: Entity, attributes: PsetProperties | PsetInput): void {
+      const temps: Disposable[] = [];
+      try {
+        raw.system.editSystem(file.raw, system.raw, toRawPsetProperties(shell, attributes as PsetProperties | PsetInput, temps));
       } finally {
         disposeAll(temps);
       }
@@ -14086,6 +15708,24 @@ export function createApi(shell: IfcOpenShell): Api {
       try {
         const result = raw.unit.convertUnit(value, from_unit.raw, to_unit.raw);
         return wrap(shell, result) as number;
+      } finally {
+        disposeAll(temps);
+      }
+    },
+    /** Edit an IfcDerivedUnit using the shared attribute property writer. */
+    editDerivedUnit(file: IfcFile, unit: Entity, attributes: PsetProperties | PsetInput): void {
+      const temps: Disposable[] = [];
+      try {
+        raw.unit.editDerivedUnit(file.raw, unit.raw, toRawPsetProperties(shell, attributes as PsetProperties | PsetInput, temps));
+      } finally {
+        disposeAll(temps);
+      }
+    },
+    /** Edit an IfcMonetaryUnit using the shared attribute property writer. */
+    editMonetaryUnit(file: IfcFile, unit: Entity, attributes: PsetProperties | PsetInput): void {
+      const temps: Disposable[] = [];
+      try {
+        raw.unit.editMonetaryUnit(file.raw, unit.raw, toRawPsetProperties(shell, attributes as PsetProperties | PsetInput, temps));
       } finally {
         disposeAll(temps);
       }

@@ -20,7 +20,7 @@
 from typing import Any, Optional
 
 import ifcopenshell
-from ifcopenshell.api.attribute.edit_attributes import _edit_attributes
+from ifcopenshell.api.attribute.edit_attributes import _edit_named_attributes
 
 
 def edit_profile(
@@ -82,4 +82,4 @@ def edit_profile(
         native_attributes["Material"] = material
     if profile_def:
         native_attributes["Profile"] = profile_def
-    _edit_attributes(file, profile, native_attributes)
+    _edit_named_attributes(file, profile, native_attributes, "material_edit_profile", profile_def, material)

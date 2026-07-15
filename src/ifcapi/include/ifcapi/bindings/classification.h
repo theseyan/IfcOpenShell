@@ -13,6 +13,8 @@
 #include <string>
 #include <vector>
 
+struct ifcopenshell_pset_props_t;
+
 namespace ifcapi {
 namespace bindings {
 
@@ -108,6 +110,18 @@ IFCAPI_BINDING void classification_remove_reference(
 IFCAPI_BINDING void classification_remove_classification(
     ifcopenshell::file* file,
     express::Base* classification);
+
+/** Edit an IfcClassification using the shared attribute property writer. */
+IFCAPI_BINDING void classification_edit_classification(
+    ifcopenshell::file* file,
+    express::Base classification,
+    ifcopenshell_pset_props_t* attributes);
+
+/** Edit an IfcClassificationReference using the shared attribute property writer. */
+IFCAPI_BINDING void classification_edit_reference(
+    ifcopenshell::file* file,
+    express::Base reference,
+    ifcopenshell_pset_props_t* attributes);
 
 } // namespace bindings
 } // namespace ifcapi

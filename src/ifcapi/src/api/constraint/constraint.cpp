@@ -264,5 +264,21 @@ void constraint_remove_metric(ifcopenshell::file* file, express::Base* metric) {
     }
 }
 
+void constraint_edit_metric(
+    ifcopenshell::file* file,
+    express::Base metric,
+    ifcopenshell_pset_props_t* attributes)
+{
+    detail::edit_named_attributes(file, metric, attributes);
+}
+
+void constraint_edit_objective(
+    ifcopenshell::file* file,
+    express::Base objective,
+    ifcopenshell_pset_props_t* attributes)
+{
+    detail::edit_named_attributes(file, objective, attributes);
+}
+
 } // namespace bindings
 } // namespace ifcapi

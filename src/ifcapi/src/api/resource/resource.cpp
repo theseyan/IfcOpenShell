@@ -562,5 +562,21 @@ void resource_edit_resource_time(ifcopenshell::file* file, express::Base* resour
     }
 }
 
+void resource_edit_resource(
+    ifcopenshell::file* file,
+    express::Base resource,
+    ifcopenshell_pset_props_t* attributes)
+{
+    detail::edit_named_attributes(file, resource, attributes);
+}
+
+void resource_edit_resource_quantity(
+    ifcopenshell::file* file,
+    express::Base resource_quantity,
+    ifcopenshell_pset_props_t* attributes)
+{
+    detail::edit_named_attributes(file, resource_quantity, attributes);
+}
+
 } // namespace bindings
 } // namespace ifcapi

@@ -65,6 +65,7 @@ class CFunctionIR:
     returns: TypeSpec
     receiver: str | None
     doc: str | None = None
+    public_module: str | None = None
 
 
 @dataclass(frozen=True)
@@ -619,6 +620,7 @@ def _finalize_function(call: CallIR, ir: BindingIR) -> CFunctionIR:
         returns=call.returns,
         receiver=call.receiver,
         doc=call.doc,
+        public_module=call.public_module,
     )
 
 

@@ -245,6 +245,14 @@ void pset_template_edit_prop_template(
     }
 }
 
+void pset_template_edit_pset_template(
+    ifcopenshell::file* file,
+    express::Base pset_template,
+    ifcopenshell_pset_props_t* attributes)
+{
+    detail::edit_named_attributes(file, pset_template, attributes);
+}
+
 void pset_template_remove_pset_template(express::Base* pset_template)
 {
     entity_remove_deep(pset_template);

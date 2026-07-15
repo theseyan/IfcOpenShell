@@ -17,13 +17,13 @@ describeGeneratedOrSkip('generated property template, cogo, and library API', ()
 
   it('creates and reuses typed property enumerations', async () => {
     await using file = await IfcFile.createEmpty(shell, 'IFC4');
-    using psetTemplate = shell.api.pset.templateAddPsetTemplate(
+    using psetTemplate = shell.api.psetTemplate.addPsetTemplate(
       file,
       'Pset_Test',
       'PSET_TYPEDRIVENOVERRIDE',
       'IfcWall',
     );
-    using propTemplate = shell.api.pset.templateAddPropTemplate(
+    using propTemplate = shell.api.psetTemplate.addPropTemplate(
       file,
       psetTemplate,
       'Status',
@@ -32,7 +32,7 @@ describeGeneratedOrSkip('generated property template, cogo, and library API', ()
       'IfcLabel',
     );
 
-    shell.api.pset.templateEditPropTemplate(file, {
+    shell.api.psetTemplate.editPropTemplate(file, {
       propTemplate,
       attributes: { Enumerators: ['NEW', 'EXISTING'] },
     });
@@ -43,7 +43,7 @@ describeGeneratedOrSkip('generated property template, cogo, and library API', ()
     expect(firstValues.map((value) => value.get(0))).toEqual(['NEW', 'EXISTING']);
     firstValues.forEach((value) => value.dispose());
 
-    shell.api.pset.templateEditPropTemplate(file, {
+    shell.api.psetTemplate.editPropTemplate(file, {
       propTemplate,
       attributes: {
         PrimaryMeasureType: 'IfcInteger',

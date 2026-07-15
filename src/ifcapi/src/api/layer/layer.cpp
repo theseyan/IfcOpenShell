@@ -119,5 +119,13 @@ void layer_remove_layer(
     file->remove_entity(detail::deref_or_empty(layer));
 }
 
+void layer_edit_layer(
+    ifcopenshell::file* file,
+    express::Base layer,
+    ifcopenshell_pset_props_t* attributes)
+{
+    detail::edit_named_attributes(file, layer, attributes);
+}
+
 } // namespace bindings
 } // namespace ifcapi

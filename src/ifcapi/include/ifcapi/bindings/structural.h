@@ -353,6 +353,24 @@ IFCAPI_BINDING void structural_remove_structural_connection_condition(
     ifcopenshell::file* file,
     express::Base* relation);
 
+/** Edit an IfcStructuralAnalysisModel using the shared attribute property writer. */
+IFCAPI_BINDING void structural_edit_structural_analysis_model(
+    ifcopenshell::file* file,
+    express::Base structural_analysis_model,
+    ifcopenshell_pset_props_t* attributes);
+
+/** Edit an IfcStructuralLoad using the shared attribute property writer. */
+IFCAPI_BINDING void structural_edit_structural_load(
+    ifcopenshell::file* file,
+    express::Base structural_load,
+    ifcopenshell_pset_props_t* attributes);
+
+/** Edit an IfcStructuralLoadCase using the shared attribute property writer. */
+IFCAPI_BINDING void structural_edit_structural_load_case(
+    ifcopenshell::file* file,
+    express::Base structural_load_case,
+    ifcopenshell_pset_props_t* attributes);
+
 } // namespace bindings
 } // namespace ifcapi
 
