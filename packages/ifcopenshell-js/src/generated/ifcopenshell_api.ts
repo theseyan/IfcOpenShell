@@ -320,7 +320,9 @@ type RawApi = {
     editResourceTime: (file: RawValue, resource_time: RawValue, attributes: RawValue) => void;
   };
   root: {
+    copyClass: (file: RawValue, product: RawValue) => RawValue;
     createEntity: (file: RawValue, options: RawValue) => RawValue;
+    reassignClass: (file: RawValue, options: RawValue) => RawValue;
     removeProduct: (file: RawValue, product: RawValue, options: RawValue) => void;
   };
   schema: {
@@ -1743,6 +1745,17 @@ export interface IfcOpenShellRootCreateEntityOptions {
   name?: string;
   /** Optional owner history to assign when the target schema supports it. */
   ownerHistory?: Entity;
+}
+
+export interface IfcOpenShellRootReassignClassOptions {
+  /** Product or type product to replace. Its previous handle becomes invalid. */
+  product: Entity;
+  /** Target IFC class. Defaults to IfcBuildingElementProxy when omitted. */
+  ifcClass?: string;
+  /** Optional predefined type. Unsupported values are stored as USERDEFINED labels. */
+  predefinedType?: string;
+  /** Optional occurrence class used when reassigning a type and its occurrences. */
+  occurrenceClass?: string;
 }
 
 export interface IfcOpenShellRootRemoveProductOptions {
@@ -4623,6 +4636,17 @@ export interface ResourceApi {
 }
 export interface RootApi {
     /**
+     * Copy a product with a fresh GlobalId and independent authoring data.
+     *
+     * Property sets, quantities, placements, nested ports, unfilled openings,
+     * material usages, and material sets are copied according to their ownership
+     * semantics. Ordinary product representations and type representation maps
+     * are omitted. Shared aggregate, containment, type, group, and other
+     * applicable inverse relationships retain the copy without duplicating
+     * relationship members.
+     */
+    copyClass(file: IfcFile, product: Entity): Entity;
+    /**
      * Create an IFC entity with generated identity, optional name, and optional
      * predefined type.
      *
@@ -4634,6 +4658,15 @@ export interface RootApi {
      * (or ElementType/ProcessType where applicable).
      */
     createEntity(file: IfcFile, options: IfcOpenShellRootCreateEntityOptions): Entity;
+    /**
+     * Change a product's class while preserving compatible data and relationships.
+     *
+     * Related types, sibling occurrences, property sets, representations, and
+     * placements are migrated when switching between occurrence and type classes.
+     * The replaced entity keeps its STEP id and the old entity handle becomes
+     * invalid. Invalid classes or incompatible occurrence/type mappings fail.
+     */
+    reassignClass(file: IfcFile, options: IfcOpenShellRootReassignClassOptions): Entity;
     /**
      * Remove a product and all its relationships.
      *
@@ -10388,6 +10421,25 @@ export function createApi(shell: IfcOpenShell): Api {
     }),
     root: Object.freeze({
     /**
+     * Copy a product with a fresh GlobalId and independent authoring data.
+     *
+     * Property sets, quantities, placements, nested ports, unfilled openings,
+     * material usages, and material sets are copied according to their ownership
+     * semantics. Ordinary product representations and type representation maps
+     * are omitted. Shared aggregate, containment, type, group, and other
+     * applicable inverse relationships retain the copy without duplicating
+     * relationship members.
+     */
+    copyClass(file: IfcFile, product: Entity): Entity {
+      const temps: Disposable[] = [];
+      try {
+        const result = raw.root.copyClass(file.raw, product.raw);
+        return wrapEntity(shell, result) as Entity;
+      } finally {
+        disposeAll(temps);
+      }
+    },
+    /**
      * Create an IFC entity with generated identity, optional name, and optional
      * predefined type.
      *
@@ -10402,6 +10454,23 @@ export function createApi(shell: IfcOpenShell): Api {
       const temps: Disposable[] = [];
       try {
         const result = raw.root.createEntity(file.raw, encodeOptions(options, {"ifcClass": "ifc_class", "name": "name", "ownerHistory": "owner_history", "predefinedType": "predefined_type"}, shell, temps));
+        return wrapEntity(shell, result) as Entity;
+      } finally {
+        disposeAll(temps);
+      }
+    },
+    /**
+     * Change a product's class while preserving compatible data and relationships.
+     *
+     * Related types, sibling occurrences, property sets, representations, and
+     * placements are migrated when switching between occurrence and type classes.
+     * The replaced entity keeps its STEP id and the old entity handle becomes
+     * invalid. Invalid classes or incompatible occurrence/type mappings fail.
+     */
+    reassignClass(file: IfcFile, options: IfcOpenShellRootReassignClassOptions): Entity {
+      const temps: Disposable[] = [];
+      try {
+        const result = raw.root.reassignClass(file.raw, encodeOptions(options, {"ifcClass": "ifc_class", "occurrenceClass": "occurrence_class", "predefinedType": "predefined_type", "product": "product"}, shell, temps));
         return wrapEntity(shell, result) as Entity;
       } finally {
         disposeAll(temps);

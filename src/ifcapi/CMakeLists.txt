@@ -16,9 +16,31 @@ if(NOT TARGET ifcopenshell_capi)
     message(FATAL_ERROR "BUILD_IFCAPI requires the unified ifcopenshell_capi target")
 endif()
 
+set(IFCAPI_ROOT_TYPE_MAP "${CMAKE_CURRENT_BINARY_DIR}/generated/root_type_map.inc")
+set(IFCAPI_TYPE_MAP_DIR "${CMAKE_CURRENT_SOURCE_DIR}/data/type_maps")
+find_package(Python COMPONENTS Interpreter REQUIRED)
+add_custom_command(
+    OUTPUT "${IFCAPI_ROOT_TYPE_MAP}"
+    COMMAND Python::Interpreter "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_root_type_map.py"
+        --output "${IFCAPI_ROOT_TYPE_MAP}"
+        --ifc2x3 "${IFCAPI_TYPE_MAP_DIR}/entity_to_type_map_2x3.json"
+        --ifc4 "${IFCAPI_TYPE_MAP_DIR}/entity_to_type_map_4.json"
+        --ifc4x3 "${IFCAPI_TYPE_MAP_DIR}/entity_to_type_map_4x3.json"
+    DEPENDS
+        "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_root_type_map.py"
+        "${IFCAPI_TYPE_MAP_DIR}/entity_to_type_map_2x3.json"
+        "${IFCAPI_TYPE_MAP_DIR}/entity_to_type_map_4.json"
+        "${IFCAPI_TYPE_MAP_DIR}/entity_to_type_map_4x3.json"
+    VERBATIM
+)
+add_custom_target(ifcapi_root_type_map_codegen DEPENDS "${IFCAPI_ROOT_TYPE_MAP}")
+add_dependencies(ifcopenshell_capi ifcapi_root_type_map_codegen)
+
 set(IFCAPI_SOURCES
     src/guid.cpp
     src/root.cpp
+    src/api/root/copy_class.cpp
+    src/api/root/reassign_class.cpp
     src/owner.cpp
     src/file.cpp
     src/entity.cpp
@@ -95,6 +117,7 @@ target_include_directories(ifcopenshell_capi
             # `ifcparse/...` prefix; expose the parent src/ directory so those
             # paths resolve.
             "${CMAKE_CURRENT_SOURCE_DIR}/.."
+            "${CMAKE_CURRENT_BINARY_DIR}/generated"
 )
 target_compile_definitions(ifcopenshell_capi
     PUBLIC  IFCOPENSHELL_HAS_HIGHLEVEL_API=1

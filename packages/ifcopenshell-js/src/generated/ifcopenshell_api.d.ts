@@ -748,6 +748,13 @@ declare module 'ifcopenshell-api' {
     owner_history?: IfcOpenshellInstance;
   }
 
+  export interface IfcOpenshellRootReassignClassOptions {
+    product: IfcOpenshellInstance;
+    ifc_class?: string;
+    predefined_type?: string;
+    occurrence_class?: string;
+  }
+
   export interface IfcOpenshellRootRemoveProductOptions {
     user?: IfcOpenshellInstance;
     application?: IfcOpenshellInstance;
@@ -4500,6 +4507,17 @@ declare module 'ifcopenshell-api' {
 
   export interface IfcOpenshellRootModule {
     /**
+     * Copy a product with a fresh GlobalId and independent authoring data.
+     *
+     * Property sets, quantities, placements, nested ports, unfilled openings,
+     * material usages, and material sets are copied according to their ownership
+     * semantics. Ordinary product representations and type representation maps
+     * are omitted. Shared aggregate, containment, type, group, and other
+     * applicable inverse relationships retain the copy without duplicating
+     * relationship members.
+     */
+    copyClass(file: IfcOpenshellFile, product: IfcOpenshellInstance): IfcOpenshellInstance;
+    /**
      * Create an IFC entity with generated identity, optional name, and optional
      * predefined type.
      *
@@ -4511,6 +4529,15 @@ declare module 'ifcopenshell-api' {
      * (or ElementType/ProcessType where applicable).
      */
     createEntity(file: IfcOpenshellFile, options: IfcOpenshellRootCreateEntityOptions): IfcOpenshellInstance;
+    /**
+     * Change a product's class while preserving compatible data and relationships.
+     *
+     * Related types, sibling occurrences, property sets, representations, and
+     * placements are migrated when switching between occurrence and type classes.
+     * The replaced entity keeps its STEP id and the old entity handle becomes
+     * invalid. Invalid classes or incompatible occurrence/type mappings fail.
+     */
+    reassignClass(file: IfcOpenshellFile, options: IfcOpenshellRootReassignClassOptions): IfcOpenshellInstance;
     /**
      * Remove a product and all its relationships.
      *

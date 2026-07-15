@@ -13416,6 +13416,60 @@ static int fill_input_root_create_entity_options(PyObject *obj, ifcopenshell_roo
 }
 
 
+static void free_input_root_reassign_class_options(ifcopenshell_root_reassign_class_options_t *value) {
+    (void)value;
+}
+
+static int fill_input_root_reassign_class_options(PyObject *obj, ifcopenshell_root_reassign_class_options_t *out, PyObject **refs) {
+    if (!PyMapping_Check(obj)) {
+        PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
+        return 0;
+    }
+    PyObject *field_0 = get_option_field(obj, "product", 1);
+    if (!field_0) {
+        return 0;
+    }
+    refs[0] = field_0;
+    if (!extract_handle(field_0, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->product, 0)) {
+        return 0;
+    }
+    PyObject *field_1 = get_option_field(obj, "ifc_class", 0);
+    if (!field_1) {
+        if (PyErr_Occurred()) return 0;
+    } else {
+        refs[1] = field_1;
+        if (field_1 != Py_None) {
+            out->ifc_class = PyUnicode_AsUTF8(field_1);
+            if (!out->ifc_class) return 0;
+        out->has_ifc_class = true;
+        }
+    }
+    PyObject *field_2 = get_option_field(obj, "predefined_type", 0);
+    if (!field_2) {
+        if (PyErr_Occurred()) return 0;
+    } else {
+        refs[2] = field_2;
+        if (field_2 != Py_None) {
+            out->predefined_type = PyUnicode_AsUTF8(field_2);
+            if (!out->predefined_type) return 0;
+        out->has_predefined_type = true;
+        }
+    }
+    PyObject *field_3 = get_option_field(obj, "occurrence_class", 0);
+    if (!field_3) {
+        if (PyErr_Occurred()) return 0;
+    } else {
+        refs[3] = field_3;
+        if (field_3 != Py_None) {
+            out->occurrence_class = PyUnicode_AsUTF8(field_3);
+            if (!out->occurrence_class) return 0;
+        out->has_occurrence_class = true;
+        }
+    }
+    return 1;
+}
+
+
 static void free_input_root_remove_product_options(ifcopenshell_root_remove_product_options_t *value) {
     (void)value;
 }
@@ -42413,6 +42467,38 @@ __cleanup:
     return __py_result;
 }
 
+static PyObject *py_ifcopenshell_root_copy_class(PyObject *self, PyObject *args) {
+    PyObject *__py_result = NULL;
+    bool ok = false;
+    PyObject *arg_file_obj = NULL;
+    ifcopenshell_file_t *arg_file = NULL;
+    PyObject *arg_product_obj = NULL;
+    ifcopenshell_instance_t *arg_product = NULL;
+    ifcopenshell_instance_t *result = NULL;
+    if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_product_obj)) return NULL;
+
+    if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
+        goto __cleanup;
+    }
+    if (!extract_handle(arg_product_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_product, 0)) {
+        goto __cleanup;
+    }
+
+    ifcopenshell_clear_error();
+    ok = ifcopenshell_root_copy_class(arg_file, arg_product, &result);
+    if (!ok) {
+        raise_last_error("ifcopenshell_root_copy_class failed");
+        goto __cleanup;
+    }
+    if (result == nullptr && ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_root_copy_class failed");
+        goto __cleanup;
+    }
+    __py_result = wrap_instance(result, 1);
+__cleanup:
+    return __py_result;
+}
+
 static PyObject *py_ifcopenshell_root_create_entity(PyObject *self, PyObject *args) {
     PyObject *__py_result = NULL;
     bool ok = false;
@@ -42445,6 +42531,41 @@ static PyObject *py_ifcopenshell_root_create_entity(PyObject *self, PyObject *ar
 __cleanup:
         release_option_refs(arg_options_refs, 4);
         free_input_root_create_entity_options(&arg_options);
+    return __py_result;
+}
+
+static PyObject *py_ifcopenshell_root_reassign_class(PyObject *self, PyObject *args) {
+    PyObject *__py_result = NULL;
+    bool ok = false;
+    PyObject *arg_file_obj = NULL;
+    ifcopenshell_file_t *arg_file = NULL;
+    PyObject *arg_options_obj = NULL;
+    ifcopenshell_root_reassign_class_options_t arg_options = {0};
+    PyObject *arg_options_refs[4] = {0};
+    ifcopenshell_instance_t *result = NULL;
+    if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_options_obj)) return NULL;
+
+    if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
+        goto __cleanup;
+    }
+    if (!fill_input_root_reassign_class_options(arg_options_obj, &arg_options, arg_options_refs)) {
+        goto __cleanup;
+    }
+
+    ifcopenshell_clear_error();
+    ok = ifcopenshell_root_reassign_class(arg_file, &arg_options, &result);
+    if (!ok) {
+        raise_last_error("ifcopenshell_root_reassign_class failed");
+        goto __cleanup;
+    }
+    if (result == nullptr && ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_root_reassign_class failed");
+        goto __cleanup;
+    }
+    __py_result = wrap_instance(result, 1);
+__cleanup:
+        release_option_refs(arg_options_refs, 4);
+        free_input_root_reassign_class_options(&arg_options);
     return __py_result;
 }
 
@@ -50167,7 +50288,9 @@ static PyMethodDef module_methods[] = {
     {"representation_resolve", py_ifcopenshell_representation_resolve, METH_VARARGS, "Wrap ifcopenshell_representation_resolve"},
     {"representation_resolve_base_items", py_ifcopenshell_representation_resolve_base_items, METH_VARARGS, "Wrap ifcopenshell_representation_resolve_base_items"},
     {"resource_edit_resource_time", py_ifcopenshell_resource_edit_resource_time, METH_VARARGS, "Wrap ifcopenshell_resource_edit_resource_time"},
+    {"root_copy_class", py_ifcopenshell_root_copy_class, METH_VARARGS, "Wrap ifcopenshell_root_copy_class"},
     {"root_create_entity", py_ifcopenshell_root_create_entity, METH_VARARGS, "Wrap ifcopenshell_root_create_entity"},
+    {"root_reassign_class", py_ifcopenshell_root_reassign_class, METH_VARARGS, "Wrap ifcopenshell_root_reassign_class"},
     {"root_remove_product", py_ifcopenshell_root_remove_product, METH_VARARGS, "Wrap ifcopenshell_root_remove_product"},
     {"schema_declaration_by_index", py_ifcopenshell_schema_declaration_by_index, METH_VARARGS, "Wrap ifcopenshell_schema_declaration_by_index"},
     {"schema_declaration_by_name", py_ifcopenshell_schema_declaration_by_name, METH_VARARGS, "Wrap ifcopenshell_schema_declaration_by_name"},
@@ -51242,7 +51365,9 @@ static PyMethodDef module_methods[] = {
     {"ifcopenshell_representation_resolve", py_ifcopenshell_representation_resolve, METH_VARARGS, "Wrap ifcopenshell_representation_resolve"},
     {"ifcopenshell_representation_resolve_base_items", py_ifcopenshell_representation_resolve_base_items, METH_VARARGS, "Wrap ifcopenshell_representation_resolve_base_items"},
     {"ifcopenshell_resource_edit_resource_time", py_ifcopenshell_resource_edit_resource_time, METH_VARARGS, "Wrap ifcopenshell_resource_edit_resource_time"},
+    {"ifcopenshell_root_copy_class", py_ifcopenshell_root_copy_class, METH_VARARGS, "Wrap ifcopenshell_root_copy_class"},
     {"ifcopenshell_root_create_entity", py_ifcopenshell_root_create_entity, METH_VARARGS, "Wrap ifcopenshell_root_create_entity"},
+    {"ifcopenshell_root_reassign_class", py_ifcopenshell_root_reassign_class, METH_VARARGS, "Wrap ifcopenshell_root_reassign_class"},
     {"ifcopenshell_root_remove_product", py_ifcopenshell_root_remove_product, METH_VARARGS, "Wrap ifcopenshell_root_remove_product"},
     {"ifcopenshell_schema_declaration_by_index", py_ifcopenshell_schema_declaration_by_index, METH_VARARGS, "Wrap ifcopenshell_schema_declaration_by_index"},
     {"ifcopenshell_schema_declaration_by_name", py_ifcopenshell_schema_declaration_by_name, METH_VARARGS, "Wrap ifcopenshell_schema_declaration_by_name"},

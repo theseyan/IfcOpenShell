@@ -1247,6 +1247,16 @@ typedef struct ifcopenshell_root_create_entity_options_t {
     bool has_owner_history;
 } ifcopenshell_root_create_entity_options_t;
 
+typedef struct ifcopenshell_root_reassign_class_options_t {
+    ifcopenshell_instance_t* product;
+    const char* ifc_class;
+    bool has_ifc_class;
+    const char* predefined_type;
+    bool has_predefined_type;
+    const char* occurrence_class;
+    bool has_occurrence_class;
+} ifcopenshell_root_reassign_class_options_t;
+
 typedef struct ifcopenshell_root_remove_product_options_t {
     ifcopenshell_instance_t* user;
     bool has_user;
@@ -4233,6 +4243,17 @@ bool ifcopenshell_representation_resolve_base_items(ifcopenshell_instance_t* rep
  */
 bool ifcopenshell_resource_edit_resource_time(ifcopenshell_file_t* file, ifcopenshell_instance_t* resource_time, void* attributes);
 /**
+ * Copy a product with a fresh GlobalId and independent authoring data.
+ *
+ * Property sets, quantities, placements, nested ports, unfilled openings,
+ * material usages, and material sets are copied according to their ownership
+ * semantics. Ordinary product representations and type representation maps
+ * are omitted. Shared aggregate, containment, type, group, and other
+ * applicable inverse relationships retain the copy without duplicating
+ * relationship members.
+ */
+bool ifcopenshell_root_copy_class(ifcopenshell_file_t* file, ifcopenshell_instance_t* product, ifcopenshell_instance_t** out_result);
+/**
  * Create an IFC entity with generated identity, optional name, and optional
  * predefined type.
  *
@@ -4244,6 +4265,15 @@ bool ifcopenshell_resource_edit_resource_time(ifcopenshell_file_t* file, ifcopen
  * (or ElementType/ProcessType where applicable).
  */
 bool ifcopenshell_root_create_entity(ifcopenshell_file_t* file, const ifcopenshell_root_create_entity_options_t* options, ifcopenshell_instance_t** out_result);
+/**
+ * Change a product's class while preserving compatible data and relationships.
+ *
+ * Related types, sibling occurrences, property sets, representations, and
+ * placements are migrated when switching between occurrence and type classes.
+ * The replaced entity keeps its STEP id and the old entity handle becomes
+ * invalid. Invalid classes or incompatible occurrence/type mappings fail.
+ */
+bool ifcopenshell_root_reassign_class(ifcopenshell_file_t* file, const ifcopenshell_root_reassign_class_options_t* options, ifcopenshell_instance_t** out_result);
 /**
  * Remove a product and all its relationships.
  *

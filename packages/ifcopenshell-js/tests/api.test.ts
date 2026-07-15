@@ -30,6 +30,31 @@ describeGeneratedOrSkip('direct api modules', () => {
     expect(await entity?.get('Name')).toBe('Project');
   });
 
+  it('copies and reassigns classes through the generated root API', async () => {
+    await using file = await IfcFile.createEmpty(shell, 'IFC4');
+    const wall = shell.api.root.createEntity(file, {
+      ifcClass: 'IfcWall',
+      name: 'Native wall',
+    });
+    const copy = shell.api.root.copyClass(file, wall);
+
+    expect(copy.type).toBe('IfcWall');
+    expect(copy.raw.identity()).not.toBe(wall.raw.identity());
+    expect(await copy.get('Name')).toBe('Native wall');
+
+    const slab = shell.api.root.reassignClass(file, {
+      product: copy,
+      ifcClass: 'IfcSlab',
+      predefinedType: 'FLOOR',
+    });
+    expect(slab.type).toBe('IfcSlab');
+    expect(await slab.get('PredefinedType')).toBe('FLOOR');
+
+    const defaultWall = shell.api.root.createEntity(file, { ifcClass: 'IfcWall' });
+    const proxy = shell.api.root.reassignClass(file, { product: defaultWall });
+    expect(proxy.type).toBe('IfcBuildingElementProxy');
+  });
+
   it('appends an asset through the generated project API', async () => {
     await using target = await IfcFile.createEmpty(shell, 'IFC4');
     await using library = await IfcFile.createEmpty(shell, 'IFC4');

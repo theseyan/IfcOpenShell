@@ -10721,6 +10721,30 @@ bool ifcopenshell_resource_edit_resource_time(ifcopenshell_file_t* file, ifcopen
     }
 }
 
+bool ifcopenshell_root_copy_class(ifcopenshell_file_t* file, ifcopenshell_instance_t* product, ifcopenshell_instance_t** out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    if (product == nullptr) { throw std::runtime_error("Handle parameter \"product\" must not be null"); }
+    auto product_cpp = &product->value;
+        auto result_value = ifcapi::bindings::root_copy_class(file_cpp, product_cpp);
+        if (!static_cast<bool>(result_value)) {
+            *out_result = nullptr;
+        } else {
+            *out_result = new ifcopenshell_instance_t{std::move(result_value)};
+        }
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
 bool ifcopenshell_root_create_entity(ifcopenshell_file_t* file, const ifcopenshell_root_create_entity_options_t* options, ifcopenshell_instance_t** out_result) {
     try {
         ifcopenshell_clear_error();
@@ -10744,6 +10768,44 @@ bool ifcopenshell_root_create_entity(ifcopenshell_file_t* file, const ifcopenshe
         options_cpp.owner_history = options->owner_history->value;
     }
         auto result_value = ifcapi::bindings::root_create_entity(file_cpp, options_cpp);
+        if (!static_cast<bool>(result_value)) {
+            *out_result = nullptr;
+        } else {
+            *out_result = new ifcopenshell_instance_t{std::move(result_value)};
+        }
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_root_reassign_class(ifcopenshell_file_t* file, const ifcopenshell_root_reassign_class_options_t* options, ifcopenshell_instance_t** out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::RootReassignClassOptions options_cpp{};
+    if (options->product == nullptr) { throw std::runtime_error("Options field \"product\" must not be null"); }
+    options_cpp.product = options->product->value;
+    if (options->has_ifc_class) {
+        if (options->ifc_class == nullptr) { throw std::runtime_error("Options field \"ifc_class\" must not be null"); }
+        options_cpp.ifc_class = std::string(options->ifc_class);
+    }
+    if (options->has_predefined_type) {
+        if (options->predefined_type == nullptr) { throw std::runtime_error("Options field \"predefined_type\" must not be null"); }
+        options_cpp.predefined_type = std::string(options->predefined_type);
+    }
+    if (options->has_occurrence_class) {
+        if (options->occurrence_class == nullptr) { throw std::runtime_error("Options field \"occurrence_class\" must not be null"); }
+        options_cpp.occurrence_class = std::string(options->occurrence_class);
+    }
+        auto result_value = ifcapi::bindings::root_reassign_class(file_cpp, options_cpp);
         if (!static_cast<bool>(result_value)) {
             *out_result = nullptr;
         } else {

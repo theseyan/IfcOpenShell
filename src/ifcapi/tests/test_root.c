@@ -150,12 +150,73 @@ static void test_file_ops(void) {
     printf("  File operations tests done.\n\n");
 }
 
+static void test_root_copy_and_reassign(void) {
+    printf("=== Root copy/reassign tests ===\n");
+
+    ifcopenshell_file_t* file = NULL;
+    ASSERT(ifcopenshell_parse_new_file("IFC4", 0, "", &file), "new IFC4 file succeeds");
+
+    ifcopenshell_root_create_entity_options_t create_options = {0};
+    create_options.ifc_class = "IfcWall";
+    ifcopenshell_instance_t* wall = NULL;
+    ASSERT(ifcopenshell_root_create_entity(file, &create_options, &wall), "root create wall succeeds");
+
+    ifcopenshell_instance_t* copy = NULL;
+    ASSERT(ifcopenshell_root_copy_class(file, wall, &copy), "root copy class succeeds");
+    ASSERT(copy != NULL, "root copy returns an entity");
+
+    ifcopenshell_parse_attribute_value_t* wall_guid_value = NULL;
+    ifcopenshell_parse_attribute_value_t* copy_guid_value = NULL;
+    ifcopenshell_string_t wall_guid = {0};
+    ifcopenshell_string_t copy_guid = {0};
+    ASSERT(ifcopenshell_instance_get_argument(wall, 0, &wall_guid_value), "read wall GlobalId succeeds");
+    ASSERT(ifcopenshell_instance_get_argument(copy, 0, &copy_guid_value), "read copied GlobalId succeeds");
+    ASSERT(ifcopenshell_parse_attribute_value_as_string(wall_guid_value, &wall_guid), "wall GlobalId is a string");
+    ASSERT(ifcopenshell_parse_attribute_value_as_string(copy_guid_value, &copy_guid), "copied GlobalId is a string");
+    ASSERT(strcmp(wall_guid.data, copy_guid.data) != 0, "copy has a fresh GlobalId");
+
+    ifcopenshell_root_reassign_class_options_t reassign_options = {0};
+    reassign_options.product = copy;
+    reassign_options.ifc_class = "IfcSlab";
+    reassign_options.has_ifc_class = true;
+    reassign_options.predefined_type = "FLOOR";
+    reassign_options.has_predefined_type = true;
+    ifcopenshell_instance_t* slab = NULL;
+    ASSERT(ifcopenshell_root_reassign_class(file, &reassign_options, &slab), "root reassign class succeeds");
+    bool is_slab = false;
+    ASSERT(ifcopenshell_instance_is_a(slab, "IfcSlab", &is_slab), "reassigned entity type query succeeds");
+    ASSERT(is_slab, "reassigned entity is an IfcSlab");
+
+    ifcopenshell_instance_t* default_wall = NULL;
+    ASSERT(ifcopenshell_root_create_entity(file, &create_options, &default_wall), "create default-test wall succeeds");
+    ifcopenshell_root_reassign_class_options_t default_options = {0};
+    default_options.product = default_wall;
+    ifcopenshell_instance_t* proxy = NULL;
+    ASSERT(ifcopenshell_root_reassign_class(file, &default_options, &proxy), "default root reassign succeeds");
+    bool is_proxy = false;
+    ASSERT(ifcopenshell_instance_is_a(proxy, "IfcBuildingElementProxy", &is_proxy), "default entity type query succeeds");
+    ASSERT(is_proxy, "omitted target class defaults to IfcBuildingElementProxy");
+
+    ifcopenshell_string_destroy(&wall_guid);
+    ifcopenshell_string_destroy(&copy_guid);
+    ifcopenshell_parse_attribute_value_destroy(wall_guid_value);
+    ifcopenshell_parse_attribute_value_destroy(copy_guid_value);
+    ifcopenshell_instance_destroy(wall);
+    ifcopenshell_instance_destroy(copy);
+    ifcopenshell_instance_destroy(slab);
+    ifcopenshell_instance_destroy(default_wall);
+    ifcopenshell_instance_destroy(proxy);
+    ifcopenshell_file_destroy(file);
+    printf("  Root copy/reassign tests done.\n\n");
+}
+
 int ifcapi_run_root_smoke_tests(void) {
     printf("ifcapi root smoke tests\n\n");
 
     test_guid();
     test_error_handling();
     test_file_ops();
+    test_root_copy_and_reassign();
 
     printf("=== Results: %d/%d passed ===\n",
            tests_run - tests_failed, tests_run);

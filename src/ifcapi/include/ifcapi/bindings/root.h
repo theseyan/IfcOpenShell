@@ -39,6 +39,20 @@ struct RootRemoveProductOptions {
 };
 
 /**
+ * Options for changing an IFC product between occurrence or type classes.
+ */
+struct RootReassignClassOptions {
+    /// Product or type product to replace. Its previous handle becomes invalid.
+    express::Base product;
+    /// Target IFC class. Defaults to IfcBuildingElementProxy when omitted.
+    std::optional<std::string> ifc_class;
+    /// Optional predefined type. Unsupported values are stored as USERDEFINED labels.
+    std::optional<std::string> predefined_type;
+    /// Optional occurrence class used when reassigning a type and its occurrences.
+    std::optional<std::string> occurrence_class;
+};
+
+/**
  * Create an IFC entity with generated identity, optional name, and optional
  * predefined type.
  *
@@ -52,6 +66,32 @@ struct RootRemoveProductOptions {
 IFCAPI_BINDING express::Base root_create_entity(
     ifcopenshell::file* file,
     const RootCreateEntityOptions& options);
+
+/**
+ * Copy a product with a fresh GlobalId and independent authoring data.
+ *
+ * Property sets, quantities, placements, nested ports, unfilled openings,
+ * material usages, and material sets are copied according to their ownership
+ * semantics. Ordinary product representations and type representation maps
+ * are omitted. Shared aggregate, containment, type, group, and other
+ * applicable inverse relationships retain the copy without duplicating
+ * relationship members.
+ */
+IFCAPI_BINDING express::Base root_copy_class(
+    ifcopenshell::file* file,
+    express::Base* product);
+
+/**
+ * Change a product's class while preserving compatible data and relationships.
+ *
+ * Related types, sibling occurrences, property sets, representations, and
+ * placements are migrated when switching between occurrence and type classes.
+ * The replaced entity keeps its STEP id and the old entity handle becomes
+ * invalid. Invalid classes or incompatible occurrence/type mappings fail.
+ */
+IFCAPI_BINDING express::Base root_reassign_class(
+    ifcopenshell::file* file,
+    const RootReassignClassOptions& options);
 
 /**
  * Remove a product and all its relationships.

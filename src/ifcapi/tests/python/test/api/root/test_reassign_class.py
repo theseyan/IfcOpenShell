@@ -24,6 +24,7 @@ import ifcopenshell.api.spatial
 import ifcopenshell.api.type
 import ifcopenshell.util.element
 import ifcopenshell.util.representation
+import pytest
 import test.bootstrap
 
 
@@ -36,6 +37,33 @@ class TestReassignClass(test.bootstrap.IFC4):
         assert len([e for e in self.file]) == n_elements
         assert new.id() == original_id
         assert new.is_a("IfcSlab")
+
+    def test_invalidating_the_old_handle_without_leaving_stale_relationship_members(self):
+        element_type = ifcopenshell.api.root.create_entity(self.file, ifc_class="IfcWallType")
+        wall = ifcopenshell.api.root.create_entity(self.file, ifc_class="IfcWall")
+        ifcopenshell.api.type.assign_type(self.file, related_objects=[wall], relating_type=element_type)
+
+        slab = ifcopenshell.api.root.reassign_class(self.file, product=wall, ifc_class="IfcSlab")
+
+        assert wall.id() == 0
+        related = self.file.by_type("IfcRelDefinesByType")[0].RelatedObjects
+        assert related == (slab,)
+        assert all(instance.id() for instance in related)
+
+    def test_rejecting_an_invalid_class(self):
+        wall = ifcopenshell.api.root.create_entity(self.file, ifc_class="IfcWall")
+        with pytest.raises(ValueError):
+            ifcopenshell.api.root.reassign_class(self.file, product=wall, ifc_class="IfcNotAClass")
+
+    def test_rejecting_a_type_class_as_an_occurrence_override(self):
+        wall_type = ifcopenshell.api.root.create_entity(self.file, ifc_class="IfcWallType")
+        with pytest.raises(ValueError, match="Unexpected occurrence_class"):
+            ifcopenshell.api.root.reassign_class(
+                self.file,
+                product=wall_type,
+                ifc_class="IfcSlabType",
+                occurrence_class="IfcWallType",
+            )
 
     def test_reassigning_a_predefined_type(self):
         element = ifcopenshell.api.root.create_entity(self.file, ifc_class="IfcWall")
@@ -202,6 +230,18 @@ class TestReassignClassIFC4X3(test.bootstrap.IFC4X3, TestReassignClass):
 
 
 class TestReassignClassIFC2X3(test.bootstrap.IFC2X3, TestReassignClass):
+    def test_preserving_unambiguous_generic_occurrence_mapping(self):
+        element_type = ifcopenshell.api.root.create_entity(self.file, ifc_class="IfcPumpType")
+        occurrence = ifcopenshell.api.root.create_entity(self.file, ifc_class="IfcFlowMovingDevice")
+        ifcopenshell.api.type.assign_type(self.file, related_objects=[occurrence], relating_type=element_type)
+
+        new_element_type = ifcopenshell.api.root.reassign_class(
+            self.file, product=element_type, ifc_class="IfcFanType"
+        )
+
+        assert new_element_type.is_a("IfcFanType")
+        assert ifcopenshell.util.element.get_types(new_element_type)[0].is_a("IfcFlowMovingDevice")
+
     def test_providing_occurrence_class(self):
         element_type = ifcopenshell.api.root.create_entity(self.file, ifc_class="IfcWallType")
         element1 = ifcopenshell.api.root.create_entity(self.file, ifc_class="IfcWall")

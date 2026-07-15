@@ -151,6 +151,26 @@ class TestCopyClass(test.bootstrap.IFC4):
         assert new.HasOpenings[0].RelatedOpeningElement != opening
         assert new.HasOpenings[0].RelatedOpeningElement.is_a("IfcVoidingFeature")
 
+    def test_deep_copying_opening_representations_but_reusing_contexts(self):
+        wall = ifcopenshell.api.root.create_entity(self.file, ifc_class="IfcWall")
+        opening = ifcopenshell.api.root.create_entity(self.file, ifc_class="IfcOpeningElement")
+        context = self.file.create_entity("IfcGeometricRepresentationContext")
+        item = self.file.create_entity("IfcExtrudedAreaSolid")
+        representation = self.file.create_entity("IfcShapeRepresentation", ContextOfItems=context, Items=[item])
+        opening.Representation = self.file.create_entity(
+            "IfcProductDefinitionShape", Representations=[representation]
+        )
+        ifcopenshell.api.feature.add_feature(self.file, feature=opening, element=wall)
+
+        copied_wall = ifcopenshell.api.root.copy_class(self.file, product=wall)
+        copied_opening = copied_wall.HasOpenings[0].RelatedOpeningElement
+        copied_representation = copied_opening.Representation.Representations[0]
+
+        assert copied_opening.Representation != opening.Representation
+        assert copied_representation != representation
+        assert copied_representation.Items[0] != item
+        assert copied_representation.ContextOfItems == context
+
     def test_copying_an_element_with_a_filled_opening_should_not_copy_the_opening_nor_fill(self):
         wall = ifcopenshell.api.root.create_entity(self.file, ifc_class="IfcWall")
         opening = ifcopenshell.api.root.create_entity(self.file, ifc_class="IfcOpeningElement")
