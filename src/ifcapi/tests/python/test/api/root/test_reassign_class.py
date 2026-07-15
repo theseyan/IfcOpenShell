@@ -230,6 +230,87 @@ class TestReassignClassIFC4X3(test.bootstrap.IFC4X3, TestReassignClass):
 
 
 class TestReassignClassIFC2X3(test.bootstrap.IFC2X3, TestReassignClass):
+    def test_migrating_multiple_type_psets_with_fresh_relationship_histories(self):
+        element = ifcopenshell.api.root.create_entity(self.file, ifc_class="IfcWallType")
+        original_id = element.id()
+        source_history = element.OwnerHistory
+        psets = [
+            ifcopenshell.api.pset.add_pset(self.file, element, name="FirstPset"),
+            ifcopenshell.api.pset.add_pset(self.file, element, name="SecondPset"),
+        ]
+
+        reassigned = ifcopenshell.api.root.reassign_class(self.file, product=element, ifc_class="IfcSlab")
+
+        assert element.id() == 0
+        assert reassigned.id() == original_id
+        assert [rel.RelatingPropertyDefinition for rel in reassigned.IsDefinedBy] == psets
+        assert len(self.file.by_type("IfcRelDefinesByProperties")) == 2
+        for rel in reassigned.IsDefinedBy:
+            assert rel.RelatedObjects == (reassigned,)
+            assert rel.OwnerHistory
+            assert rel.OwnerHistory != source_history
+            assert rel.OwnerHistory.OwningUser == source_history.LastModifyingUser
+            assert rel.OwnerHistory.OwningApplication == source_history.LastModifyingApplication
+
+    def test_migrating_an_occurrence_pset_to_direct_type_semantics(self):
+        element = ifcopenshell.api.root.create_entity(self.file, ifc_class="IfcWall")
+        pset = ifcopenshell.api.pset.add_pset(self.file, element, name="TestPset")
+        relation = element.IsDefinedBy[0]
+        relation_history_id = relation.OwnerHistory.id()
+
+        reassigned = ifcopenshell.api.root.reassign_class(self.file, product=element, ifc_class="IfcSlabType")
+
+        assert reassigned.HasPropertySets == (pset,)
+        assert len(self.file.by_type("IfcRelDefinesByProperties")) == 0
+        assert relation_history_id not in {history.id() for history in self.file.by_type("IfcOwnerHistory")}
+
+    def test_preserving_a_shared_pset_relationship_when_reassigning_an_occurrence_to_a_type(self):
+        element = ifcopenshell.api.root.create_entity(self.file, ifc_class="IfcWall")
+        other = ifcopenshell.api.root.create_entity(self.file, ifc_class="IfcWall")
+        pset = ifcopenshell.api.pset.add_pset(self.file, element, name="SharedPset")
+        ifcopenshell.api.pset.assign_pset(self.file, [other], pset)
+        relation = element.IsDefinedBy[0]
+        relation_id = relation.id()
+        history_id = relation.OwnerHistory.id()
+
+        reassigned = ifcopenshell.api.root.reassign_class(self.file, product=element, ifc_class="IfcSlabType")
+
+        assert reassigned.HasPropertySets == (pset,)
+        assert relation.id() == relation_id
+        assert relation.OwnerHistory.id() == history_id
+        assert relation.RelatedObjects == (other,)
+        assert pset.PropertyDefinitionOf == (relation,)
+
+    def test_reusing_a_shared_pset_relationship_when_reassigning_a_type_to_an_occurrence(self):
+        element = ifcopenshell.api.root.create_entity(self.file, ifc_class="IfcWallType")
+        other = ifcopenshell.api.root.create_entity(self.file, ifc_class="IfcWall")
+        pset = ifcopenshell.api.pset.add_pset(self.file, element, name="SharedPset")
+        relation = ifcopenshell.api.pset.assign_pset(self.file, [other], pset)
+        relation_id = relation.id()
+        history_id = relation.OwnerHistory.id()
+
+        reassigned = ifcopenshell.api.root.reassign_class(self.file, product=element, ifc_class="IfcSlab")
+
+        assert relation.id() == relation_id
+        assert relation.OwnerHistory.id() == history_id
+        assert relation.RelatingPropertyDefinition == pset
+        assert set(relation.RelatedObjects) == {other, reassigned}
+        assert len(self.file.by_type("IfcRelDefinesByProperties")) == 1
+
+    def test_rejecting_missing_relationship_owner_context_before_mutation(self):
+        element = self.file.create_entity("IfcWallType")
+        pset = self.file.create_entity("IfcPropertySet", Name="TestPset")
+        element.HasPropertySets = [pset]
+        original_id = element.id()
+
+        with pytest.raises(RuntimeError, match="IFC2X3 owner history requires"):
+            ifcopenshell.api.root.reassign_class(self.file, product=element, ifc_class="IfcSlab")
+
+        assert element.id() == original_id
+        assert element.is_a("IfcWallType")
+        assert element.HasPropertySets == (pset,)
+        assert len(self.file.by_type("IfcRelDefinesByProperties")) == 0
+
     def test_preserving_unambiguous_generic_occurrence_mapping(self):
         element_type = ifcopenshell.api.root.create_entity(self.file, ifc_class="IfcPumpType")
         occurrence = ifcopenshell.api.root.create_entity(self.file, ifc_class="IfcFlowMovingDevice")

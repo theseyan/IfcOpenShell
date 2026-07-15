@@ -214,6 +214,124 @@ static void test_root_copy_and_reassign(void) {
     printf("  Root copy/reassign tests done.\n\n");
 }
 
+static void test_ifc2x3_type_pset_reassign(void) {
+    printf("=== IFC2X3 type pset reassign test ===\n");
+
+    ifcopenshell_file_t* file = NULL;
+    ASSERT(ifcopenshell_parse_new_file("IFC2X3", 0, "", &file), "new IFC2X3 file succeeds");
+
+    ifcopenshell_instance_t* user = NULL;
+    ifcopenshell_instance_t* application = NULL;
+    ASSERT(
+        ifcopenshell_file_create_entity_by_name(file, "IfcPersonAndOrganization", &user),
+        "create owner user succeeds");
+    ASSERT(
+        ifcopenshell_file_create_entity_by_name(file, "IfcApplication", &application),
+        "create owner application succeeds");
+
+    ifcopenshell_owner_create_owner_history_options_t history_options = {0};
+    history_options.user = user;
+    history_options.has_user = true;
+    history_options.application = application;
+    history_options.has_application = true;
+    ifcopenshell_instance_t* source_history = NULL;
+    ASSERT(
+        ifcopenshell_owner_create_owner_history(file, &history_options, &source_history),
+        "create source owner history succeeds");
+
+    ifcopenshell_root_create_entity_options_t create_options = {0};
+    create_options.ifc_class = "IfcWallType";
+    create_options.owner_history = source_history;
+    create_options.has_owner_history = true;
+    ifcopenshell_instance_t* wall_type = NULL;
+    ASSERT(
+        ifcopenshell_root_create_entity(file, &create_options, &wall_type),
+        "create IFC2X3 wall type succeeds");
+    uint32_t original_id = 0;
+    ASSERT(ifcopenshell_instance_id(wall_type, &original_id), "read original wall type id succeeds");
+
+    ifcopenshell_pset_add_pset_options_t add_pset_options = {0};
+    add_pset_options.product = wall_type;
+    add_pset_options.name = "TestPset";
+    add_pset_options.owner_history = source_history;
+    add_pset_options.has_owner_history = true;
+    ifcopenshell_instance_t* pset = NULL;
+    ASSERT(ifcopenshell_pset_add_pset(file, &add_pset_options, &pset), "add type pset succeeds");
+    uint32_t pset_id = 0;
+    ASSERT(ifcopenshell_instance_id(pset, &pset_id), "read pset id succeeds");
+
+    ifcopenshell_root_reassign_class_options_t reassign_options = {0};
+    reassign_options.product = wall_type;
+    reassign_options.ifc_class = "IfcSlab";
+    reassign_options.has_ifc_class = true;
+    ifcopenshell_instance_t* slab = NULL;
+    ASSERT(
+        ifcopenshell_root_reassign_class(file, &reassign_options, &slab),
+        "reassign IFC2X3 type with pset succeeds");
+    uint32_t reassigned_id = 0;
+    ASSERT(ifcopenshell_instance_id(slab, &reassigned_id), "read reassigned slab id succeeds");
+    ASSERT(reassigned_id == original_id, "reassigned slab keeps STEP id");
+
+    ifcopenshell_parse_instance_list_t* relations = NULL;
+    ASSERT(
+        ifcopenshell_file_by_type(file, "IfcRelDefinesByProperties", &relations),
+        "query pset relationships succeeds");
+    size_t relation_count = 0;
+    ASSERT(
+        ifcopenshell_parse_instance_list_size(relations, &relation_count),
+        "read pset relationship count succeeds");
+    ASSERT(relation_count == 1, "exactly one pset relationship is created");
+    ifcopenshell_instance_t* relation = NULL;
+    ASSERT(ifcopenshell_parse_instance_list_get(relations, 0, &relation), "read pset relationship succeeds");
+
+    ifcopenshell_parse_attribute_value_t* related_value = NULL;
+    ASSERT(
+        ifcopenshell_instance_get_argument_by_name(relation, "RelatedObjects", &related_value),
+        "read related objects succeeds");
+    ifcopenshell_parse_instance_list_t* related_objects = NULL;
+    ASSERT(
+        ifcopenshell_parse_attribute_value_as_instance_list(related_value, &related_objects),
+        "convert related objects succeeds");
+    size_t related_count = 0;
+    ASSERT(
+        ifcopenshell_parse_instance_list_size(related_objects, &related_count),
+        "read related object count succeeds");
+    ASSERT(related_count == 1, "relationship contains one reassigned object");
+    ifcopenshell_instance_t* related = NULL;
+    ASSERT(ifcopenshell_parse_instance_list_get(related_objects, 0, &related), "read related object succeeds");
+    uint32_t related_id = 0;
+    ASSERT(ifcopenshell_instance_id(related, &related_id), "read related object id succeeds");
+    ASSERT(related_id == reassigned_id, "relationship points to reassigned slab");
+
+    ifcopenshell_parse_attribute_value_t* relating_value = NULL;
+    ASSERT(
+        ifcopenshell_instance_get_argument_by_name(relation, "RelatingPropertyDefinition", &relating_value),
+        "read relating pset succeeds");
+    ifcopenshell_instance_t* relating_pset = NULL;
+    ASSERT(
+        ifcopenshell_parse_attribute_value_as_instance(relating_value, &relating_pset),
+        "convert relating pset succeeds");
+    uint32_t relating_pset_id = 0;
+    ASSERT(ifcopenshell_instance_id(relating_pset, &relating_pset_id), "read relating pset id succeeds");
+    ASSERT(relating_pset_id == pset_id, "relationship preserves pset identity");
+
+    ifcopenshell_parse_attribute_value_destroy(relating_value);
+    ifcopenshell_parse_attribute_value_destroy(related_value);
+    ifcopenshell_parse_instance_list_destroy(related_objects);
+    ifcopenshell_parse_instance_list_destroy(relations);
+    ifcopenshell_instance_destroy(relating_pset);
+    ifcopenshell_instance_destroy(related);
+    ifcopenshell_instance_destroy(relation);
+    ifcopenshell_instance_destroy(slab);
+    ifcopenshell_instance_destroy(pset);
+    ifcopenshell_instance_destroy(wall_type);
+    ifcopenshell_instance_destroy(source_history);
+    ifcopenshell_instance_destroy(application);
+    ifcopenshell_instance_destroy(user);
+    ifcopenshell_file_destroy(file);
+    printf("  IFC2X3 type pset reassign test done.\n\n");
+}
+
 int ifcapi_run_root_smoke_tests(void) {
     printf("ifcapi root smoke tests\n\n");
 
@@ -221,6 +339,7 @@ int ifcapi_run_root_smoke_tests(void) {
     test_error_handling();
     test_file_ops();
     test_root_copy_and_reassign();
+    test_ifc2x3_type_pset_reassign();
 
     printf("=== Results: %d/%d passed ===\n",
            tests_run - tests_failed, tests_run);

@@ -10,6 +10,7 @@ describeGeneratedOrSkip('direct api modules', () => {
   beforeAll(async () => {
     shell = await createInstance(GENERATED_WASM_DIR!);
     await shell.loadPlugin('schema', 'ifc4');
+    await shell.loadPlugin('schema', 'ifc2x3');
   });
 
   afterAll(async () => {
@@ -53,6 +54,45 @@ describeGeneratedOrSkip('direct api modules', () => {
     const defaultWall = shell.api.root.createEntity(file, { ifcClass: 'IfcWall' });
     const proxy = shell.api.root.reassignClass(file, { product: defaultWall });
     expect(proxy.type).toBe('IfcBuildingElementProxy');
+  });
+
+  it('reassigns an IFC2X3 type pset without host-language owner callbacks', async () => {
+    await using file = await IfcFile.createEmpty(shell, 'IFC2X3');
+    const person = shell.api.owner.addPerson(file, 'P001', 'Doe', 'John');
+    const organisation = shell.api.owner.addOrganisation(file, 'ORG01', 'Acme');
+    const user = shell.api.owner.addPersonAndOrganisation(file, person, organisation);
+    const application = shell.api.owner.addApplication(file, {
+      applicationDeveloper: organisation,
+      version: '1.0',
+      applicationFullName: 'IfcOpenShell Test',
+      applicationIdentifier: 'com.ifcopenshell.test',
+    });
+    const history = shell.api.owner.createOwnerHistory(file, { user, application });
+    expect(history).not.toBeNull();
+    if (!history) throw new Error('createOwnerHistory returned null');
+
+    const wallType = shell.api.root.createEntity(file, {
+      ifcClass: 'IfcWallType',
+      ownerHistory: history,
+    });
+    const pset = shell.api.pset.addPset(file, {
+      product: wallType,
+      name: 'TestPset',
+      ownerHistory: history,
+    });
+    const originalId = wallType.id;
+
+    const slab = shell.api.root.reassignClass(file, {
+      product: wallType,
+      ifcClass: 'IfcSlab',
+    });
+
+    expect(slab.id).toBe(originalId);
+    const relations = file.all('IfcRelDefinesByProperties');
+    expect(relations).toHaveLength(1);
+    expect((relations[0].get('RelatedObjects') as { id: number }[]).map((item) => item.id)).toEqual([slab.id]);
+    expect((relations[0].get('RelatingPropertyDefinition') as { id: number }).id).toBe(pset.id);
+    expect(relations[0].get('OwnerHistory')).not.toBeNull();
   });
 
   it('appends an asset through the generated project API', async () => {

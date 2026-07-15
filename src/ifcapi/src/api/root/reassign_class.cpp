@@ -16,6 +16,7 @@
 
 #include <algorithm>
 #include <exception>
+#include <stdexcept>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -149,6 +150,28 @@ std::vector<express::Base> direct_property_sets(express::Base occurrence) {
     return result;
 }
 
+struct OwnerContext {
+    express::Base user;
+    express::Base application;
+};
+
+OwnerContext owner_context(express::Base element) {
+    auto history = ifcapi::detail::read_ref_attr(element, "OwnerHistory");
+    if (!history) return {};
+    auto user = ifcapi::detail::read_ref_attr(history, "LastModifyingUser");
+    auto application = ifcapi::detail::read_ref_attr(history, "LastModifyingApplication");
+    if (!user) user = ifcapi::detail::read_ref_attr(history, "OwningUser");
+    if (!application) application = ifcapi::detail::read_ref_attr(history, "OwningApplication");
+    return {user, application};
+}
+
+bool has_property_relationship(ifcopenshell::file* file, express::Base property_set) {
+    const bool is_ifc2x3 = fallback_schema(file->schema()->name()) == "IFC2X3";
+    return !ifcapi::detail::read_inverse_aggregate(
+                property_set, is_ifc2x3 ? "PropertyDefinitionOf" : "DefinesOccurrence")
+                .empty();
+}
+
 void apply_predefined_type(express::Base element, const std::optional<std::string>& predefined_type) {
     if (!element || !predefined_type || predefined_type->empty()
         || !ifcapi::detail::entity_has_attr(element, "PredefinedType")) {
@@ -236,6 +259,19 @@ express::Base switch_class_kind(
     bool occurrence_to_type)
 {
     auto saved_representations = representations(element);
+    std::vector<express::Base> property_sets = occurrence_to_type
+        ? direct_property_sets(element)
+        : ifcapi::detail::read_ref_aggregate(element, "HasPropertySets");
+    const auto relationship_owner = owner_context(element);
+    if (!occurrence_to_type && fallback_schema(file->schema()->name()) == "IFC2X3"
+        && (!relationship_owner.user || !relationship_owner.application)) {
+        for (auto property_set : property_sets) {
+            if (!has_property_relationship(file, property_set)) {
+                throw std::runtime_error("IFC2X3 owner history requires an owning user and application");
+            }
+        }
+    }
+
     for (auto representation : saved_representations) {
         auto to_unassign = representation;
         if (!occurrence_to_type) {
@@ -244,10 +280,8 @@ express::Base switch_class_kind(
         ifcapi::bindings::geometry_unassign_representation(file, &element, &to_unassign);
     }
 
-    std::vector<express::Base> property_sets;
     if (!occurrence_to_type) {
         auto occurrences = ifcapi::bindings::element_get_types(&element);
-        property_sets = ifcapi::detail::read_ref_aggregate(element, "HasPropertySets");
         element = reassign_one(file, element, ifc_class, predefined_type);
         if (!element) return {};
         ifcapi::bindings::type_unassign_type(file, {occurrences, std::nullopt, std::nullopt});
@@ -260,7 +294,6 @@ express::Base switch_class_kind(
         } else if (ifcapi::bindings::element_get_aggregate(&element)) {
             ifcapi::bindings::aggregate_unassign_object(file, {{element}, std::nullopt, std::nullopt});
         }
-        property_sets = direct_property_sets(element);
         for (auto property_set : property_sets) {
             ifcapi::bindings::pset_unassign_pset(file, {element}, &property_set);
         }
@@ -269,7 +302,17 @@ express::Base switch_class_kind(
     }
 
     for (auto property_set : property_sets) {
-        ifcapi::bindings::pset_assign_pset(file, {{element}, property_set, std::nullopt, std::nullopt, std::nullopt});
+        ifcapi::bindings::pset_assign_pset(
+            file,
+            {
+                {element},
+                property_set,
+                std::nullopt,
+                relationship_owner.user ? std::optional<express::Base>(relationship_owner.user) : std::nullopt,
+                relationship_owner.application
+                    ? std::optional<express::Base>(relationship_owner.application)
+                    : std::nullopt,
+            });
     }
     for (auto representation : saved_representations) {
         ifcapi::bindings::geometry_assign_representation(file, &element, &representation);
