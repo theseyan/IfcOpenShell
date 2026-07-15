@@ -1956,6 +1956,13 @@ class TestWasmApiBridge:
             in code
         )
         assert "if (result === null) return null;" in code
+        assert (
+            "const data = result as { representation: RawValue; start_length: number };"
+            in code
+        )
+        assert "startLength: data.start_length as number" in code
+        assert "data.startLength" not in code
+        assert "result as any" not in code
         assert "hasResult" not in code
 
     def test_direct_api_facade_maps_variants_to_unions(self):

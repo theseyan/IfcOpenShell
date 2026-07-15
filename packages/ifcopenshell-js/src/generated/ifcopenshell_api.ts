@@ -277,6 +277,10 @@ type RawApi = {
     removeProfile: (file: RawValue, profile: RawValue) => void;
   };
   project: {
+    appendAsset: (file: RawValue, options: RawValue) => RawValue;
+    appendAssetCacheEntries: (cache: RawValue) => RawValue;
+    appendAssetCacheNew: () => RawValue;
+    appendAssetCacheSet: (cache: RawValue, source: RawValue, target: RawValue) => void;
     assignDeclaration: (file: RawValue, options: RawValue) => RawValue;
     unassignDeclaration: (file: RawValue, options: RawValue) => void;
   };
@@ -498,6 +502,13 @@ type RawApi = {
   };
 };
 
+export interface IfcOpenShellProjectAppendAssetCacheEntry {
+  sourceIdentities: bigint[];
+  sourceIds: bigint[];
+  sourceTypes: string[];
+  targets: Entity[];
+}
+
 export interface IfcOpenShellSequenceDuplicateTaskResult {
   /** Original tasks in depth-first order. */
   current: Entity[];
@@ -541,6 +552,11 @@ export interface IfcOpenShellShapeBuilderMepTransitionShapeResult {
   transitionLength: number;
   /** Total length (start + transition + end) in model units. */
   fullTransitionLength: number;
+}
+
+export interface IfcOpenshellProjectAppendAssetCache {
+  readonly ptr: number;
+  destroy(): void;
 }
 
 export interface PsetTemplate {
@@ -1563,6 +1579,17 @@ export interface IfcOpenShellProfileAddArbitraryProfileWithVoidsOptions {
   innerProfiles: number[][][];
   /** Optional profile name. When omitted, the profile name is empty. */
   name?: string;
+}
+
+export interface IfcOpenShellProjectAppendAssetOptions {
+  /** Source/library file containing the asset. */
+  library: IfcFile;
+  /** Asset in the source/library file to append. */
+  element: Entity;
+  /** Optional reusable native identity cache. */
+  cache?: IfcOpenshellProjectAppendAssetCache;
+  /** Reuse supported named/equivalent assets when true. */
+  assumeAssetUniquenessByName?: boolean;
 }
 
 export interface IfcOpenShellProjectAssignDeclarationOptions {
@@ -4309,6 +4336,21 @@ export interface ProfileApi {
     removeProfile(file: IfcFile, profile: Entity): void;
 }
 export interface ProjectApi {
+    /**
+     * Append one supported asset from a source/library file into the target file.
+     *
+     * Returns the existing or newly copied target asset, or an empty value for an
+     * unsupported entity class. Native code owns graph traversal, inverse
+     * filtering, deduplication, context replacement, placement correction, type
+     * assignment, unit conversion, and reusable-cache cleanup.
+     */
+    appendAsset(file: IfcFile, options: IfcOpenShellProjectAppendAssetOptions): Entity | null;
+    /** Return valid cache mappings in ascending source-identity order. */
+    appendAssetCacheEntries(cache: IfcOpenshellProjectAppendAssetCache): IfcOpenShellProjectAppendAssetCacheEntry;
+    /** Allocate an empty reusable append-asset cache. */
+    appendAssetCacheNew(): IfcOpenshellProjectAppendAssetCache | null;
+    /** Seed/update one semantic source-entity mapping in an append-asset cache. */
+    appendAssetCacheSet(cache: IfcOpenshellProjectAppendAssetCache, source: Entity, target: Entity): void;
     /**
      * Declare objects to a project or project library context.
      *
@@ -9803,6 +9845,53 @@ export function createApi(shell: IfcOpenShell): Api {
     }),
     project: Object.freeze({
     /**
+     * Append one supported asset from a source/library file into the target file.
+     *
+     * Returns the existing or newly copied target asset, or an empty value for an
+     * unsupported entity class. Native code owns graph traversal, inverse
+     * filtering, deduplication, context replacement, placement correction, type
+     * assignment, unit conversion, and reusable-cache cleanup.
+     */
+    appendAsset(file: IfcFile, options: IfcOpenShellProjectAppendAssetOptions): Entity | null {
+      const temps: Disposable[] = [];
+      try {
+        const result = raw.project.appendAsset(file.raw, encodeOptions(options, {"assumeAssetUniquenessByName": "assume_asset_uniqueness_by_name", "cache": "cache", "element": "element", "library": "library"}, shell, temps));
+        return wrapEntity(shell, result) as Entity | null;
+      } finally {
+        disposeAll(temps);
+      }
+    },
+    /** Return valid cache mappings in ascending source-identity order. */
+    appendAssetCacheEntries(cache: IfcOpenshellProjectAppendAssetCache): IfcOpenShellProjectAppendAssetCacheEntry {
+      const temps: Disposable[] = [];
+      try {
+        const result = raw.project.appendAssetCacheEntries(cache);
+        const data = result as { source_identities: RawValue; source_ids: RawValue; source_types: RawValue; targets: RawValue };
+        return { sourceIdentities: wrap(shell, data.source_identities), sourceIds: wrap(shell, data.source_ids), sourceTypes: wrap(shell, data.source_types), targets: wrapEntities(shell, data.targets as never) } as IfcOpenShellProjectAppendAssetCacheEntry;
+      } finally {
+        disposeAll(temps);
+      }
+    },
+    /** Allocate an empty reusable append-asset cache. */
+    appendAssetCacheNew(): IfcOpenshellProjectAppendAssetCache | null {
+      const temps: Disposable[] = [];
+      try {
+        const result = raw.project.appendAssetCacheNew();
+        return result as IfcOpenshellProjectAppendAssetCache | null;
+      } finally {
+        disposeAll(temps);
+      }
+    },
+    /** Seed/update one semantic source-entity mapping in an append-asset cache. */
+    appendAssetCacheSet(cache: IfcOpenshellProjectAppendAssetCache, source: Entity, target: Entity): void {
+      const temps: Disposable[] = [];
+      try {
+        raw.project.appendAssetCacheSet(cache, source.raw, target.raw);
+      } finally {
+        disposeAll(temps);
+      }
+    },
+    /**
      * Declare objects to a project or project library context.
      *
      * Creates or updates an IfcRelDeclares relationship linking the given
@@ -10829,7 +10918,7 @@ export function createApi(shell: IfcOpenShell): Api {
       const temps: Disposable[] = [];
       try {
         const result = raw.sequence.duplicateTask(file.raw, task.raw, encodeOptions(options, {"application": "application", "ownerHistory": "owner_history", "user": "user"}, shell, temps));
-        const data = result as NonNullable<IfcOpenShellSequenceDuplicateTaskResult>;
+        const data = result as { current: RawValue; duplicate: RawValue };
         return { current: wrapEntities(shell, data.current as never), duplicate: wrapEntities(shell, data.duplicate as never) } as IfcOpenShellSequenceDuplicateTaskResult;
       } finally {
         disposeAll(temps);
@@ -11446,8 +11535,8 @@ export function createApi(shell: IfcOpenShell): Api {
       const temps: Disposable[] = [];
       try {
         const result = raw.shape.builderMepBendShape(file.raw, encodeOptions(options, {"angle": "angle", "bendVector": "bend_vector", "endLength": "end_length", "flipZAxis": "flip_z_axis", "radius": "radius", "segment": "segment", "startLength": "start_length"}, shell, temps));
-        const data = result as NonNullable<IfcOpenShellShapeBuilderMepBendShapeResult>;
-        return { representation: wrapEntity(shell, data.representation), startLength: data.startLength, endLength: data.endLength, radius: data.radius, angle: data.angle, lateralAxis: data.lateralAxis, lateralSign: data.lateralSign, zAxisSign: data.zAxisSign, mainProfileDimension: data.mainProfileDimension } as IfcOpenShellShapeBuilderMepBendShapeResult;
+        const data = result as { representation: RawValue; start_length: number; end_length: number; radius: number; angle: number; lateral_axis: number; lateral_sign: number; z_axis_sign: number; main_profile_dimension: number };
+        return { representation: wrapEntity(shell, data.representation), startLength: data.start_length as number, endLength: data.end_length as number, radius: data.radius as number, angle: data.angle as number, lateralAxis: data.lateral_axis as number, lateralSign: data.lateral_sign as number, zAxisSign: data.z_axis_sign as number, mainProfileDimension: data.main_profile_dimension as number } as IfcOpenShellShapeBuilderMepBendShapeResult;
       } finally {
         disposeAll(temps);
       }
@@ -11501,8 +11590,8 @@ export function createApi(shell: IfcOpenShell): Api {
       try {
         const result = raw.shape.builderMepTransitionShape(file.raw, encodeOptions(options, {"angle": "angle", "endLength": "end_length", "endSegment": "end_segment", "profileOffset": "profile_offset", "startLength": "start_length", "startSegment": "start_segment"}, shell, temps));
         if (result === null) return null;
-        const data = result as NonNullable<IfcOpenShellShapeBuilderMepTransitionShapeResult | null>;
-        return { representation: wrapEntity(shell, data.representation), startLength: data.startLength, endLength: data.endLength, angle: data.angle, profileOffset: wrap(shell, data.profileOffset), transitionLength: data.transitionLength, fullTransitionLength: data.fullTransitionLength } as IfcOpenShellShapeBuilderMepTransitionShapeResult | null;
+        const data = result as { representation: RawValue; start_length: number; end_length: number; angle: number; profile_offset: RawValue; transition_length: number; full_transition_length: number };
+        return { representation: wrapEntity(shell, data.representation), startLength: data.start_length as number, endLength: data.end_length as number, angle: data.angle as number, profileOffset: wrap(shell, data.profile_offset), transitionLength: data.transition_length as number, fullTransitionLength: data.full_transition_length as number } as IfcOpenShellShapeBuilderMepTransitionShapeResult | null;
       } finally {
         disposeAll(temps);
       }

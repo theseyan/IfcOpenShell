@@ -2398,6 +2398,14 @@ void ifcopenshell_pset_template_handle_destroy(ifcopenshell_pset_template_handle
     delete handle;
 }
 
+void ifcopenshell_project_append_asset_cache_destroy(ifcopenshell_project_append_asset_cache_t* handle) {
+    if (handle == nullptr) {
+        return;
+    }
+    if (handle->owned && handle->ptr) { ifcapi::bindings::project_append_asset_cache_free(handle->ptr); }
+    delete handle;
+}
+
 void ifcopenshell_geom_iterator_destroy(ifcopenshell_geom_iterator_t* handle) {
     if (handle == nullptr) {
         return;
@@ -3196,6 +3204,19 @@ void ifcopenshell_sequence_duplicate_task_result_destroy(ifcopenshell_sequence_d
     if (value->duplicate != nullptr) {
         ifcopenshell_parse_instance_list_destroy(value->duplicate);
         value->duplicate = nullptr;
+    }
+}
+
+void ifcopenshell_project_append_asset_cache_entry_destroy(ifcopenshell_project_append_asset_cache_entry_t* value) {
+    if (value == nullptr) {
+        return;
+    }
+    ifcopenshell_int64_list_destroy(&value->source_identities);
+    ifcopenshell_int64_list_destroy(&value->source_ids);
+    ifcopenshell_string_list_destroy(&value->source_types);
+    if (value->targets != nullptr) {
+        ifcopenshell_parse_instance_list_destroy(value->targets);
+        value->targets = nullptr;
     }
 }
 
@@ -9396,6 +9417,131 @@ bool ifcopenshell_profile_remove_profile(ifcopenshell_file_t* file, ifcopenshell
     if (profile == nullptr) { throw std::runtime_error("Handle parameter \"profile\" must not be null"); }
     auto profile_cpp = &profile->value;
         ifcapi::bindings::profile_remove_profile(file_cpp, profile_cpp);
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_project_append_asset(ifcopenshell_file_t* file, const ifcopenshell_project_append_asset_options_t* options, ifcopenshell_instance_t** out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::ProjectAppendAssetOptions options_cpp{};
+    if (options->library == nullptr) { throw std::runtime_error("Options field \"library\" must not be null"); }
+    options_cpp.library = options->library->ptr;
+    if (options->element == nullptr) { throw std::runtime_error("Options field \"element\" must not be null"); }
+    options_cpp.element = options->element->value;
+    if (options->has_cache) {
+        if (options->cache == nullptr) { throw std::runtime_error("Options field \"cache\" must not be null"); }
+        options_cpp.cache = options->cache->ptr;
+    }
+    if (options->has_assume_asset_uniqueness_by_name) {
+        options_cpp.assume_asset_uniqueness_by_name = options->assume_asset_uniqueness_by_name;
+    }
+        auto result_value = ifcapi::bindings::project_append_asset(file_cpp, options_cpp);
+        if (!result_value) {
+            *out_result = nullptr;
+        } else {
+            auto unwrapped_result = *result_value;
+            if (!static_cast<bool>(unwrapped_result)) {
+                *out_result = nullptr;
+            } else {
+                *out_result = new ifcopenshell_instance_t{unwrapped_result};
+            }
+        }
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_project_append_asset_cache_entries(ifcopenshell_project_append_asset_cache_t* cache, ifcopenshell_project_append_asset_cache_entry_t* out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (cache == nullptr || cache->ptr == nullptr) { throw std::runtime_error("Handle parameter \"cache\" is invalid"); }
+    auto cache_cpp = cache->ptr;
+        auto result_value = ifcapi::bindings::project_append_asset_cache_entries(cache_cpp);
+        ifcopenshell_project_append_asset_cache_entry_t result_value_c{};
+        try {
+            result_value_c.source_identities = make_int64_list(std::move(result_value.source_identities));
+            result_value_c.source_ids = make_int64_list(std::move(result_value.source_ids));
+            result_value_c.source_types = make_string_list(std::move(result_value.source_types));
+            result_value_c.targets = new ifcopenshell_parse_instance_list_t{result_value.targets};
+            *out_result = result_value_c;
+            result_value_c = {};
+        } catch (...) {
+            ifcopenshell_project_append_asset_cache_entry_destroy(&result_value_c);
+            throw;
+        }
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_project_append_asset_cache_free(ifcopenshell_project_append_asset_cache_t* cache) {
+    try {
+        ifcopenshell_clear_error();
+    if (cache == nullptr || cache->ptr == nullptr) { throw std::runtime_error("Handle parameter \"cache\" is invalid"); }
+    auto cache_cpp = cache->ptr;
+        ifcapi::bindings::project_append_asset_cache_free(cache_cpp);
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_project_append_asset_cache_new(ifcopenshell_project_append_asset_cache_t** out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+        auto result_value = ifcapi::bindings::project_append_asset_cache_new();
+        if (result_value == nullptr) {
+            *out_result = nullptr;
+        } else {
+            *out_result = new ifcopenshell_project_append_asset_cache_t{result_value, true};
+        }
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_project_append_asset_cache_set(ifcopenshell_project_append_asset_cache_t* cache, ifcopenshell_instance_t* source, ifcopenshell_instance_t* target) {
+    try {
+        ifcopenshell_clear_error();
+    if (cache == nullptr || cache->ptr == nullptr) { throw std::runtime_error("Handle parameter \"cache\" is invalid"); }
+    auto cache_cpp = cache->ptr;
+    if (source == nullptr) { throw std::runtime_error("Handle parameter \"source\" must not be null"); }
+    auto source_cpp = source->value;
+    if (target == nullptr) { throw std::runtime_error("Handle parameter \"target\" must not be null"); }
+    auto target_cpp = target->value;
+        ifcapi::bindings::project_append_asset_cache_set(cache_cpp, source_cpp, target_cpp);
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());

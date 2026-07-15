@@ -61,6 +61,8 @@ std::string guid_expand(const std::string& guid);
 
 IFCAPI_HANDLE(value, ifcopenshell_selector_value_t, function:ifcapi::bindings::value_free)
 IFCAPI_HANDLE(pset_template_handle, ifcopenshell_pset_template_t, function:ifcapi::bindings::pset_template_free)
+IFCAPI_HANDLE(project_append_asset_cache, ifcapi::bindings::ProjectAppendAssetCache, function:ifcapi::bindings::project_append_asset_cache_free)
+struct ifcopenshell_project_append_asset_cache_t;
 
 namespace ifcapi::bindings {
 
@@ -92,6 +94,14 @@ IFCAPI_RESULT_STRUCT(ifcapi::bindings::SequenceDuplicateTaskResult)
 struct ifcopenshell_sequence_duplicate_task_result_t {
     std::vector<express::Base> current;
     std::vector<express::Base> duplicate;
+};
+
+IFCAPI_RESULT_STRUCT(ifcapi::bindings::ProjectAppendAssetCacheEntries)
+struct ifcopenshell_project_append_asset_cache_entry_t {
+    std::vector<std::int64_t> source_identities;
+    std::vector<std::int64_t> source_ids;
+    std::vector<std::string> source_types;
+    std::vector<express::Base> targets;
 };
 
 inline std::string guid_generate() {

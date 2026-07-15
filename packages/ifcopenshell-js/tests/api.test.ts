@@ -30,6 +30,81 @@ describeGeneratedOrSkip('direct api modules', () => {
     expect(await entity?.get('Name')).toBe('Project');
   });
 
+  it('appends an asset through the generated project API', async () => {
+    await using target = await IfcFile.createEmpty(shell, 'IFC4');
+    await using library = await IfcFile.createEmpty(shell, 'IFC4');
+    const wall = await shell.api.root.createEntity(library, {
+      ifcClass: 'IfcWall',
+      name: 'Library wall',
+    });
+    const appended = shell.api.project.appendAsset(target, { library, element: wall });
+    expect(appended?.type).toBe('IfcWall');
+
+    const unsupported = await shell.api.root.createEntity(library, {
+      ifcClass: 'IfcProject',
+      name: 'Unsupported project',
+    });
+    expect(shell.api.project.appendAsset(target, {
+      library,
+      element: unsupported,
+    })).toBeNull();
+
+    const cachedWall = await shell.api.root.createEntity(library, {
+      ifcClass: 'IfcWall',
+      name: 'Cached library wall',
+    });
+    const cache = shell.api.project.appendAssetCacheNew();
+    expect(cache).not.toBeNull();
+    try {
+      const cached = shell.api.project.appendAsset(target, {
+        library,
+        element: cachedWall,
+        cache: cache!,
+      });
+      expect(cached?.type).toBe('IfcWall');
+
+      const entries = shell.api.project.appendAssetCacheEntries(cache!);
+      expect(entries.sourceIdentities).toContain(cachedWall.raw.identity());
+      expect(entries.targets.some((targetEntity) => targetEntity.type === 'IfcWall')).toBe(true);
+    } finally {
+      cache?.destroy();
+    }
+  });
+
+  it('maps snake-case fields from an existing multi-field result', async () => {
+    await using file = await IfcFile.createEmpty(shell, 'IFC4');
+    const segment = file.create('IfcFlowSegment');
+    const profile = file.create('IfcRectangleProfileDef');
+    profile.set('ProfileType', 'AREA');
+    profile.set('XDim', 2);
+    profile.set('YDim', 1);
+    const material = file.create('IfcMaterial', { name: 'Material' });
+    const materialProfile = file.create('IfcMaterialProfile');
+    materialProfile.set('Material', material);
+    materialProfile.set('Profile', profile);
+    const materialSet = file.create('IfcMaterialProfileSet');
+    materialSet.set('MaterialProfiles', [materialProfile]);
+    const association = file.create('IfcRelAssociatesMaterial');
+    association.set('RelatedObjects', [segment]);
+    association.set('RelatingMaterial', materialSet);
+
+    const result = shell.api.shape.builderMepBendShape(file, {
+      segment,
+      startLength: 1,
+      endLength: 1,
+      angle: 1,
+      radius: 1,
+      bendVector: [1, 0],
+      flipZAxis: false,
+    });
+
+    expect(result.representation.type).toBe('IfcShapeRepresentation');
+    expect(result.startLength).toBe(1);
+    expect(result.endLength).toBe(1);
+    expect(result.lateralAxis).toBe(0);
+    expect(result.mainProfileDimension).toBe(1);
+  });
+
   it('wraps generated instance lists', async () => {
     await using file = await IfcFile.createEmpty(shell, 'IFC4');
     const project = await shell.api.root.createEntity(file, {

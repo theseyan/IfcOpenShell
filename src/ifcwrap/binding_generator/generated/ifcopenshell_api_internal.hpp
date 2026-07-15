@@ -161,6 +161,11 @@ struct ifcopenshell_pset_template_handle_t {
     bool owned;
 };
 
+struct ifcopenshell_project_append_asset_cache_t {
+    ifcapi::bindings::ProjectAppendAssetCache* ptr;
+    bool owned;
+};
+
 struct ifcopenshell_geom_iterator_t {
     IfcGeom::Iterator* ptr;
     bool owned;

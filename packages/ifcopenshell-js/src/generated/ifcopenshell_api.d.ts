@@ -8,6 +8,13 @@ declare module 'ifcopenshell-api' {
     new (arrayLike: ArrayLike<number>): T;
   }
 
+  export interface IfcOpenshellProjectAppendAssetCacheEntry {
+    source_identities: bigint[];
+    source_ids: bigint[];
+    source_types: string[];
+    targets: IfcOpenshellParseInstanceList;
+  }
+
   export interface IfcOpenshellSequenceDuplicateTaskResult {
     current: IfcOpenshellParseInstanceList;
     duplicate: IfcOpenshellParseInstanceList;
@@ -655,6 +662,13 @@ declare module 'ifcopenshell-api' {
     outer_profile: number[][];
     inner_profiles: number[][][];
     name?: string;
+  }
+
+  export interface IfcOpenshellProjectAppendAssetOptions {
+    library: IfcOpenshellFile;
+    element: IfcOpenshellInstance;
+    cache?: IfcOpenshellProjectAppendAssetCache;
+    assume_asset_uniqueness_by_name?: boolean;
   }
 
   export interface IfcOpenshellProjectAssignDeclarationOptions {
@@ -1543,6 +1557,11 @@ declare module 'ifcopenshell-api' {
     asNamedType(): IfcOpenshellNamedType | null;
     asSimpleType(): IfcOpenshellSimpleType | null;
     kind(): string;
+  }
+
+  export class IfcOpenshellProjectAppendAssetCache {
+    readonly ptr: number;
+    destroy(): void;
   }
 
   export class IfcOpenshellPsetTemplateHandle {
@@ -4133,6 +4152,21 @@ declare module 'ifcopenshell-api' {
 
   export interface IfcOpenshellProjectModule {
     /**
+     * Append one supported asset from a source/library file into the target file.
+     *
+     * Returns the existing or newly copied target asset, or an empty value for an
+     * unsupported entity class. Native code owns graph traversal, inverse
+     * filtering, deduplication, context replacement, placement correction, type
+     * assignment, unit conversion, and reusable-cache cleanup.
+     */
+    appendAsset(file: IfcOpenshellFile, options: IfcOpenshellProjectAppendAssetOptions): IfcOpenshellInstance | null;
+    /** Return valid cache mappings in ascending source-identity order. */
+    appendAssetCacheEntries(cache: IfcOpenshellProjectAppendAssetCache): IfcOpenshellProjectAppendAssetCacheEntry;
+    /** Allocate an empty reusable append-asset cache. */
+    appendAssetCacheNew(): IfcOpenshellProjectAppendAssetCache | null;
+    /** Seed/update one semantic source-entity mapping in an append-asset cache. */
+    appendAssetCacheSet(cache: IfcOpenshellProjectAppendAssetCache, source: IfcOpenshellInstance, target: IfcOpenshellInstance): void;
+    /**
      * Declare objects to a project or project library context.
      *
      * Creates or updates an IfcRelDeclares relationship linking the given
@@ -6492,6 +6526,7 @@ declare module 'ifcopenshell-api' {
     IfcOpenshellParameterType: typeof IfcOpenshellParameterType;
     IfcOpenshellParseAttributeValue: typeof IfcOpenshellParseAttributeValue;
     IfcOpenshellParseInstanceList: typeof IfcOpenshellParseInstanceList;
+    IfcOpenshellProjectAppendAssetCache: typeof IfcOpenshellProjectAppendAssetCache;
     IfcOpenshellPsetTemplateHandle: typeof IfcOpenshellPsetTemplateHandle;
     IfcOpenshellSchema: typeof IfcOpenshellSchema;
     IfcOpenshellSelectType: typeof IfcOpenshellSelectType;

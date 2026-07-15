@@ -9,11 +9,85 @@
 #include "ifcparse/express.h"
 #include "ifcparse/file.h"
 
+#include <cstdint>
 #include <optional>
+#include <string>
 #include <vector>
 
 namespace ifcapi {
 namespace bindings {
+
+struct ProjectAppendAssetCache;
+
+/// A deterministic source-identity to target-entity entry returned by an
+/// append-asset cache.
+struct ProjectAppendAssetCacheEntry {
+    std::int64_t source_identity;
+    express::Base target;
+};
+
+/// Deterministic parallel representation of all valid cache entries.
+struct ProjectAppendAssetCacheEntries {
+    std::vector<std::int64_t> source_identities;
+    std::vector<std::int64_t> source_ids;
+    std::vector<std::string> source_types;
+    std::vector<express::Base> targets;
+};
+
+/**
+ * Options for appending a reusable asset from a library file.
+ *
+ * `library` is the source IFC file and `file` is the target IFC file passed to
+ * project_append_asset. The optional owned cache carries semantic source
+ * identity mappings across calls; it must be disposed before the target file.
+ * The target file must outlive the cache. Native code validates and prunes the
+ * cache after removals, and a cache may not be shared between target files
+ * while it contains mappings.
+ *
+ * The operation copies only the selected asset's forward graph and the
+ * supported inverse relationships. Existing roots are reused by GlobalId,
+ * and the uniqueness flag enables the upstream name/equivalence reuse rules.
+ * Length measures are converted using the source and target project units;
+ * complete mixed-unit model conversion is not generally promised.
+ */
+struct ProjectAppendAssetOptions {
+    /// Source/library file containing the asset.
+    ifcopenshell::file* library;
+    /// Asset in the source/library file to append.
+    express::Base element;
+    /// Optional reusable native identity cache.
+    std::optional<ProjectAppendAssetCache*> cache = std::nullopt;
+    /// Reuse supported named/equivalent assets when true.
+    std::optional<bool> assume_asset_uniqueness_by_name = true;
+};
+
+/// Allocate an empty reusable append-asset cache.
+IFCAPI_BINDING IFCAPI_OWNED ProjectAppendAssetCache* project_append_asset_cache_new();
+
+/// Dispose an append-asset cache. The target file must outlive the cache.
+IFCAPI_BINDING void project_append_asset_cache_free(ProjectAppendAssetCache* cache);
+
+/// Seed/update one semantic source-entity mapping in an append-asset cache.
+IFCAPI_BINDING void project_append_asset_cache_set(
+    ProjectAppendAssetCache* cache,
+    express::Base source,
+    express::Base target);
+
+/// Return valid cache mappings in ascending source-identity order.
+IFCAPI_BINDING ProjectAppendAssetCacheEntries project_append_asset_cache_entries(
+    ProjectAppendAssetCache* cache);
+
+/**
+ * Append one supported asset from a source/library file into the target file.
+ *
+ * Returns the existing or newly copied target asset, or an empty value for an
+ * unsupported entity class. Native code owns graph traversal, inverse
+ * filtering, deduplication, context replacement, placement correction, type
+ * assignment, unit conversion, and reusable-cache cleanup.
+ */
+IFCAPI_BINDING std::optional<express::Base> project_append_asset(
+    ifcopenshell::file* file,
+    const ProjectAppendAssetOptions& options);
 
 /**
  * Options for assigning declarations to a project context.

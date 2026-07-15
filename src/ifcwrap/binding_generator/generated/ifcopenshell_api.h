@@ -151,6 +151,7 @@ typedef struct ifcopenshell_parse_attribute_value_t ifcopenshell_parse_attribute
 typedef struct ifcopenshell_parse_instance_list_t ifcopenshell_parse_instance_list_t;
 typedef struct ifcopenshell_value_t ifcopenshell_value_t;
 typedef struct ifcopenshell_pset_template_handle_t ifcopenshell_pset_template_handle_t;
+typedef struct ifcopenshell_project_append_asset_cache_t ifcopenshell_project_append_asset_cache_t;
 typedef struct ifcopenshell_geom_iterator_t ifcopenshell_geom_iterator_t;
 typedef struct ifcopenshell_geom_settings_t ifcopenshell_geom_settings_t;
 typedef struct ifcopenshell_geom_serializer_settings_t ifcopenshell_geom_serializer_settings_t;
@@ -1131,6 +1132,15 @@ typedef struct ifcopenshell_profile_add_arbitrary_profile_with_voids_options_t {
     bool has_name;
 } ifcopenshell_profile_add_arbitrary_profile_with_voids_options_t;
 
+typedef struct ifcopenshell_project_append_asset_options_t {
+    ifcopenshell_file_t* library;
+    ifcopenshell_instance_t* element;
+    ifcopenshell_project_append_asset_cache_t* cache;
+    bool has_cache;
+    bool assume_asset_uniqueness_by_name;
+    bool has_assume_asset_uniqueness_by_name;
+} ifcopenshell_project_append_asset_options_t;
+
 typedef struct ifcopenshell_project_assign_declaration_options_t {
     ifcopenshell_parse_instance_list_t* definitions;
     ifcopenshell_instance_t* relating_context;
@@ -1769,6 +1779,13 @@ typedef struct ifcopenshell_sequence_duplicate_task_result_t {
     ifcopenshell_parse_instance_list_t* duplicate;
 } ifcopenshell_sequence_duplicate_task_result_t;
 
+typedef struct ifcopenshell_project_append_asset_cache_entry_t {
+    ifcopenshell_int64_list_t source_identities;
+    ifcopenshell_int64_list_t source_ids;
+    ifcopenshell_string_list_t source_types;
+    ifcopenshell_parse_instance_list_t* targets;
+} ifcopenshell_project_append_asset_cache_entry_t;
+
 typedef struct ifcopenshell_optional_shape_builder_mep_transition_shape_result_t {
     bool has_value;
     ifcopenshell_shape_builder_mep_transition_shape_result_t value;
@@ -1816,6 +1833,7 @@ void ifcopenshell_parse_attribute_value_destroy(ifcopenshell_parse_attribute_val
 void ifcopenshell_parse_instance_list_destroy(ifcopenshell_parse_instance_list_t* handle);
 void ifcopenshell_value_destroy(ifcopenshell_value_t* handle);
 void ifcopenshell_pset_template_handle_destroy(ifcopenshell_pset_template_handle_t* handle);
+void ifcopenshell_project_append_asset_cache_destroy(ifcopenshell_project_append_asset_cache_t* handle);
 void ifcopenshell_geom_iterator_destroy(ifcopenshell_geom_iterator_t* handle);
 void ifcopenshell_geom_settings_destroy(ifcopenshell_geom_settings_t* handle);
 void ifcopenshell_geom_serializer_settings_destroy(ifcopenshell_geom_serializer_settings_t* handle);
@@ -1898,6 +1916,7 @@ void ifcopenshell_geom_element_list_list_destroy(ifcopenshell_geom_element_list_
 void ifcopenshell_shape_builder_mep_transition_shape_result_destroy(ifcopenshell_shape_builder_mep_transition_shape_result_t* value);
 void ifcopenshell_shape_builder_mep_bend_shape_result_destroy(ifcopenshell_shape_builder_mep_bend_shape_result_t* value);
 void ifcopenshell_sequence_duplicate_task_result_destroy(ifcopenshell_sequence_duplicate_task_result_t* value);
+void ifcopenshell_project_append_asset_cache_entry_destroy(ifcopenshell_project_append_asset_cache_entry_t* value);
 void ifcopenshell_optional_shape_builder_mep_transition_shape_result_destroy(ifcopenshell_optional_shape_builder_mep_transition_shape_result_t* value);
 void ifcopenshell_instance_string_variant_destroy(ifcopenshell_instance_string_variant_t* value);
 
@@ -3878,6 +3897,23 @@ bool ifcopenshell_profile_edit_profile(ifcopenshell_instance_t* profile, void* a
  * @param profile IfcProfileDef entity to remove.
  */
 bool ifcopenshell_profile_remove_profile(ifcopenshell_file_t* file, ifcopenshell_instance_t* profile);
+/**
+ * Append one supported asset from a source/library file into the target file.
+ *
+ * Returns the existing or newly copied target asset, or an empty value for an
+ * unsupported entity class. Native code owns graph traversal, inverse
+ * filtering, deduplication, context replacement, placement correction, type
+ * assignment, unit conversion, and reusable-cache cleanup.
+ */
+bool ifcopenshell_project_append_asset(ifcopenshell_file_t* file, const ifcopenshell_project_append_asset_options_t* options, ifcopenshell_instance_t** out_result);
+/** Return valid cache mappings in ascending source-identity order. */
+bool ifcopenshell_project_append_asset_cache_entries(ifcopenshell_project_append_asset_cache_t* cache, ifcopenshell_project_append_asset_cache_entry_t* out_result);
+/** Dispose an append-asset cache. The target file must outlive the cache. */
+bool ifcopenshell_project_append_asset_cache_free(ifcopenshell_project_append_asset_cache_t* cache);
+/** Allocate an empty reusable append-asset cache. */
+bool ifcopenshell_project_append_asset_cache_new(ifcopenshell_project_append_asset_cache_t** out_result);
+/** Seed/update one semantic source-entity mapping in an append-asset cache. */
+bool ifcopenshell_project_append_asset_cache_set(ifcopenshell_project_append_asset_cache_t* cache, ifcopenshell_instance_t* source, ifcopenshell_instance_t* target);
 /**
  * Declare objects to a project or project library context.
  *

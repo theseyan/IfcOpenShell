@@ -18,6 +18,8 @@ from .._shared import (
     _typed_buffer_element,
 )
 
+_HIDDEN_FUNCTIONS = frozenset({"ifcopenshell_project_append_asset_cache_free"})
+
 
 def _interface_name(name: str) -> str:
     base = name.removeprefix("ifcopenshell_").removesuffix("_t")
@@ -271,7 +273,11 @@ def _module_interface_name(module_name: str) -> str:
 def _collect_module_members(metadata: BindingABI) -> dict[str, list[str]]:
     module_members: dict[str, list[str]] = {}
     for function in sorted(metadata.functions.values(), key=lambda item: item.c_name):
-        if function.receiver is not None or function.c_name in _INTERNAL_C_FUNCTIONS:
+        if (
+            function.receiver is not None
+            or function.c_name in _INTERNAL_C_FUNCTIONS
+            or function.c_name in _HIDDEN_FUNCTIONS
+        ):
             continue
         module_member = _public_module_member(function, metadata.c_prefix)
         if module_member is None:
@@ -311,7 +317,7 @@ def _render_module_interface(
     for function in sorted(metadata.functions.values(), key=lambda item: item.c_name):
         if function.receiver is not None:
             continue
-        if function.c_name in _INTERNAL_C_FUNCTIONS:
+        if function.c_name in _INTERNAL_C_FUNCTIONS or function.c_name in _HIDDEN_FUNCTIONS:
             continue
         if _public_module_member(function, metadata.c_prefix) is not None:
             continue

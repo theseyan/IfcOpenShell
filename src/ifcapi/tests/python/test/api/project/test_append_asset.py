@@ -17,7 +17,9 @@
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
 import numpy as np
+import pytest
 
+from ifcopenshell import _ifcopenshell_capi as _capi
 import ifcopenshell.api.classification
 import ifcopenshell.api.context
 import ifcopenshell.api.cost
@@ -58,6 +60,32 @@ class TestAppendAssetIFC2X3(test.bootstrap.IFC2X3):
         ifcopenshell.api.project.append_asset(self.file, library=library, element=profile)
         ifcopenshell.api.project.append_asset(self.file, library=library, element=profile)
         assert len(self.file.by_type("IfcWallType")) == 1
+
+    def test_reuse_an_unnamed_material(self):
+        library = ifcopenshell.api.project.create_file(version=self.file.schema)
+        source = ifcopenshell.api.material.add_material(library)
+        existing = ifcopenshell.api.material.add_material(self.file)
+
+        appended = ifcopenshell.api.project.append_asset(self.file, library=library, element=source)
+
+        assert appended == existing
+        assert len(self.file.by_type("IfcMaterial")) == 1
+
+    def test_reuse_identities_accepts_public_tuple_keys(self):
+        library = ifcopenshell.api.project.create_file(version=self.file.schema)
+        source = ifcopenshell.api.root.create_entity(library, ifc_class="IfcWall")
+        existing = ifcopenshell.api.root.create_entity(self.file, ifc_class="IfcWall")
+        reuse_identities = {source.identity(): existing}
+
+        appended = ifcopenshell.api.project.append_asset(
+            self.file,
+            library=library,
+            element=source,
+            reuse_identities=reuse_identities,
+        )
+
+        assert appended == existing
+        assert reuse_identities[source.identity()] == existing
 
     def test_append_a_type_product(self):
         library = ifcopenshell.api.project.create_file(version=self.file.schema)
@@ -502,9 +530,13 @@ class TestAppendAssetIFC2X3(test.bootstrap.IFC2X3):
         element1_ = ifcopenshell.api.project.append_asset(
             self.file, library, element1, reuse_identities=reuse_identities
         )
+        assert reuse_identities
+        assert all(value.file is self.file for value in reuse_identities.values())
         element2_ = ifcopenshell.api.project.append_asset(
             self.file, library, element2, reuse_identities=reuse_identities
         )
+        assert reuse_identities
+        assert all(value.file is self.file for value in reuse_identities.values())
         pset_data = ifcopenshell.util.element.get_psets(element1_)
         assert "Test" in pset_data
         assert ifcopenshell.util.element.get_psets(element2_) == pset_data
@@ -542,6 +574,89 @@ class TestAppendAssetIFC2X3(test.bootstrap.IFC2X3):
             self.file, library=library, element=element, reuse_identities=reuse_identities
         )
         str(reuse_identities)  # Will trigger crash if there are no removed entities.
+
+    def test_native_reusable_cache_contract_and_target_ownership(self):
+        library = ifcopenshell.api.project.create_file(version=self.file.schema)
+        element = ifcopenshell.api.root.create_entity(library, ifc_class="IfcWall")
+        other_file = ifcopenshell.api.project.create_file(version=self.file.schema)
+        source_identity = _capi.instance_identity(element._handle)
+
+        cache = _capi.project_append_asset_cache_new()
+        try:
+            result = _capi.project_append_asset(
+                self.file._handle,
+                {
+                    "library": library._handle,
+                    "element": element._handle,
+                    "cache": cache,
+                    "assume_asset_uniqueness_by_name": True,
+                },
+            )
+            assert result
+            result = ifcopenshell.entity_instance(self.file, result)
+            entries = _capi.project_append_asset_cache_entries(cache)
+            try:
+                assert source_identity in list(entries.source_identities)
+                target_ids = []
+                for index in range(_capi.instance_list_size(entries.targets)):
+                    target = _capi.instance_list_get(entries.targets, index)
+                    try:
+                        target_ids.append(_capi.instance_id(target))
+                    finally:
+                        _capi.instance_destroy(target)
+                assert result.id() in target_ids
+            finally:
+                _capi.instance_list_destroy(entries.targets)
+
+            with pytest.raises(RuntimeError, match="different target file"):
+                _capi.project_append_asset(
+                    other_file._handle,
+                    {
+                        "library": library._handle,
+                        "element": element._handle,
+                        "cache": cache,
+                        "assume_asset_uniqueness_by_name": True,
+                    },
+                )
+
+            ifcopenshell.util.element.remove_deep2(self.file, result)
+            entries = _capi.project_append_asset_cache_entries(cache)
+            try:
+                assert source_identity not in list(entries.source_identities)
+            finally:
+                _capi.instance_list_destroy(entries.targets)
+        finally:
+            _capi.project_append_asset_cache_destroy(cache)
+
+        fresh_cache = _capi.project_append_asset_cache_new()
+        try:
+            result = _capi.project_append_asset(
+                other_file._handle,
+                {
+                    "library": library._handle,
+                    "element": element._handle,
+                    "cache": fresh_cache,
+                    "assume_asset_uniqueness_by_name": True,
+                },
+            )
+            assert result
+        finally:
+            _capi.project_append_asset_cache_destroy(fresh_cache)
+
+    def test_native_one_off_contract_uses_default_options(self):
+        library = ifcopenshell.api.project.create_file(version=self.file.schema)
+        source = ifcopenshell.api.material.add_material(library, name="Shared")
+        existing = ifcopenshell.api.material.add_material(self.file, name="Shared")
+
+        result = _capi.project_append_asset(
+            self.file._handle,
+            {"library": library._handle, "element": source._handle},
+        )
+
+        assert result
+        result = ifcopenshell.entity_instance(self.file, result)
+        assert result == existing
+        assert len(self.file.by_type("IfcMaterial")) == 1
 
     def test_file_add_to_convert_units(self):
         library = ifcopenshell.file()
@@ -649,6 +764,77 @@ class TestAppendAssetIFC2X3(test.bootstrap.IFC2X3):
 
 
 class TestAppendAssetIFC4(test.bootstrap.IFC4, TestAppendAssetIFC2X3):
+    def test_layer_set_equivalence_uses_referenced_material_names(self):
+        library = ifcopenshell.api.project.create_file(version=self.file.schema)
+        source_type = ifcopenshell.api.root.create_entity(library, ifc_class="IfcWallType")
+        source_material = ifcopenshell.api.material.add_material(library, name="SourceMat")
+        source_set = ifcopenshell.api.material.add_material_set(
+            library, set_type="IfcMaterialLayerSet", name="Shared"
+        )
+        source_layer = ifcopenshell.api.material.add_layer(library, source_set, source_material)
+        source_layer.Name = "Layer"
+        source_layer.LayerThickness = 0.2
+        ifcopenshell.api.material.assign_material(library, [source_type], material=source_set)
+
+        different_material = ifcopenshell.api.material.add_material(self.file, name="DifferentMat")
+        existing_set = ifcopenshell.api.material.add_material_set(
+            self.file, set_type="IfcMaterialLayerSet", name="Shared"
+        )
+        existing_layer = ifcopenshell.api.material.add_layer(self.file, existing_set, different_material)
+        existing_layer.Name = "Layer"
+        existing_layer.LayerThickness = 0.2
+
+        appended = ifcopenshell.api.project.append_asset(self.file, library, source_type)
+        appended_set = ifcopenshell.util.element.get_material(appended)
+
+        assert appended_set != existing_set
+        assert appended_set.MaterialLayers[0].Material.Name == "SourceMat"
+        assert len(self.file.by_type("IfcMaterialLayerSet")) == 2
+
+    def test_material_set_lookup_checks_all_same_name_candidates(self):
+        def add_profile_set(ifc_file, material_name, profile_name):
+            material = ifcopenshell.api.material.add_material(ifc_file, name=material_name)
+            profile = ifc_file.create_entity(
+                "IfcRectangleProfileDef",
+                ProfileType="AREA",
+                ProfileName=profile_name,
+                XDim=1.0,
+                YDim=1.0,
+            )
+            material_set = ifcopenshell.api.material.add_material_set(
+                ifc_file, set_type="IfcMaterialProfileSet", name="Shared"
+            )
+            ifcopenshell.api.material.add_profile(ifc_file, material_set, material, profile)
+            return material_set
+
+        library = ifcopenshell.api.project.create_file(version=self.file.schema)
+        source_type = ifcopenshell.api.root.create_entity(library, ifc_class="IfcColumnType")
+        source_set = add_profile_set(library, "SourceMat", "SourceProfile")
+        ifcopenshell.api.material.assign_material(library, [source_type], material=source_set)
+
+        add_profile_set(self.file, "WrongMat", "WrongProfile")
+        matching_set = add_profile_set(self.file, "SourceMat", "SourceProfile")
+
+        appended = ifcopenshell.api.project.append_asset(self.file, library, source_type)
+
+        assert ifcopenshell.util.element.get_material(appended) == matching_set
+        assert len(self.file.by_type("IfcMaterialProfileSet")) == 2
+
+    def test_existing_subelement_with_whitelisted_inverses_is_not_reprocessed(self):
+        library = ifcopenshell.api.project.create_file(version=self.file.schema)
+        source_type = ifcopenshell.api.root.create_entity(library, ifc_class="IfcWallType")
+        source_material = ifcopenshell.api.material.add_material(library, name="Shared")
+        ifcopenshell.api.pset.add_pset(library, product=source_material, name="SourceProperties")
+        ifcopenshell.api.material.assign_material(library, [source_type], material=source_material)
+
+        existing_material = ifcopenshell.api.material.add_material(self.file, name="Shared")
+        ifcopenshell.api.pset.add_pset(self.file, product=existing_material, name="TargetProperties")
+
+        appended = ifcopenshell.api.project.append_asset(self.file, library, source_type)
+
+        assert ifcopenshell.util.element.get_material(appended) == existing_material
+        assert set(ifcopenshell.util.element.get_psets(existing_material)) == {"TargetProperties"}
+
     # NOTE: breaks in IFC2X3 since IfcProfileDef doesn't have "HasProperties" inverse in ifc2x3
     # and we use it in whitelisted_inverse_attributes for appending IfcProfileDef
     def test_append_a_profile_def_with_all_properties(self):

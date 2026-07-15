@@ -27,6 +27,7 @@ _HANDLE_TS = {
     "instance_list": "Entity[]",
     "value": "Value",
     "pset_template_handle": "PsetTemplate",
+    "project_append_asset_cache": "IfcOpenshellProjectAppendAssetCache",
 }
 
 _HANDLE_KIND_NAMES = {
@@ -37,12 +38,14 @@ _HANDLE_KIND_NAMES = {
     "instance_list": "instance_list",
     "value": "value",
     "pset_template_handle": "pset_template",
+    "project_append_asset_cache": "project_append_asset_cache",
 }
 
 _INTERNAL_MODULES = {"value"}
 
 _GENERATED_HANDLE_TS = {
     "pset_template_handle": "PsetTemplate",
+    "project_append_asset_cache": "IfcOpenshellProjectAppendAssetCache",
 }
 
 _RAW_PARAM_SCALAR_TS = {
@@ -96,6 +99,7 @@ _HIDDEN_FUNCTIONS = {
     "ifcopenshell_pset_props_set_typed_string",
     "ifcopenshell_pset_props_set_unit_for_last",
     "ifcopenshell_pset_template_free",
+    "ifcopenshell_project_append_asset_cache_free",
     "ifcopenshell_selector_keys_count",
     "ifcopenshell_selector_keys_free",
     "ifcopenshell_selector_keys_get",
@@ -519,7 +523,7 @@ def _result_wrap_expr(value_expr: str, c_type: str, metadata: BindingABI) -> str
     if handle == "value":
         return f"wrapValue(shell, {value_expr} as never)"
     if ts_type in {"string", "boolean", "number", "bigint"}:
-        return value_expr
+        return f"{value_expr} as {ts_type}"
     sequence = next(
         (
             item
@@ -538,6 +542,20 @@ def _result_wrap_expr(value_expr: str, c_type: str, metadata: BindingABI) -> str
     return f"wrap(shell, {value_expr})"
 
 
+def _raw_result_struct_type(function: CFunctionIR, metadata: BindingABI) -> str:
+    if function.returns.struct is None:
+        return "RawValue"
+    struct = metadata.value_types.get(function.returns.struct)
+    if struct is None or struct.kind != "result_struct":
+        return "RawValue"
+    fields = []
+    for field in struct.fields:
+        field_type = _direct_ts_type_from_c_type(field.c_type, metadata)
+        raw_type = field_type if field_type in {"string", "boolean", "number", "bigint"} else "RawValue"
+        fields.append(f"{field.name}: {raw_type}")
+    return f"{{ {'; '.join(fields)} }}"
+
+
 def _result_struct_expr(
     function: CFunctionIR, return_type: str, metadata: BindingABI
 ) -> str:
@@ -547,7 +565,7 @@ def _result_struct_expr(
     if struct is None or struct.kind != "result_struct":
         return f"wrap(shell, result) as {return_type}"
     fields = ", ".join(
-        f"{_camel_name(field.name)}: {_result_wrap_expr(f'data.{_camel_name(field.name)}', field.c_type, metadata)}"
+        f"{_camel_name(field.name)}: {_result_wrap_expr(f'data.{field.name}', field.c_type, metadata)}"
         for field in struct.fields
     )
     return f"{{ {fields} }}"
@@ -610,6 +628,7 @@ def _render_direct_method(
         return "\n".join(lines)
     if function.returns.kind == "struct":
         struct_expr = _result_struct_expr(function, return_type, metadata)
+        raw_struct_type = _raw_result_struct_type(function, metadata)
         null_guard = (
             ["        if (result === null) return null;"]
             if function.returns.nullable
@@ -622,7 +641,7 @@ def _render_direct_method(
                 "      try {",
                 f"        const result = {_property_access(_property_access('raw', module_name), name)}({args});",
                 *null_guard,
-                f"        const data = result as NonNullable<{return_type}>;",
+                f"        const data = result as {raw_struct_type};",
                 f"        return {struct_expr} as {return_type};",
                 "      } finally {",
                 "        disposeAll(temps);",

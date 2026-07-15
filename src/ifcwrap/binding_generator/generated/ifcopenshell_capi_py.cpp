@@ -3765,6 +3765,57 @@ typedef struct {
     PyObject_HEAD
     void *handle;
     int owned;
+} IfcOpenshellProjectAppendAssetCacheObject;
+
+static void IfcOpenshellProjectAppendAssetCache_dealloc(IfcOpenshellProjectAppendAssetCacheObject *self) {
+    if (self->owned && self->handle) {
+        ifcopenshell_project_append_asset_cache_destroy((ifcopenshell_project_append_asset_cache_t *)self->handle);
+    }
+    self->handle = NULL;
+    self->owned = 0;
+    Py_TYPE(self)->tp_free((PyObject *)self);
+}
+
+static PyObject *IfcOpenshellProjectAppendAssetCache_new(PyTypeObject *type, PyObject *args, PyObject *kwds) {
+    IfcOpenshellProjectAppendAssetCacheObject *self = (IfcOpenshellProjectAppendAssetCacheObject *)type->tp_alloc(type, 0);
+    if (self) {
+        self->handle = NULL;
+        self->owned = 0;
+    }
+    return (PyObject *)self;
+}
+
+static int IfcOpenshellProjectAppendAssetCache_init(IfcOpenshellProjectAppendAssetCacheObject *self, PyObject *args, PyObject *kwds) {
+    PyErr_SetString(PyExc_TypeError, "Cannot create instances directly");
+    return -1;
+}
+
+static PyMemberDef IfcOpenshellProjectAppendAssetCache_members[] = {
+    {"_handle_ptr", T_PYSSIZET, offsetof(IfcOpenshellProjectAppendAssetCacheObject, handle), READONLY, "Raw C pointer"},
+    {"handle", T_PYSSIZET, offsetof(IfcOpenshellProjectAppendAssetCacheObject, handle), READONLY, "Raw C pointer"},
+    {"owned", T_INT, offsetof(IfcOpenshellProjectAppendAssetCacheObject, owned), READONLY, "C handle envelope ownership flag"},
+    {NULL}
+};
+
+
+
+static PyTypeObject IfcOpenshellProjectAppendAssetCacheType = {
+    PyVarObject_HEAD_INIT(NULL, 0)
+    .tp_name = "IfcOpenshellProjectAppendAssetCache",
+    .tp_basicsize = sizeof(IfcOpenshellProjectAppendAssetCacheObject),
+    .tp_dealloc = (destructor)IfcOpenshellProjectAppendAssetCache_dealloc,
+    .tp_flags = Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE,
+    .tp_doc = "Opaque handle to ifcopenshell_project_append_asset_cache_t",
+    .tp_init = (initproc)IfcOpenshellProjectAppendAssetCache_init,
+    .tp_new = IfcOpenshellProjectAppendAssetCache_new,
+    .tp_members = IfcOpenshellProjectAppendAssetCache_members,
+};
+
+
+typedef struct {
+    PyObject_HEAD
+    void *handle;
+    int owned;
 } IfcOpenshellPsetTemplateHandleObject;
 
 static void IfcOpenshellPsetTemplateHandle_dealloc(IfcOpenshellPsetTemplateHandleObject *self) {
@@ -4948,6 +4999,18 @@ static PyObject *py_instance_list_destroy(PyObject *self, PyObject *args) {
     Py_RETURN_NONE;
 }
 
+static PyObject *py_project_append_asset_cache_destroy(PyObject *self, PyObject *args) {
+    PyObject *arg_obj = NULL;
+    if (!PyArg_ParseTuple(args, "O!", &IfcOpenshellProjectAppendAssetCacheType, &arg_obj)) return NULL;
+    IfcOpenshellProjectAppendAssetCacheObject *obj = (IfcOpenshellProjectAppendAssetCacheObject *)arg_obj;
+    if (obj->handle) {
+        ifcopenshell_project_append_asset_cache_destroy((ifcopenshell_project_append_asset_cache_t *)obj->handle);
+        obj->handle = NULL;
+        obj->owned = 0;
+    }
+    Py_RETURN_NONE;
+}
+
 static PyObject *py_pset_template_handle_destroy(PyObject *self, PyObject *args) {
     PyObject *arg_obj = NULL;
     if (!PyArg_ParseTuple(args, "O!", &IfcOpenshellPsetTemplateHandleType, &arg_obj)) return NULL;
@@ -5829,6 +5892,18 @@ static PyObject *wrap_parse_instance_list(ifcopenshell_parse_instance_list_t *ha
     IfcOpenshellParseInstanceListObject *result = (IfcOpenshellParseInstanceListObject *)IfcOpenshellParseInstanceListType.tp_alloc(&IfcOpenshellParseInstanceListType, 0);
     if (!result) {
         ifcopenshell_parse_instance_list_destroy(handle);
+        return NULL;
+    }
+    result->handle = handle;
+    result->owned = owned;
+    return (PyObject *)result;
+}
+
+static PyObject *wrap_project_append_asset_cache(ifcopenshell_project_append_asset_cache_t *handle, int owned) {
+    if (!handle) Py_RETURN_NONE;
+    IfcOpenshellProjectAppendAssetCacheObject *result = (IfcOpenshellProjectAppendAssetCacheObject *)IfcOpenshellProjectAppendAssetCacheType.tp_alloc(&IfcOpenshellProjectAppendAssetCacheType, 0);
+    if (!result) {
+        ifcopenshell_project_append_asset_cache_destroy(handle);
         return NULL;
     }
     result->handle = handle;
@@ -12631,6 +12706,59 @@ static int fill_input_profile_add_arbitrary_profile_with_voids_options(PyObject 
 }
 
 
+static void free_input_project_append_asset_options(ifcopenshell_project_append_asset_options_t *value) {
+    (void)value;
+}
+
+static int fill_input_project_append_asset_options(PyObject *obj, ifcopenshell_project_append_asset_options_t *out, PyObject **refs) {
+    if (!PyMapping_Check(obj)) {
+        PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
+        return 0;
+    }
+    PyObject *field_0 = get_option_field(obj, "library", 1);
+    if (!field_0) {
+        return 0;
+    }
+    refs[0] = field_0;
+    if (!extract_handle(field_0, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&out->library, 0)) {
+        return 0;
+    }
+    PyObject *field_1 = get_option_field(obj, "element", 1);
+    if (!field_1) {
+        return 0;
+    }
+    refs[1] = field_1;
+    if (!extract_handle(field_1, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->element, 0)) {
+        return 0;
+    }
+    PyObject *field_2 = get_option_field(obj, "cache", 0);
+    if (!field_2) {
+        if (PyErr_Occurred()) return 0;
+    } else {
+        refs[2] = field_2;
+        if (field_2 != Py_None) {
+            if (!extract_handle(field_2, &IfcOpenshellProjectAppendAssetCacheType, "IfcOpenshellProjectAppendAssetCache", (void **)&out->cache, 0)) {
+                return 0;
+            }
+        out->has_cache = true;
+        }
+    }
+    PyObject *field_3 = get_option_field(obj, "assume_asset_uniqueness_by_name", 0);
+    if (!field_3) {
+        if (PyErr_Occurred()) return 0;
+    } else {
+        refs[3] = field_3;
+        if (field_3 != Py_None) {
+            int value_3 = PyObject_IsTrue(field_3);
+            if (value_3 < 0) return 0;
+            out->assume_asset_uniqueness_by_name = (bool)value_3;
+        out->has_assume_asset_uniqueness_by_name = true;
+        }
+    }
+    return 1;
+}
+
+
 static void free_input_project_assign_declaration_options(ifcopenshell_project_assign_declaration_options_t *value) {
     if (value->definitions) {
         ifcopenshell_parse_instance_list_destroy(value->definitions);
@@ -17510,6 +17638,36 @@ static PyObject *convert_sequence_duplicate_task_result(ifcopenshell_sequence_du
     if (PyObject_SetAttrString(result, "duplicate", item) < 0) { Py_DECREF(item); Py_DECREF(result); ifcopenshell_sequence_duplicate_task_result_destroy(value); return NULL; }
     Py_DECREF(item);
     ifcopenshell_sequence_duplicate_task_result_destroy(value);
+    return result;
+}
+
+static PyObject *convert_project_append_asset_cache_entry(ifcopenshell_project_append_asset_cache_entry_t *value, int owned) {
+    if (!SimpleNamespaceType) {
+        ifcopenshell_project_append_asset_cache_entry_destroy(value);
+        PyErr_SetString(PyExc_RuntimeError, "types.SimpleNamespace is not available");
+        return NULL;
+    }
+    PyObject *result = PyObject_CallNoArgs(SimpleNamespaceType);
+    if (!result) { ifcopenshell_project_append_asset_cache_entry_destroy(value); return NULL; }
+    PyObject *item = NULL;
+    item = convert_int64_list(&value->source_identities, 1);
+    if (!item) { Py_DECREF(result); ifcopenshell_project_append_asset_cache_entry_destroy(value); return NULL; }
+    if (PyObject_SetAttrString(result, "source_identities", item) < 0) { Py_DECREF(item); Py_DECREF(result); ifcopenshell_project_append_asset_cache_entry_destroy(value); return NULL; }
+    Py_DECREF(item);
+    item = convert_int64_list(&value->source_ids, 1);
+    if (!item) { Py_DECREF(result); ifcopenshell_project_append_asset_cache_entry_destroy(value); return NULL; }
+    if (PyObject_SetAttrString(result, "source_ids", item) < 0) { Py_DECREF(item); Py_DECREF(result); ifcopenshell_project_append_asset_cache_entry_destroy(value); return NULL; }
+    Py_DECREF(item);
+    item = convert_string_list(&value->source_types, 1);
+    if (!item) { Py_DECREF(result); ifcopenshell_project_append_asset_cache_entry_destroy(value); return NULL; }
+    if (PyObject_SetAttrString(result, "source_types", item) < 0) { Py_DECREF(item); Py_DECREF(result); ifcopenshell_project_append_asset_cache_entry_destroy(value); return NULL; }
+    Py_DECREF(item);
+    item = wrap_parse_instance_list(value->targets, 1);
+    value->targets = NULL;
+    if (!item) { Py_DECREF(result); ifcopenshell_project_append_asset_cache_entry_destroy(value); return NULL; }
+    if (PyObject_SetAttrString(result, "targets", item) < 0) { Py_DECREF(item); Py_DECREF(result); ifcopenshell_project_append_asset_cache_entry_destroy(value); return NULL; }
+    Py_DECREF(item);
+    ifcopenshell_project_append_asset_cache_entry_destroy(value);
     return result;
 }
 
@@ -40343,6 +40501,154 @@ __cleanup:
     return __py_result;
 }
 
+static PyObject *py_ifcopenshell_project_append_asset(PyObject *self, PyObject *args) {
+    PyObject *__py_result = NULL;
+    bool ok = false;
+    PyObject *arg_file_obj = NULL;
+    ifcopenshell_file_t *arg_file = NULL;
+    PyObject *arg_options_obj = NULL;
+    ifcopenshell_project_append_asset_options_t arg_options = {0};
+    PyObject *arg_options_refs[4] = {0};
+    ifcopenshell_instance_t *result = NULL;
+    if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_options_obj)) return NULL;
+
+    if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
+        goto __cleanup;
+    }
+    if (!fill_input_project_append_asset_options(arg_options_obj, &arg_options, arg_options_refs)) {
+        goto __cleanup;
+    }
+
+    ifcopenshell_clear_error();
+    ok = ifcopenshell_project_append_asset(arg_file, &arg_options, &result);
+    if (!ok) {
+        raise_last_error("ifcopenshell_project_append_asset failed");
+        goto __cleanup;
+    }
+    if (result == nullptr && ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_project_append_asset failed");
+        goto __cleanup;
+    }
+    __py_result = wrap_instance(result, 1);
+__cleanup:
+        release_option_refs(arg_options_refs, 4);
+        free_input_project_append_asset_options(&arg_options);
+    return __py_result;
+}
+
+static PyObject *py_ifcopenshell_project_append_asset_cache_entries(PyObject *self, PyObject *args) {
+    PyObject *__py_result = NULL;
+    bool ok = false;
+    PyObject *arg_cache_obj = NULL;
+    ifcopenshell_project_append_asset_cache_t *arg_cache = NULL;
+    ifcopenshell_project_append_asset_cache_entry_t result = {0};
+    if (!PyArg_ParseTuple(args, "O", &arg_cache_obj)) return NULL;
+
+    if (!extract_handle(arg_cache_obj, &IfcOpenshellProjectAppendAssetCacheType, "IfcOpenshellProjectAppendAssetCache", (void **)&arg_cache, 0)) {
+        goto __cleanup;
+    }
+
+    ifcopenshell_clear_error();
+    ok = ifcopenshell_project_append_asset_cache_entries(arg_cache, &result);
+    if (!ok) {
+        raise_last_error("ifcopenshell_project_append_asset_cache_entries failed");
+        goto __cleanup;
+    }
+    __py_result = convert_project_append_asset_cache_entry(&result, 1);
+__cleanup:
+    return __py_result;
+}
+
+static PyObject *py_ifcopenshell_project_append_asset_cache_free(PyObject *self, PyObject *args) {
+    PyObject *__py_result = NULL;
+    bool ok = false;
+    PyObject *arg_cache_obj = NULL;
+    ifcopenshell_project_append_asset_cache_t *arg_cache = NULL;
+
+    if (!PyArg_ParseTuple(args, "O", &arg_cache_obj)) return NULL;
+
+    if (!extract_handle(arg_cache_obj, &IfcOpenshellProjectAppendAssetCacheType, "IfcOpenshellProjectAppendAssetCache", (void **)&arg_cache, 0)) {
+        goto __cleanup;
+    }
+
+    ifcopenshell_clear_error();
+    ok = ifcopenshell_project_append_asset_cache_free(arg_cache);
+    if (!ok) {
+        raise_last_error("ifcopenshell_project_append_asset_cache_free failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_project_append_asset_cache_free failed");
+        goto __cleanup;
+    }
+    Py_INCREF(Py_None);
+    __py_result = Py_None;
+__cleanup:
+    return __py_result;
+}
+
+static PyObject *py_ifcopenshell_project_append_asset_cache_new(PyObject *self, PyObject *args) {
+    PyObject *__py_result = NULL;
+    bool ok = false;
+
+    ifcopenshell_project_append_asset_cache_t *result = NULL;
+    if (!PyArg_ParseTuple(args, "")) return NULL;
+
+
+
+    ifcopenshell_clear_error();
+    ok = ifcopenshell_project_append_asset_cache_new(&result);
+    if (!ok) {
+        raise_last_error("ifcopenshell_project_append_asset_cache_new failed");
+        goto __cleanup;
+    }
+    if (result == nullptr && ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_project_append_asset_cache_new failed");
+        goto __cleanup;
+    }
+    __py_result = wrap_project_append_asset_cache(result, 1);
+__cleanup:
+    return __py_result;
+}
+
+static PyObject *py_ifcopenshell_project_append_asset_cache_set(PyObject *self, PyObject *args) {
+    PyObject *__py_result = NULL;
+    bool ok = false;
+    PyObject *arg_cache_obj = NULL;
+    ifcopenshell_project_append_asset_cache_t *arg_cache = NULL;
+    PyObject *arg_source_obj = NULL;
+    ifcopenshell_instance_t *arg_source = NULL;
+    PyObject *arg_target_obj = NULL;
+    ifcopenshell_instance_t *arg_target = NULL;
+
+    if (!PyArg_ParseTuple(args, "OOO", &arg_cache_obj, &arg_source_obj, &arg_target_obj)) return NULL;
+
+    if (!extract_handle(arg_cache_obj, &IfcOpenshellProjectAppendAssetCacheType, "IfcOpenshellProjectAppendAssetCache", (void **)&arg_cache, 0)) {
+        goto __cleanup;
+    }
+    if (!extract_handle(arg_source_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_source, 0)) {
+        goto __cleanup;
+    }
+    if (!extract_handle(arg_target_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_target, 0)) {
+        goto __cleanup;
+    }
+
+    ifcopenshell_clear_error();
+    ok = ifcopenshell_project_append_asset_cache_set(arg_cache, arg_source, arg_target);
+    if (!ok) {
+        raise_last_error("ifcopenshell_project_append_asset_cache_set failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_project_append_asset_cache_set failed");
+        goto __cleanup;
+    }
+    Py_INCREF(Py_None);
+    __py_result = Py_None;
+__cleanup:
+    return __py_result;
+}
+
 static PyObject *py_ifcopenshell_project_assign_declaration(PyObject *self, PyObject *args) {
     PyObject *__py_result = NULL;
     bool ok = false;
@@ -48989,6 +49295,7 @@ static PyMethodDef module_methods[] = {
     {"parameter_type_destroy", py_parameter_type_destroy, METH_VARARGS, "Destroy ifcopenshell_parameter_type_t"},
     {"attribute_value_destroy", py_attribute_value_destroy, METH_VARARGS, "Destroy ifcopenshell_parse_attribute_value_t"},
     {"instance_list_destroy", py_instance_list_destroy, METH_VARARGS, "Destroy ifcopenshell_parse_instance_list_t"},
+    {"project_append_asset_cache_destroy", py_project_append_asset_cache_destroy, METH_VARARGS, "Destroy ifcopenshell_project_append_asset_cache_t"},
     {"pset_template_handle_destroy", py_pset_template_handle_destroy, METH_VARARGS, "Destroy ifcopenshell_pset_template_handle_t"},
     {"schema_destroy", py_schema_destroy, METH_VARARGS, "Destroy ifcopenshell_schema_t"},
     {"select_type_destroy", py_select_type_destroy, METH_VARARGS, "Destroy ifcopenshell_select_type_t"},
@@ -49805,6 +50112,11 @@ static PyMethodDef module_methods[] = {
     {"profile_copy_profile", py_ifcopenshell_profile_copy_profile, METH_VARARGS, "Wrap ifcopenshell_profile_copy_profile"},
     {"profile_edit_profile", py_ifcopenshell_profile_edit_profile, METH_VARARGS, "Wrap ifcopenshell_profile_edit_profile"},
     {"profile_remove_profile", py_ifcopenshell_profile_remove_profile, METH_VARARGS, "Wrap ifcopenshell_profile_remove_profile"},
+    {"project_append_asset", py_ifcopenshell_project_append_asset, METH_VARARGS, "Wrap ifcopenshell_project_append_asset"},
+    {"project_append_asset_cache_entries", py_ifcopenshell_project_append_asset_cache_entries, METH_VARARGS, "Wrap ifcopenshell_project_append_asset_cache_entries"},
+    {"project_append_asset_cache_free", py_ifcopenshell_project_append_asset_cache_free, METH_VARARGS, "Wrap ifcopenshell_project_append_asset_cache_free"},
+    {"project_append_asset_cache_new", py_ifcopenshell_project_append_asset_cache_new, METH_VARARGS, "Wrap ifcopenshell_project_append_asset_cache_new"},
+    {"project_append_asset_cache_set", py_ifcopenshell_project_append_asset_cache_set, METH_VARARGS, "Wrap ifcopenshell_project_append_asset_cache_set"},
     {"project_assign_declaration", py_ifcopenshell_project_assign_declaration, METH_VARARGS, "Wrap ifcopenshell_project_assign_declaration"},
     {"project_unassign_declaration", py_ifcopenshell_project_unassign_declaration, METH_VARARGS, "Wrap ifcopenshell_project_unassign_declaration"},
     {"pset_add_pset", py_ifcopenshell_pset_add_pset, METH_VARARGS, "Wrap ifcopenshell_pset_add_pset"},
@@ -50875,6 +51187,11 @@ static PyMethodDef module_methods[] = {
     {"ifcopenshell_profile_copy_profile", py_ifcopenshell_profile_copy_profile, METH_VARARGS, "Wrap ifcopenshell_profile_copy_profile"},
     {"ifcopenshell_profile_edit_profile", py_ifcopenshell_profile_edit_profile, METH_VARARGS, "Wrap ifcopenshell_profile_edit_profile"},
     {"ifcopenshell_profile_remove_profile", py_ifcopenshell_profile_remove_profile, METH_VARARGS, "Wrap ifcopenshell_profile_remove_profile"},
+    {"ifcopenshell_project_append_asset", py_ifcopenshell_project_append_asset, METH_VARARGS, "Wrap ifcopenshell_project_append_asset"},
+    {"ifcopenshell_project_append_asset_cache_entries", py_ifcopenshell_project_append_asset_cache_entries, METH_VARARGS, "Wrap ifcopenshell_project_append_asset_cache_entries"},
+    {"ifcopenshell_project_append_asset_cache_free", py_ifcopenshell_project_append_asset_cache_free, METH_VARARGS, "Wrap ifcopenshell_project_append_asset_cache_free"},
+    {"ifcopenshell_project_append_asset_cache_new", py_ifcopenshell_project_append_asset_cache_new, METH_VARARGS, "Wrap ifcopenshell_project_append_asset_cache_new"},
+    {"ifcopenshell_project_append_asset_cache_set", py_ifcopenshell_project_append_asset_cache_set, METH_VARARGS, "Wrap ifcopenshell_project_append_asset_cache_set"},
     {"ifcopenshell_project_assign_declaration", py_ifcopenshell_project_assign_declaration, METH_VARARGS, "Wrap ifcopenshell_project_assign_declaration"},
     {"ifcopenshell_project_unassign_declaration", py_ifcopenshell_project_unassign_declaration, METH_VARARGS, "Wrap ifcopenshell_project_unassign_declaration"},
     {"ifcopenshell_pset_add_pset", py_ifcopenshell_pset_add_pset, METH_VARARGS, "Wrap ifcopenshell_pset_add_pset"},
@@ -51220,6 +51537,7 @@ PyMODINIT_FUNC PyInit__ifcopenshell_capi(void) {
     if (PyType_Ready(&IfcOpenshellParameterTypeType) < 0) return NULL;
     if (PyType_Ready(&IfcOpenshellParseAttributeValueType) < 0) return NULL;
     if (PyType_Ready(&IfcOpenshellParseInstanceListType) < 0) return NULL;
+    if (PyType_Ready(&IfcOpenshellProjectAppendAssetCacheType) < 0) return NULL;
     if (PyType_Ready(&IfcOpenshellPsetTemplateHandleType) < 0) return NULL;
     if (PyType_Ready(&IfcOpenshellSchemaType) < 0) return NULL;
     if (PyType_Ready(&IfcOpenshellSelectTypeType) < 0) return NULL;
@@ -51577,6 +51895,11 @@ PyMODINIT_FUNC PyInit__ifcopenshell_capi(void) {
     Py_INCREF(&IfcOpenshellParseInstanceListType);
     if (PyModule_AddObject(m, "IfcOpenshellParseInstanceList", (PyObject *)&IfcOpenshellParseInstanceListType) < 0) {
         Py_DECREF(&IfcOpenshellParseInstanceListType);
+        return NULL;
+    }
+    Py_INCREF(&IfcOpenshellProjectAppendAssetCacheType);
+    if (PyModule_AddObject(m, "IfcOpenshellProjectAppendAssetCache", (PyObject *)&IfcOpenshellProjectAppendAssetCacheType) < 0) {
+        Py_DECREF(&IfcOpenshellProjectAppendAssetCacheType);
         return NULL;
     }
     Py_INCREF(&IfcOpenshellPsetTemplateHandleType);
