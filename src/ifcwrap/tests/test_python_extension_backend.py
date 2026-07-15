@@ -631,6 +631,65 @@ class TestFunctionWrapperParams:
         )
         assert "ifcopenshell_parse_instance_list_destroy(value->products)" in code
 
+    def test_input_record_sequence_converts_once_and_cleans_partial_failure(self):
+        option = COptionIR(
+            name="TextureOptions",
+            c_type="ifcopenshell_demo_texture_options_t",
+            fields=(
+                COptionFieldIR("repeat", TypeSpec(kind="bool"), "bool"),
+                COptionFieldIR(
+                    "mode", TypeSpec(kind="string", nullable=True), "const char*"
+                ),
+                COptionFieldIR(
+                    "transform",
+                    TypeSpec(kind="handle", handle="instance", nullable=True),
+                    "ifcopenshell_instance_t*",
+                ),
+                COptionFieldIR(
+                    "parameter",
+                    TypeSpec(kind="string", sequence_depth=1, nullable=True),
+                    "const ifcopenshell_string_list_t*",
+                ),
+            ),
+        )
+        record_list = CTypeIR(
+            c_type="ifcopenshell_demo_texture_options_list_t",
+            kind="input_record_sequence",
+            fields=(
+                CFieldIR("items", "ifcopenshell_demo_texture_options_t*"),
+                CFieldIR("size", "size_t"),
+            ),
+            destroy_function=None,
+            element_type="ifcopenshell_demo_texture_options_t",
+            sequence_depth=1,
+        )
+        meta = _make_metadata(
+            handles={"instance": _make_handle("instance", "ifcopenshell_instance_t")},
+            value_types={"texture_options_list": record_list},
+            option_structs={"TextureOptions": option},
+            functions={
+                "ifcopenshell_demo_add_textures": _make_function(
+                    c_name="ifcopenshell_demo_add_textures",
+                    params=(
+                        CParamIR(
+                            "textures",
+                            "const ifcopenshell_demo_texture_options_list_t*",
+                            "param",
+                            "option",
+                        ),
+                    ),
+                )
+            },
+        )
+        code = render_python_extension(meta)
+        conversion = (
+            "make_input_demo_texture_options_list(arg_textures_obj, &arg_textures)"
+        )
+        assert code.count(conversion) == 1
+        assert "size ? (ifcopenshell_demo_texture_options_t *)PyMem_Calloc" in code
+        assert "free_input_demo_texture_options_list(out);" in code
+        assert "free_input_demo_texture_options(&value->items[j]);" in code
+
 
 # ---------------------------------------------------------------------------
 # Test: function wrapper — handle receiver (methods)
@@ -741,7 +800,9 @@ class TestOutputHandling:
                 ),
                 "ifcopenshell_demo_borrowed": _make_function(
                     c_name="ifcopenshell_demo_borrowed",
-                    returns=TypeSpec(kind="handle", handle="item", ownership="borrowed"),
+                    returns=TypeSpec(
+                        kind="handle", handle="item", ownership="borrowed"
+                    ),
                 ),
             },
         )
@@ -758,7 +819,9 @@ class TestOutputHandling:
             functions={
                 "ifcopenshell_demo_get_value": _make_function(
                     c_name="ifcopenshell_demo_get_value",
-                    returns=TypeSpec(kind="handle", handle="value", ownership="borrowed"),
+                    returns=TypeSpec(
+                        kind="handle", handle="value", ownership="borrowed"
+                    ),
                 )
             },
         )
@@ -797,7 +860,7 @@ class TestOutputHandling:
         assert "IfcOpenShell buffers are read-only" in code
         assert "ifcopenshell_buffer_owner_destroy(&self->owner);" in code
         assert "make_owned_buffer(" in code
-        assert "value->items, value->size, sizeof(double), \"d\", &value->owner" in code
+        assert 'value->items, value->size, sizeof(double), "d", &value->owner' in code
         assert ".tp_as_sequence = &IfcOpenShellOwnedBuffer_sequence_methods" in code
         assert ".tp_as_mapping = &IfcOpenShellOwnedBuffer_mapping_methods" in code
         assert ".tp_as_buffer = &IfcOpenShellOwnedBuffer_buffer_procs" in code
@@ -824,13 +887,9 @@ class TestOutputHandling:
         assert "const double *result = NULL;" in code
         assert "size_t result_size = 0;" in code
         assert (
-            "ifcopenshell_demo_mesh_verts_buffer_size(arg_self, &result_size)"
-            in code
+            "ifcopenshell_demo_mesh_verts_buffer_size(arg_self, &result_size)" in code
         )
-        assert (
-            'make_snapshot_buffer(result, result_size, sizeof(double), "d")'
-            in code
-        )
+        assert 'make_snapshot_buffer(result, result_size, sizeof(double), "d")' in code
         assert "memcpy(snapshot, data, byte_length);" in code
         assert "PyMem_Free(self->data);" in code
 
@@ -939,7 +998,9 @@ class TestOutputHandling:
             functions={
                 "ifcopenshell_demo_optional": _make_function(
                     c_name="ifcopenshell_demo_optional",
-                    returns=TypeSpec(kind="struct", struct="demo_result", nullable=True),
+                    returns=TypeSpec(
+                        kind="struct", struct="demo_result", nullable=True
+                    ),
                 )
             },
         )
@@ -1233,7 +1294,9 @@ class TestIntegrationWithPipeline:
         # Module init
         assert "PyInit__ifcopenshell_capi" in code
 
-    def test_generated_extension_contains_required_module_structure(self, tmp_path: Path):
+    def test_generated_extension_contains_required_module_structure(
+        self, tmp_path: Path
+    ):
         """Verify that the generated code has matching braces, valid structure."""
         from src.ifcwrap.binding_generator.abi_ir import finalize_abi
         from src.ifcwrap.binding_generator.authored_spec import load_authored_spec

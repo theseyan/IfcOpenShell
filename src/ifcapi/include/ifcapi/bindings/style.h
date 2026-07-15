@@ -4,7 +4,6 @@
 #define IFCAPI_BINDINGS_STYLE_H
 
 #include "ifcapi/bindings/contract.h"
-
 #include "ifcparse/express.h"
 #include "ifcparse/file.h"
 
@@ -43,6 +42,50 @@ struct StyleAssignItemStyleOptions {
     /// Whether to use IfcPresentationStyleAssignment (for IFC2X3 compat).
     bool should_use_presentation_style_assignment;
 };
+
+/** A schema-neutral description of one IfcImageTexture and its mapping. */
+struct StyleSurfaceTextureOptions {
+    /// Whether the image repeats in the first texture direction.
+    bool repeat_s;
+    /// Whether the image repeats in the second texture direction.
+    bool repeat_t;
+    /// Optional texture usage mode, such as "DIFFUSE" or "NORMAL".
+    std::optional<std::string> mode;
+    /// Image location.
+    std::string url_reference;
+    /// Optional IfcCartesianTransformationOperator2D.
+    std::optional<express::Base> texture_transform;
+    /// Optional texture parameters, preserved in order.
+    std::optional<std::vector<std::string>> parameter;
+    /// Optional mapping mode: "Generated", "Camera", or "UV".
+    std::optional<std::string> uv_mode;
+};
+
+/**
+ * Create and attach a surface-style presentation component.
+ *
+ * The class defaults to IfcSurfaceStyleShading. Attributes are applied by
+ * the semantic surface-style editor. Existing components of the same select
+ * class are removed with nested cleanup before the new component is appended;
+ * shading and rendering conflict in both directions.
+ */
+IFCAPI_BINDING express::Base style_add_surface_style(
+    ifcopenshell::file* file,
+    express::Base* style,
+    const char* ifc_class,
+    ifcopenshell_pset_props_t* attributes);
+
+/**
+ * Create image textures and their coordinate mappings in descriptor order.
+ *
+ * IFC2X3 returns an empty list without mutation. Unknown or omitted mapping
+ * modes create no mapping. UV mappings append each texture once to every
+ * supplied coordinate map while preserving existing order.
+ */
+IFCAPI_BINDING std::vector<express::Base> style_add_surface_textures(
+    ifcopenshell::file* file,
+    const std::vector<StyleSurfaceTextureOptions>& textures,
+    const std::vector<express::Base>& uv_maps);
 
 /**
  * Assign or replace a style on a single representation item.

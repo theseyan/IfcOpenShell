@@ -18,6 +18,7 @@
 
 
 import ifcopenshell.api.style
+
 import test.bootstrap
 
 
@@ -25,10 +26,30 @@ import test.bootstrap
 class TestAddSurfaceTexture(test.bootstrap.IFC4):
     def get_default_texture_data(self):
         return [
-            {"Mode": "DIFFUSE", "RepeatS": True, "RepeatT": True, "URLReference": "diffuse.jpg"},
-            {"Mode": "NORMAL", "RepeatS": False, "RepeatT": False, "URLReference": "normal.jpg"},
-            {"Mode": "METALLICROUGHNESS", "RepeatS": True, "RepeatT": True, "URLReference": "metallic_roughness.jpg"},
-            {"Mode": "OCCLUSION", "RepeatS": True, "RepeatT": True, "URLReference": "ambient_occlusion.jpg"},
+            {
+                "Mode": "DIFFUSE",
+                "RepeatS": True,
+                "RepeatT": True,
+                "URLReference": "diffuse.jpg",
+            },
+            {
+                "Mode": "NORMAL",
+                "RepeatS": False,
+                "RepeatT": False,
+                "URLReference": "normal.jpg",
+            },
+            {
+                "Mode": "METALLICROUGHNESS",
+                "RepeatS": True,
+                "RepeatT": True,
+                "URLReference": "metallic_roughness.jpg",
+            },
+            {
+                "Mode": "OCCLUSION",
+                "RepeatS": True,
+                "RepeatT": True,
+                "URLReference": "ambient_occlusion.jpg",
+            },
         ]
 
     def compare_texture_to_data(self, texture, data, uv_maps=[]):
@@ -51,7 +72,9 @@ class TestAddSurfaceTexture(test.bootstrap.IFC4):
     def test_add_surface_textures_from_data(self):
         texture_data = self.get_default_texture_data()
 
-        textures = ifcopenshell.api.style.add_surface_textures(self.file, textures=texture_data)
+        textures = ifcopenshell.api.style.add_surface_textures(
+            self.file, textures=texture_data
+        )
         assert len(list(self.file)) == len(texture_data)
 
         for texture, data in zip(textures, texture_data):
@@ -64,7 +87,9 @@ class TestAddSurfaceTexture(test.bootstrap.IFC4):
         texture_data[2]["uv_mode"] = "UV"
         texture_data[3]["uv_mode"] = None
 
-        textures = ifcopenshell.api.style.add_surface_textures(self.file, textures=texture_data)
+        textures = ifcopenshell.api.style.add_surface_textures(
+            self.file, textures=texture_data
+        )
         for texture, data in zip(textures, texture_data):
             self.compare_texture_to_data(texture, data)
 
@@ -76,7 +101,80 @@ class TestAddSurfaceTexture(test.bootstrap.IFC4):
         texture_data[2]["uv_mode"] = "UV"
         texture_data[3]["uv_mode"] = None
 
-        uv_maps = [self.file.create_entity("IfcTextureCoordinateGenerator", Maps=[], Mode="COORD") for i in range(5)]
-        textures = ifcopenshell.api.style.add_surface_textures(self.file, textures=texture_data, uv_maps=uv_maps)
+        uv_maps = [
+            self.file.create_entity(
+                "IfcTextureCoordinateGenerator", Maps=[], Mode="COORD"
+            )
+            for i in range(5)
+        ]
+        textures = ifcopenshell.api.style.add_surface_textures(
+            self.file, textures=texture_data, uv_maps=uv_maps
+        )
         for texture, data in zip(textures, texture_data):
             self.compare_texture_to_data(texture, data, uv_maps)
+
+    def test_preserves_optional_image_texture_fields_and_input_data(self):
+        transform = self.file.create_entity(
+            "IfcCartesianTransformationOperator2D", Scale=2.0
+        )
+        texture_data = [
+            {
+                "RepeatS": False,
+                "RepeatT": True,
+                "URLReference": "texture.png",
+                "TextureTransform": transform,
+                "Parameter": ["A", "B"],
+                "uv_mode": "unknown",
+            }
+        ]
+        original = texture_data[0].copy()
+        textures = ifcopenshell.api.style.add_surface_textures(
+            self.file, textures=texture_data
+        )
+        assert texture_data[0] == original
+        assert textures[0].Mode is None
+        assert textures[0].TextureTransform == transform
+        assert textures[0].Parameter == ("A", "B")
+        assert textures[0].IsMappedBy == ()
+
+    def test_multiple_uv_textures_preserve_existing_maps_without_duplicates(self):
+        old = self.file.create_entity(
+            "IfcImageTexture", RepeatS=True, RepeatT=True, URLReference="old.png"
+        )
+        uv_maps = [
+            self.file.create_entity(
+                "IfcTextureCoordinateGenerator", Maps=[old], Mode="COORD"
+            )
+            for _ in range(2)
+        ]
+        data = [
+            {
+                "RepeatS": True,
+                "RepeatT": True,
+                "URLReference": f"{i}.png",
+                "uv_mode": "UV",
+            }
+            for i in range(2)
+        ]
+        textures = ifcopenshell.api.style.add_surface_textures(
+            self.file, textures=data, uv_maps=uv_maps + uv_maps
+        )
+        assert [texture.URLReference for texture in textures] == ["0.png", "1.png"]
+        for uv_map in uv_maps:
+            assert uv_map.Maps == (old, *textures)
+
+    def test_omitted_inputs_are_empty(self):
+        assert ifcopenshell.api.style.add_surface_textures(self.file) == []
+
+
+class TestAddSurfaceTextureIFC2X3(test.bootstrap.IFC2X3):
+    def test_returns_immediately_without_mutation(self):
+        before = len(list(self.file))
+        descriptors = [
+            {"RepeatS": True, "RepeatT": True, "URLReference": "ignored.png"}
+        ]
+        assert (
+            ifcopenshell.api.style.add_surface_textures(self.file, textures=descriptors)
+            == []
+        )
+        assert len(list(self.file)) == before

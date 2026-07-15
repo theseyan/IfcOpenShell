@@ -8393,6 +8393,30 @@ bool ifcopenshell_material_assign_profile(ifcopenshell_file_t* file, ifcopenshel
     }
 }
 
+bool ifcopenshell_material_copy_material(ifcopenshell_file_t* file, ifcopenshell_instance_t* material, ifcopenshell_instance_t** out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    if (material == nullptr) { throw std::runtime_error("Handle parameter \"material\" must not be null"); }
+    auto material_cpp = &material->value;
+        auto result_value = ifcapi::bindings::material_copy_material(file_cpp, material_cpp);
+        if (!static_cast<bool>(result_value)) {
+            *out_result = nullptr;
+        } else {
+            *out_result = new ifcopenshell_instance_t{std::move(result_value)};
+        }
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
 bool ifcopenshell_material_edit_profile_usage(ifcopenshell_file_t* file, ifcopenshell_instance_t* usage, const ifcopenshell_material_edit_profile_usage_options_t* options) {
     try {
         ifcopenshell_clear_error();
@@ -8567,6 +8591,52 @@ bool ifcopenshell_material_reorder_set_item(ifcopenshell_file_t* file, ifcopensh
         options_cpp.new_index = options->new_index;
     }
         ifcapi::bindings::material_reorder_set_item(file_cpp, material_set_cpp, options_cpp);
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_material_set_shape_aspect_constituents(ifcopenshell_file_t* file, ifcopenshell_instance_t* element, ifcopenshell_instance_t* context, const ifcopenshell_material_constituent_entry_options_list_t* materials, const ifcopenshell_material_set_shape_aspect_constituents_options_t* options) {
+    try {
+        ifcopenshell_clear_error();
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    if (element == nullptr) { throw std::runtime_error("Handle parameter \"element\" must not be null"); }
+    auto element_cpp = &element->value;
+    if (context == nullptr) { throw std::runtime_error("Handle parameter \"context\" must not be null"); }
+    auto context_cpp = &context->value;
+    if (materials == nullptr) { throw std::runtime_error("Parameter \"materials\" must not be null"); }
+    std::vector<ifcapi::bindings::MaterialConstituentEntryOptions> materials_cpp;
+    materials_cpp.reserve(materials->size);
+    for (size_t i = 0; i < materials->size; ++i) {
+        const auto* item = &materials->items[i];
+        ifcapi::bindings::MaterialConstituentEntryOptions value{};
+        if (item->name == nullptr) { throw std::runtime_error("Options field \"name\" must not be null"); }
+        value.name = std::string(item->name);
+        if (item->material == nullptr) { throw std::runtime_error("Options field \"material\" must not be null"); }
+        value.material = item->material->value;
+        materials_cpp.push_back(std::move(value));
+    }
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::MaterialSetShapeAspectConstituentsOptions options_cpp{};
+    if (options->has_owner_history) {
+        if (options->owner_history == nullptr) { throw std::runtime_error("Options field \"owner_history\" must not be null"); }
+        options_cpp.owner_history = options->owner_history->value;
+    }
+    if (options->has_user) {
+        if (options->user == nullptr) { throw std::runtime_error("Options field \"user\" must not be null"); }
+        options_cpp.user = options->user->value;
+    }
+    if (options->has_application) {
+        if (options->application == nullptr) { throw std::runtime_error("Options field \"application\" must not be null"); }
+        options_cpp.application = options->application->value;
+    }
+        ifcapi::bindings::material_set_shape_aspect_constituents(file_cpp, element_cpp, context_cpp, materials_cpp, options_cpp);
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -14035,6 +14105,80 @@ bool ifcopenshell_style_add_style(ifcopenshell_file_t* file, const char* name, c
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
         }
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_style_add_surface_style(ifcopenshell_file_t* file, ifcopenshell_instance_t* style, const char* ifc_class, void* attributes, ifcopenshell_instance_t** out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    if (style == nullptr) { throw std::runtime_error("Handle parameter \"style\" must not be null"); }
+    auto style_cpp = &style->value;
+    const char* ifc_class_str = ifc_class;
+    if (attributes == nullptr) { throw std::runtime_error("Parameter \"attributes\" must not be null"); }
+    auto attributes_cpp = static_cast<ifcopenshell_pset_props_t*>(attributes);
+        auto result_value = ifcapi::bindings::style_add_surface_style(file_cpp, style_cpp, ifc_class, attributes_cpp);
+        if (!static_cast<bool>(result_value)) {
+            *out_result = nullptr;
+        } else {
+            *out_result = new ifcopenshell_instance_t{std::move(result_value)};
+        }
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_style_add_surface_textures(ifcopenshell_file_t* file, const ifcopenshell_style_surface_texture_options_list_t* textures, const ifcopenshell_instance_list_t* uv_maps, ifcopenshell_parse_instance_list_t** out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    if (textures == nullptr) { throw std::runtime_error("Parameter \"textures\" must not be null"); }
+    std::vector<ifcapi::bindings::StyleSurfaceTextureOptions> textures_cpp;
+    textures_cpp.reserve(textures->size);
+    for (size_t i = 0; i < textures->size; ++i) {
+        const auto* item = &textures->items[i];
+        ifcapi::bindings::StyleSurfaceTextureOptions value{};
+        value.repeat_s = static_cast<bool>(item->repeat_s);
+        value.repeat_t = static_cast<bool>(item->repeat_t);
+        if (item->has_mode) {
+            if (item->mode == nullptr) { throw std::runtime_error("Options field \"mode\" must not be null"); }
+            value.mode = std::string(item->mode);
+        }
+        if (item->url_reference == nullptr) { throw std::runtime_error("Options field \"url_reference\" must not be null"); }
+        value.url_reference = std::string(item->url_reference);
+        if (item->has_texture_transform) {
+            if (item->texture_transform == nullptr) { throw std::runtime_error("Options field \"texture_transform\" must not be null"); }
+            value.texture_transform = item->texture_transform->value;
+        }
+        if (item->has_parameter) {
+            if (item->parameter == nullptr) { throw std::runtime_error("Options field \"parameter\" must not be null"); }
+            value.parameter = to_cpp_string_list(item->parameter);
+        }
+        if (item->has_uv_mode) {
+            if (item->uv_mode == nullptr) { throw std::runtime_error("Options field \"uv_mode\" must not be null"); }
+            value.uv_mode = std::string(item->uv_mode);
+        }
+        textures_cpp.push_back(std::move(value));
+    }
+    if (uv_maps == nullptr) { throw std::runtime_error("Parameter \"uv_maps\" must not be null"); }
+    auto uv_maps_cpp = to_cpp_instance_list(uv_maps);
+        *out_result = new ifcopenshell_parse_instance_list_t{ifcapi::bindings::style_add_surface_textures(file_cpp, textures_cpp, uv_maps_cpp)};
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());

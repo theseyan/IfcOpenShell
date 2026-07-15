@@ -33,6 +33,12 @@ from .contract_discovery import (
     discover_marked_functions_in_headers,
 )
 from .policy_ir import DirectFunctionPolicyOp, SpecMethodFunctionPolicyOp
+from .semantic_types import (
+    RecordSemanticType,
+    SequenceSemanticType,
+    analyze_cpp_type,
+    semantic_leaf_type,
+)
 
 
 @dataclass(frozen=True)
@@ -88,6 +94,24 @@ def _option_struct_name(cpp_type: object) -> tuple[str, str] | None:
         qualified = qualified[len("const ") :].strip()
     qualified = qualified.rstrip("&*").strip()
     return simple, qualified
+
+
+def _option_sequence_struct_name(cpp_type: object) -> tuple[str, str] | None:
+    spelling = (
+        getattr(cpp_type, "normalized_spelling", None)
+        or getattr(cpp_type, "spelling", None)
+        or str(cpp_type)
+    )
+    semantic = analyze_cpp_type(spelling)
+    if not isinstance(semantic, SequenceSemanticType):
+        return None
+    leaf = semantic_leaf_type(semantic)
+    if not isinstance(leaf, RecordSemanticType):
+        return None
+    simple = leaf.base_name.rsplit("::", 1)[-1]
+    if not simple.endswith("Options"):
+        return None
+    return simple, leaf.base_name
 
 
 def _option_c_type(name: str, c_prefix: str | None) -> str:
@@ -696,6 +720,17 @@ def lower_cpp_spec_functions_to_calls(
                     cpp_type=param.cpp_type_ref.normalized_spelling
                     or param.cpp_type_ref.spelling,
                 )
+            elif (
+                sequence_option := _option_sequence_struct_name(param.cpp_type_ref)
+            ) is not None and sequence_option[0] in option_structs:
+                option = option_structs[sequence_option[0]]
+                param_type = TypeSpec(
+                    kind="option",
+                    struct=option.name,
+                    cpp_type=param.cpp_type_ref.normalized_spelling
+                    or param.cpp_type_ref.spelling,
+                    sequence_depth=1,
+                )
             else:
                 param_type = _apply_param_annotations(
                     _infer_param_type(param.cpp_type_ref, handles),
@@ -837,7 +872,9 @@ def discover_cpp_spec_option_structs(
     option_structs: dict[str, OptionStructSpec] = {}
     for function in functions:
         for param in function.discovered.params:
-            option_name = _option_struct_name(param.cpp_type_ref)
+            option_name = _option_struct_name(
+                param.cpp_type_ref
+            ) or _option_sequence_struct_name(param.cpp_type_ref)
             if option_name is None:
                 continue
             simple_name, cpp_type = option_name

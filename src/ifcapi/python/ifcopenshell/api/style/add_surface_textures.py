@@ -20,6 +20,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, Optional
 
 import ifcopenshell
+from ifcopenshell.api.style import _capi
 
 if TYPE_CHECKING:
     import bpy  # pyright: ignore[reportMissingImports]  # ty:ignore[unresolved-import]
@@ -59,7 +60,11 @@ def add_surface_textures(
     usecase = Usecase()
     # TODO: This usecase currently depends on Blender's data model
     usecase.file = file
-    usecase.settings = {"material": material, "uv_maps": uv_maps or [], "textures": textures or []}
+    usecase.settings = {
+        "material": material,
+        "uv_maps": uv_maps or [],
+        "textures": textures or [],
+    }
     return usecase.execute()
 
 
@@ -76,28 +81,19 @@ class Usecase:
         # https://docs.blender.org/manual/en/dev/addons/import_export/scene_gltf2.html
         # glTF, X3D, and IFC are compatible. As long as they have something that
         # loosely resembles the node tree, we treat it as valid.
-        self.textures = []
-
-        for texture in self.settings["textures"]:
-            uv_mode = texture.get("uv_mode", None)
-            texture_data = texture.copy()
-            texture_data.pop("uv_mode", None)
-            texture = self.file.create_entity("IfcImageTexture", **texture_data)
-            if uv_mode == "Generated":
-                self.file.create_entity("IfcTextureCoordinateGenerator", Maps=[texture], Mode="COORD")
-            elif uv_mode == "Camera":
-                self.file.create_entity("IfcTextureCoordinateGenerator", Maps=[texture], Mode="COORD-EYE")
-            elif uv_mode == "UV":
-                self.apply_uv_map_to_texture(texture)
-            self.textures.append(texture)
+        self.textures = [
+            self.normalize_texture(texture) for texture in self.settings["textures"]
+        ]
 
         if self.settings["material"] is None:
-            return self.textures
+            return self.create_textures()
 
-        output = {n.type: n for n in self.settings["material"].node_tree.nodes}.get("OUTPUT_MATERIAL", None)
+        output = {n.type: n for n in self.settings["material"].node_tree.nodes}.get(
+            "OUTPUT_MATERIAL", None
+        )
 
         if not output:
-            return self.textures
+            return self.create_textures()
 
         bsdf = output.inputs["Surface"].links[0].from_node
 
@@ -117,18 +113,49 @@ class Usecase:
             self.detect_diffuse_map(bsdf)
         # We do not support Phong shading. What year is this, 1995?
 
-        return self.textures
+        return self.create_textures()
+
+    def normalize_texture(self, texture):
+        return {
+            "repeat_s": texture["RepeatS"],
+            "repeat_t": texture["RepeatT"],
+            "mode": texture.get("Mode"),
+            "url_reference": texture["URLReference"],
+            "texture_transform": _capi.instance_handle(texture.get("TextureTransform")),
+            "parameter": texture.get("Parameter"),
+            "uv_mode": texture.get("uv_mode"),
+        }
+
+    def create_textures(self):
+        return _capi.call_handle_list(
+            self.file,
+            "style_add_surface_textures",
+            "Failed to add surface textures",
+            _capi.file_handle(self.file),
+            self.textures,
+            _capi.instance_list(self.settings["uv_maps"]),
+        )
 
     def detect_unlit_emissive_map(self, bsdf):
         for socket in bsdf.inputs:
             if socket.links and socket.links[0].from_node.type == "TEX_IMAGE":
-                return self.create_surface_texture(socket.links[0].from_node, "EMISSIVE")
+                return self.create_surface_texture(
+                    socket.links[0].from_node, "EMISSIVE"
+                )
 
     def detect_normal_map(self, bsdf):
-        if bsdf.inputs["Normal"].links and bsdf.inputs["Normal"].links[0].from_node.type == "NORMAL_MAP":
+        if (
+            bsdf.inputs["Normal"].links
+            and bsdf.inputs["Normal"].links[0].from_node.type == "NORMAL_MAP"
+        ):
             normal = bsdf.inputs["Normal"].links[0].from_node
-            if normal.inputs["Color"].links and normal.inputs["Color"].links[0].from_node.type == "TEX_IMAGE":
-                return self.create_surface_texture(normal.inputs["Color"].links[0].from_node, "NORMAL")
+            if (
+                normal.inputs["Color"].links
+                and normal.inputs["Color"].links[0].from_node.type == "TEX_IMAGE"
+            ):
+                return self.create_surface_texture(
+                    normal.inputs["Color"].links[0].from_node, "NORMAL"
+                )
 
     def detect_emissive_map(self, bsdf):
         if bsdf.outputs[0].links[0].to_node.type != "ADD_SHADER":
@@ -137,18 +164,39 @@ class Usecase:
         for socket in bsdf.inputs:
             if socket.links and socket.links[0].from_node.type == "EMISSION":
                 bsdf = socket.links[0].from_node
-                if bsdf.inputs["Color"].links and bsdf.inputs["Color"].links[0].from_node.type == "TEX_IMAGE":
-                    return self.create_surface_texture(bsdf.inputs["Color"].links[0].from_node, "EMISSIVE")
+                if (
+                    bsdf.inputs["Color"].links
+                    and bsdf.inputs["Color"].links[0].from_node.type == "TEX_IMAGE"
+                ):
+                    return self.create_surface_texture(
+                        bsdf.inputs["Color"].links[0].from_node, "EMISSIVE"
+                    )
 
     def detect_metallicroughness_map(self, bsdf):
-        if bsdf.inputs["Metallic"].links and bsdf.inputs["Metallic"].links[0].from_node.type == "SEPRGB":
+        if (
+            bsdf.inputs["Metallic"].links
+            and bsdf.inputs["Metallic"].links[0].from_node.type == "SEPRGB"
+        ):
             seprgb = bsdf.inputs["Metallic"].links[0].from_node
-            if seprgb.inputs["Image"].links and seprgb.inputs["Image"].links[0].from_node.type == "TEX_IMAGE":
-                return self.create_surface_texture(seprgb.inputs["Image"].links[0].from_node, "METALLICROUGHNESS")
-        if bsdf.inputs["Roughness"].links and bsdf.inputs["Roughness"].links[0].from_node.type == "SEPRGB":
+            if (
+                seprgb.inputs["Image"].links
+                and seprgb.inputs["Image"].links[0].from_node.type == "TEX_IMAGE"
+            ):
+                return self.create_surface_texture(
+                    seprgb.inputs["Image"].links[0].from_node, "METALLICROUGHNESS"
+                )
+        if (
+            bsdf.inputs["Roughness"].links
+            and bsdf.inputs["Roughness"].links[0].from_node.type == "SEPRGB"
+        ):
             seprgb = bsdf.inputs["Roughness"].links[0].from_node
-            if seprgb.inputs["Image"].links and seprgb.inputs["Image"].links[0].from_node.type == "TEX_IMAGE":
-                return self.create_surface_texture(seprgb.inputs["Image"].links[0].from_node, "METALLICROUGHNESS")
+            if (
+                seprgb.inputs["Image"].links
+                and seprgb.inputs["Image"].links[0].from_node.type == "TEX_IMAGE"
+            ):
+                return self.create_surface_texture(
+                    seprgb.inputs["Image"].links[0].from_node, "METALLICROUGHNESS"
+                )
 
     def detect_occlusion_map(self):
         for node in self.settings["material"].node_tree.nodes:
@@ -163,8 +211,13 @@ class Usecase:
             from_node = node.inputs[0].links[0].from_node
             if from_node.type == "SEPRGB":
                 sep = from_node
-                if sep.inputs["Image"].links and sep.inputs["Image"].links[0].from_node.type == "TEX_IMAGE":
-                    return self.create_surface_texture(sep.inputs["Image"].links[0].from_node, "OCCLUSION")
+                if (
+                    sep.inputs["Image"].links
+                    and sep.inputs["Image"].links[0].from_node.type == "TEX_IMAGE"
+                ):
+                    return self.create_surface_texture(
+                        sep.inputs["Image"].links[0].from_node, "OCCLUSION"
+                    )
             elif from_node.type == "TEX_IMAGE":
                 return self.create_surface_texture(from_node, "OCCLUSION")
 
@@ -176,29 +229,31 @@ class Usecase:
     def create_surface_texture(self, node, mode):
         import bonsai.tool as tool
 
-        texture = self.file.create_entity(
-            "IfcImageTexture",
-            RepeatS=node.extension == "REPEAT",
-            RepeatT=node.extension == "REPEAT",
-            Mode=mode,
-            URLReference=tool.Blender.blender_path_to_posix(node.image.filepath),
+        self.textures.append(
+            {
+                "repeat_s": node.extension == "REPEAT",
+                "repeat_t": node.extension == "REPEAT",
+                "mode": mode,
+                "url_reference": tool.Blender.blender_path_to_posix(
+                    node.image.filepath
+                ),
+                "uv_mode": self.process_texture_coordinates(node),
+            }
         )
-        self.textures.append(texture)
-        self.process_texture_coordinates(node, texture)
 
-    def process_texture_coordinates(self, node, texture):
-        if node.inputs["Vector"].links and node.inputs["Vector"].links[0].from_node.type == "TEX_COORD":
+    def process_texture_coordinates(self, node):
+        if (
+            node.inputs["Vector"].links
+            and node.inputs["Vector"].links[0].from_node.type == "TEX_COORD"
+        ):
             if node.inputs["Vector"].links[0].from_socket.name == "UV":
-                self.apply_uv_map_to_texture(texture)
+                return "UV"
             elif node.inputs["Vector"].links[0].from_socket.name == "Generated":
-                self.file.create_entity("IfcTextureCoordinateGenerator", Maps=[texture], Mode="COORD")
+                return "Generated"
             elif node.inputs["Vector"].links[0].from_socket.name == "Camera":
-                self.file.create_entity("IfcTextureCoordinateGenerator", Maps=[texture], Mode="COORD-EYE")
-        elif node.inputs["Vector"].links and node.inputs["Vector"].links[0].from_node.type == "UVMAP":
-            self.apply_uv_map_to_texture(texture)
-
-    def apply_uv_map_to_texture(self, texture):
-        for uv_map in self.settings["uv_maps"]:
-            maps = set(uv_map.Maps or [])
-            maps.add(texture)
-            uv_map.Maps = list(maps)
+                return "Camera"
+        elif (
+            node.inputs["Vector"].links
+            and node.inputs["Vector"].links[0].from_node.type == "UVMAP"
+        ):
+            return "UV"

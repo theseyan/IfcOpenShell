@@ -75,7 +75,7 @@ def _ts_type_from_c_type(c_type: str, metadata: BindingABI) -> str:
             item
             for item in metadata.value_types.values()
             if item.c_type == normalized_base
-            and item.kind in {"sequence", "handle_sequence"}
+            and item.kind in {"sequence", "handle_sequence", "input_record_sequence"}
         ),
         None,
     )
@@ -85,6 +85,20 @@ def _ts_type_from_c_type(c_type: str, metadata: BindingABI) -> str:
 
 
 def _sequence_ts_type(struct: CTypeIR, metadata: BindingABI) -> str:
+    if struct.kind == "input_record_sequence":
+        option = next(
+            (
+                item
+                for item in metadata.option_structs.values()
+                if item.c_type == struct.element_type
+            ),
+            None,
+        )
+        return (
+            f"{_interface_name(option.c_type)}[]"
+            if option is not None
+            else "IfcOpenshellRawValue[]"
+        )
     if struct.kind == "handle_sequence":
         item = next(
             (
@@ -317,7 +331,10 @@ def _render_module_interface(
     for function in sorted(metadata.functions.values(), key=lambda item: item.c_name):
         if function.receiver is not None:
             continue
-        if function.c_name in _INTERNAL_C_FUNCTIONS or function.c_name in _HIDDEN_FUNCTIONS:
+        if (
+            function.c_name in _INTERNAL_C_FUNCTIONS
+            or function.c_name in _HIDDEN_FUNCTIONS
+        ):
             continue
         if _public_module_member(function, metadata.c_prefix) is not None:
             continue

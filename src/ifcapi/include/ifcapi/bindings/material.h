@@ -4,7 +4,6 @@
 #define IFCAPI_BINDINGS_MATERIAL_H
 
 #include "ifcapi/bindings/contract.h"
-
 #include "ifcparse/express.h"
 #include "ifcparse/file.h"
 
@@ -153,6 +152,51 @@ struct MaterialEditProfileUsageOptions {
     /// Required along with profile_width when changing CardinalPoint.
     std::optional<double> profile_height;
 };
+
+/** One named material constituent, retained in caller order. */
+struct MaterialConstituentEntryOptions {
+    /// Exact shape-aspect and constituent name.
+    std::string name;
+    /// IfcMaterial assigned to the named constituent.
+    express::Base material;
+};
+
+/** Owner-history inputs used when replacing a material assignment. */
+struct MaterialSetShapeAspectConstituentsOptions {
+    /// Optional owner history for a newly created relationship.
+    std::optional<express::Base> owner_history;
+    /// Optional user for relationship creation and updates.
+    std::optional<express::Base> user;
+    /// Optional application for relationship creation and updates.
+    std::optional<express::Base> application;
+};
+
+/**
+ * Copy a supported material definition without copying element assignments.
+ *
+ * Set members and material properties are copied recursively in order.
+ * Underlying materials, profiles, representation contexts, and presentation
+ * styles are reused.
+ */
+IFCAPI_BINDING express::Base material_copy_material(
+    ifcopenshell::file* file,
+    express::Base* material);
+
+/**
+ * Assign an ordered named constituent set and style matching shape aspects.
+ *
+ * An existing set is reused only when its complete name-to-material identity
+ * mapping matches. New constituents preserve caller order. Unshared obsolete
+ * sets are removed; shared sets
+ * and bare materials are retained. If no representation exists in the exact
+ * context, material assignment succeeds and style assignment is skipped.
+ */
+IFCAPI_BINDING void material_set_shape_aspect_constituents(
+    ifcopenshell::file* file,
+    express::Base* element,
+    express::Base* context,
+    const std::vector<MaterialConstituentEntryOptions>& materials,
+    const MaterialSetShapeAspectConstituentsOptions& options);
 
 /**
  * Add an IfcMaterialConstituent to an IfcMaterialConstituentSet.

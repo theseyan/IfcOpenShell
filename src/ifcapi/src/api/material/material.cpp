@@ -1,19 +1,22 @@
 // This file was generated with the assistance of an AI coding tool.
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
+#include "ifcapi/bindings/material.h"
+
+#include "../pset/attribute_props.hpp"
+#include "guid.h"
 #include "ifcapi/bindings/element.h"
 #include "ifcapi/bindings/entity.h"
-#include "ifcapi/bindings/material.h"
 #include "ifcapi/bindings/owner.h"
 #include "ifcapi/bindings/representation.h"
+#include "ifcapi/bindings/style.h"
 #include "ifcapi/bindings/unit.h"
 #include "ifcapi/detail/attribute.h"
 #include "ifcapi/detail/geometry.h"
+#include "ifcapi/detail/material.h"
 #include "ifcapi/detail/relationship.h"
-#include "../pset/attribute_props.hpp"
-#include "guid.h"
+#include "ifcapi/detail/representation.h"
 #include "ifcopenshell_api_internal.hpp"
-
 #include "ifcparse/file.h"
 
 #include <algorithm>
@@ -37,9 +40,13 @@ std::vector<express::Base> inverse_entities(express::Base entity, const char* at
 
 int read_optional_int_from_props(ifcopenshell_pset_props_t* props, const char* key, int fallback, bool& found) {
     found = false;
-    if (!props) return fallback;
+    if (!props) {
+        return fallback;
+    }
     for (const auto& entry : props->entries) {
-        if (entry.key != key) continue;
+        if (entry.key != key) {
+            continue;
+        }
         found = true;
         if (entry.kind == ifcapi_pset::Kind::INT || entry.kind == ifcapi_pset::Kind::TYPED_INT) {
             return static_cast<int>(entry.i_val);
@@ -67,16 +74,27 @@ express::Base usage_profile(express::Base usage) {
 
 express::Base cardinal_point_position(ifcopenshell::file* file, int cardinal_point, double width, double height) {
     std::vector<double> location{0.0, 0.0, 0.0};
-    if (cardinal_point == 1) location = {-width / 2.0, height / 2.0, 0.0};
-    else if (cardinal_point == 2) location = {0.0, height / 2.0, 0.0};
-    else if (cardinal_point == 3) location = {width / 2.0, height / 2.0, 0.0};
-    else if (cardinal_point == 4) location = {-width / 2.0, 0.0, 0.0};
-    else if (cardinal_point == 5) location = {0.0, 0.0, 0.0};
-    else if (cardinal_point == 6) location = {width / 2.0, 0.0, 0.0};
-    else if (cardinal_point == 7) location = {-width / 2.0, -height / 2.0, 0.0};
-    else if (cardinal_point == 8) location = {0.0, -height / 2.0, 0.0};
-    else if (cardinal_point == 9) location = {width / 2.0, -height / 2.0, 0.0};
-    else return {};
+    if (cardinal_point == 1) {
+        location = {-width / 2.0, height / 2.0, 0.0};
+    } else if (cardinal_point == 2) {
+        location = {0.0, height / 2.0, 0.0};
+    } else if (cardinal_point == 3) {
+        location = {width / 2.0, height / 2.0, 0.0};
+    } else if (cardinal_point == 4) {
+        location = {-width / 2.0, 0.0, 0.0};
+    } else if (cardinal_point == 5) {
+        location = {0.0, 0.0, 0.0};
+    } else if (cardinal_point == 6) {
+        location = {width / 2.0, 0.0, 0.0};
+    } else if (cardinal_point == 7) {
+        location = {-width / 2.0, -height / 2.0, 0.0};
+    } else if (cardinal_point == 8) {
+        location = {0.0, -height / 2.0, 0.0};
+    } else if (cardinal_point == 9) {
+        location = {width / 2.0, -height / 2.0, 0.0};
+    } else {
+        return {};
+    }
     auto placement = file->create(file->schema()->declaration_by_name("IfcAxis2Placement3D"));
     ifcapi::detail::write_ref_attr(placement, "Location", ifcapi::detail::create_cartesian_point(file, location));
     return placement;
@@ -86,8 +104,7 @@ void update_profile_usage_representation(
     ifcopenshell::file* file,
     express::Base element,
     express::Base profile,
-    express::Base position)
-{
+    express::Base position) {
     auto representation = ifcapi::bindings::representation_get_product_representation(
         &element,
         {{}, "Model", "Body", "MODEL_VIEW"});
@@ -111,12 +128,13 @@ void update_profile_usage_cardinal_point(
     express::Base profile,
     int cardinal_point,
     double profile_width,
-    double profile_height)
-{
+    double profile_height) {
     auto position = cardinal_point_position(file, cardinal_point, profile_width, profile_height);
     if (is_ifc2x3(file)) {
         for (auto rel : inverse_entities(file, usage)) {
-            if (!is_a(rel, "IfcRelAssociatesMaterial")) continue;
+            if (!is_a(rel, "IfcRelAssociatesMaterial")) {
+                continue;
+            }
             for (auto element : ifcapi::detail::read_ref_aggregate(rel, "RelatedObjects")) {
                 update_profile_usage_representation(file, element, profile, position);
             }
@@ -140,9 +158,13 @@ express::Base create_entity(ifcopenshell::file* file, const char* ifc_class) {
 
 std::vector<express::Base> inverse_entities(ifcopenshell::file* file, express::Base entity) {
     std::vector<express::Base> result;
-    if (!file || !entity || entity.id() <= 0) return result;
+    if (!file || !entity || entity.id() <= 0) {
+        return result;
+    }
     for (auto inverse : file->instances_by_reference(static_cast<int>(entity.id()))) {
-        if (inverse) result.push_back(inverse);
+        if (inverse) {
+            result.push_back(inverse);
+        }
     }
     return result;
 }
@@ -152,11 +174,14 @@ std::vector<express::Base> inverse_entities(express::Base entity, const char* at
 }
 
 std::vector<express::Base> mutable_entities(
-    const std::vector<express::Base>& entities)
-{
+    const std::vector<express::Base>& entities) {
     std::vector<express::Base> result;
     result.reserve(entities.size());
-    for (auto entity : entities) if (entity) result.push_back(entity);
+    for (auto entity : entities) {
+        if (entity) {
+            result.push_back(entity);
+        }
+    }
     return result;
 }
 
@@ -195,8 +220,7 @@ express::Base create_material_association(
     const std::vector<express::Base>& products,
     express::Base owner_history,
     express::Base user,
-    express::Base application)
-{
+    express::Base application) {
     auto rel = create_entity(file, "IfcRelAssociatesMaterial");
     ifcapi::detail::write_string_attr(rel, "GlobalId", ifcapi::guid_new());
     ifcapi::detail::write_ref_attr(
@@ -211,8 +235,7 @@ express::Base create_material_association(
 express::Base get_rel_associates_material(
     ifcopenshell::file* file,
     express::Base material,
-    express::Base original_material)
-{
+    express::Base original_material) {
     auto target = original_material ? original_material : material;
     if (is_ifc2x3(file) || is_a(material, "IfcMaterialList")) {
         auto rels = ifcapi::detail::instances_by_type(file, "IfcRelAssociatesMaterial");
@@ -268,8 +291,7 @@ express::Base find_material_set_for_type(
     ifcopenshell::file* file,
     express::Base product,
     const char* material_set_class,
-    const char* fallback_class)
-{
+    const char* fallback_class) {
     auto element_type = type_for_product(product);
     auto type_material = element_type ? material_for_product(element_type) : express::Base();
     if (is_a(type_material, material_set_class)) {
@@ -281,8 +303,7 @@ express::Base find_material_set_for_type(
 void update_representation_profile(
     ifcopenshell::file* file,
     express::Base material_set,
-    const std::vector<express::Base>& products)
-{
+    const std::vector<express::Base>& products) {
     auto profile = ifcapi::detail::read_ref_attr(material_set, "CompositeProfile");
     if (!profile) {
         auto profiles = ifcapi::detail::read_ref_aggregate(material_set, "MaterialProfiles");
@@ -290,12 +311,16 @@ void update_representation_profile(
             profile = ifcapi::detail::read_ref_attr(profiles.front(), "Profile");
         }
     }
-    if (!profile) return;
+    if (!profile) {
+        return;
+    }
     for (auto product : products) {
         auto representation = ifcapi::bindings::representation_get_product_representation(
             &product,
             {{}, "Model", "Body", "MODEL_VIEW"});
-        if (!representation) return;
+        if (!representation) {
+            return;
+        }
         auto traversed = file->traverse(representation, -1);
         if (!traversed.empty()) {
             for (auto subelement : traversed) {
@@ -309,22 +334,29 @@ void update_representation_profile(
 
 void remove_material_usages_from_types(
     ifcopenshell::file* file,
-    const std::vector<express::Base>& products)
-{
+    const std::vector<express::Base>& products) {
     for (auto product : products) {
-        if (!is_a(product, "IfcTypeObject")) continue;
+        if (!is_a(product, "IfcTypeObject")) {
+            continue;
+        }
         auto material = material_for_product(product);
-        if (!is_a(material, "IfcMaterialLayerSet") && !is_a(material, "IfcMaterialProfileSet")) continue;
+        if (!is_a(material, "IfcMaterialLayerSet") && !is_a(material, "IfcMaterialProfileSet")) {
+            continue;
+        }
         for (auto inverse : inverse_entities(file, material)) {
             if (is_ifc2x3(file)) {
-                if (!is_a(inverse, "IfcMaterialLayerSetUsage")) continue;
+                if (!is_a(inverse, "IfcMaterialLayerSetUsage")) {
+                    continue;
+                }
                 for (auto rel : inverse_entities(file, inverse)) {
                     if (is_a(rel, "IfcRelAssociatesMaterial")) {
                         remove_with_history(file, rel);
                     }
                 }
             } else {
-                if (!is_a(inverse, "IfcMaterialUsageDefinition")) continue;
+                if (!is_a(inverse, "IfcMaterialUsageDefinition")) {
+                    continue;
+                }
                 for (auto rel : inverse_entities(inverse, "AssociatedTo")) {
                     remove_with_history(file, rel);
                 }
@@ -338,12 +370,13 @@ void unassign_materials(
     ifcopenshell::file* file,
     const std::vector<express::Base>& products,
     express::Base user,
-    express::Base application)
-{
+    express::Base application) {
     std::vector<express::Base> associations;
     for (auto product : products) {
         for (auto rel : association_rels_for_product(file, product)) {
-            if (!contains(associations, rel)) associations.push_back(rel);
+            if (!contains(associations, rel)) {
+                associations.push_back(rel);
+            }
         }
     }
 
@@ -405,10 +438,107 @@ void remove_properties(ifcopenshell::file* file, express::Base properties, bool 
 namespace ifcapi {
 namespace bindings {
 
+express::Base material_copy_material(ifcopenshell::file* file, express::Base* material) {
+    auto value = detail::deref_or_empty(material);
+    if (!file || !value) {
+        throw std::runtime_error("material_copy_material requires a file and material");
+    }
+    return ifcapi::detail::copy_material_definition(file, value);
+}
+
+void material_set_shape_aspect_constituents(
+    ifcopenshell::file* file,
+    express::Base* element,
+    express::Base* context,
+    const std::vector<MaterialConstituentEntryOptions>& entries,
+    const MaterialSetShapeAspectConstituentsOptions& options) {
+    auto element_value = detail::deref_or_empty(element);
+    auto context_value = detail::deref_or_empty(context);
+    if (!file || !element_value || !context_value) {
+        throw std::runtime_error("material_set_shape_aspect_constituents requires file, element, and context");
+    }
+    std::unordered_set<std::string> entry_names;
+    for (const auto& entry : entries) {
+        if (!is_a(entry.material, "IfcMaterial")) {
+            throw std::runtime_error("Named constituent material must be an IfcMaterial");
+        }
+        if (!entry_names.insert(entry.name).second) {
+            throw std::runtime_error("Named constituent entries must have unique names");
+        }
+    }
+
+    auto existing = material_for_product(element_value);
+    bool reuse = is_a(existing, "IfcMaterialConstituentSet");
+    if (reuse) {
+        auto constituents = ifcapi::detail::read_ref_aggregate(existing, "MaterialConstituents");
+        reuse = constituents.size() == entries.size();
+        std::unordered_set<std::string> constituent_names;
+        for (auto constituent : constituents) {
+            const auto name = ifcapi::detail::read_string_attr(constituent, "Name");
+            auto entry = std::find_if(entries.begin(), entries.end(), [&](const auto& candidate) {
+                return candidate.name == name;
+            });
+            reuse = reuse && constituent_names.insert(name).second && entry != entries.end() && ifcapi::detail::read_ref_attr(constituent, "Material") == entry->material;
+        }
+    }
+
+    if (!reuse) {
+        if (existing) {
+            material_unassign_material(file, {element_value}, {options.user, options.application});
+            if (!is_a(existing, "IfcMaterial") && file->get_total_inverses(static_cast<int>(existing.id())) == 0) {
+                material_remove_material_set(file, &existing);
+            }
+        }
+        auto material_set = create_entity(file, "IfcMaterialConstituentSet");
+        std::vector<express::Base> constituents;
+        constituents.reserve(entries.size());
+        for (const auto& entry : entries) {
+            auto constituent = create_entity(file, "IfcMaterialConstituent");
+            ifcapi::detail::write_string_attr(constituent, "Name", entry.name);
+            ifcapi::detail::write_ref_attr(constituent, "Material", entry.material);
+            constituents.push_back(constituent);
+        }
+        ifcapi::detail::write_ref_aggregate(material_set, "MaterialConstituents", constituents);
+        MaterialAssignMaterialOptions assign_options;
+        assign_options.type = "IfcMaterialConstituentSet";
+        assign_options.material = material_set;
+        assign_options.owner_history = options.owner_history;
+        assign_options.user = options.user;
+        assign_options.application = options.application;
+        material_assign_material(file, {element_value}, assign_options);
+    }
+
+    auto representation = representation_get_product_representation(&element_value, {context_value, {}, {}, {}});
+    if (!representation) {
+        return;
+    }
+    representation = representation_resolve(&representation);
+    if (!representation) {
+        return;
+    }
+    for (auto item : ifcapi::detail::read_ref_aggregate(representation, "Items")) {
+        auto aspect = ifcapi::detail::get_item_shape_aspect(representation, item);
+        if (!aspect) {
+            continue;
+        }
+        const auto name = ifcapi::detail::read_string_attr(aspect, "Name");
+        auto entry = std::find_if(entries.begin(), entries.end(), [&](const auto& candidate) {
+            return candidate.name == name;
+        });
+        if (entry == entries.end()) {
+            continue;
+        }
+        auto style = ifcapi::detail::get_material_style(entry->material, context_value);
+        if (!style) {
+            continue;
+        }
+        style_assign_item_style(file, {item, style, false});
+    }
+}
+
 express::Base material_add_material(
     ifcopenshell::file* file,
-    const MaterialAddMaterialOptions& options)
-{
+    const MaterialAddMaterialOptions& options) {
     auto material = create_entity(file, "IfcMaterial");
     const auto name = options.name.value_or("");
     ifcapi::detail::write_string_attr(material, "Name", !name.empty() ? name : "Unnamed");
@@ -423,8 +553,7 @@ express::Base material_add_material(
 
 express::Base material_add_material_set(
     ifcopenshell::file* file,
-    const MaterialAddMaterialSetOptions& options)
-{
+    const MaterialAddMaterialSetOptions& options) {
     const auto name = options.name.value_or("Unnamed");
     const auto set_type = options.set_type.value_or("IfcMaterialConstituentSet");
     auto set = create_entity(file, set_type.c_str());
@@ -439,8 +568,7 @@ express::Base material_add_material_set(
 express::Base material_add_constituent(
     ifcopenshell::file* file,
     express::Base* constituent_set,
-    const MaterialAddConstituentOptions& options)
-{
+    const MaterialAddConstituentOptions& options) {
     auto constituent_set_value = detail::deref_or_empty(constituent_set);
     auto constituents = ifcapi::detail::read_ref_aggregate(constituent_set_value, "MaterialConstituents");
     auto constituent = create_entity(file, "IfcMaterialConstituent");
@@ -456,16 +584,19 @@ express::Base material_add_constituent(
 express::Base material_add_layer(
     ifcopenshell::file* file,
     express::Base* layer_set,
-    const MaterialAddLayerOptions& options)
-{
+    const MaterialAddLayerOptions& options) {
     double unit_scale = ifcapi::bindings::unit_calculate_unit_scale(file, "LENGTHUNIT");
     auto layer_set_value = detail::deref_or_empty(layer_set);
     auto layers = ifcapi::detail::read_ref_aggregate(layer_set_value, "MaterialLayers");
     auto layer = create_entity(file, "IfcMaterialLayer");
     ifcapi::detail::write_ref_attr(layer, "Material", options.material);
     int idx = ifcapi::detail::attr_index_of(layer, "LayerThickness");
-    if (idx >= 0) layer.set_attribute_value(static_cast<size_t>(idx), 0.1 / unit_scale);
-    if (!is_ifc2x3(file) && options.name) write_optional_string(layer, "Name", options.name->c_str());
+    if (idx >= 0) {
+        layer.set_attribute_value(static_cast<size_t>(idx), 0.1 / unit_scale);
+    }
+    if (!is_ifc2x3(file) && options.name) {
+        write_optional_string(layer, "Name", options.name->c_str());
+    }
     layers.push_back(layer);
     ifcapi::detail::write_ref_aggregate(layer_set_value, "MaterialLayers", layers);
     return layer;
@@ -474,14 +605,19 @@ express::Base material_add_layer(
 express::Base material_add_profile(
     ifcopenshell::file* file,
     express::Base* profile_set,
-    const MaterialAddProfileOptions& options)
-{
+    const MaterialAddProfileOptions& options) {
     auto profile_set_value = detail::deref_or_empty(profile_set);
     auto profiles = ifcapi::detail::read_ref_aggregate(profile_set_value, "MaterialProfiles");
     auto mat_profile = create_entity(file, "IfcMaterialProfile");
-    if (options.name) write_optional_string(mat_profile, "Name", options.name->c_str());
-    if (options.material) ifcapi::detail::write_ref_attr(mat_profile, "Material", *options.material);
-    if (options.profile) ifcapi::detail::write_ref_attr(mat_profile, "Profile", *options.profile);
+    if (options.name) {
+        write_optional_string(mat_profile, "Name", options.name->c_str());
+    }
+    if (options.material) {
+        ifcapi::detail::write_ref_attr(mat_profile, "Material", *options.material);
+    }
+    if (options.profile) {
+        ifcapi::detail::write_ref_attr(mat_profile, "Profile", *options.profile);
+    }
     profiles.push_back(mat_profile);
     ifcapi::detail::write_ref_aggregate(profile_set_value, "MaterialProfiles", profiles);
     return mat_profile;
@@ -490,8 +626,7 @@ express::Base material_add_profile(
 void material_add_list_item(
     ifcopenshell::file*,
     express::Base* material_list,
-    express::Base* material)
-{
+    express::Base* material) {
     auto material_list_value = detail::deref_or_empty(material_list);
     auto material_value = detail::deref_or_empty(material);
     auto materials = ifcapi::detail::read_ref_aggregate(material_list_value, "Materials");
@@ -502,18 +637,21 @@ void material_add_list_item(
 std::vector<express::Base> material_assign_material(
     ifcopenshell::file* file,
     const std::vector<express::Base>& input_products,
-    const MaterialAssignMaterialOptions& options)
-{
+    const MaterialAssignMaterialOptions& options) {
     auto material_value = options.material.value_or(express::Base());
     auto owner_history_value = options.owner_history.value_or(express::Base());
     auto user_value = options.user.value_or(express::Base());
     auto application_value = options.application.value_or(express::Base());
     const auto type = options.type.value_or("IfcMaterial");
     auto products = dedupe_entities(mutable_entities(input_products));
-    if (products.empty()) return {};
+    if (products.empty()) {
+        return {};
+    }
     std::vector<express::Base> to_unassign;
     for (auto product : products) {
-        if (material_for_product(product)) to_unassign.push_back(product);
+        if (material_for_product(product)) {
+            to_unassign.push_back(product);
+        }
     }
     if (!to_unassign.empty()) {
         material_unassign_material(file, to_unassign, {user_value, application_value});
@@ -527,7 +665,9 @@ std::vector<express::Base> material_assign_material(
         }
         auto related = ifcapi::detail::read_ref_aggregate(rel, "RelatedObjects");
         for (auto product : products) {
-            if (!contains(related, product)) related.push_back(product);
+            if (!contains(related, product)) {
+                related.push_back(product);
+            }
         }
         ifcapi::detail::write_ref_aggregate(rel, "RelatedObjects", related);
         ifcapi::detail::update_owner_history(file, rel, user_value, application_value);
@@ -568,7 +708,9 @@ std::vector<express::Base> material_assign_material(
             ifcapi::detail::write_enum_attr(usage, "LayerSetDirection", group.direction);
             ifcapi::detail::write_enum_attr(usage, "DirectionSense", "POSITIVE");
             int offset_idx = ifcapi::detail::attr_index_of(usage, "OffsetFromReferenceLine");
-            if (offset_idx >= 0) usage.set_attribute_value(static_cast<size_t>(offset_idx), 0.0);
+            if (offset_idx >= 0) {
+                usage.set_attribute_value(static_cast<size_t>(offset_idx), 0.0);
+            }
             rels.push_back(create_material_association(file, usage, group.products, owner_history_value, user_value, application_value));
         }
         return rels;
@@ -604,7 +746,9 @@ std::vector<express::Base> material_assign_material(
 
     if (type == "IfcMaterialList") {
         auto material_set = create_entity(file, "IfcMaterialList");
-        if (material_value) ifcapi::detail::write_ref_aggregate(material_set, "Materials", {material_value});
+        if (material_value) {
+            ifcapi::detail::write_ref_aggregate(material_set, "Materials", {material_value});
+        }
         return {create_material_association(file, material_set, products, owner_history_value, user_value, application_value)};
     }
 
@@ -614,12 +758,13 @@ std::vector<express::Base> material_assign_material(
 void material_unassign_material(
     ifcopenshell::file* file,
     const std::vector<express::Base>& input_products,
-    const MaterialUnassignMaterialOptions& options)
-{
+    const MaterialUnassignMaterialOptions& options) {
     auto user_value = options.user.value_or(express::Base());
     auto application_value = options.application.value_or(express::Base());
     auto products = dedupe_entities(mutable_entities(input_products));
-    if (products.empty()) return;
+    if (products.empty()) {
+        return;
+    }
     remove_material_usages_from_types(file, products);
     unassign_materials(file, products, user_value, application_value);
 }
@@ -627,8 +772,7 @@ void material_unassign_material(
 void material_edit_profile_usage(
     ifcopenshell::file* file,
     express::Base* usage,
-    const MaterialEditProfileUsageOptions& options)
-{
+    const MaterialEditProfileUsageOptions& options) {
     ifcopenshell_clear_error();
     try {
         auto usage_value = detail::deref_or_empty(usage);
@@ -659,19 +803,22 @@ void material_edit_profile_usage(
 void material_assign_profile(
     ifcopenshell::file* file,
     express::Base* material_profile,
-    express::Base* profile)
-{
+    express::Base* profile) {
     auto material_profile_value = detail::deref_or_empty(material_profile);
     auto profile_value = detail::deref_or_empty(profile);
     auto old_profile = ifcapi::detail::read_ref_attr(material_profile_value, "Profile");
     ifcapi::detail::write_ref_attr(material_profile_value, "Profile", profile_value);
     for (auto profile_set : inverse_entities(material_profile_value, "ToMaterialProfileSet")) {
         for (auto inverse : inverse_entities(file, profile_set)) {
-            if (!is_a(inverse, "IfcMaterialProfileSetUsage")) continue;
+            if (!is_a(inverse, "IfcMaterialProfileSetUsage")) {
+                continue;
+            }
             std::vector<express::Base> rels;
             if (is_ifc2x3(file)) {
                 for (auto rel : inverse_entities(file, inverse)) {
-                    if (is_a(rel, "IfcRelAssociatesMaterial")) rels.push_back(rel);
+                    if (is_a(rel, "IfcRelAssociatesMaterial")) {
+                        rels.push_back(rel);
+                    }
                 }
             } else {
                 rels = inverse_entities(inverse, "AssociatedTo");
@@ -681,7 +828,9 @@ void material_assign_profile(
                     auto representation = ifcapi::bindings::representation_get_product_representation(
                         &element,
                         {{}, "Model", "Body", "MODEL_VIEW"});
-                    if (!representation) continue;
+                    if (!representation) {
+                        continue;
+                    }
                     auto traversed = file->traverse(representation, -1);
                     if (!traversed.empty()) {
                         for (auto subelement : traversed) {
@@ -702,43 +851,47 @@ void material_assign_profile(
 void material_remove_constituent(
     ifcopenshell::file* file,
     express::Base* constituent,
-    const MaterialRemoveItemOptions& options)
-{
+    const MaterialRemoveItemOptions& options) {
     auto constituent_value = detail::deref_or_empty(constituent);
     auto material = ifcapi::detail::read_ref_attr(constituent_value, "Material");
     file->remove_entity(constituent_value);
-    if (material && options.should_remove_material.value_or(false)) ifcapi::bindings::entity_remove_deep(&material);
+    if (material && options.should_remove_material.value_or(false)) {
+        ifcapi::bindings::entity_remove_deep(&material);
+    }
 }
 
 void material_remove_layer(
     ifcopenshell::file* file,
     express::Base* layer,
-    const MaterialRemoveItemOptions& options)
-{
+    const MaterialRemoveItemOptions& options) {
     auto layer_value = detail::deref_or_empty(layer);
     auto material = ifcapi::detail::read_ref_attr(layer_value, "Material");
     file->remove_entity(layer_value);
-    if (material && options.should_remove_material.value_or(false)) ifcapi::bindings::entity_remove_deep(&material);
+    if (material && options.should_remove_material.value_or(false)) {
+        ifcapi::bindings::entity_remove_deep(&material);
+    }
 }
 
 void material_remove_profile(
     ifcopenshell::file* file,
     express::Base* profile,
-    const MaterialRemoveProfileOptions& options)
-{
+    const MaterialRemoveProfileOptions& options) {
     auto profile_value = detail::deref_or_empty(profile);
     auto material = ifcapi::detail::read_ref_attr(profile_value, "Material");
     auto profile_def = ifcapi::detail::read_ref_attr(profile_value, "Profile");
     file->remove_entity(profile_value);
-    if (material && options.should_remove_material.value_or(false)) ifcapi::bindings::entity_remove_deep(&material);
-    if (profile_def && options.should_remove_profile_def.value_or(false)) ifcapi::bindings::entity_remove_deep(&profile_def);
+    if (material && options.should_remove_material.value_or(false)) {
+        ifcapi::bindings::entity_remove_deep(&material);
+    }
+    if (profile_def && options.should_remove_profile_def.value_or(false)) {
+        ifcapi::bindings::entity_remove_deep(&profile_def);
+    }
 }
 
 void material_remove_list_item(
     ifcopenshell::file*,
     express::Base* material_list,
-    const MaterialRemoveListItemOptions& options)
-{
+    const MaterialRemoveListItemOptions& options) {
     auto material_list_value = detail::deref_or_empty(material_list);
     auto materials = ifcapi::detail::read_ref_aggregate(material_list_value, "Materials");
     const auto material_index = options.material_index.value_or(0);
@@ -749,8 +902,7 @@ void material_remove_list_item(
 void material_reorder_set_item(
     ifcopenshell::file*,
     express::Base* material_set,
-    const MaterialReorderSetItemOptions& options)
-{
+    const MaterialReorderSetItemOptions& options) {
     auto material_set_value = detail::deref_or_empty(material_set);
     const auto old_index = options.old_index.value_or(0);
     const auto new_index = options.new_index.value_or(0);
@@ -803,10 +955,14 @@ void material_remove_material_set(ifcopenshell::file* file, express::Base* mater
     bool has_usages = is_a(material_value, "IfcMaterialLayerSet") || is_a(material_value, "IfcMaterialProfileSet");
     if (has_usages) {
         for (auto inverse : inverse_entities(file, material_value)) {
-            if (!is_a(inverse, "IfcMaterialLayerSetUsage") && !is_a(inverse, "IfcMaterialProfileSetUsage")) continue;
+            if (!is_a(inverse, "IfcMaterialLayerSetUsage") && !is_a(inverse, "IfcMaterialProfileSetUsage")) {
+                continue;
+            }
             if (is_ifc2x3(file)) {
                 for (auto rel : inverse_entities(file, inverse)) {
-                    if (is_a(rel, "IfcRelAssociatesMaterial")) remove_with_history(file, rel);
+                    if (is_a(rel, "IfcRelAssociatesMaterial")) {
+                        remove_with_history(file, rel);
+                    }
                 }
             } else {
                 for (auto rel : inverse_entities(inverse, "AssociatedTo")) {

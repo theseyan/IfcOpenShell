@@ -6,7 +6,6 @@
 
 #include "ifcapi/bindings/representation.h"
 #include "ifcapi/detail/attribute.h"
-
 #include "ifcparse/file.h"
 
 #include <algorithm>
@@ -124,12 +123,43 @@ inline std::vector<std::vector<double>> get_reference_line(ifcopenshell::file* f
     return {{0.0, 0.0}, {1.0, 0.0}};
 }
 
+inline express::Base get_material_style(express::Base material, express::Base context) {
+    for (auto definition : read_inverse_aggregate(material, "HasRepresentation")) {
+        for (auto representation : read_ref_aggregate(definition, "Representations")) {
+            if (read_ref_attr(representation, "ContextOfItems") != context) {
+                continue;
+            }
+            for (auto item : read_ref_aggregate(representation, "Items")) {
+                for (auto style : read_ref_aggregate(item, "Styles")) {
+                    if (is_a(style, "IfcSurfaceStyle")) {
+                        return style;
+                    }
+                }
+            }
+        }
+    }
+    return {};
+}
+
+inline express::Base get_item_shape_aspect(express::Base representation, express::Base item) {
+    const auto context = read_ref_attr(representation, "ContextOfItems");
+    for (auto inverse : item.file()->instances_by_reference(static_cast<int>(item.id()))) {
+        if (!is_a(inverse, "IfcShapeRepresentation") || read_ref_attr(inverse, "ContextOfItems") != context) {
+            continue;
+        }
+        auto aspects = read_inverse_aggregate(inverse, "OfShapeAspect");
+        if (!aspects.empty()) {
+            return aspects.front();
+        }
+    }
+    return {};
+}
+
 inline bool intersect_x_axis_2d(
     const std::vector<double>& p1,
     const std::vector<double>& p2,
     double y,
-    double& x)
-{
+    double& x) {
     if (std::fabs(p1[1] - p2[1]) <= 1e-5) {
         return false;
     }

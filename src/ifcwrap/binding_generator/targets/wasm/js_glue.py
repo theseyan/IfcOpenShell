@@ -259,7 +259,7 @@ def _js_arg_expr(
     sequence = _value_type_by_c_type(param.c_type, metadata)
     if (
         sequence is not None
-        and sequence.kind in {"sequence", "handle_sequence"}
+        and sequence.kind in {"sequence", "handle_sequence", "input_record_sequence"}
         and sequence.sequence_depth == 1
     ):
         ptr_name = f"_{name}Ptr"
@@ -712,9 +712,7 @@ def _render_value_type_metadata(metadata: BindingABI) -> str:
             "elementType": value.element_type,
             "sequenceDepth": value.sequence_depth,
             "bufferMode": (
-                "snapshot"
-                if value.kind in {"string", "sequence"}
-                else None
+                "snapshot" if value.kind in {"string", "sequence"} else None
             ),
             "fields": [
                 {"name": field.name, "cType": field.c_type} for field in value.fields
@@ -1129,7 +1127,7 @@ def render_js_glue(
             "function _allocInputSequence(module, value, cType) {",
             "    if (!Array.isArray(value)) throw new Error(`Expected an array for ${cType}.`);",
             "    const metadata = _valueTypeForCType(cType);",
-            "    if (!metadata || metadata.kind !== 'sequence') {",
+            "    if (!metadata || !['sequence', 'input_record_sequence'].includes(metadata.kind)) {",
             "        throw new Error(`Sequence marshalling for ${cType} is not implemented.`);",
             "    }",
             "    const layout = _getStructLayout(metadata);",
@@ -1147,9 +1145,9 @@ def render_js_glue(
             "function _writeInputSequence(module, structPtr, value, metadata) {",
             "    if (!Array.isArray(value)) throw new Error(`Expected an array for ${metadata.cType}.`);",
             "    const elementType = _normalizeCType(metadata.elementType || '');",
-            "    const elementMetadata = _valueTypeForCType(elementType);",
+            "    const elementMetadata = _valueTypeForCType(elementType) || _optionTypeForCType(elementType);",
             "    const scalarElement = ['bool', 'ifcopenshell_logical_t', 'int32_t', 'uint32_t', 'size_t', 'double', 'int64_t', 'uint8_t'].includes(elementType);",
-            "    if (!scalarElement && (!elementMetadata || elementMetadata.kind !== 'sequence')) {",
+            "    if (!scalarElement && (!elementMetadata || !['sequence', 'option'].includes(elementMetadata.kind))) {",
             "        throw new Error(`Sequence marshalling for ${metadata.cType} is not implemented.`);",
             "    }",
             "    const layout = _getStructLayout(metadata);",
@@ -1162,6 +1160,7 @@ def render_js_glue(
             "        for (let index = 0; index < value.length; index += 1) {",
             "            const itemPtr = itemsPtr + index * elementInfo.size;",
             "            if (scalarElement) _setValue(module, itemPtr, elementType, value[index]);",
+            "            else if (elementMetadata.kind === 'option') _writeInputOption(module, itemPtr, value[index], elementMetadata);",
             "            else _writeInputSequence(module, itemPtr, value[index], elementMetadata);",
             "        }",
             "        module.setValue(structPtr + itemsField.offset, itemsPtr, '*');",
@@ -1169,7 +1168,8 @@ def render_js_glue(
             "    } catch (error) {",
             "        if (!scalarElement && itemsPtr) {",
             "            for (let index = 0; index < value.length; index += 1) {",
-            "                _freeInputSequenceItems(module, itemsPtr + index * elementInfo.size, elementMetadata);",
+            "                if (elementMetadata.kind === 'option') _freeInputOptionFields(module, itemsPtr + index * elementInfo.size, elementMetadata);",
+            "                else _freeInputSequenceItems(module, itemsPtr + index * elementInfo.size, elementMetadata);",
             "            }",
             "        }",
             "        if (itemsPtr) module._free(itemsPtr);",
@@ -1194,11 +1194,12 @@ def render_js_glue(
             "    const itemsPtr = module.getValue(ptr + itemsField.offset, '*');",
             "    const count = module.getValue(ptr + sizeField.offset, 'i32');",
             "    const elementType = _normalizeCType(metadata.elementType || '');",
-            "    const elementMetadata = _valueTypeForCType(elementType);",
-            "    if (itemsPtr && elementMetadata && elementMetadata.kind === 'sequence') {",
+            "    const elementMetadata = _valueTypeForCType(elementType) || _optionTypeForCType(elementType);",
+            "    if (itemsPtr && elementMetadata && ['sequence', 'option'].includes(elementMetadata.kind)) {",
             "        const elementLayout = _getStructLayout(elementMetadata);",
             "        for (let index = 0; index < count; index += 1) {",
-            "            _freeInputSequenceItems(module, itemsPtr + index * elementLayout.size, elementMetadata);",
+            "            if (elementMetadata.kind === 'option') _freeInputOptionFields(module, itemsPtr + index * elementLayout.size, elementMetadata);",
+            "            else _freeInputSequenceItems(module, itemsPtr + index * elementLayout.size, elementMetadata);",
             "        }",
             "    }",
             "    if (itemsPtr) module._free(itemsPtr);",
@@ -1227,6 +1228,17 @@ def render_js_glue(
             "    const ptr = module._malloc(layout.size);",
             "    _zeroMemory(module, ptr, layout.size);",
             "    try {",
+            "        _writeInputOption(module, ptr, value, metadata);",
+            "        return ptr;",
+            "    } catch (error) {",
+            "        _freeInputOption(module, ptr, cType);",
+            "        throw error;",
+            "    }",
+            "}",
+            "",
+            "function _writeInputOption(module, ptr, value, metadata) {",
+            "        if (value == null || typeof value !== 'object') throw new TypeError(`Expected an options object for ${metadata.cType}.`);",
+            "        const layout = _getStructLayout(metadata);",
             "        for (const optionField of metadata.optionFields) {",
             "            const field = layout.fields.find((candidate) => candidate.name === optionField.name);",
             "            const hasField = optionField.hasField ? layout.fields.find((candidate) => candidate.name === optionField.hasField) : null;",
@@ -1238,11 +1250,6 @@ def render_js_glue(
             "            }",
             "            _writeInputOptionField(module, ptr + field.offset, optionField, value[optionField.name]);",
             "        }",
-            "        return ptr;",
-            "    } catch (error) {",
-            "        _freeInputOption(module, ptr, cType);",
-            "        throw error;",
-            "    }",
             "}",
             "",
             "function _writeInputOptionField(module, ptr, field, value) {",
@@ -1275,6 +1282,11 @@ def render_js_glue(
             "        module._free(ptr);",
             "        return;",
             "    }",
+            "    _freeInputOptionFields(module, ptr, metadata);",
+            "    module._free(ptr);",
+            "}",
+            "",
+            "function _freeInputOptionFields(module, ptr, metadata) {",
             "    const layout = _getStructLayout(metadata);",
             "    for (const optionField of metadata.optionFields) {",
             "        const field = layout.fields.find((candidate) => candidate.name === optionField.name);",
@@ -1287,7 +1299,6 @@ def render_js_glue(
             "            module._free(fieldPtr);",
             "        }",
             "    }",
-            "    module._free(ptr);",
             "}",
             "",
             classes,

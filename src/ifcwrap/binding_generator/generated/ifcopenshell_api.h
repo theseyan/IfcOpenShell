@@ -1032,6 +1032,20 @@ typedef struct ifcopenshell_material_reorder_set_item_options_t {
     bool has_new_index;
 } ifcopenshell_material_reorder_set_item_options_t;
 
+typedef struct ifcopenshell_material_constituent_entry_options_t {
+    const char* name;
+    ifcopenshell_instance_t* material;
+} ifcopenshell_material_constituent_entry_options_t;
+
+typedef struct ifcopenshell_material_set_shape_aspect_constituents_options_t {
+    ifcopenshell_instance_t* owner_history;
+    bool has_owner_history;
+    ifcopenshell_instance_t* user;
+    bool has_user;
+    ifcopenshell_instance_t* application;
+    bool has_application;
+} ifcopenshell_material_set_shape_aspect_constituents_options_t;
+
 typedef struct ifcopenshell_material_unassign_material_options_t {
     ifcopenshell_instance_t* user;
     bool has_user;
@@ -1643,6 +1657,20 @@ typedef struct ifcopenshell_structural_unassign_structural_analysis_model_option
     bool has_application;
 } ifcopenshell_structural_unassign_structural_analysis_model_options_t;
 
+typedef struct ifcopenshell_style_surface_texture_options_t {
+    bool repeat_s;
+    bool repeat_t;
+    const char* mode;
+    bool has_mode;
+    const char* url_reference;
+    ifcopenshell_instance_t* texture_transform;
+    bool has_texture_transform;
+    const ifcopenshell_string_list_t* parameter;
+    bool has_parameter;
+    const char* uv_mode;
+    bool has_uv_mode;
+} ifcopenshell_style_surface_texture_options_t;
+
 typedef struct ifcopenshell_style_assign_item_style_options_t {
     ifcopenshell_instance_t* item;
     ifcopenshell_instance_t* style;
@@ -1790,6 +1818,16 @@ typedef struct ifcopenshell_unit_edit_named_unit_options_t {
     ifcopenshell_instance_t* unit;
     void* attributes;
 } ifcopenshell_unit_edit_named_unit_options_t;
+
+typedef struct ifcopenshell_material_constituent_entry_options_list_t {
+    ifcopenshell_material_constituent_entry_options_t* items;
+    size_t size;
+} ifcopenshell_material_constituent_entry_options_list_t;
+
+typedef struct ifcopenshell_style_surface_texture_options_list_t {
+    ifcopenshell_style_surface_texture_options_t* items;
+    size_t size;
+} ifcopenshell_style_surface_texture_options_list_t;
 
 typedef struct ifcopenshell_shape_builder_mep_transition_shape_result_t {
     ifcopenshell_instance_t* representation;
@@ -3530,6 +3568,14 @@ bool ifcopenshell_material_assign_material(ifcopenshell_file_t* file, const ifco
  */
 bool ifcopenshell_material_assign_profile(ifcopenshell_file_t* file, ifcopenshell_instance_t* material_profile, ifcopenshell_instance_t* profile);
 /**
+ * Copy a supported material definition without copying element assignments.
+ *
+ * Set members and material properties are copied recursively in order.
+ * Underlying materials, profiles, representation contexts, and presentation
+ * styles are reused.
+ */
+bool ifcopenshell_material_copy_material(ifcopenshell_file_t* file, ifcopenshell_instance_t* material, ifcopenshell_instance_t** out_result);
+/**
  * Edit attributes of an IfcMaterialProfileSetUsage.
  *
  * Applies attribute key-value pairs from the props builder. If CardinalPoint
@@ -3589,6 +3635,16 @@ bool ifcopenshell_material_remove_profile(ifcopenshell_file_t* file, ifcopenshel
  * IfcMaterialProfileSet, and IfcMaterialList.
  */
 bool ifcopenshell_material_reorder_set_item(ifcopenshell_file_t* file, ifcopenshell_instance_t* material_set, const ifcopenshell_material_reorder_set_item_options_t* options);
+/**
+ * Assign an ordered named constituent set and style matching shape aspects.
+ *
+ * An existing set is reused only when its complete name-to-material identity
+ * mapping matches. New constituents preserve caller order. Unshared obsolete
+ * sets are removed; shared sets
+ * and bare materials are retained. If no representation exists in the exact
+ * context, material assignment succeeds and style assignment is skipped.
+ */
+bool ifcopenshell_material_set_shape_aspect_constituents(ifcopenshell_file_t* file, ifcopenshell_instance_t* element, ifcopenshell_instance_t* context, const ifcopenshell_material_constituent_entry_options_list_t* materials, const ifcopenshell_material_set_shape_aspect_constituents_options_t* options);
 /**
  * Remove material assignments from products.
  *
@@ -5524,6 +5580,23 @@ bool ifcopenshell_structural_unassign_structural_analysis_model(ifcopenshell_fil
  * @return Newly created style entity.
  */
 bool ifcopenshell_style_add_style(ifcopenshell_file_t* file, const char* name, const char* ifc_class, ifcopenshell_instance_t** out_result);
+/**
+ * Create and attach a surface-style presentation component.
+ *
+ * The class defaults to IfcSurfaceStyleShading. Attributes are applied by
+ * the semantic surface-style editor. Existing components of the same select
+ * class are removed with nested cleanup before the new component is appended;
+ * shading and rendering conflict in both directions.
+ */
+bool ifcopenshell_style_add_surface_style(ifcopenshell_file_t* file, ifcopenshell_instance_t* style, const char* ifc_class, void* attributes, ifcopenshell_instance_t** out_result);
+/**
+ * Create image textures and their coordinate mappings in descriptor order.
+ *
+ * IFC2X3 returns an empty list without mutation. Unknown or omitted mapping
+ * modes create no mapping. UV mappings append each texture once to every
+ * supplied coordinate map while preserving existing order.
+ */
+bool ifcopenshell_style_add_surface_textures(ifcopenshell_file_t* file, const ifcopenshell_style_surface_texture_options_list_t* textures, const ifcopenshell_instance_list_t* uv_maps, ifcopenshell_parse_instance_list_t** out_result);
 /**
  * Assign or replace a style on a single representation item.
  *

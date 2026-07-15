@@ -166,6 +166,10 @@ def _handle_list_list_c_type(handle: HandleSpec) -> str:
     return f"{handle.c_type.removesuffix('_t')}_list_list_t"
 
 
+def _option_list_c_type(option: object) -> str:
+    return f"{option.c_type.removesuffix('_t')}_list_t"
+
+
 def _handle_destroy_name(handle: HandleSpec) -> str:
     return f"ifcopenshell_{_snake_name(handle.c_type)}_destroy"
 
@@ -187,7 +191,7 @@ def _value_destroy_name(c_type: str) -> str:
 
 
 def _type_spec_sequence_kind(type_spec: TypeSpec) -> str | None:
-    if type_spec.sequence_depth <= 0 or type_spec.kind == "handle":
+    if type_spec.sequence_depth <= 0 or type_spec.kind in {"handle", "option"}:
         return None
     return f"{type_spec.kind}{'_list' * type_spec.sequence_depth}"
 
@@ -280,6 +284,8 @@ def _param_c_type(type_spec: TypeSpec, ir: BindingIR) -> str:
     if type_spec.kind == "option":
         if type_spec.struct is None:
             raise ValueError("option type is missing option struct name")
+        if type_spec.sequence_depth == 1:
+            return f"const {_option_list_c_type(ir.option_structs[type_spec.struct])}*"
         return f"const {ir.option_structs[type_spec.struct].c_type}*"
     raise ValueError(f"Unsupported parameter kind: {type_spec.kind}")
 
@@ -461,6 +467,27 @@ def _finalize_value_types(ir: BindingIR) -> dict[str, CTypeIR]:
             destroy_function=_value_destroy_name(struct.c_type),
             element_type=struct.cpp_type,
         )
+    for option in ir.option_structs.values():
+        used = any(
+            param.type.kind == "option"
+            and param.type.struct == option.name
+            and param.type.sequence_depth == 1
+            for call in ir.calls
+            for param in call.params
+        )
+        if used:
+            list_type = _option_list_c_type(option)
+            result[_snake_name(list_type)] = CTypeIR(
+                c_type=list_type,
+                kind="input_record_sequence",
+                fields=(
+                    CFieldIR("items", f"{option.c_type}*"),
+                    CFieldIR("size", "size_t"),
+                ),
+                destroy_function=None,
+                element_type=option.c_type,
+                sequence_depth=1,
+            )
     for call in ir.calls:
         returns = call.returns
         if returns.kind == "struct" and returns.nullable and returns.struct is not None:

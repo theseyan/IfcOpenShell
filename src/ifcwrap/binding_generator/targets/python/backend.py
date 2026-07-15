@@ -46,7 +46,7 @@ _BUFFER_FORMATS = {
 
 
 def _render_owned_buffer_type() -> str:
-    return r'''\
+    return r"""\
 typedef struct {
     PyObject_HEAD
     void *owner;
@@ -265,7 +265,7 @@ static PyObject *make_snapshot_buffer(
     exporter->python_owned = 1;
     return (PyObject *)exporter;
 }
-'''
+"""
 
 
 def _normalize_c_type(c_type: str) -> str:
@@ -512,6 +512,14 @@ def _list_leaf_type(c_type: str) -> str:
 
 def _is_sequence(struct: CTypeIR | None) -> bool:
     return struct is not None and struct.kind in {"sequence", "handle_sequence"}
+
+
+def _is_input_sequence(struct: CTypeIR | None) -> bool:
+    return struct is not None and struct.kind in {
+        "sequence",
+        "handle_sequence",
+        "input_record_sequence",
+    }
 
 
 def _render_sequence_converter(struct: CTypeIR) -> str:
@@ -770,7 +778,7 @@ def _render_input_sequence_helpers(
 ) -> str:
     helpers = []
     for struct in sorted(
-        (s for s in metadata.value_types.values() if _is_sequence(s)),
+        (s for s in metadata.value_types.values() if _is_input_sequence(s)),
         key=lambda s: s.sequence_depth,
     ):
         helpers.append(_render_input_sequence_helper(struct, metadata, handles))
@@ -784,7 +792,20 @@ def _render_input_sequence_helper(
 ) -> str:
     name = _snake_name(struct.c_type)
     elem = (struct.element_type or "").removeprefix("const ").removesuffix("*").strip()
-    if struct.kind == "handle_sequence" and struct.sequence_depth == 1:
+    option = _option_by_c_type(elem, metadata)
+    if struct.kind == "input_record_sequence" and option is not None:
+        ref_count = max(1, len(option.fields))
+        read_item = f"""\
+        PyObject *refs[{ref_count}] = {{0}};
+        if (!fill_input_{_snake_name(option.c_type)}(PySequence_Fast_GET_ITEM(seq, (Py_ssize_t)i), &out->items[i], refs)) {{
+            release_option_refs(refs, {len(option.fields)});
+            free_input_{name}(out);
+            Py_DECREF(seq);
+            return 0;
+        }}
+        release_option_refs(refs, {len(option.fields)});"""
+        item_type = elem
+    elif struct.kind == "handle_sequence" and struct.sequence_depth == 1:
         py_type = _py_type_name(elem)
         read_item = f"""\
         PyObject *item_obj = PySequence_Fast_GET_ITEM(seq, (Py_ssize_t)i);
@@ -844,7 +865,15 @@ def _render_input_sequence_helper(
             return 0;
         }}"""
         item_type = elem
-    if elem == "ifcopenshell_string_t":
+    if struct.kind == "input_record_sequence" and option is not None:
+        free_body = f"""\
+    if (value->items) {{
+        for (size_t j = 0; j < value->size; ++j) {{
+            free_input_{_snake_name(option.c_type)}(&value->items[j]);
+        }}
+    }}
+    PyMem_Free(value->items);"""
+    elif elem == "ifcopenshell_string_t":
         free_body = f"""\
     if (value->items) {{
         for (size_t j = 0; j < value->size; ++j) {{
@@ -1107,6 +1136,16 @@ def _render_option_input_helpers(
     )
 
 
+def _render_option_input_prototypes(metadata: BindingABI) -> str:
+    return "\n".join(
+        f"static void free_input_{_snake_name(option.c_type)}({option.c_type} *value);\n"
+        f"static int fill_input_{_snake_name(option.c_type)}(PyObject *obj, {option.c_type} *out, PyObject **refs);"
+        for option in sorted(
+            metadata.option_structs.values(), key=lambda item: item.c_type
+        )
+    )
+
+
 def _param_parse(
     param: CParamIR,
     metadata: BindingABI,
@@ -1293,8 +1332,7 @@ def _render_function_wrapper(
             else ("int32_t", "sizeof(int32_t)", "i")
         )
         out_decl = (
-            f"    const {element_type} *result = NULL;\n"
-            "    size_t result_size = 0;"
+            f"    const {element_type} *result = NULL;\n    size_t result_size = 0;"
         )
         call_args.append("&result")
         size_args = ", ".join((*input_call_args, "&result_size"))
@@ -1304,9 +1342,7 @@ def _render_function_wrapper(
         goto __cleanup;
     }}
 """
-        result_assign = (
-            f'    __py_result = make_snapshot_buffer(result, result_size, {itemsize}, "{format_char}");'
-        )
+        result_assign = f'    __py_result = make_snapshot_buffer(result, result_size, {itemsize}, "{format_char}");'
     elif len(out_params) > 1:
         out_decls = []
         result_items = []
@@ -1437,6 +1473,7 @@ def render_python_extension(metadata: BindingABI) -> str:
     wrap_decls = "\n".join(_render_wrap_handle(handle) for handle in sorted_handles)
     input_helpers = _render_input_sequence_helpers(metadata, handles)
     option_helpers = _render_option_input_helpers(metadata, handles)
+    option_prototypes = _render_option_input_prototypes(metadata)
     value_converters = _render_value_converters(metadata, handles)
     wrappers = "\n".join(
         _render_function_wrapper(function, metadata, handles) for function in functions
@@ -1547,6 +1584,8 @@ static void release_option_refs(PyObject **refs, size_t count) {{
 
 {destroy_wrappers}
 {wrap_decls}
+{option_prototypes}
+
 {input_helpers}
 {option_helpers}
 {value_converters}

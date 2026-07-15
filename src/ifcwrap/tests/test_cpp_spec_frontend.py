@@ -940,6 +940,60 @@ def test_cpp_spec_generation_lowers_option_parameters(tmp_path: Path) -> None:
     assert "demo::root_create_entity(options_cpp)" in generated_cpp
 
 
+def test_cpp_spec_generation_lowers_input_record_sequences(tmp_path: Path) -> None:
+    spec_path = tmp_path / "demo_spec.cpp"
+    spec_path.write_text(
+        dedent(
+            """
+            #include <optional>
+            #include <string>
+            #include <vector>
+
+            #define IFCAPI_HANDLE(name, cpp_type, destructor, ptr_type)
+            struct DemoValue {};
+            IFCAPI_HANDLE(demo_value, DemoValue, none, value)
+
+            namespace demo {
+            struct ItemOptions {
+                bool enabled;
+                std::optional<std::string> label;
+                std::optional<DemoValue> value;
+                std::optional<std::vector<std::string>> tags;
+            };
+
+            inline int consume(const std::vector<ItemOptions>& items) {
+                return static_cast<int>(items.size());
+            }
+            }
+            """
+        ),
+        encoding="utf-8",
+    )
+    header_out = tmp_path / "demo_api.h"
+    cpp_out = tmp_path / "demo_api.cpp"
+
+    generate_cpp_specs(
+        [spec_path],
+        ["demo"],
+        "demo",
+        "ifcopenshell_demo",
+        header_out,
+        cpp_out,
+        discovery_include_dirs=(tmp_path,),
+    )
+
+    header = header_out.read_text(encoding="utf-8")
+    generated_cpp = cpp_out.read_text(encoding="utf-8")
+    assert "typedef struct ifcopenshell_demo_item_options_list_t" in header
+    assert "ifcopenshell_demo_item_options_t* items;" in header
+    assert "const ifcopenshell_demo_item_options_list_t* items" in header
+    assert "std::vector<demo::ItemOptions> items_cpp;" in generated_cpp
+    assert "items_cpp.reserve(items->size);" in generated_cpp
+    assert "value.label = std::string(item->label);" in generated_cpp
+    assert "value.value = item->value->value;" in generated_cpp
+    assert "value.tags = to_cpp_string_list(item->tags);" in generated_cpp
+
+
 def test_cpp_spec_generation_lowers_std_optional_option_fields(tmp_path: Path) -> None:
     spec_path = tmp_path / "demo_spec.cpp"
     spec_path.write_text(

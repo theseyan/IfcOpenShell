@@ -19,7 +19,8 @@
 from typing import Any, Literal, Optional
 
 import ifcopenshell
-import ifcopenshell.api.style
+from ifcopenshell.api.pset import _capi as pset_capi
+from ifcopenshell.api.style import _capi
 
 SURFACE_STYLE_TYPES = Literal[
     "IfcSurfaceStyleShading",
@@ -124,20 +125,16 @@ def add_surface_style(
                 "SpecularHighlight": {"SpecularRoughness": 0.5}, # Roughness factor
             })
     """
-    attributes = attributes or {}
-    style_item = file.create_entity(ifc_class)
-    ifcopenshell.api.style.edit_surface_style(file, style=style_item, attributes=attributes)
-    styles: list[ifcopenshell.entity_instance]
-    styles = list(style.Styles or [])
-
-    select_class = ifc_class
-    if select_class == "IfcSurfaceStyleRendering":
-        select_class = "IfcSurfaceStyleShading"
-    duplicate_items = [s for s in styles if s.is_a(select_class)]
-    for duplicate_item in duplicate_items:
-        ifcopenshell.api.style.remove_surface_style(file, style=duplicate_item)
-
-    styles = list(style.Styles or [])
-    styles.append(style_item)
-    style.Styles = styles
-    return style_item
+    props = pset_capi.build_props(attributes or {})
+    try:
+        return _capi.call_handle(
+            file,
+            "style_add_surface_style",
+            "Failed to add surface style",
+            _capi.file_handle(file),
+            _capi.instance_handle(style),
+            ifc_class,
+            props,
+        )
+    finally:
+        pset_capi.free_props(props)

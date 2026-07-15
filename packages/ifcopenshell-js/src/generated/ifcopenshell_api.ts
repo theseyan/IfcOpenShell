@@ -225,6 +225,7 @@ type RawApi = {
     addProfile: (file: RawValue, profile_set: RawValue, options: RawValue) => RawValue;
     assignMaterial: (file: RawValue, products: RawValue, options: RawValue) => RawValue;
     assignProfile: (file: RawValue, material_profile: RawValue, profile: RawValue) => void;
+    copyMaterial: (file: RawValue, material: RawValue) => RawValue;
     editProfileUsage: (file: RawValue, usage: RawValue, options: RawValue) => void;
     removeConstituent: (file: RawValue, constituent: RawValue, options: RawValue) => void;
     removeLayer: (file: RawValue, layer: RawValue, options: RawValue) => void;
@@ -233,6 +234,7 @@ type RawApi = {
     removeMaterialSet: (file: RawValue, material: RawValue) => void;
     removeProfile: (file: RawValue, profile: RawValue, options: RawValue) => void;
     reorderSetItem: (file: RawValue, material_set: RawValue, options: RawValue) => void;
+    setShapeAspectConstituents: (file: RawValue, element: RawValue, context: RawValue, materials: RawValue, options: RawValue) => void;
     unassignMaterial: (file: RawValue, products: RawValue, options: RawValue) => void;
   };
   nest: {
@@ -442,6 +444,8 @@ type RawApi = {
   };
   style: {
     addStyle: (file: RawValue, name: string | null, ifc_class: string) => RawValue;
+    addSurfaceStyle: (file: RawValue, style: RawValue, ifc_class: string | null, attributes: RawValue) => RawValue;
+    addSurfaceTextures: (file: RawValue, textures: RawValue, uv_maps: RawValue) => RawValue;
     assignItemStyle: (file: RawValue, options: RawValue) => RawValue;
     assignMaterialStyle: (file: RawValue, material: RawValue, style: RawValue, context: RawValue, should_use_presentation_style_assignment: boolean) => void;
     assignRepresentationStyles: (file: RawValue, shape_representation: RawValue, styles: RawValue, should_use_presentation_style_assignment: boolean, replace_previous_same_type_style: boolean) => RawValue;
@@ -1432,6 +1436,13 @@ export interface IfcOpenShellMaterialAssignMaterialOptions {
   application?: Entity;
 }
 
+export interface IfcOpenShellMaterialConstituentEntryOptions {
+  /** Exact shape-aspect and constituent name. */
+  name: string;
+  /** IfcMaterial assigned to the named constituent. */
+  material: Entity;
+}
+
 export interface IfcOpenShellMaterialEditProfileUsageOptions {
   /** Attribute key-value pairs to apply to the usage entity. */
   attributes: PsetProperties | PsetInput;
@@ -1469,6 +1480,15 @@ export interface IfcOpenShellMaterialReorderSetItemOptions {
   oldIndex?: number;
   /** Zero-based index of the destination position. Defaults to 0. */
   newIndex?: number;
+}
+
+export interface IfcOpenShellMaterialSetShapeAspectConstituentsOptions {
+  /** Optional owner history for a newly created relationship. */
+  ownerHistory?: Entity;
+  /** Optional user for relationship creation and updates. */
+  user?: Entity;
+  /** Optional application for relationship creation and updates. */
+  application?: Entity;
 }
 
 export interface IfcOpenShellMaterialUnassignMaterialOptions {
@@ -2224,6 +2244,23 @@ export interface IfcOpenShellStyleAssignItemStyleOptions {
   style?: Entity;
   /** Whether to use IfcPresentationStyleAssignment (for IFC2X3 compat). */
   shouldUsePresentationStyleAssignment: boolean;
+}
+
+export interface IfcOpenShellStyleSurfaceTextureOptions {
+  /** Whether the image repeats in the first texture direction. */
+  repeatS: boolean;
+  /** Whether the image repeats in the second texture direction. */
+  repeatT: boolean;
+  /** Optional texture usage mode, such as "DIFFUSE" or "NORMAL". */
+  mode?: string;
+  /** Image location. */
+  urlReference: string;
+  /** Optional IfcCartesianTransformationOperator2D. */
+  textureTransform?: Entity;
+  /** Optional texture parameters, preserved in order. */
+  parameter?: string[];
+  /** Optional mapping mode: "Generated", "Camera", or "UV". */
+  uvMode?: string;
 }
 
 export interface IfcOpenShellSystemAddPortOptions {
@@ -3967,6 +4004,14 @@ export interface MaterialApi {
      */
     assignProfile(file: IfcFile, material_profile: Entity, profile: Entity): void;
     /**
+     * Copy a supported material definition without copying element assignments.
+     *
+     * Set members and material properties are copied recursively in order.
+     * Underlying materials, profiles, representation contexts, and presentation
+     * styles are reused.
+     */
+    copyMaterial(file: IfcFile, material: Entity): Entity;
+    /**
      * Edit attributes of an IfcMaterialProfileSetUsage.
      *
      * Applies attribute key-value pairs from the props builder. If CardinalPoint
@@ -4026,6 +4071,16 @@ export interface MaterialApi {
      * IfcMaterialProfileSet, and IfcMaterialList.
      */
     reorderSetItem(file: IfcFile, material_set: Entity, options: IfcOpenShellMaterialReorderSetItemOptions): void;
+    /**
+     * Assign an ordered named constituent set and style matching shape aspects.
+     *
+     * An existing set is reused only when its complete name-to-material identity
+     * mapping matches. New constituents preserve caller order. Unshared obsolete
+     * sets are removed; shared sets
+     * and bare materials are retained. If no representation exists in the exact
+     * context, material assignment succeeds and style assignment is skipped.
+     */
+    setShapeAspectConstituents(file: IfcFile, element: Entity, context: Entity, materials: IfcOpenShellMaterialConstituentEntryOptions[], options: IfcOpenShellMaterialSetShapeAspectConstituentsOptions): void;
     /**
      * Remove material assignments from products.
      *
@@ -5821,6 +5876,23 @@ export interface StyleApi {
      * @return Newly created style entity.
      */
     addStyle(file: IfcFile, name: string, ifc_class: string): Entity;
+    /**
+     * Create and attach a surface-style presentation component.
+     *
+     * The class defaults to IfcSurfaceStyleShading. Attributes are applied by
+     * the semantic surface-style editor. Existing components of the same select
+     * class are removed with nested cleanup before the new component is appended;
+     * shading and rendering conflict in both directions.
+     */
+    addSurfaceStyle(file: IfcFile, style: Entity, ifc_class: string, attributes: PsetProperties | PsetInput): Entity;
+    /**
+     * Create image textures and their coordinate mappings in descriptor order.
+     *
+     * IFC2X3 returns an empty list without mutation. Unknown or omitted mapping
+     * modes create no mapping. UV mappings append each texture once to every
+     * supplied coordinate map while preserving existing order.
+     */
+    addSurfaceTextures(file: IfcFile, textures: IfcOpenShellStyleSurfaceTextureOptions[], uv_maps: Entity[]): Entity[];
     /**
      * Assign or replace a style on a single representation item.
      *
@@ -9203,6 +9275,22 @@ export function createApi(shell: IfcOpenShell): Api {
       }
     },
     /**
+     * Copy a supported material definition without copying element assignments.
+     *
+     * Set members and material properties are copied recursively in order.
+     * Underlying materials, profiles, representation contexts, and presentation
+     * styles are reused.
+     */
+    copyMaterial(file: IfcFile, material: Entity): Entity {
+      const temps: Disposable[] = [];
+      try {
+        const result = raw.material.copyMaterial(file.raw, material.raw);
+        return wrapEntity(shell, result) as Entity;
+      } finally {
+        disposeAll(temps);
+      }
+    },
+    /**
      * Edit attributes of an IfcMaterialProfileSetUsage.
      *
      * Applies attribute key-value pairs from the props builder. If CardinalPoint
@@ -9314,6 +9402,23 @@ export function createApi(shell: IfcOpenShell): Api {
       const temps: Disposable[] = [];
       try {
         raw.material.reorderSetItem(file.raw, material_set.raw, encodeOptions(options, {"newIndex": "new_index", "oldIndex": "old_index"}, shell, temps));
+      } finally {
+        disposeAll(temps);
+      }
+    },
+    /**
+     * Assign an ordered named constituent set and style matching shape aspects.
+     *
+     * An existing set is reused only when its complete name-to-material identity
+     * mapping matches. New constituents preserve caller order. Unshared obsolete
+     * sets are removed; shared sets
+     * and bare materials are retained. If no representation exists in the exact
+     * context, material assignment succeeds and style assignment is skipped.
+     */
+    setShapeAspectConstituents(file: IfcFile, element: Entity, context: Entity, materials: IfcOpenShellMaterialConstituentEntryOptions[], options: IfcOpenShellMaterialSetShapeAspectConstituentsOptions): void {
+      const temps: Disposable[] = [];
+      try {
+        raw.material.setShapeAspectConstituents(file.raw, element.raw, context.raw, materials.map((item) => encodeOptions(item, {"material": "material", "name": "name"}, shell, temps)), encodeOptions(options, {"application": "application", "ownerHistory": "owner_history", "user": "user"}, shell, temps));
       } finally {
         disposeAll(temps);
       }
@@ -12458,6 +12563,39 @@ export function createApi(shell: IfcOpenShell): Api {
       try {
         const result = raw.style.addStyle(file.raw, name, ifc_class);
         return wrapEntity(shell, result) as Entity;
+      } finally {
+        disposeAll(temps);
+      }
+    },
+    /**
+     * Create and attach a surface-style presentation component.
+     *
+     * The class defaults to IfcSurfaceStyleShading. Attributes are applied by
+     * the semantic surface-style editor. Existing components of the same select
+     * class are removed with nested cleanup before the new component is appended;
+     * shading and rendering conflict in both directions.
+     */
+    addSurfaceStyle(file: IfcFile, style: Entity, ifc_class: string, attributes: PsetProperties | PsetInput): Entity {
+      const temps: Disposable[] = [];
+      try {
+        const result = raw.style.addSurfaceStyle(file.raw, style.raw, ifc_class, toRawPsetProperties(shell, attributes as PsetProperties | PsetInput, temps));
+        return wrapEntity(shell, result) as Entity;
+      } finally {
+        disposeAll(temps);
+      }
+    },
+    /**
+     * Create image textures and their coordinate mappings in descriptor order.
+     *
+     * IFC2X3 returns an empty list without mutation. Unknown or omitted mapping
+     * modes create no mapping. UV mappings append each texture once to every
+     * supplied coordinate map while preserving existing order.
+     */
+    addSurfaceTextures(file: IfcFile, textures: IfcOpenShellStyleSurfaceTextureOptions[], uv_maps: Entity[]): Entity[] {
+      const temps: Disposable[] = [];
+      try {
+        const result = raw.style.addSurfaceTextures(file.raw, textures.map((item) => encodeOptions(item, {"mode": "mode", "parameter": "parameter", "repeatS": "repeat_s", "repeatT": "repeat_t", "textureTransform": "texture_transform", "urlReference": "url_reference", "uvMode": "uv_mode"}, shell, temps)), toRawSequence(uv_maps, shell, temps));
+        return wrapEntities(shell, result as never) as Entity[];
       } finally {
         disposeAll(temps);
       }

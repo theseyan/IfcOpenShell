@@ -17,6 +17,8 @@
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
 import ifcopenshell.api.style
+import pytest
+
 import test.bootstrap
 
 
@@ -119,6 +121,57 @@ class TestAddSurfaceStyle(test.bootstrap.IFC4):
         )
         assert style.Styles[0] == result
         assert len(style.Styles) == 1
+
+    def test_rendering_is_replaced_by_shading(self):
+        style = self.file.createIfcSurfaceStyle()
+        rendering = self.file.create_entity("IfcSurfaceStyleRendering")
+        style.Styles = [rendering]
+        result = ifcopenshell.api.style.add_surface_style(self.file, style=style)
+        assert result.is_a("IfcSurfaceStyleShading")
+        assert style.Styles == (result,)
+        with pytest.raises(RuntimeError, match="not found"):
+            self.file.by_id(rendering.id())
+
+    def test_removes_all_conflicts_and_preserves_unrelated_order(self):
+        style = self.file.createIfcSurfaceStyle()
+        lighting = self.file.create_entity("IfcSurfaceStyleLighting")
+        first = self.file.create_entity("IfcSurfaceStyleShading")
+        second = self.file.create_entity("IfcSurfaceStyleRendering")
+        refraction = self.file.create_entity("IfcSurfaceStyleRefraction")
+        style.Styles = [lighting, first, refraction, second]
+        result = ifcopenshell.api.style.add_surface_style(self.file, style=style)
+        assert style.Styles == (lighting, refraction, result)
+        assert not self.file.by_type("IfcSurfaceStyleRendering")
+        assert self.file.by_type("IfcSurfaceStyleShading") == [result]
+
+    def test_supports_every_documented_component_class(self):
+        style = self.file.createIfcSurfaceStyle()
+        classes = [
+            "IfcSurfaceStyleShading",
+            "IfcSurfaceStyleRendering",
+            "IfcSurfaceStyleWithTextures",
+            "IfcSurfaceStyleLighting",
+            "IfcSurfaceStyleRefraction",
+            "IfcExternallyDefinedSurfaceStyle",
+        ]
+        results = [
+            ifcopenshell.api.style.add_surface_style(
+                self.file, style=style, ifc_class=ifc_class
+            )
+            for ifc_class in classes
+        ]
+        assert [result.is_a() for result in results] == classes
+        assert style.Styles == tuple(results[1:])
+
+    def test_rejects_invalid_classes_without_creating_an_entity(self):
+        style = self.file.createIfcSurfaceStyle()
+        count = len(list(self.file))
+        with pytest.raises(RuntimeError, match="Unsupported surface style class"):
+            ifcopenshell.api.style.add_surface_style(
+                self.file, style=style, ifc_class="IfcSurfaceStyleReflectance"
+            )
+        assert len(list(self.file)) == count
+        assert not style.Styles
 
 
 class TestAddSurfaceStyleIFC2X3(test.bootstrap.IFC2X3, TestAddSurfaceStyle):

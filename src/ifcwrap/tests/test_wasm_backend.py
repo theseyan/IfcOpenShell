@@ -181,6 +181,79 @@ class TestWasmTypescript:
         assert "destroy(): void;" in code
         assert "readonly ptr: number;" in code
 
+    def test_input_record_sequences_have_exact_types_and_failure_cleanup(self):
+        option = COptionIR(
+            name="TextureOptions",
+            c_type="ifcopenshell_demo_texture_options_t",
+            fields=(
+                COptionFieldIR("repeat_s", TypeSpec(kind="bool"), "bool"),
+                COptionFieldIR(
+                    "mode", TypeSpec(kind="string", nullable=True), "const char*"
+                ),
+                COptionFieldIR(
+                    "transform",
+                    TypeSpec(kind="handle", handle="instance", nullable=True),
+                    "ifcopenshell_instance_t*",
+                ),
+                COptionFieldIR(
+                    "parameter",
+                    TypeSpec(kind="string", sequence_depth=1, nullable=True),
+                    "const ifcopenshell_string_list_t*",
+                ),
+            ),
+        )
+        record_list = CTypeIR(
+            c_type="ifcopenshell_demo_texture_options_list_t",
+            kind="input_record_sequence",
+            fields=(
+                CFieldIR("items", "ifcopenshell_demo_texture_options_t*"),
+                CFieldIR("size", "size_t"),
+            ),
+            destroy_function=None,
+            element_type="ifcopenshell_demo_texture_options_t",
+            sequence_depth=1,
+        )
+        metadata = _make_metadata(
+            c_prefix="ifcopenshell",
+            handles={"instance": _make_handle("ifcopenshell_instance_t")},
+            value_types={"texture_options_list": record_list},
+            option_structs={"TextureOptions": option},
+            functions={
+                "ifcopenshell_style_add_textures": _make_function(
+                    c_name="ifcopenshell_style_add_textures",
+                    params=(
+                        CParamIR(
+                            "textures",
+                            "const ifcopenshell_demo_texture_options_list_t*",
+                            "param",
+                            "option",
+                        ),
+                    ),
+                )
+            },
+        )
+        declarations = render_typescript_declarations(metadata)
+        glue = render_js_glue(metadata)
+        bridge = render_api_direct(metadata)
+        assert "repeat_s: boolean;" in declarations
+        assert "mode?: string;" in declarations
+        assert "transform?: IfcOpenshellInstance;" in declarations
+        assert "parameter?: string[];" in declarations
+        assert "textures: IfcOpenshellDemoTextureOptions[]" in declarations
+        assert '"kind": "input_record_sequence"' in glue
+        assert "for (let index = 0; index < value.length; index += 1)" in glue
+        assert (
+            "_freeInputOptionFields(module, itemsPtr + index * elementInfo.size, elementMetadata)"
+            in glue
+        )
+        assert "if (itemsPtr) module._free(itemsPtr);" in glue
+        assert "textures: IfcOpenShellDemoTextureOptions[]" in bridge
+        assert (
+            'textures.map((item) => encodeOptions(item, {"mode": "mode", '
+            '"parameter": "parameter", "repeatS": "repeat_s", '
+            '"transform": "transform"}, shell, temps))' in bridge
+        )
+
     def test_maps_scalar_and_handle_types(self):
         metadata = _make_metadata(
             handles={"file": _make_handle("ifcopenshell_demo_file_t")},
@@ -459,9 +532,12 @@ class TestWasmJsGlue:
             "_wrapIfcOpenshellDemoTemplate(module.getValue(outResultPtr, '*'), true, module)"
             in code
         )
-        assert code.count(
-            "_wrapIfcOpenshellDemoTemplate(module.getValue(outResultPtr, '*'), true, module)"
-        ) == 2
+        assert (
+            code.count(
+                "_wrapIfcOpenshellDemoTemplate(module.getValue(outResultPtr, '*'), true, module)"
+            )
+            == 2
+        )
 
     def test_destroys_variant_results_after_transferring_handles(self):
         variant = TypeSpec(
@@ -549,7 +625,10 @@ class TestWasmJsGlue:
 
         code = render_js_glue(metadata)
 
-        assert "const handle = _wrapHandleByType(module, elementType, module.getValue(elementPtr, '*'), true);" in code
+        assert (
+            "const handle = _wrapHandleByType(module, elementType, module.getValue(elementPtr, '*'), true);"
+            in code
+        )
         assert "module.setValue(elementPtr, 0, '*');" in code
         assert "module._ifcopenshell_demo_item_list_destroy(outResultPtr);" in code
         assert "module._ifcopenshell_demo_item_list_list_destroy(outResultPtr);" in code
@@ -617,7 +696,9 @@ class TestWasmJsGlue:
                 ),
                 "ifcopenshell_demo_optional": _make_function(
                     c_name="ifcopenshell_demo_optional",
-                    returns=TypeSpec(kind="struct", struct="demo_result", nullable=True),
+                    returns=TypeSpec(
+                        kind="struct", struct="demo_result", nullable=True
+                    ),
                 ),
             },
         )
@@ -627,7 +708,9 @@ class TestWasmJsGlue:
         assert "result[field.name] = _wrapHandleByType" in code
         assert "module.setValue(fieldPtr, 0, '*');" in code
         assert "module._ifcopenshell_demo_result_destroy(outResultPtr);" in code
-        assert "module._ifcopenshell_optional_demo_result_destroy(outResultPtr);" in code
+        assert (
+            "module._ifcopenshell_optional_demo_result_destroy(outResultPtr);" in code
+        )
 
     def test_handle_destroy_is_idempotent_after_envelope_transfer(self):
         metadata = _make_metadata(
@@ -1034,6 +1117,8 @@ class TestWasmJsGlue:
             in code
         )
         assert "function _allocInputOption(module, value, cType)" in code
+        assert "function _writeInputOption(module, ptr, value, metadata)" in code
+        assert "        const layout = _getStructLayout(metadata);" in code
         assert "function _zeroMemory(module, ptr, size)" in code
         assert "module.HEAPU32.fill(0, start, start + wordCount);" in code
         assert "module.HEAPU8.fill" not in code

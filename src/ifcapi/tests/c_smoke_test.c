@@ -6,6 +6,8 @@
 int ifcapi_run_root_smoke_tests(void);
 int ifcapi_run_selector_smoke_tests(void);
 int ifcapi_run_pset_smoke_tests(void);
+int ifcapi_run_style_smoke_tests(void);
+int ifcapi_run_material_smoke_tests(void);
 int ifcapi_run_unit_smoke_tests(void);
 
 int main(void) {
@@ -14,6 +16,8 @@ int main(void) {
     failures += ifcapi_run_root_smoke_tests();
     failures += ifcapi_run_selector_smoke_tests();
     failures += ifcapi_run_pset_smoke_tests();
+    failures += ifcapi_run_style_smoke_tests();
+    failures += ifcapi_run_material_smoke_tests();
     failures += ifcapi_run_unit_smoke_tests();
 
     if (failures) {

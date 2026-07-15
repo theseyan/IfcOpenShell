@@ -566,6 +566,11 @@ declare module 'ifcopenshell-api' {
     application?: IfcOpenshellInstance;
   }
 
+  export interface IfcOpenshellMaterialConstituentEntryOptions {
+    name: string;
+    material: IfcOpenshellInstance;
+  }
+
   export interface IfcOpenshellMaterialEditProfileUsageOptions {
     attributes: number;
     profile_width?: number;
@@ -588,6 +593,12 @@ declare module 'ifcopenshell-api' {
   export interface IfcOpenshellMaterialReorderSetItemOptions {
     old_index?: number;
     new_index?: number;
+  }
+
+  export interface IfcOpenshellMaterialSetShapeAspectConstituentsOptions {
+    owner_history?: IfcOpenshellInstance;
+    user?: IfcOpenshellInstance;
+    application?: IfcOpenshellInstance;
   }
 
   export interface IfcOpenshellMaterialUnassignMaterialOptions {
@@ -1050,6 +1061,16 @@ declare module 'ifcopenshell-api' {
     item: IfcOpenshellInstance;
     style?: IfcOpenshellInstance;
     should_use_presentation_style_assignment: boolean;
+  }
+
+  export interface IfcOpenshellStyleSurfaceTextureOptions {
+    repeat_s: boolean;
+    repeat_t: boolean;
+    mode?: string;
+    url_reference: string;
+    texture_transform?: IfcOpenshellInstance;
+    parameter?: string[];
+    uv_mode?: string;
   }
 
   export interface IfcOpenshellSystemAddPortOptions {
@@ -3716,6 +3737,14 @@ declare module 'ifcopenshell-api' {
      */
     assignProfile(file: IfcOpenshellFile, material_profile: IfcOpenshellInstance, profile: IfcOpenshellInstance): void;
     /**
+     * Copy a supported material definition without copying element assignments.
+     *
+     * Set members and material properties are copied recursively in order.
+     * Underlying materials, profiles, representation contexts, and presentation
+     * styles are reused.
+     */
+    copyMaterial(file: IfcOpenshellFile, material: IfcOpenshellInstance): IfcOpenshellInstance;
+    /**
      * Edit attributes of an IfcMaterialProfileSetUsage.
      *
      * Applies attribute key-value pairs from the props builder. If CardinalPoint
@@ -3775,6 +3804,16 @@ declare module 'ifcopenshell-api' {
      * IfcMaterialProfileSet, and IfcMaterialList.
      */
     reorderSetItem(file: IfcOpenshellFile, material_set: IfcOpenshellInstance, options: IfcOpenshellMaterialReorderSetItemOptions): void;
+    /**
+     * Assign an ordered named constituent set and style matching shape aspects.
+     *
+     * An existing set is reused only when its complete name-to-material identity
+     * mapping matches. New constituents preserve caller order. Unshared obsolete
+     * sets are removed; shared sets
+     * and bare materials are retained. If no representation exists in the exact
+     * context, material assignment succeeds and style assignment is skipped.
+     */
+    setShapeAspectConstituents(file: IfcOpenshellFile, element: IfcOpenshellInstance, context: IfcOpenshellInstance, materials: IfcOpenshellMaterialConstituentEntryOptions[], options: IfcOpenshellMaterialSetShapeAspectConstituentsOptions): void;
     /**
      * Remove material assignments from products.
      *
@@ -5800,6 +5839,23 @@ declare module 'ifcopenshell-api' {
      * @return Newly created style entity.
      */
     addStyle(file: IfcOpenshellFile, name: string | null, ifc_class: string): IfcOpenshellInstance;
+    /**
+     * Create and attach a surface-style presentation component.
+     *
+     * The class defaults to IfcSurfaceStyleShading. Attributes are applied by
+     * the semantic surface-style editor. Existing components of the same select
+     * class are removed with nested cleanup before the new component is appended;
+     * shading and rendering conflict in both directions.
+     */
+    addSurfaceStyle(file: IfcOpenshellFile, style: IfcOpenshellInstance, ifc_class: string | null, attributes: number): IfcOpenshellInstance;
+    /**
+     * Create image textures and their coordinate mappings in descriptor order.
+     *
+     * IFC2X3 returns an empty list without mutation. Unknown or omitted mapping
+     * modes create no mapping. UV mappings append each texture once to every
+     * supplied coordinate map while preserving existing order.
+     */
+    addSurfaceTextures(file: IfcOpenshellFile, textures: IfcOpenshellStyleSurfaceTextureOptions[], uv_maps: IfcOpenshellInstance[]): IfcOpenshellParseInstanceList;
     /**
      * Assign or replace a style on a single representation item.
      *

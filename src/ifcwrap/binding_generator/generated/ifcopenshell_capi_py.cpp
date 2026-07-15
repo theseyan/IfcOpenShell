@@ -5983,6 +5983,321 @@ static PyObject *wrap_value(ifcopenshell_value_t *handle, int owned) {
     return (PyObject *)result;
 }
 
+static void free_input_aggregate_assign_object_options(ifcopenshell_aggregate_assign_object_options_t *value);
+static int fill_input_aggregate_assign_object_options(PyObject *obj, ifcopenshell_aggregate_assign_object_options_t *out, PyObject **refs);
+static void free_input_aggregate_unassign_object_options(ifcopenshell_aggregate_unassign_object_options_t *value);
+static int fill_input_aggregate_unassign_object_options(PyObject *obj, ifcopenshell_aggregate_unassign_object_options_t *out, PyObject **refs);
+static void free_input_attribute_edit_attributes_options(ifcopenshell_attribute_edit_attributes_options_t *value);
+static int fill_input_attribute_edit_attributes_options(PyObject *obj, ifcopenshell_attribute_edit_attributes_options_t *out, PyObject **refs);
+static void free_input_boundary_assign_connection_geometry_options(ifcopenshell_boundary_assign_connection_geometry_options_t *value);
+static int fill_input_boundary_assign_connection_geometry_options(PyObject *obj, ifcopenshell_boundary_assign_connection_geometry_options_t *out, PyObject **refs);
+static void free_input_boundary_edit_attributes_options(ifcopenshell_boundary_edit_attributes_options_t *value);
+static int fill_input_boundary_edit_attributes_options(PyObject *obj, ifcopenshell_boundary_edit_attributes_options_t *out, PyObject **refs);
+static void free_input_classification_add_reference_options(ifcopenshell_classification_add_reference_options_t *value);
+static int fill_input_classification_add_reference_options(PyObject *obj, ifcopenshell_classification_add_reference_options_t *out, PyObject **refs);
+static void free_input_classification_remove_reference_options(ifcopenshell_classification_remove_reference_options_t *value);
+static int fill_input_classification_remove_reference_options(PyObject *obj, ifcopenshell_classification_remove_reference_options_t *out, PyObject **refs);
+static void free_input_cogo_add_survey_point_options(ifcopenshell_cogo_add_survey_point_options_t *value);
+static int fill_input_cogo_add_survey_point_options(PyObject *obj, ifcopenshell_cogo_add_survey_point_options_t *out, PyObject **refs);
+static void free_input_constraint_assign_constraint_options(ifcopenshell_constraint_assign_constraint_options_t *value);
+static int fill_input_constraint_assign_constraint_options(PyObject *obj, ifcopenshell_constraint_assign_constraint_options_t *out, PyObject **refs);
+static void free_input_constraint_unassign_constraint_options(ifcopenshell_constraint_unassign_constraint_options_t *value);
+static int fill_input_constraint_unassign_constraint_options(PyObject *obj, ifcopenshell_constraint_unassign_constraint_options_t *out, PyObject **refs);
+static void free_input_context_add_context_options(ifcopenshell_context_add_context_options_t *value);
+static int fill_input_context_add_context_options(PyObject *obj, ifcopenshell_context_add_context_options_t *out, PyObject **refs);
+static void free_input_control_assign_control_options(ifcopenshell_control_assign_control_options_t *value);
+static int fill_input_control_assign_control_options(PyObject *obj, ifcopenshell_control_assign_control_options_t *out, PyObject **refs);
+static void free_input_control_unassign_control_options(ifcopenshell_control_unassign_control_options_t *value);
+static int fill_input_control_unassign_control_options(PyObject *obj, ifcopenshell_control_unassign_control_options_t *out, PyObject **refs);
+static void free_input_cost_add_cost_item_options(ifcopenshell_cost_add_cost_item_options_t *value);
+static int fill_input_cost_add_cost_item_options(PyObject *obj, ifcopenshell_cost_add_cost_item_options_t *out, PyObject **refs);
+static void free_input_cost_assign_cost_item_quantity_options(ifcopenshell_cost_assign_cost_item_quantity_options_t *value);
+static int fill_input_cost_assign_cost_item_quantity_options(PyObject *obj, ifcopenshell_cost_assign_cost_item_quantity_options_t *out, PyObject **refs);
+static void free_input_cost_copy_cost_schedule_options(ifcopenshell_cost_copy_cost_schedule_options_t *value);
+static int fill_input_cost_copy_cost_schedule_options(PyObject *obj, ifcopenshell_cost_copy_cost_schedule_options_t *out, PyObject **refs);
+static void free_input_cost_edit_cost_value_options(ifcopenshell_cost_edit_cost_value_options_t *value);
+static int fill_input_cost_edit_cost_value_options(PyObject *obj, ifcopenshell_cost_edit_cost_value_options_t *out, PyObject **refs);
+static void free_input_cost_unassign_cost_item_quantity_options(ifcopenshell_cost_unassign_cost_item_quantity_options_t *value);
+static int fill_input_cost_unassign_cost_item_quantity_options(PyObject *obj, ifcopenshell_cost_unassign_cost_item_quantity_options_t *out, PyObject **refs);
+static void free_input_document_add_information_options(ifcopenshell_document_add_information_options_t *value);
+static int fill_input_document_add_information_options(PyObject *obj, ifcopenshell_document_add_information_options_t *out, PyObject **refs);
+static void free_input_document_assign_document_options(ifcopenshell_document_assign_document_options_t *value);
+static int fill_input_document_assign_document_options(PyObject *obj, ifcopenshell_document_assign_document_options_t *out, PyObject **refs);
+static void free_input_document_unassign_document_options(ifcopenshell_document_unassign_document_options_t *value);
+static int fill_input_document_unassign_document_options(PyObject *obj, ifcopenshell_document_unassign_document_options_t *out, PyObject **refs);
+static void free_input_drawing_assign_product_options(ifcopenshell_drawing_assign_product_options_t *value);
+static int fill_input_drawing_assign_product_options(PyObject *obj, ifcopenshell_drawing_assign_product_options_t *out, PyObject **refs);
+static void free_input_drawing_unassign_product_options(ifcopenshell_drawing_unassign_product_options_t *value);
+static int fill_input_drawing_unassign_product_options(PyObject *obj, ifcopenshell_drawing_unassign_product_options_t *out, PyObject **refs);
+static void free_input_element_get_container_options(ifcopenshell_element_get_container_options_t *value);
+static int fill_input_element_get_container_options(PyObject *obj, ifcopenshell_element_get_container_options_t *out, PyObject **refs);
+static void free_input_element_get_decomposition_options(ifcopenshell_element_get_decomposition_options_t *value);
+static int fill_input_element_get_decomposition_options(PyObject *obj, ifcopenshell_element_get_decomposition_options_t *out, PyObject **refs);
+static void free_input_element_get_material_options(ifcopenshell_element_get_material_options_t *value);
+static int fill_input_element_get_material_options(PyObject *obj, ifcopenshell_element_get_material_options_t *out, PyObject **refs);
+static void free_input_element_get_pset_ids_options(ifcopenshell_element_get_pset_ids_options_t *value);
+static int fill_input_element_get_pset_ids_options(PyObject *obj, ifcopenshell_element_get_pset_ids_options_t *out, PyObject **refs);
+static void free_input_element_get_shape_aspects_options(ifcopenshell_element_get_shape_aspects_options_t *value);
+static int fill_input_element_get_shape_aspects_options(PyObject *obj, ifcopenshell_element_get_shape_aspects_options_t *out, PyObject **refs);
+static void free_input_entity_remove_deep_options(ifcopenshell_entity_remove_deep_options_t *value);
+static int fill_input_entity_remove_deep_options(PyObject *obj, ifcopenshell_entity_remove_deep_options_t *out, PyObject **refs);
+static void free_input_feature_add_feature_options(ifcopenshell_feature_add_feature_options_t *value);
+static int fill_input_feature_add_feature_options(PyObject *obj, ifcopenshell_feature_add_feature_options_t *out, PyObject **refs);
+static void free_input_feature_remove_feature_options(ifcopenshell_feature_remove_feature_options_t *value);
+static int fill_input_feature_remove_feature_options(PyObject *obj, ifcopenshell_feature_remove_feature_options_t *out, PyObject **refs);
+static void free_input_geometry_add_door_representation_options(ifcopenshell_geometry_add_door_representation_options_t *value);
+static int fill_input_geometry_add_door_representation_options(PyObject *obj, ifcopenshell_geometry_add_door_representation_options_t *out, PyObject **refs);
+static void free_input_geometry_add_mesh_representation_options(ifcopenshell_geometry_add_mesh_representation_options_t *value);
+static int fill_input_geometry_add_mesh_representation_options(PyObject *obj, ifcopenshell_geometry_add_mesh_representation_options_t *out, PyObject **refs);
+static void free_input_geometry_add_profile_representation_options(ifcopenshell_geometry_add_profile_representation_options_t *value);
+static int fill_input_geometry_add_profile_representation_options(PyObject *obj, ifcopenshell_geometry_add_profile_representation_options_t *out, PyObject **refs);
+static void free_input_geometry_add_railing_representation_options(ifcopenshell_geometry_add_railing_representation_options_t *value);
+static int fill_input_geometry_add_railing_representation_options(PyObject *obj, ifcopenshell_geometry_add_railing_representation_options_t *out, PyObject **refs);
+static void free_input_geometry_add_shape_aspect_options(ifcopenshell_geometry_add_shape_aspect_options_t *value);
+static int fill_input_geometry_add_shape_aspect_options(PyObject *obj, ifcopenshell_geometry_add_shape_aspect_options_t *out, PyObject **refs);
+static void free_input_geometry_add_slab_representation_options(ifcopenshell_geometry_add_slab_representation_options_t *value);
+static int fill_input_geometry_add_slab_representation_options(PyObject *obj, ifcopenshell_geometry_add_slab_representation_options_t *out, PyObject **refs);
+static void free_input_geometry_add_topology_representation_options(ifcopenshell_geometry_add_topology_representation_options_t *value);
+static int fill_input_geometry_add_topology_representation_options(PyObject *obj, ifcopenshell_geometry_add_topology_representation_options_t *out, PyObject **refs);
+static void free_input_geometry_add_wall_representation_options(ifcopenshell_geometry_add_wall_representation_options_t *value);
+static int fill_input_geometry_add_wall_representation_options(PyObject *obj, ifcopenshell_geometry_add_wall_representation_options_t *out, PyObject **refs);
+static void free_input_geometry_add_window_representation_options(ifcopenshell_geometry_add_window_representation_options_t *value);
+static int fill_input_geometry_add_window_representation_options(PyObject *obj, ifcopenshell_geometry_add_window_representation_options_t *out, PyObject **refs);
+static void free_input_geometry_clip_solid_bounded_options(ifcopenshell_geometry_clip_solid_bounded_options_t *value);
+static int fill_input_geometry_clip_solid_bounded_options(PyObject *obj, ifcopenshell_geometry_clip_solid_bounded_options_t *out, PyObject **refs);
+static void free_input_geometry_clip_solid_options(ifcopenshell_geometry_clip_solid_options_t *value);
+static int fill_input_geometry_clip_solid_options(PyObject *obj, ifcopenshell_geometry_clip_solid_options_t *out, PyObject **refs);
+static void free_input_geometry_connect_element_options(ifcopenshell_geometry_connect_element_options_t *value);
+static int fill_input_geometry_connect_element_options(PyObject *obj, ifcopenshell_geometry_connect_element_options_t *out, PyObject **refs);
+static void free_input_geometry_connect_path_options(ifcopenshell_geometry_connect_path_options_t *value);
+static int fill_input_geometry_connect_path_options(PyObject *obj, ifcopenshell_geometry_connect_path_options_t *out, PyObject **refs);
+static void free_input_geometry_connect_wall_options(ifcopenshell_geometry_connect_wall_options_t *value);
+static int fill_input_geometry_connect_wall_options(PyObject *obj, ifcopenshell_geometry_connect_wall_options_t *out, PyObject **refs);
+static void free_input_geometry_copy_representation_options(ifcopenshell_geometry_copy_representation_options_t *value);
+static int fill_input_geometry_copy_representation_options(PyObject *obj, ifcopenshell_geometry_copy_representation_options_t *out, PyObject **refs);
+static void free_input_geometry_create2_pt_wall_options(ifcopenshell_geometry_create2_pt_wall_options_t *value);
+static int fill_input_geometry_create2_pt_wall_options(PyObject *obj, ifcopenshell_geometry_create2_pt_wall_options_t *out, PyObject **refs);
+static void free_input_geometry_disconnect_path_options(ifcopenshell_geometry_disconnect_path_options_t *value);
+static int fill_input_geometry_disconnect_path_options(PyObject *obj, ifcopenshell_geometry_disconnect_path_options_t *out, PyObject **refs);
+static void free_input_geometry_edit_object_placement_options(ifcopenshell_geometry_edit_object_placement_options_t *value);
+static int fill_input_geometry_edit_object_placement_options(PyObject *obj, ifcopenshell_geometry_edit_object_placement_options_t *out, PyObject **refs);
+static void free_input_geometry_regenerate_wall_representation_options(ifcopenshell_geometry_regenerate_wall_representation_options_t *value);
+static int fill_input_geometry_regenerate_wall_representation_options(PyObject *obj, ifcopenshell_geometry_regenerate_wall_representation_options_t *out, PyObject **refs);
+static void free_input_geometry_remove_representation_options(ifcopenshell_geometry_remove_representation_options_t *value);
+static int fill_input_geometry_remove_representation_options(PyObject *obj, ifcopenshell_geometry_remove_representation_options_t *out, PyObject **refs);
+static void free_input_geometry_validate_type_options(ifcopenshell_geometry_validate_type_options_t *value);
+static int fill_input_geometry_validate_type_options(PyObject *obj, ifcopenshell_geometry_validate_type_options_t *out, PyObject **refs);
+static void free_input_georeference_add_georeferencing_options(ifcopenshell_georeference_add_georeferencing_options_t *value);
+static int fill_input_georeference_add_georeferencing_options(PyObject *obj, ifcopenshell_georeference_add_georeferencing_options_t *out, PyObject **refs);
+static void free_input_georeference_edit_georeferencing_options(ifcopenshell_georeference_edit_georeferencing_options_t *value);
+static int fill_input_georeference_edit_georeferencing_options(PyObject *obj, ifcopenshell_georeference_edit_georeferencing_options_t *out, PyObject **refs);
+static void free_input_georeference_edit_true_north_options(ifcopenshell_georeference_edit_true_north_options_t *value);
+static int fill_input_georeference_edit_true_north_options(PyObject *obj, ifcopenshell_georeference_edit_true_north_options_t *out, PyObject **refs);
+static void free_input_georeference_edit_wcs_options(ifcopenshell_georeference_edit_wcs_options_t *value);
+static int fill_input_georeference_edit_wcs_options(PyObject *obj, ifcopenshell_georeference_edit_wcs_options_t *out, PyObject **refs);
+static void free_input_group_add_group_options(ifcopenshell_group_add_group_options_t *value);
+static int fill_input_group_add_group_options(PyObject *obj, ifcopenshell_group_add_group_options_t *out, PyObject **refs);
+static void free_input_group_assign_group_options(ifcopenshell_group_assign_group_options_t *value);
+static int fill_input_group_assign_group_options(PyObject *obj, ifcopenshell_group_assign_group_options_t *out, PyObject **refs);
+static void free_input_group_unassign_group_options(ifcopenshell_group_unassign_group_options_t *value);
+static int fill_input_group_unassign_group_options(PyObject *obj, ifcopenshell_group_unassign_group_options_t *out, PyObject **refs);
+static void free_input_group_update_group_products_options(ifcopenshell_group_update_group_products_options_t *value);
+static int fill_input_group_update_group_products_options(PyObject *obj, ifcopenshell_group_update_group_products_options_t *out, PyObject **refs);
+static void free_input_layer_add_layer_with_style_options(ifcopenshell_layer_add_layer_with_style_options_t *value);
+static int fill_input_layer_add_layer_with_style_options(PyObject *obj, ifcopenshell_layer_add_layer_with_style_options_t *out, PyObject **refs);
+static void free_input_library_assign_reference_options(ifcopenshell_library_assign_reference_options_t *value);
+static int fill_input_library_assign_reference_options(PyObject *obj, ifcopenshell_library_assign_reference_options_t *out, PyObject **refs);
+static void free_input_library_unassign_reference_options(ifcopenshell_library_unassign_reference_options_t *value);
+static int fill_input_library_unassign_reference_options(PyObject *obj, ifcopenshell_library_unassign_reference_options_t *out, PyObject **refs);
+static void free_input_material_add_constituent_options(ifcopenshell_material_add_constituent_options_t *value);
+static int fill_input_material_add_constituent_options(PyObject *obj, ifcopenshell_material_add_constituent_options_t *out, PyObject **refs);
+static void free_input_material_add_layer_options(ifcopenshell_material_add_layer_options_t *value);
+static int fill_input_material_add_layer_options(PyObject *obj, ifcopenshell_material_add_layer_options_t *out, PyObject **refs);
+static void free_input_material_add_material_options(ifcopenshell_material_add_material_options_t *value);
+static int fill_input_material_add_material_options(PyObject *obj, ifcopenshell_material_add_material_options_t *out, PyObject **refs);
+static void free_input_material_add_material_set_options(ifcopenshell_material_add_material_set_options_t *value);
+static int fill_input_material_add_material_set_options(PyObject *obj, ifcopenshell_material_add_material_set_options_t *out, PyObject **refs);
+static void free_input_material_add_profile_options(ifcopenshell_material_add_profile_options_t *value);
+static int fill_input_material_add_profile_options(PyObject *obj, ifcopenshell_material_add_profile_options_t *out, PyObject **refs);
+static void free_input_material_assign_material_options(ifcopenshell_material_assign_material_options_t *value);
+static int fill_input_material_assign_material_options(PyObject *obj, ifcopenshell_material_assign_material_options_t *out, PyObject **refs);
+static void free_input_material_constituent_entry_options(ifcopenshell_material_constituent_entry_options_t *value);
+static int fill_input_material_constituent_entry_options(PyObject *obj, ifcopenshell_material_constituent_entry_options_t *out, PyObject **refs);
+static void free_input_material_edit_profile_usage_options(ifcopenshell_material_edit_profile_usage_options_t *value);
+static int fill_input_material_edit_profile_usage_options(PyObject *obj, ifcopenshell_material_edit_profile_usage_options_t *out, PyObject **refs);
+static void free_input_material_remove_item_options(ifcopenshell_material_remove_item_options_t *value);
+static int fill_input_material_remove_item_options(PyObject *obj, ifcopenshell_material_remove_item_options_t *out, PyObject **refs);
+static void free_input_material_remove_list_item_options(ifcopenshell_material_remove_list_item_options_t *value);
+static int fill_input_material_remove_list_item_options(PyObject *obj, ifcopenshell_material_remove_list_item_options_t *out, PyObject **refs);
+static void free_input_material_remove_profile_options(ifcopenshell_material_remove_profile_options_t *value);
+static int fill_input_material_remove_profile_options(PyObject *obj, ifcopenshell_material_remove_profile_options_t *out, PyObject **refs);
+static void free_input_material_reorder_set_item_options(ifcopenshell_material_reorder_set_item_options_t *value);
+static int fill_input_material_reorder_set_item_options(PyObject *obj, ifcopenshell_material_reorder_set_item_options_t *out, PyObject **refs);
+static void free_input_material_set_shape_aspect_constituents_options(ifcopenshell_material_set_shape_aspect_constituents_options_t *value);
+static int fill_input_material_set_shape_aspect_constituents_options(PyObject *obj, ifcopenshell_material_set_shape_aspect_constituents_options_t *out, PyObject **refs);
+static void free_input_material_unassign_material_options(ifcopenshell_material_unassign_material_options_t *value);
+static int fill_input_material_unassign_material_options(PyObject *obj, ifcopenshell_material_unassign_material_options_t *out, PyObject **refs);
+static void free_input_nest_assign_object_options(ifcopenshell_nest_assign_object_options_t *value);
+static int fill_input_nest_assign_object_options(PyObject *obj, ifcopenshell_nest_assign_object_options_t *out, PyObject **refs);
+static void free_input_nest_unassign_object_options(ifcopenshell_nest_unassign_object_options_t *value);
+static int fill_input_nest_unassign_object_options(PyObject *obj, ifcopenshell_nest_unassign_object_options_t *out, PyObject **refs);
+static void free_input_owner_add_actor_options(ifcopenshell_owner_add_actor_options_t *value);
+static int fill_input_owner_add_actor_options(PyObject *obj, ifcopenshell_owner_add_actor_options_t *out, PyObject **refs);
+static void free_input_owner_add_application_options(ifcopenshell_owner_add_application_options_t *value);
+static int fill_input_owner_add_application_options(PyObject *obj, ifcopenshell_owner_add_application_options_t *out, PyObject **refs);
+static void free_input_owner_assign_actor_options(ifcopenshell_owner_assign_actor_options_t *value);
+static int fill_input_owner_assign_actor_options(PyObject *obj, ifcopenshell_owner_assign_actor_options_t *out, PyObject **refs);
+static void free_input_owner_create_owner_history_options(ifcopenshell_owner_create_owner_history_options_t *value);
+static int fill_input_owner_create_owner_history_options(PyObject *obj, ifcopenshell_owner_create_owner_history_options_t *out, PyObject **refs);
+static void free_input_owner_unassign_actor_options(ifcopenshell_owner_unassign_actor_options_t *value);
+static int fill_input_owner_unassign_actor_options(PyObject *obj, ifcopenshell_owner_unassign_actor_options_t *out, PyObject **refs);
+static void free_input_owner_update_owner_history_options(ifcopenshell_owner_update_owner_history_options_t *value);
+static int fill_input_owner_update_owner_history_options(PyObject *obj, ifcopenshell_owner_update_owner_history_options_t *out, PyObject **refs);
+static void free_input_profile_add_arbitrary_profile_options(ifcopenshell_profile_add_arbitrary_profile_options_t *value);
+static int fill_input_profile_add_arbitrary_profile_options(PyObject *obj, ifcopenshell_profile_add_arbitrary_profile_options_t *out, PyObject **refs);
+static void free_input_profile_add_arbitrary_profile_with_voids_options(ifcopenshell_profile_add_arbitrary_profile_with_voids_options_t *value);
+static int fill_input_profile_add_arbitrary_profile_with_voids_options(PyObject *obj, ifcopenshell_profile_add_arbitrary_profile_with_voids_options_t *out, PyObject **refs);
+static void free_input_project_append_asset_options(ifcopenshell_project_append_asset_options_t *value);
+static int fill_input_project_append_asset_options(PyObject *obj, ifcopenshell_project_append_asset_options_t *out, PyObject **refs);
+static void free_input_project_assign_declaration_options(ifcopenshell_project_assign_declaration_options_t *value);
+static int fill_input_project_assign_declaration_options(PyObject *obj, ifcopenshell_project_assign_declaration_options_t *out, PyObject **refs);
+static void free_input_project_unassign_declaration_options(ifcopenshell_project_unassign_declaration_options_t *value);
+static int fill_input_project_unassign_declaration_options(PyObject *obj, ifcopenshell_project_unassign_declaration_options_t *out, PyObject **refs);
+static void free_input_pset_add_pset_options(ifcopenshell_pset_add_pset_options_t *value);
+static int fill_input_pset_add_pset_options(PyObject *obj, ifcopenshell_pset_add_pset_options_t *out, PyObject **refs);
+static void free_input_pset_add_qto_options(ifcopenshell_pset_add_qto_options_t *value);
+static int fill_input_pset_add_qto_options(PyObject *obj, ifcopenshell_pset_add_qto_options_t *out, PyObject **refs);
+static void free_input_pset_assign_pset_options(ifcopenshell_pset_assign_pset_options_t *value);
+static int fill_input_pset_assign_pset_options(PyObject *obj, ifcopenshell_pset_assign_pset_options_t *out, PyObject **refs);
+static void free_input_pset_edit_pset_options(ifcopenshell_pset_edit_pset_options_t *value);
+static int fill_input_pset_edit_pset_options(PyObject *obj, ifcopenshell_pset_edit_pset_options_t *out, PyObject **refs);
+static void free_input_pset_edit_qto_options(ifcopenshell_pset_edit_qto_options_t *value);
+static int fill_input_pset_edit_qto_options(PyObject *obj, ifcopenshell_pset_edit_qto_options_t *out, PyObject **refs);
+static void free_input_pset_unshare_pset_options(ifcopenshell_pset_unshare_pset_options_t *value);
+static int fill_input_pset_unshare_pset_options(PyObject *obj, ifcopenshell_pset_unshare_pset_options_t *out, PyObject **refs);
+static void free_input_representation_get_product_representation_options(ifcopenshell_representation_get_product_representation_options_t *value);
+static int fill_input_representation_get_product_representation_options(PyObject *obj, ifcopenshell_representation_get_product_representation_options_t *out, PyObject **refs);
+static void free_input_root_create_entity_options(ifcopenshell_root_create_entity_options_t *value);
+static int fill_input_root_create_entity_options(PyObject *obj, ifcopenshell_root_create_entity_options_t *out, PyObject **refs);
+static void free_input_root_reassign_class_options(ifcopenshell_root_reassign_class_options_t *value);
+static int fill_input_root_reassign_class_options(PyObject *obj, ifcopenshell_root_reassign_class_options_t *out, PyObject **refs);
+static void free_input_root_remove_product_options(ifcopenshell_root_remove_product_options_t *value);
+static int fill_input_root_remove_product_options(PyObject *obj, ifcopenshell_root_remove_product_options_t *out, PyObject **refs);
+static void free_input_sequence_add_task_options(ifcopenshell_sequence_add_task_options_t *value);
+static int fill_input_sequence_add_task_options(PyObject *obj, ifcopenshell_sequence_add_task_options_t *out, PyObject **refs);
+static void free_input_sequence_add_task_time_options(ifcopenshell_sequence_add_task_time_options_t *value);
+static int fill_input_sequence_add_task_time_options(PyObject *obj, ifcopenshell_sequence_add_task_time_options_t *out, PyObject **refs);
+static void free_input_sequence_add_time_period_options(ifcopenshell_sequence_add_time_period_options_t *value);
+static int fill_input_sequence_add_time_period_options(PyObject *obj, ifcopenshell_sequence_add_time_period_options_t *out, PyObject **refs);
+static void free_input_sequence_add_work_calendar_options(ifcopenshell_sequence_add_work_calendar_options_t *value);
+static int fill_input_sequence_add_work_calendar_options(PyObject *obj, ifcopenshell_sequence_add_work_calendar_options_t *out, PyObject **refs);
+static void free_input_sequence_add_work_plan_options(ifcopenshell_sequence_add_work_plan_options_t *value);
+static int fill_input_sequence_add_work_plan_options(PyObject *obj, ifcopenshell_sequence_add_work_plan_options_t *out, PyObject **refs);
+static void free_input_sequence_add_work_schedule_options(ifcopenshell_sequence_add_work_schedule_options_t *value);
+static int fill_input_sequence_add_work_schedule_options(PyObject *obj, ifcopenshell_sequence_add_work_schedule_options_t *out, PyObject **refs);
+static void free_input_sequence_assign_lag_time_options(ifcopenshell_sequence_assign_lag_time_options_t *value);
+static int fill_input_sequence_assign_lag_time_options(PyObject *obj, ifcopenshell_sequence_assign_lag_time_options_t *out, PyObject **refs);
+static void free_input_sequence_assign_process_options(ifcopenshell_sequence_assign_process_options_t *value);
+static int fill_input_sequence_assign_process_options(PyObject *obj, ifcopenshell_sequence_assign_process_options_t *out, PyObject **refs);
+static void free_input_sequence_assign_product_options(ifcopenshell_sequence_assign_product_options_t *value);
+static int fill_input_sequence_assign_product_options(PyObject *obj, ifcopenshell_sequence_assign_product_options_t *out, PyObject **refs);
+static void free_input_sequence_assign_sequence_options(ifcopenshell_sequence_assign_sequence_options_t *value);
+static int fill_input_sequence_assign_sequence_options(PyObject *obj, ifcopenshell_sequence_assign_sequence_options_t *out, PyObject **refs);
+static void free_input_sequence_assign_work_plan_options(ifcopenshell_sequence_assign_work_plan_options_t *value);
+static int fill_input_sequence_assign_work_plan_options(PyObject *obj, ifcopenshell_sequence_assign_work_plan_options_t *out, PyObject **refs);
+static void free_input_sequence_copy_work_schedule_options(ifcopenshell_sequence_copy_work_schedule_options_t *value);
+static int fill_input_sequence_copy_work_schedule_options(PyObject *obj, ifcopenshell_sequence_copy_work_schedule_options_t *out, PyObject **refs);
+static void free_input_sequence_create_baseline_options(ifcopenshell_sequence_create_baseline_options_t *value);
+static int fill_input_sequence_create_baseline_options(PyObject *obj, ifcopenshell_sequence_create_baseline_options_t *out, PyObject **refs);
+static void free_input_sequence_duplicate_task_options(ifcopenshell_sequence_duplicate_task_options_t *value);
+static int fill_input_sequence_duplicate_task_options(PyObject *obj, ifcopenshell_sequence_duplicate_task_options_t *out, PyObject **refs);
+static void free_input_sequence_remove_options(ifcopenshell_sequence_remove_options_t *value);
+static int fill_input_sequence_remove_options(PyObject *obj, ifcopenshell_sequence_remove_options_t *out, PyObject **refs);
+static void free_input_shape_builder_axis2_placement2d_options(ifcopenshell_shape_builder_axis2_placement2d_options_t *value);
+static int fill_input_shape_builder_axis2_placement2d_options(PyObject *obj, ifcopenshell_shape_builder_axis2_placement2d_options_t *out, PyObject **refs);
+static void free_input_shape_builder_axis2_placement3d_options(ifcopenshell_shape_builder_axis2_placement3d_options_t *value);
+static int fill_input_shape_builder_axis2_placement3d_options(PyObject *obj, ifcopenshell_shape_builder_axis2_placement3d_options_t *out, PyObject **refs);
+static void free_input_shape_builder_block_options(ifcopenshell_shape_builder_block_options_t *value);
+static int fill_input_shape_builder_block_options(PyObject *obj, ifcopenshell_shape_builder_block_options_t *out, PyObject **refs);
+static void free_input_shape_builder_ellipse_curve_options(ifcopenshell_shape_builder_ellipse_curve_options_t *value);
+static int fill_input_shape_builder_ellipse_curve_options(PyObject *obj, ifcopenshell_shape_builder_ellipse_curve_options_t *out, PyObject **refs);
+static void free_input_shape_builder_extrude_options(ifcopenshell_shape_builder_extrude_options_t *value);
+static int fill_input_shape_builder_extrude_options(PyObject *obj, ifcopenshell_shape_builder_extrude_options_t *out, PyObject **refs);
+static void free_input_shape_builder_half_space_solid_options(ifcopenshell_shape_builder_half_space_solid_options_t *value);
+static int fill_input_shape_builder_half_space_solid_options(PyObject *obj, ifcopenshell_shape_builder_half_space_solid_options_t *out, PyObject **refs);
+static void free_input_shape_builder_mep_bend_shape_options(ifcopenshell_shape_builder_mep_bend_shape_options_t *value);
+static int fill_input_shape_builder_mep_bend_shape_options(PyObject *obj, ifcopenshell_shape_builder_mep_bend_shape_options_t *out, PyObject **refs);
+static void free_input_shape_builder_mep_transition_calculate_options(ifcopenshell_shape_builder_mep_transition_calculate_options_t *value);
+static int fill_input_shape_builder_mep_transition_calculate_options(PyObject *obj, ifcopenshell_shape_builder_mep_transition_calculate_options_t *out, PyObject **refs);
+static void free_input_shape_builder_mep_transition_length_options(ifcopenshell_shape_builder_mep_transition_length_options_t *value);
+static int fill_input_shape_builder_mep_transition_length_options(PyObject *obj, ifcopenshell_shape_builder_mep_transition_length_options_t *out, PyObject **refs);
+static void free_input_shape_builder_mep_transition_shape_options(ifcopenshell_shape_builder_mep_transition_shape_options_t *value);
+static int fill_input_shape_builder_mep_transition_shape_options(PyObject *obj, ifcopenshell_shape_builder_mep_transition_shape_options_t *out, PyObject **refs);
+static void free_input_shape_builder_mirror_options(ifcopenshell_shape_builder_mirror_options_t *value);
+static int fill_input_shape_builder_mirror_options(PyObject *obj, ifcopenshell_shape_builder_mirror_options_t *out, PyObject **refs);
+static void free_input_shape_builder_polyline_options(ifcopenshell_shape_builder_polyline_options_t *value);
+static int fill_input_shape_builder_polyline_options(PyObject *obj, ifcopenshell_shape_builder_polyline_options_t *out, PyObject **refs);
+static void free_input_shape_builder_profile_options(ifcopenshell_shape_builder_profile_options_t *value);
+static int fill_input_shape_builder_profile_options(PyObject *obj, ifcopenshell_shape_builder_profile_options_t *out, PyObject **refs);
+static void free_input_shape_builder_representation_options(ifcopenshell_shape_builder_representation_options_t *value);
+static int fill_input_shape_builder_representation_options(PyObject *obj, ifcopenshell_shape_builder_representation_options_t *out, PyObject **refs);
+static void free_input_shape_builder_rotate_options(ifcopenshell_shape_builder_rotate_options_t *value);
+static int fill_input_shape_builder_rotate_options(PyObject *obj, ifcopenshell_shape_builder_rotate_options_t *out, PyObject **refs);
+static void free_input_shape_builder_sphere_options(ifcopenshell_shape_builder_sphere_options_t *value);
+static int fill_input_shape_builder_sphere_options(PyObject *obj, ifcopenshell_shape_builder_sphere_options_t *out, PyObject **refs);
+static void free_input_shape_builder_translate_options(ifcopenshell_shape_builder_translate_options_t *value);
+static int fill_input_shape_builder_translate_options(PyObject *obj, ifcopenshell_shape_builder_translate_options_t *out, PyObject **refs);
+static void free_input_spatial_assign_container_options(ifcopenshell_spatial_assign_container_options_t *value);
+static int fill_input_spatial_assign_container_options(PyObject *obj, ifcopenshell_spatial_assign_container_options_t *out, PyObject **refs);
+static void free_input_spatial_dereference_structure_options(ifcopenshell_spatial_dereference_structure_options_t *value);
+static int fill_input_spatial_dereference_structure_options(PyObject *obj, ifcopenshell_spatial_dereference_structure_options_t *out, PyObject **refs);
+static void free_input_spatial_reference_structure_options(ifcopenshell_spatial_reference_structure_options_t *value);
+static int fill_input_spatial_reference_structure_options(PyObject *obj, ifcopenshell_spatial_reference_structure_options_t *out, PyObject **refs);
+static void free_input_spatial_unassign_container_options(ifcopenshell_spatial_unassign_container_options_t *value);
+static int fill_input_spatial_unassign_container_options(PyObject *obj, ifcopenshell_spatial_unassign_container_options_t *out, PyObject **refs);
+static void free_input_structural_add_structural_activity_options(ifcopenshell_structural_add_structural_activity_options_t *value);
+static int fill_input_structural_add_structural_activity_options(PyObject *obj, ifcopenshell_structural_add_structural_activity_options_t *out, PyObject **refs);
+static void free_input_structural_add_structural_boundary_condition_options(ifcopenshell_structural_add_structural_boundary_condition_options_t *value);
+static int fill_input_structural_add_structural_boundary_condition_options(PyObject *obj, ifcopenshell_structural_add_structural_boundary_condition_options_t *out, PyObject **refs);
+static void free_input_structural_assign_structural_analysis_model_options(ifcopenshell_structural_assign_structural_analysis_model_options_t *value);
+static int fill_input_structural_assign_structural_analysis_model_options(PyObject *obj, ifcopenshell_structural_assign_structural_analysis_model_options_t *out, PyObject **refs);
+static void free_input_structural_remove_structural_boundary_condition_options(ifcopenshell_structural_remove_structural_boundary_condition_options_t *value);
+static int fill_input_structural_remove_structural_boundary_condition_options(PyObject *obj, ifcopenshell_structural_remove_structural_boundary_condition_options_t *out, PyObject **refs);
+static void free_input_structural_unassign_structural_analysis_model_options(ifcopenshell_structural_unassign_structural_analysis_model_options_t *value);
+static int fill_input_structural_unassign_structural_analysis_model_options(PyObject *obj, ifcopenshell_structural_unassign_structural_analysis_model_options_t *out, PyObject **refs);
+static void free_input_style_assign_item_style_options(ifcopenshell_style_assign_item_style_options_t *value);
+static int fill_input_style_assign_item_style_options(PyObject *obj, ifcopenshell_style_assign_item_style_options_t *out, PyObject **refs);
+static void free_input_style_surface_texture_options(ifcopenshell_style_surface_texture_options_t *value);
+static int fill_input_style_surface_texture_options(PyObject *obj, ifcopenshell_style_surface_texture_options_t *out, PyObject **refs);
+static void free_input_system_add_port_options(ifcopenshell_system_add_port_options_t *value);
+static int fill_input_system_add_port_options(PyObject *obj, ifcopenshell_system_add_port_options_t *out, PyObject **refs);
+static void free_input_system_add_system_options(ifcopenshell_system_add_system_options_t *value);
+static int fill_input_system_add_system_options(PyObject *obj, ifcopenshell_system_add_system_options_t *out, PyObject **refs);
+static void free_input_system_assign_flow_control_options(ifcopenshell_system_assign_flow_control_options_t *value);
+static int fill_input_system_assign_flow_control_options(PyObject *obj, ifcopenshell_system_assign_flow_control_options_t *out, PyObject **refs);
+static void free_input_system_assign_port_options(ifcopenshell_system_assign_port_options_t *value);
+static int fill_input_system_assign_port_options(PyObject *obj, ifcopenshell_system_assign_port_options_t *out, PyObject **refs);
+static void free_input_system_assign_system_options(ifcopenshell_system_assign_system_options_t *value);
+static int fill_input_system_assign_system_options(PyObject *obj, ifcopenshell_system_assign_system_options_t *out, PyObject **refs);
+static void free_input_system_connect_port_options(ifcopenshell_system_connect_port_options_t *value);
+static int fill_input_system_connect_port_options(PyObject *obj, ifcopenshell_system_connect_port_options_t *out, PyObject **refs);
+static void free_input_system_unassign_flow_control_options(ifcopenshell_system_unassign_flow_control_options_t *value);
+static int fill_input_system_unassign_flow_control_options(PyObject *obj, ifcopenshell_system_unassign_flow_control_options_t *out, PyObject **refs);
+static void free_input_system_unassign_port_options(ifcopenshell_system_unassign_port_options_t *value);
+static int fill_input_system_unassign_port_options(PyObject *obj, ifcopenshell_system_unassign_port_options_t *out, PyObject **refs);
+static void free_input_system_unassign_system_options(ifcopenshell_system_unassign_system_options_t *value);
+static int fill_input_system_unassign_system_options(PyObject *obj, ifcopenshell_system_unassign_system_options_t *out, PyObject **refs);
+static void free_input_type_assign_type_options(ifcopenshell_type_assign_type_options_t *value);
+static int fill_input_type_assign_type_options(PyObject *obj, ifcopenshell_type_assign_type_options_t *out, PyObject **refs);
+static void free_input_type_unassign_type_options(ifcopenshell_type_unassign_type_options_t *value);
+static int fill_input_type_unassign_type_options(PyObject *obj, ifcopenshell_type_unassign_type_options_t *out, PyObject **refs);
+static void free_input_unit_add_conversion_based_unit_options(ifcopenshell_unit_add_conversion_based_unit_options_t *value);
+static int fill_input_unit_add_conversion_based_unit_options(PyObject *obj, ifcopenshell_unit_add_conversion_based_unit_options_t *out, PyObject **refs);
+static void free_input_unit_assign_unit_options(ifcopenshell_unit_assign_unit_options_t *value);
+static int fill_input_unit_assign_unit_options(PyObject *obj, ifcopenshell_unit_assign_unit_options_t *out, PyObject **refs);
+static void free_input_unit_edit_named_unit_options(ifcopenshell_unit_edit_named_unit_options_t *value);
+static int fill_input_unit_edit_named_unit_options(PyObject *obj, ifcopenshell_unit_edit_named_unit_options_t *out, PyObject **refs);
+
 static void free_input_double_list(ifcopenshell_double_list_t *value) {
     PyMem_Free(value->items);
     value->items = NULL;
@@ -6633,6 +6948,78 @@ static int make_input_geom_element_list(PyObject *obj, ifcopenshell_geom_element
             return 0;
         }
         out->items[i] = (ifcopenshell_geom_element_t *)((IfcOpenshellGeomElementObject *)item_obj)->handle;
+    }
+    Py_DECREF(seq);
+    return 1;
+}
+
+static void free_input_material_constituent_entry_options_list(ifcopenshell_material_constituent_entry_options_list_t *value) {
+    if (value->items) {
+        for (size_t j = 0; j < value->size; ++j) {
+            free_input_material_constituent_entry_options(&value->items[j]);
+        }
+    }
+    PyMem_Free(value->items);
+    value->items = NULL;
+    value->size = 0;
+}
+
+static int make_input_material_constituent_entry_options_list(PyObject *obj, ifcopenshell_material_constituent_entry_options_list_t *out) {
+    PyObject *seq = PySequence_Fast(obj, "Expected a sequence");
+    if (!seq) return 0;
+    Py_ssize_t size = PySequence_Fast_GET_SIZE(seq);
+    out->items = size ? (ifcopenshell_material_constituent_entry_options_t *)PyMem_Calloc((size_t)size, sizeof(ifcopenshell_material_constituent_entry_options_t)) : NULL;
+    out->size = (size_t)size;
+    if (size && !out->items) {
+        Py_DECREF(seq);
+        PyErr_NoMemory();
+        return 0;
+    }
+    for (size_t i = 0; i < (size_t)size; ++i) {
+        PyObject *refs[2] = {0};
+        if (!fill_input_material_constituent_entry_options(PySequence_Fast_GET_ITEM(seq, (Py_ssize_t)i), &out->items[i], refs)) {
+            release_option_refs(refs, 2);
+            free_input_material_constituent_entry_options_list(out);
+            Py_DECREF(seq);
+            return 0;
+        }
+        release_option_refs(refs, 2);
+    }
+    Py_DECREF(seq);
+    return 1;
+}
+
+static void free_input_style_surface_texture_options_list(ifcopenshell_style_surface_texture_options_list_t *value) {
+    if (value->items) {
+        for (size_t j = 0; j < value->size; ++j) {
+            free_input_style_surface_texture_options(&value->items[j]);
+        }
+    }
+    PyMem_Free(value->items);
+    value->items = NULL;
+    value->size = 0;
+}
+
+static int make_input_style_surface_texture_options_list(PyObject *obj, ifcopenshell_style_surface_texture_options_list_t *out) {
+    PyObject *seq = PySequence_Fast(obj, "Expected a sequence");
+    if (!seq) return 0;
+    Py_ssize_t size = PySequence_Fast_GET_SIZE(seq);
+    out->items = size ? (ifcopenshell_style_surface_texture_options_t *)PyMem_Calloc((size_t)size, sizeof(ifcopenshell_style_surface_texture_options_t)) : NULL;
+    out->size = (size_t)size;
+    if (size && !out->items) {
+        Py_DECREF(seq);
+        PyErr_NoMemory();
+        return 0;
+    }
+    for (size_t i = 0; i < (size_t)size; ++i) {
+        PyObject *refs[7] = {0};
+        if (!fill_input_style_surface_texture_options(PySequence_Fast_GET_ITEM(seq, (Py_ssize_t)i), &out->items[i], refs)) {
+            release_option_refs(refs, 7);
+            free_input_style_surface_texture_options_list(out);
+            Py_DECREF(seq);
+            return 0;
+        }
+        release_option_refs(refs, 7);
     }
     Py_DECREF(seq);
     return 1;
@@ -11916,6 +12303,34 @@ static int fill_input_material_assign_material_options(PyObject *obj, ifcopenshe
 }
 
 
+static void free_input_material_constituent_entry_options(ifcopenshell_material_constituent_entry_options_t *value) {
+    (void)value;
+}
+
+static int fill_input_material_constituent_entry_options(PyObject *obj, ifcopenshell_material_constituent_entry_options_t *out, PyObject **refs) {
+    if (!PyMapping_Check(obj)) {
+        PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
+        return 0;
+    }
+    PyObject *field_0 = get_option_field(obj, "name", 1);
+    if (!field_0) {
+        return 0;
+    }
+    refs[0] = field_0;
+    out->name = PyUnicode_AsUTF8(field_0);
+    if (!out->name) return 0;
+    PyObject *field_1 = get_option_field(obj, "material", 1);
+    if (!field_1) {
+        return 0;
+    }
+    refs[1] = field_1;
+    if (!extract_handle(field_1, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->material, 0)) {
+        return 0;
+    }
+    return 1;
+}
+
+
 static void free_input_material_edit_profile_usage_options(ifcopenshell_material_edit_profile_usage_options_t *value) {
     (void)value;
 }
@@ -12077,6 +12492,55 @@ static int fill_input_material_reorder_set_item_options(PyObject *obj, ifcopensh
             out->new_index = (int32_t)PyLong_AsLong(field_1);
             if (PyErr_Occurred()) return 0;
         out->has_new_index = true;
+        }
+    }
+    return 1;
+}
+
+
+static void free_input_material_set_shape_aspect_constituents_options(ifcopenshell_material_set_shape_aspect_constituents_options_t *value) {
+    (void)value;
+}
+
+static int fill_input_material_set_shape_aspect_constituents_options(PyObject *obj, ifcopenshell_material_set_shape_aspect_constituents_options_t *out, PyObject **refs) {
+    if (!PyMapping_Check(obj)) {
+        PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
+        return 0;
+    }
+    PyObject *field_0 = get_option_field(obj, "owner_history", 0);
+    if (!field_0) {
+        if (PyErr_Occurred()) return 0;
+    } else {
+        refs[0] = field_0;
+        if (field_0 != Py_None) {
+            if (!extract_handle(field_0, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->owner_history, 0)) {
+                return 0;
+            }
+        out->has_owner_history = true;
+        }
+    }
+    PyObject *field_1 = get_option_field(obj, "user", 0);
+    if (!field_1) {
+        if (PyErr_Occurred()) return 0;
+    } else {
+        refs[1] = field_1;
+        if (field_1 != Py_None) {
+            if (!extract_handle(field_1, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->user, 0)) {
+                return 0;
+            }
+        out->has_user = true;
+        }
+    }
+    PyObject *field_2 = get_option_field(obj, "application", 0);
+    if (!field_2) {
+        if (PyErr_Occurred()) return 0;
+    } else {
+        refs[2] = field_2;
+        if (field_2 != Py_None) {
+            if (!extract_handle(field_2, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->application, 0)) {
+                return 0;
+            }
+        out->has_application = true;
         }
     }
     return 1;
@@ -16153,6 +16617,99 @@ static int fill_input_style_assign_item_style_options(PyObject *obj, ifcopenshel
     int value_2 = PyObject_IsTrue(field_2);
     if (value_2 < 0) return 0;
     out->should_use_presentation_style_assignment = (bool)value_2;
+    return 1;
+}
+
+
+static void free_input_style_surface_texture_options(ifcopenshell_style_surface_texture_options_t *value) {
+    if (value->parameter) {
+        free_input_string_list((ifcopenshell_string_list_t *)value->parameter);
+        PyMem_Free((void *)value->parameter);
+        value->parameter = NULL;
+    }
+}
+
+static int fill_input_style_surface_texture_options(PyObject *obj, ifcopenshell_style_surface_texture_options_t *out, PyObject **refs) {
+    if (!PyMapping_Check(obj)) {
+        PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
+        return 0;
+    }
+    PyObject *field_0 = get_option_field(obj, "repeat_s", 1);
+    if (!field_0) {
+        return 0;
+    }
+    refs[0] = field_0;
+    int value_0 = PyObject_IsTrue(field_0);
+    if (value_0 < 0) return 0;
+    out->repeat_s = (bool)value_0;
+    PyObject *field_1 = get_option_field(obj, "repeat_t", 1);
+    if (!field_1) {
+        return 0;
+    }
+    refs[1] = field_1;
+    int value_1 = PyObject_IsTrue(field_1);
+    if (value_1 < 0) return 0;
+    out->repeat_t = (bool)value_1;
+    PyObject *field_2 = get_option_field(obj, "mode", 0);
+    if (!field_2) {
+        if (PyErr_Occurred()) return 0;
+    } else {
+        refs[2] = field_2;
+        if (field_2 != Py_None) {
+            out->mode = PyUnicode_AsUTF8(field_2);
+            if (!out->mode) return 0;
+        out->has_mode = true;
+        }
+    }
+    PyObject *field_3 = get_option_field(obj, "url_reference", 1);
+    if (!field_3) {
+        return 0;
+    }
+    refs[3] = field_3;
+    out->url_reference = PyUnicode_AsUTF8(field_3);
+    if (!out->url_reference) return 0;
+    PyObject *field_4 = get_option_field(obj, "texture_transform", 0);
+    if (!field_4) {
+        if (PyErr_Occurred()) return 0;
+    } else {
+        refs[4] = field_4;
+        if (field_4 != Py_None) {
+            if (!extract_handle(field_4, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->texture_transform, 0)) {
+                return 0;
+            }
+        out->has_texture_transform = true;
+        }
+    }
+    PyObject *field_5 = get_option_field(obj, "parameter", 0);
+    if (!field_5) {
+        if (PyErr_Occurred()) return 0;
+    } else {
+        refs[5] = field_5;
+        if (field_5 != Py_None) {
+            ifcopenshell_string_list_t *sequence_5 = (ifcopenshell_string_list_t *)PyMem_Calloc(1, sizeof(ifcopenshell_string_list_t));
+            if (!sequence_5) {
+                PyErr_NoMemory();
+                return 0;
+            }
+            if (!make_input_string_list(field_5, sequence_5)) {
+                PyMem_Free(sequence_5);
+                return 0;
+            }
+            out->parameter = sequence_5;
+        out->has_parameter = true;
+        }
+    }
+    PyObject *field_6 = get_option_field(obj, "uv_mode", 0);
+    if (!field_6) {
+        if (PyErr_Occurred()) return 0;
+    } else {
+        refs[6] = field_6;
+        if (field_6 != Py_None) {
+            out->uv_mode = PyUnicode_AsUTF8(field_6);
+            if (!out->uv_mode) return 0;
+        out->has_uv_mode = true;
+        }
+    }
     return 1;
 }
 
@@ -37723,6 +38280,38 @@ __cleanup:
     return __py_result;
 }
 
+static PyObject *py_ifcopenshell_material_copy_material(PyObject *self, PyObject *args) {
+    PyObject *__py_result = NULL;
+    bool ok = false;
+    PyObject *arg_file_obj = NULL;
+    ifcopenshell_file_t *arg_file = NULL;
+    PyObject *arg_material_obj = NULL;
+    ifcopenshell_instance_t *arg_material = NULL;
+    ifcopenshell_instance_t *result = NULL;
+    if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_material_obj)) return NULL;
+
+    if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
+        goto __cleanup;
+    }
+    if (!extract_handle(arg_material_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_material, 0)) {
+        goto __cleanup;
+    }
+
+    ifcopenshell_clear_error();
+    ok = ifcopenshell_material_copy_material(arg_file, arg_material, &result);
+    if (!ok) {
+        raise_last_error("ifcopenshell_material_copy_material failed");
+        goto __cleanup;
+    }
+    if (result == nullptr && ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_material_copy_material failed");
+        goto __cleanup;
+    }
+    __py_result = wrap_instance(result, 1);
+__cleanup:
+    return __py_result;
+}
+
 static PyObject *py_ifcopenshell_material_edit_profile_usage(PyObject *self, PyObject *args) {
     PyObject *__py_result = NULL;
     bool ok = false;
@@ -38032,6 +38621,57 @@ static PyObject *py_ifcopenshell_material_reorder_set_item(PyObject *self, PyObj
 __cleanup:
         release_option_refs(arg_options_refs, 2);
         free_input_material_reorder_set_item_options(&arg_options);
+    return __py_result;
+}
+
+static PyObject *py_ifcopenshell_material_set_shape_aspect_constituents(PyObject *self, PyObject *args) {
+    PyObject *__py_result = NULL;
+    bool ok = false;
+    PyObject *arg_file_obj = NULL;
+    ifcopenshell_file_t *arg_file = NULL;
+    PyObject *arg_element_obj = NULL;
+    ifcopenshell_instance_t *arg_element = NULL;
+    PyObject *arg_context_obj = NULL;
+    ifcopenshell_instance_t *arg_context = NULL;
+    PyObject *arg_materials_obj = NULL;
+    ifcopenshell_material_constituent_entry_options_list_t arg_materials = {0};
+    PyObject *arg_options_obj = NULL;
+    ifcopenshell_material_set_shape_aspect_constituents_options_t arg_options = {0};
+    PyObject *arg_options_refs[3] = {0};
+
+    if (!PyArg_ParseTuple(args, "OOOOO", &arg_file_obj, &arg_element_obj, &arg_context_obj, &arg_materials_obj, &arg_options_obj)) return NULL;
+
+    if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
+        goto __cleanup;
+    }
+    if (!extract_handle(arg_element_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_element, 0)) {
+        goto __cleanup;
+    }
+    if (!extract_handle(arg_context_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_context, 0)) {
+        goto __cleanup;
+    }
+    if (!fill_input_material_set_shape_aspect_constituents_options(arg_options_obj, &arg_options, arg_options_refs)) {
+        goto __cleanup;
+    }
+    if (!make_input_material_constituent_entry_options_list(arg_materials_obj, &arg_materials)) {
+        goto __cleanup;
+    }
+    ifcopenshell_clear_error();
+    ok = ifcopenshell_material_set_shape_aspect_constituents(arg_file, arg_element, arg_context, &arg_materials, &arg_options);
+    if (!ok) {
+        raise_last_error("ifcopenshell_material_set_shape_aspect_constituents failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_material_set_shape_aspect_constituents failed");
+        goto __cleanup;
+    }
+    Py_INCREF(Py_None);
+    __py_result = Py_None;
+__cleanup:
+        release_option_refs(arg_options_refs, 3);
+        free_input_material_set_shape_aspect_constituents_options(&arg_options);
+        free_input_material_constituent_entry_options_list(&arg_materials);
     return __py_result;
 }
 
@@ -47316,6 +47956,91 @@ __cleanup:
     return __py_result;
 }
 
+static PyObject *py_ifcopenshell_style_add_surface_style(PyObject *self, PyObject *args) {
+    PyObject *__py_result = NULL;
+    bool ok = false;
+    PyObject *arg_file_obj = NULL;
+    ifcopenshell_file_t *arg_file = NULL;
+    PyObject *arg_style_obj = NULL;
+    ifcopenshell_instance_t *arg_style = NULL;
+    const char *arg_ifc_class = NULL;
+    PyObject *arg_attributes_obj = NULL;
+    Py_buffer arg_attributes_view = {0};
+    void *arg_attributes = NULL;
+    int arg_attributes_has_view = 0;
+    ifcopenshell_instance_t *result = NULL;
+    if (!PyArg_ParseTuple(args, "OO|zO", &arg_file_obj, &arg_style_obj, &arg_ifc_class, &arg_attributes_obj)) return NULL;
+
+    if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
+        goto __cleanup;
+    }
+    if (!extract_handle(arg_style_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_style, 0)) {
+        goto __cleanup;
+    }
+    if (PyCapsule_IsValid(arg_attributes_obj, NULL)) {
+        arg_attributes = PyCapsule_GetPointer(arg_attributes_obj, NULL);
+    } else if (PyObject_GetBuffer(arg_attributes_obj, &arg_attributes_view, PyBUF_SIMPLE) == 0) {
+        arg_attributes = arg_attributes_view.buf;
+        arg_attributes_has_view = 1;
+    } else {
+        PyErr_SetString(PyExc_TypeError, "Expected a capsule or buffer-compatible object");
+        goto __cleanup;
+    }
+
+    ifcopenshell_clear_error();
+    ok = ifcopenshell_style_add_surface_style(arg_file, arg_style, arg_ifc_class, arg_attributes, &result);
+    if (!ok) {
+        raise_last_error("ifcopenshell_style_add_surface_style failed");
+        goto __cleanup;
+    }
+    if (result == nullptr && ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_style_add_surface_style failed");
+        goto __cleanup;
+    }
+    __py_result = wrap_instance(result, 1);
+__cleanup:
+        if (arg_attributes_has_view) PyBuffer_Release(&arg_attributes_view);
+    return __py_result;
+}
+
+static PyObject *py_ifcopenshell_style_add_surface_textures(PyObject *self, PyObject *args) {
+    PyObject *__py_result = NULL;
+    bool ok = false;
+    PyObject *arg_file_obj = NULL;
+    ifcopenshell_file_t *arg_file = NULL;
+    PyObject *arg_textures_obj = NULL;
+    ifcopenshell_style_surface_texture_options_list_t arg_textures = {0};
+    PyObject *arg_uv_maps_obj = NULL;
+    ifcopenshell_instance_list_t arg_uv_maps = {0};
+    ifcopenshell_parse_instance_list_t *result = NULL;
+    if (!PyArg_ParseTuple(args, "OOO", &arg_file_obj, &arg_textures_obj, &arg_uv_maps_obj)) return NULL;
+
+    if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
+        goto __cleanup;
+    }
+    if (!make_input_style_surface_texture_options_list(arg_textures_obj, &arg_textures)) {
+        goto __cleanup;
+    }
+    if (!make_input_instance_list(arg_uv_maps_obj, &arg_uv_maps)) {
+        goto __cleanup;
+    }
+    ifcopenshell_clear_error();
+    ok = ifcopenshell_style_add_surface_textures(arg_file, &arg_textures, &arg_uv_maps, &result);
+    if (!ok) {
+        raise_last_error("ifcopenshell_style_add_surface_textures failed");
+        goto __cleanup;
+    }
+    if (result == nullptr && ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_style_add_surface_textures failed");
+        goto __cleanup;
+    }
+    __py_result = wrap_parse_instance_list(result, 1);
+__cleanup:
+        free_input_instance_list(&arg_uv_maps);
+        free_input_style_surface_texture_options_list(&arg_textures);
+    return __py_result;
+}
+
 static PyObject *py_ifcopenshell_style_assign_item_style(PyObject *self, PyObject *args) {
     PyObject *__py_result = NULL;
     bool ok = false;
@@ -50402,6 +51127,7 @@ static PyMethodDef module_methods[] = {
     {"material_add_profile", py_ifcopenshell_material_add_profile, METH_VARARGS, "Wrap ifcopenshell_material_add_profile"},
     {"material_assign_material", py_ifcopenshell_material_assign_material, METH_VARARGS, "Wrap ifcopenshell_material_assign_material"},
     {"material_assign_profile", py_ifcopenshell_material_assign_profile, METH_VARARGS, "Wrap ifcopenshell_material_assign_profile"},
+    {"material_copy_material", py_ifcopenshell_material_copy_material, METH_VARARGS, "Wrap ifcopenshell_material_copy_material"},
     {"material_edit_profile_usage", py_ifcopenshell_material_edit_profile_usage, METH_VARARGS, "Wrap ifcopenshell_material_edit_profile_usage"},
     {"material_remove_constituent", py_ifcopenshell_material_remove_constituent, METH_VARARGS, "Wrap ifcopenshell_material_remove_constituent"},
     {"material_remove_layer", py_ifcopenshell_material_remove_layer, METH_VARARGS, "Wrap ifcopenshell_material_remove_layer"},
@@ -50410,6 +51136,7 @@ static PyMethodDef module_methods[] = {
     {"material_remove_material_set", py_ifcopenshell_material_remove_material_set, METH_VARARGS, "Wrap ifcopenshell_material_remove_material_set"},
     {"material_remove_profile", py_ifcopenshell_material_remove_profile, METH_VARARGS, "Wrap ifcopenshell_material_remove_profile"},
     {"material_reorder_set_item", py_ifcopenshell_material_reorder_set_item, METH_VARARGS, "Wrap ifcopenshell_material_reorder_set_item"},
+    {"material_set_shape_aspect_constituents", py_ifcopenshell_material_set_shape_aspect_constituents, METH_VARARGS, "Wrap ifcopenshell_material_set_shape_aspect_constituents"},
     {"material_unassign_material", py_ifcopenshell_material_unassign_material, METH_VARARGS, "Wrap ifcopenshell_material_unassign_material"},
     {"named_type_as_named_type", py_ifcopenshell_named_type_as_named_type, METH_VARARGS, "Wrap ifcopenshell_named_type_as_named_type"},
     {"named_type_declared_type", py_ifcopenshell_named_type_declared_type, METH_VARARGS, "Wrap ifcopenshell_named_type_declared_type"},
@@ -50700,6 +51427,8 @@ static PyMethodDef module_methods[] = {
     {"structural_remove_structural_load_group", py_ifcopenshell_structural_remove_structural_load_group, METH_VARARGS, "Wrap ifcopenshell_structural_remove_structural_load_group"},
     {"structural_unassign_structural_analysis_model", py_ifcopenshell_structural_unassign_structural_analysis_model, METH_VARARGS, "Wrap ifcopenshell_structural_unassign_structural_analysis_model"},
     {"style_add_style", py_ifcopenshell_style_add_style, METH_VARARGS, "Wrap ifcopenshell_style_add_style"},
+    {"style_add_surface_style", py_ifcopenshell_style_add_surface_style, METH_VARARGS, "Wrap ifcopenshell_style_add_surface_style"},
+    {"style_add_surface_textures", py_ifcopenshell_style_add_surface_textures, METH_VARARGS, "Wrap ifcopenshell_style_add_surface_textures"},
     {"style_assign_item_style", py_ifcopenshell_style_assign_item_style, METH_VARARGS, "Wrap ifcopenshell_style_assign_item_style"},
     {"style_assign_material_style", py_ifcopenshell_style_assign_material_style, METH_VARARGS, "Wrap ifcopenshell_style_assign_material_style"},
     {"style_assign_representation_styles", py_ifcopenshell_style_assign_representation_styles, METH_VARARGS, "Wrap ifcopenshell_style_assign_representation_styles"},
@@ -51482,6 +52211,7 @@ static PyMethodDef module_methods[] = {
     {"ifcopenshell_material_add_profile", py_ifcopenshell_material_add_profile, METH_VARARGS, "Wrap ifcopenshell_material_add_profile"},
     {"ifcopenshell_material_assign_material", py_ifcopenshell_material_assign_material, METH_VARARGS, "Wrap ifcopenshell_material_assign_material"},
     {"ifcopenshell_material_assign_profile", py_ifcopenshell_material_assign_profile, METH_VARARGS, "Wrap ifcopenshell_material_assign_profile"},
+    {"ifcopenshell_material_copy_material", py_ifcopenshell_material_copy_material, METH_VARARGS, "Wrap ifcopenshell_material_copy_material"},
     {"ifcopenshell_material_edit_profile_usage", py_ifcopenshell_material_edit_profile_usage, METH_VARARGS, "Wrap ifcopenshell_material_edit_profile_usage"},
     {"ifcopenshell_material_remove_constituent", py_ifcopenshell_material_remove_constituent, METH_VARARGS, "Wrap ifcopenshell_material_remove_constituent"},
     {"ifcopenshell_material_remove_layer", py_ifcopenshell_material_remove_layer, METH_VARARGS, "Wrap ifcopenshell_material_remove_layer"},
@@ -51490,6 +52220,7 @@ static PyMethodDef module_methods[] = {
     {"ifcopenshell_material_remove_material_set", py_ifcopenshell_material_remove_material_set, METH_VARARGS, "Wrap ifcopenshell_material_remove_material_set"},
     {"ifcopenshell_material_remove_profile", py_ifcopenshell_material_remove_profile, METH_VARARGS, "Wrap ifcopenshell_material_remove_profile"},
     {"ifcopenshell_material_reorder_set_item", py_ifcopenshell_material_reorder_set_item, METH_VARARGS, "Wrap ifcopenshell_material_reorder_set_item"},
+    {"ifcopenshell_material_set_shape_aspect_constituents", py_ifcopenshell_material_set_shape_aspect_constituents, METH_VARARGS, "Wrap ifcopenshell_material_set_shape_aspect_constituents"},
     {"ifcopenshell_material_unassign_material", py_ifcopenshell_material_unassign_material, METH_VARARGS, "Wrap ifcopenshell_material_unassign_material"},
     {"ifcopenshell_named_type_as_named_type", py_ifcopenshell_named_type_as_named_type, METH_VARARGS, "Wrap ifcopenshell_named_type_as_named_type"},
     {"ifcopenshell_named_type_declared_type", py_ifcopenshell_named_type_declared_type, METH_VARARGS, "Wrap ifcopenshell_named_type_declared_type"},
@@ -51780,6 +52511,8 @@ static PyMethodDef module_methods[] = {
     {"ifcopenshell_structural_remove_structural_load_group", py_ifcopenshell_structural_remove_structural_load_group, METH_VARARGS, "Wrap ifcopenshell_structural_remove_structural_load_group"},
     {"ifcopenshell_structural_unassign_structural_analysis_model", py_ifcopenshell_structural_unassign_structural_analysis_model, METH_VARARGS, "Wrap ifcopenshell_structural_unassign_structural_analysis_model"},
     {"ifcopenshell_style_add_style", py_ifcopenshell_style_add_style, METH_VARARGS, "Wrap ifcopenshell_style_add_style"},
+    {"ifcopenshell_style_add_surface_style", py_ifcopenshell_style_add_surface_style, METH_VARARGS, "Wrap ifcopenshell_style_add_surface_style"},
+    {"ifcopenshell_style_add_surface_textures", py_ifcopenshell_style_add_surface_textures, METH_VARARGS, "Wrap ifcopenshell_style_add_surface_textures"},
     {"ifcopenshell_style_assign_item_style", py_ifcopenshell_style_assign_item_style, METH_VARARGS, "Wrap ifcopenshell_style_assign_item_style"},
     {"ifcopenshell_style_assign_material_style", py_ifcopenshell_style_assign_material_style, METH_VARARGS, "Wrap ifcopenshell_style_assign_material_style"},
     {"ifcopenshell_style_assign_representation_styles", py_ifcopenshell_style_assign_representation_styles, METH_VARARGS, "Wrap ifcopenshell_style_assign_representation_styles"},

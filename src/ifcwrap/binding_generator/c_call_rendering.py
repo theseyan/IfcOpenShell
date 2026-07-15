@@ -111,8 +111,7 @@ def _render_result_struct_field_assignments(
         field_sequence_kind = _type_spec_sequence_kind(field_type)
         if field_sequence_kind is not None:
             assignment = (
-                f"{_sequence_make_helper(field_sequence_kind)}"
-                f"(std::move({field_expr}))"
+                f"{_sequence_make_helper(field_sequence_kind)}(std::move({field_expr}))"
             )
             assignments.append(f"{indent}{target_field} = {assignment};")
         elif field_type.kind in _SCALAR_PARAM_TYPES:
@@ -404,8 +403,7 @@ def _render_result_assignment(call: CallIR, spec: BindingIR, expr: str) -> str:
             alt_sequence_kind = _type_spec_sequence_kind(alt)
             if alt_sequence_kind is not None:
                 assignment = (
-                    f"{_sequence_make_helper(alt_sequence_kind)}"
-                    f"(std::move({alt_expr}))"
+                    f"{_sequence_make_helper(alt_sequence_kind)}(std::move({alt_expr}))"
                 )
             elif alt.kind in _SCALAR_PARAM_TYPES:
                 c_type = _finalized_variant_field_c_type(spec, type_spec, index)
@@ -628,6 +626,29 @@ def _render_param_prelude(param: ParamSpec, spec: BindingIR) -> str:
             f"    auto {param.name}_cpp = static_cast<{cpp_type}>({param.name});"
         )
     if kind == "option":
+        if type_spec.sequence_depth == 1:
+            if type_spec.struct is None:
+                raise ValueError(
+                    f'Option sequence parameter "{param.name}" is missing option struct name'
+                )
+            option = spec.option_structs[type_spec.struct]
+            lines = [
+                _null_check(param.name, "Parameter"),
+                f"    std::vector<{option.cpp_type}> {param.name}_cpp;",
+                f"    {param.name}_cpp.reserve({param.name}->size);",
+                f"    for (size_t i = 0; i < {param.name}->size; ++i) {{",
+                f"        const auto* item = &{param.name}->items[i];",
+                f"        {option.cpp_type} value{{}};",
+            ]
+            lines.extend(
+                _render_option_value_assignments(
+                    option, "item", "value", spec, "        "
+                )
+            )
+            lines.extend(
+                [f"        {param.name}_cpp.push_back(std::move(value));", "    }"]
+            )
+            return "\n".join(lines)
         return _render_option_param_prelude(param, spec)
     return ""
 
@@ -642,26 +663,40 @@ def _render_option_param_prelude(param: ParamSpec, spec: BindingIR) -> str:
         _null_check(param.name, "Options parameter"),
         f"    {option.cpp_type} {param.name}_cpp{{}};",
     ]
+    lines.extend(
+        _render_option_value_assignments(
+            option, param.name, f"{param.name}_cpp", spec, "    "
+        )
+    )
+    return "\n".join(line for line in lines if line)
+
+
+def _render_option_value_assignments(
+    option: object, source_value: str, target_value: str, spec: BindingIR, indent: str
+) -> list[str]:
+    lines: list[str] = []
     for field in option.fields:
-        source = f"{param.name}->{field.name}"
-        target = f"{param.name}_cpp.{field.cpp_field or field.name}"
+        source = f"{source_value}->{field.name}"
+        target = f"{target_value}.{field.cpp_field or field.name}"
         if field.type.nullable:
-            lines.append(f"    if ({param.name}->has_{field.name}) {{")
+            lines.append(f"{indent}if ({source_value}->has_{field.name}) {{")
             field_check = _render_option_required_field_check(
-                param.name, field, indent="        "
+                source_value, field, indent=indent + "    "
             )
             if field_check:
                 lines.append(field_check)
             lines.append(
-                f"        {target} = {_option_field_cpp_expr(field.type, source, spec)};"
+                f"{indent}    {target} = {_option_field_cpp_expr(field.type, source, spec)};"
             )
-            lines.append("    }")
+            lines.append(f"{indent}}}")
         else:
-            lines.append(_render_option_required_field_check(param.name, field))
             lines.append(
-                f"    {target} = {_option_field_cpp_expr(field.type, source, spec)};"
+                _render_option_required_field_check(source_value, field, indent=indent)
             )
-    return "\n".join(line for line in lines if line)
+            lines.append(
+                f"{indent}{target} = {_option_field_cpp_expr(field.type, source, spec)};"
+            )
+    return [line for line in lines if line]
 
 
 def _render_option_required_field_check(

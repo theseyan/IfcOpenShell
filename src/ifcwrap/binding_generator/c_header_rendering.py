@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from .abi_ir import _handle_destroy_name
+from .abi_ir import _handle_destroy_name, _option_list_c_type
 from .authored_spec import HandleSpec
 from .binding_ir import BindingIR
 from .c_sequence_helpers import (
@@ -74,6 +74,20 @@ def _render_header(spec: BindingIR) -> str:
         _render_option_struct_decl(struct, spec)
         for struct in spec.option_structs.values()
     )
+    option_list_decls = "\n\n".join(
+        f"typedef struct {_option_list_c_type(option)} {{\n"
+        f"    {option.c_type}* items;\n"
+        f"    size_t size;\n"
+        f"}} {_option_list_c_type(option)};"
+        for option in spec.option_structs.values()
+        if any(
+            param.type.kind == "option"
+            and param.type.struct == option.name
+            and param.type.sequence_depth == 1
+            for call in spec.calls
+            for param in call.params
+        )
+    )
     destroy_decls = "\n".join(
         _render_handle_destroy_decl(handle) for handle in spec.handles.values()
     )
@@ -114,6 +128,8 @@ extern "C" {{
 {handle_list_list_forwards}
 
 {option_struct_decls}
+
+{option_list_decls}
 
 {result_struct_decls}
 

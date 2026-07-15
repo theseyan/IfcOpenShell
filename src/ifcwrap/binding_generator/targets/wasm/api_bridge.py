@@ -241,6 +241,9 @@ def _direct_ts_type(type_spec: TypeSpec, metadata: BindingABI) -> str:
 
 
 def _sequence_ts_type(struct: CTypeIR, metadata: BindingABI) -> str:
+    if struct.kind == "input_record_sequence":
+        option = _option_by_c_type(struct.element_type or "", metadata)
+        return f"{_option_type_name(option)}[]" if option is not None else "ApiData[]"
     if struct.kind == "handle_sequence":
         elem = (
             (struct.element_type or "").removeprefix("const ").removesuffix("*").strip()
@@ -303,7 +306,7 @@ def _direct_ts_type_from_c_type(c_type: str, metadata: BindingABI) -> str:
             item
             for item in metadata.value_types.values()
             if item.c_type == normalized_base
-            and item.kind in {"sequence", "handle_sequence"}
+            and item.kind in {"sequence", "handle_sequence", "input_record_sequence"}
         ),
         None,
     )
@@ -359,7 +362,7 @@ def _param_ts_type(
             item
             for item in metadata.value_types.values()
             if item.c_type == normalized_base
-            and item.kind in {"sequence", "handle_sequence"}
+            and item.kind in {"sequence", "handle_sequence", "input_record_sequence"}
         ),
         None,
     )
@@ -484,11 +487,27 @@ def _param_expr(
             item
             for item in metadata.value_types.values()
             if item.c_type == normalized_base
-            and item.kind in {"sequence", "handle_sequence"}
+            and item.kind in {"sequence", "handle_sequence", "input_record_sequence"}
         ),
         None,
     )
     if sequence is not None:
+        if sequence.kind == "input_record_sequence":
+            option = _option_by_c_type(sequence.element_type or "", metadata)
+            if option is None:
+                return param.name
+            fields = {_camel_name(field.name): field.name for field in option.fields}
+            pset_fields = sorted(_pset_props_field_names(option))
+            entity_list_fields = sorted(_entity_list_field_names(option, metadata))
+            extra_args = ""
+            if pset_fields or entity_list_fields:
+                extra_args += ", " + json.dumps(pset_fields)
+            if entity_list_fields:
+                extra_args += ", " + json.dumps(entity_list_fields)
+            return (
+                f"{param.name}.map((item) => encodeOptions(item, "
+                f"{json.dumps(fields, sort_keys=True)}, shell, temps{extra_args}))"
+            )
         return f"toRawSequence({param.name}, shell, temps)"
     handle = _handle_kind_from_c_type(param.c_type, metadata)
     if _is_instance_list_handle(handle):
@@ -551,7 +570,11 @@ def _raw_result_struct_type(function: CFunctionIR, metadata: BindingABI) -> str:
     fields = []
     for field in struct.fields:
         field_type = _direct_ts_type_from_c_type(field.c_type, metadata)
-        raw_type = field_type if field_type in {"string", "boolean", "number", "bigint"} else "RawValue"
+        raw_type = (
+            field_type
+            if field_type in {"string", "boolean", "number", "bigint"}
+            else "RawValue"
+        )
         fields.append(f"{field.name}: {raw_type}")
     return f"{{ {'; '.join(fields)} }}"
 
