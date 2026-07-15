@@ -259,6 +259,34 @@ describeGeneratedOrSkip('direct api modules', () => {
     expect(shell.api.unit.getFullUnitName(metre)).toBe('METRE');
   });
 
+  it('authors and edits units through plain option objects', async () => {
+    await using file = await IfcFile.createEmpty(shell, 'IFC4');
+    await shell.api.root.createEntity(file, { ifcClass: 'IfcProject' });
+
+    const assignment = shell.api.unit.assignUnit(file, {});
+    expect(assignment.type).toBe('IfcUnitAssignment');
+    const siUnits = file.all('IfcSIUnit');
+    expect(siUnits).toHaveLength(3);
+    const length = siUnits.find((unit) => unit.get('UnitType') === 'LENGTHUNIT');
+    expect(length?.get('Prefix')).toBe('MILLI');
+
+    const foot = shell.api.unit.addConversionBasedUnit(file, {});
+    expect(foot.type).toBe('IfcConversionBasedUnit');
+    expect(foot.get('Name')).toBe('foot');
+    shell.api.unit.editNamedUnit(file, {
+      unit: foot,
+      attributes: { Name: 'custom foot' },
+    });
+    expect(foot.get('Name')).toBe('custom foot');
+
+    const fahrenheit = shell.api.unit.addConversionBasedUnit(file, {
+      name: 'fahrenheit',
+      conversionOffset: 0,
+    });
+    expect(fahrenheit.type).toBe('IfcConversionBasedUnitWithOffset');
+    expect(fahrenheit.get('ConversionOffset')).toBe(-459.67);
+  });
+
   it('converts between unit prefixes', () => {
     expect(shell.api.unit.convert(1000, 'MILLI', 'METRE', '', 'METRE')).toBe(1);
   });

@@ -1134,6 +1134,26 @@ declare module 'ifcopenshell-api' {
     application?: IfcOpenshellInstance;
   }
 
+  export interface IfcOpenshellUnitAddConversionBasedUnitOptions {
+    name?: string;
+    conversion_offset?: number;
+  }
+
+  export interface IfcOpenshellUnitAssignUnitOptions {
+    units?: IfcOpenshellParseInstanceList;
+    length_is_metric?: boolean;
+    length_raw?: string;
+    area_is_metric?: boolean;
+    area_raw?: string;
+    volume_is_metric?: boolean;
+    volume_raw?: string;
+  }
+
+  export interface IfcOpenshellUnitEditNamedUnitOptions {
+    unit: IfcOpenshellInstance;
+    attributes: number;
+  }
+
   export class IfcOpenshellAggregationType {
     readonly ptr: number;
     destroy(): void;
@@ -6011,6 +6031,14 @@ declare module 'ifcopenshell-api' {
      */
     addContextDependentUnit(file: IfcOpenshellFile, unit_type: string, name: string, dimensions: bigint[]): IfcOpenshellInstance;
     /**
+     * Create a conversion-based named unit from the native unit table.
+     *
+     * The operation creates dimensional exponents, the SI conversion target, an
+     * IfcReal conversion value, and an IfcMeasureWithUnit. A nonzero effective
+     * offset selects IfcConversionBasedUnitWithOffset when the schema provides it.
+     */
+    addConversionBasedUnit(file: IfcOpenshellFile, options: IfcOpenshellUnitAddConversionBasedUnitOptions): IfcOpenshellInstance;
+    /**
      * Create an IfcDerivedUnit entity.
      *
      * Constructs a derived unit from a list of component units and their
@@ -6044,6 +6072,14 @@ declare module 'ifcopenshell-api' {
      * @return Newly created IfcSIUnit.
      */
     addSiUnit(file: IfcOpenshellFile, unit_type: string, prefix: string | null): IfcOpenshellInstance;
+    /**
+     * Assign explicit or convenience units to the first IfcProject.
+     *
+     * Reuses an existing IfcUnitAssignment, replaces assigned units with matching
+     * UnitType (or the existing monetary unit), preserves unrelated units, and
+     * returns the effective assignment. Replaced unit entities remain in the file.
+     */
+    assignUnit(file: IfcOpenshellFile, options: IfcOpenshellUnitAssignUnitOptions): IfcOpenshellInstance;
     /**
      * Calculate the scale factor from SI for a project unit type.
      *
@@ -6082,6 +6118,14 @@ declare module 'ifcopenshell-api' {
      * @return The converted value.
      */
     convertUnit(value: number, from_unit: IfcOpenshellInstance, to_unit: IfcOpenshellInstance): number;
+    /**
+     * Edit a named unit without owner-history or predefined-type synchronization.
+     *
+     * Shared dimensional exponents are copied before editing; uniquely owned
+     * dimensions are mutated in place. Remaining attributes are applied in input
+     * order after Dimensions has been handled.
+     */
+    editNamedUnit(file: IfcOpenshellFile, options: IfcOpenshellUnitEditNamedUnitOptions): void;
     /**
      * Format a length value as an imperial or metric string.
      *

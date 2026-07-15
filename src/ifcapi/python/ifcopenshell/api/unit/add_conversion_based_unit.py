@@ -19,7 +19,7 @@
 from typing import Optional
 
 import ifcopenshell
-import ifcopenshell.util.unit
+from ifcopenshell import _ifcopenshell_capi as _capi
 
 
 def add_conversion_based_unit(
@@ -58,29 +58,10 @@ def add_conversion_based_unit(
         ifcopenshell.api.unit.assign_unit(model, units=[length, area])
     """
 
-    unit_type = ifcopenshell.util.unit.imperial_types.get(name, "USERDEFINED")
-    dimensions = ifcopenshell.util.unit.named_dimensions[unit_type]
-    exponents = file.createIfcDimensionalExponents(*dimensions)
-    si_name = ifcopenshell.util.unit.si_type_names[unit_type]
-
-    if unit_type == "MASSUNIT":
-        si_unit = file.createIfcSIUnit(UnitType=unit_type, Name=si_name, Prefix="KILO")
-    else:
-        si_unit = file.createIfcSIUnit(UnitType=unit_type, Name=si_name)
-
-    conversion_real = ifcopenshell.util.unit.si_conversions.get(name, 1)
-    value_component = file.create_entity("IfcReal", **{"wrappedValue": conversion_real})
-    conversion_factor = file.createIfcMeasureWithUnit(value_component, si_unit)
-
-    if not conversion_offset:
-        conversion_offset = ifcopenshell.util.unit.si_offsets.get(name, 0)
-
-    if conversion_offset:
-        return file.createIfcConversionBasedUnitWithOffset(
-            exponents,
-            unit_type,
-            name,
-            conversion_factor,
-            conversion_offset,
-        )
-    return file.createIfcConversionBasedUnit(exponents, unit_type, name, conversion_factor)
+    handle = _capi.unit_add_conversion_based_unit(
+        file._handle,
+        {"name": name, "conversion_offset": conversion_offset},
+    )
+    if handle:
+        return ifcopenshell.entity_instance(file, handle)
+    raise RuntimeError(_capi.last_error_message() or "Failed to add conversion-based unit")

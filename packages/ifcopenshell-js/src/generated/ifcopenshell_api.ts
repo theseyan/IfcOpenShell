@@ -472,12 +472,15 @@ type RawApi = {
   };
   unit: {
     addContextDependentUnit: (file: RawValue, unit_type: string, name: string, dimensions: RawValue) => RawValue;
+    addConversionBasedUnit: (file: RawValue, options: RawValue) => RawValue;
     addDerivedUnit: (file: RawValue, unit_type: string, userdefinedtype: string | null, units: RawValue, exponents: RawValue) => RawValue;
     addMonetaryUnit: (file: RawValue, currency: string) => RawValue;
     addSiUnit: (file: RawValue, unit_type: string, prefix: string | null) => RawValue;
+    assignUnit: (file: RawValue, options: RawValue) => RawValue;
     calculateUnitScale: (file: RawValue, unit_type: string) => number;
     convert: (value: number, from_prefix: string, from_unit: string, to_prefix: string, to_unit: string) => number;
     convertUnit: (value: number, from_unit: RawValue, to_unit: RawValue) => number;
+    editNamedUnit: (file: RawValue, options: RawValue) => void;
     formatLength: (value: number, precision: number, decimal_places: number, suppress_zero_inches: boolean, unit_system: string, input_unit: string, output_unit: string) => string;
     getFullUnitName: (unit: RawValue) => string;
     getMeasureClass: (unit_type: string) => string;
@@ -2366,6 +2369,37 @@ export interface IfcOpenShellTypeUnassignTypeOptions {
   user?: Entity;
   /** Optional application for owner history updates on modified relationships. */
   application?: Entity;
+}
+
+export interface IfcOpenShellUnitAddConversionBasedUnitOptions {
+  /** Conversion name. Omission defaults to foot; unknown names use USERDEFINED fallback semantics. */
+  name?: string;
+  /** Explicit nonzero offset. Zero and omission use the built-in offset for the selected name. */
+  conversionOffset?: number;
+}
+
+export interface IfcOpenShellUnitAssignUnitOptions {
+  /** Explicit units to assign. Omission and an empty sequence both select convenience-unit creation. */
+  units?: Entity[];
+  /** Whether the convenience length unit is metric. Omission defaults to true. */
+  lengthIsMetric?: boolean;
+  /** Raw convenience length text. Omission defaults to MILLIMETERS. */
+  lengthRaw?: string;
+  /** Whether the convenience area unit is metric. Omission defaults to true. */
+  areaIsMetric?: boolean;
+  /** Raw convenience area text. Omission defaults to METERS. */
+  areaRaw?: string;
+  /** Whether the convenience volume unit is metric. Omission defaults to true. */
+  volumeIsMetric?: boolean;
+  /** Raw convenience volume text. Omission defaults to METERS. */
+  volumeRaw?: string;
+}
+
+export interface IfcOpenShellUnitEditNamedUnitOptions {
+  /** IfcSIUnit, IfcConversionBasedUnit, IfcConversionBasedUnitWithOffset, or IfcContextDependentUnit to edit. */
+  unit: Entity;
+  /** Plain attribute property bag. Dimensions accepts up to seven integer exponents; omitted trailing values stay unset. */
+  attributes: PsetProperties | PsetInput;
 }
 
 export interface AggregateApi {
@@ -6015,6 +6049,14 @@ export interface UnitApi {
      */
     addContextDependentUnit(file: IfcFile, unit_type: string, name: string, dimensions: bigint[]): Entity;
     /**
+     * Create a conversion-based named unit from the native unit table.
+     *
+     * The operation creates dimensional exponents, the SI conversion target, an
+     * IfcReal conversion value, and an IfcMeasureWithUnit. A nonzero effective
+     * offset selects IfcConversionBasedUnitWithOffset when the schema provides it.
+     */
+    addConversionBasedUnit(file: IfcFile, options: IfcOpenShellUnitAddConversionBasedUnitOptions): Entity;
+    /**
      * Create an IfcDerivedUnit entity.
      *
      * Constructs a derived unit from a list of component units and their
@@ -6048,6 +6090,14 @@ export interface UnitApi {
      * @return Newly created IfcSIUnit.
      */
     addSiUnit(file: IfcFile, unit_type: string, prefix: string): Entity;
+    /**
+     * Assign explicit or convenience units to the first IfcProject.
+     *
+     * Reuses an existing IfcUnitAssignment, replaces assigned units with matching
+     * UnitType (or the existing monetary unit), preserves unrelated units, and
+     * returns the effective assignment. Replaced unit entities remain in the file.
+     */
+    assignUnit(file: IfcFile, options: IfcOpenShellUnitAssignUnitOptions): Entity;
     /**
      * Calculate the scale factor from SI for a project unit type.
      *
@@ -6086,6 +6136,14 @@ export interface UnitApi {
      * @return The converted value.
      */
     convertUnit(value: number, from_unit: Entity, to_unit: Entity): number;
+    /**
+     * Edit a named unit without owner-history or predefined-type synchronization.
+     *
+     * Shared dimensional exponents are copied before editing; uniquely owned
+     * dimensions are mutated in place. Remaining attributes are applied in input
+     * order after Dimensions has been handled.
+     */
+    editNamedUnit(file: IfcFile, options: IfcOpenShellUnitEditNamedUnitOptions): void;
     /**
      * Format a length value as an imperial or metric string.
      *
@@ -12810,6 +12868,22 @@ export function createApi(shell: IfcOpenShell): Api {
       }
     },
     /**
+     * Create a conversion-based named unit from the native unit table.
+     *
+     * The operation creates dimensional exponents, the SI conversion target, an
+     * IfcReal conversion value, and an IfcMeasureWithUnit. A nonzero effective
+     * offset selects IfcConversionBasedUnitWithOffset when the schema provides it.
+     */
+    addConversionBasedUnit(file: IfcFile, options: IfcOpenShellUnitAddConversionBasedUnitOptions): Entity {
+      const temps: Disposable[] = [];
+      try {
+        const result = raw.unit.addConversionBasedUnit(file.raw, encodeOptions(options, {"conversionOffset": "conversion_offset", "name": "name"}, shell, temps));
+        return wrapEntity(shell, result) as Entity;
+      } finally {
+        disposeAll(temps);
+      }
+    },
+    /**
      * Create an IfcDerivedUnit entity.
      *
      * Constructs a derived unit from a list of component units and their
@@ -12862,6 +12936,22 @@ export function createApi(shell: IfcOpenShell): Api {
       const temps: Disposable[] = [];
       try {
         const result = raw.unit.addSiUnit(file.raw, unit_type, prefix);
+        return wrapEntity(shell, result) as Entity;
+      } finally {
+        disposeAll(temps);
+      }
+    },
+    /**
+     * Assign explicit or convenience units to the first IfcProject.
+     *
+     * Reuses an existing IfcUnitAssignment, replaces assigned units with matching
+     * UnitType (or the existing monetary unit), preserves unrelated units, and
+     * returns the effective assignment. Replaced unit entities remain in the file.
+     */
+    assignUnit(file: IfcFile, options: IfcOpenShellUnitAssignUnitOptions): Entity {
+      const temps: Disposable[] = [];
+      try {
+        const result = raw.unit.assignUnit(file.raw, encodeOptions(options, {"areaIsMetric": "area_is_metric", "areaRaw": "area_raw", "lengthIsMetric": "length_is_metric", "lengthRaw": "length_raw", "units": "units", "volumeIsMetric": "volume_is_metric", "volumeRaw": "volume_raw"}, shell, temps, [], ["units"]));
         return wrapEntity(shell, result) as Entity;
       } finally {
         disposeAll(temps);
@@ -12925,6 +13015,21 @@ export function createApi(shell: IfcOpenShell): Api {
       try {
         const result = raw.unit.convertUnit(value, from_unit.raw, to_unit.raw);
         return wrap(shell, result) as number;
+      } finally {
+        disposeAll(temps);
+      }
+    },
+    /**
+     * Edit a named unit without owner-history or predefined-type synchronization.
+     *
+     * Shared dimensional exponents are copied before editing; uniquely owned
+     * dimensions are mutated in place. Remaining attributes are applied in input
+     * order after Dimensions has been handled.
+     */
+    editNamedUnit(file: IfcFile, options: IfcOpenShellUnitEditNamedUnitOptions): void {
+      const temps: Disposable[] = [];
+      try {
+        raw.unit.editNamedUnit(file.raw, encodeOptions(options, {"attributes": "attributes", "unit": "unit"}, shell, temps, ["attributes"]));
       } finally {
         disposeAll(temps);
       }

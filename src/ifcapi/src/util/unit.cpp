@@ -3,6 +3,7 @@
 #include "ifcapi/ifcapi.h"
 #include "ifcapi/bindings/unit.h"
 #include "ifcapi/detail/attribute.h"
+#include "ifcapi/detail/unit.h"
 #include "entity_introspection.hpp"
 #include "ifcopenshell_api_internal.hpp"
 
@@ -44,55 +45,6 @@ const std::vector<std::string>& unit_names_table() {
     return t;
 }
 
-const std::vector<std::pair<std::string, std::string>>& imperial_types_table() {
-    static const std::vector<std::pair<std::string, std::string>> t = {
-        {"thou", "LENGTHUNIT"}, {"inch", "LENGTHUNIT"}, {"foot", "LENGTHUNIT"},
-        {"yard", "LENGTHUNIT"}, {"mile", "LENGTHUNIT"},
-        {"square thou", "AREAUNIT"}, {"square inch", "AREAUNIT"},
-        {"square foot", "AREAUNIT"}, {"square yard", "AREAUNIT"},
-        {"acre", "AREAUNIT"}, {"square mile", "AREAUNIT"},
-        {"cubic thou", "VOLUMEUNIT"}, {"cubic inch", "VOLUMEUNIT"},
-        {"cubic foot", "VOLUMEUNIT"}, {"cubic yard", "VOLUMEUNIT"},
-        {"cubic mile", "VOLUMEUNIT"}, {"litre", "VOLUMEUNIT"},
-        {"fluid ounce UK", "VOLUMEUNIT"}, {"fluid ounce US", "VOLUMEUNIT"},
-        {"pint UK", "VOLUMEUNIT"}, {"pint US", "VOLUMEUNIT"},
-        {"gallon UK", "VOLUMEUNIT"}, {"gallon US", "VOLUMEUNIT"},
-        {"degree", "PLANEANGLEUNIT"},
-        {"ounce", "MASSUNIT"}, {"pound", "MASSUNIT"},
-        {"ton UK", "MASSUNIT"}, {"ton US", "MASSUNIT"}, {"tonne", "MASSUNIT"},
-        {"lbf", "FORCEUNIT"}, {"kip", "FORCEUNIT"},
-        {"psi", "PRESSUREUNIT"}, {"ksi", "PRESSUREUNIT"},
-        {"minute", "TIMEUNIT"}, {"hour", "TIMEUNIT"}, {"day", "TIMEUNIT"},
-        {"btu", "ENERGYUNIT"},
-        {"fahrenheit", "THERMODYNAMICTEMPERATUREUNIT"},
-    };
-    return t;
-}
-
-const std::unordered_map<std::string, double>& si_conversions_table() {
-    static const std::unordered_map<std::string, double> t = {
-        {"thou", 0.0000254}, {"inch", 0.0254}, {"foot", 0.3048},
-        {"yard", 0.914}, {"mile", 1609},
-        {"square thou", 6.4516e-10}, {"square inch", 0.0006452},
-        {"square foot", 0.09290304}, {"square yard", 0.83612736},
-        {"acre", 4046.86}, {"square mile", 2588881},
-        {"cubic thou", 1.6387064e-14}, {"cubic inch", 0.00001639},
-        {"cubic foot", 0.02831684671168849}, {"cubic yard", 0.7636},
-        {"cubic mile", 4165509529.0}, {"litre", 0.001},
-        {"fluid ounce UK", 0.0000284130625}, {"fluid ounce US", 0.00002957353},
-        {"pint UK", 0.000568}, {"pint US", 0.000473},
-        {"gallon UK", 0.004546}, {"gallon US", 0.003785},
-        {"degree", M_PI / 180.0},
-        {"ounce", 0.02835}, {"pound", 0.454},
-        {"ton UK", 1016.0469088}, {"ton US", 907.18474}, {"tonne", 1000.0},
-        {"lbf", 4.4482216153}, {"kip", 4448.2216153},
-        {"psi", 6894.7572932}, {"ksi", 6894757.2932},
-        {"minute", 60}, {"hour", 3600}, {"day", 86400},
-        {"btu", 1055.056}, {"fahrenheit", 1.8},
-    };
-    return t;
-}
-
 const std::unordered_map<std::string, std::array<int, 7>>& si_dimensions_table() {
     static const std::unordered_map<std::string, std::array<int, 7>> t = {
         {"METRE", {1, 0, 0, 0, 0, 0, 0}},
@@ -126,42 +78,6 @@ const std::unordered_map<std::string, std::array<int, 7>>& si_dimensions_table()
         {"GRAY", {2, 0, -2, 0, 0, 0, 0}},
         {"SIEVERT", {2, 0, -2, 0, 0, 0, 0}},
         {"OTHERWISE", {0, 0, 0, 0, 0, 0, 0}},
-    };
-    return t;
-}
-
-const std::unordered_map<std::string, std::array<int, 7>>& named_dimensions_table() {
-    static const std::unordered_map<std::string, std::array<int, 7>> t = {
-        {"ABSORBEDDOSEUNIT", {2, 0, -2, 0, 0, 0, 0}},
-        {"AMOUNTOFSUBSTANCEUNIT", {0, 0, 0, 0, 0, 1, 0}},
-        {"AREAUNIT", {2, 0, 0, 0, 0, 0, 0}},
-        {"DOSEEQUIVALENTUNIT", {2, 0, -2, 0, 0, 0, 0}},
-        {"ELECTRICCAPACITANCEUNIT", {-2, -1, 4, 2, 0, 0, 0}},
-        {"ELECTRICCHARGEUNIT", {0, 0, 1, 1, 0, 0, 0}},
-        {"ELECTRICCONDUCTANCEUNIT", {-2, -1, 3, 2, 0, 0, 0}},
-        {"ELECTRICCURRENTUNIT", {0, 0, 0, 1, 0, 0, 0}},
-        {"ELECTRICRESISTANCEUNIT", {2, 1, -3, -2, 0, 0, 0}},
-        {"ELECTRICVOLTAGEUNIT", {2, 1, -3, -1, 0, 0, 0}},
-        {"ENERGYUNIT", {2, 1, -2, 0, 0, 0, 0}},
-        {"FORCEUNIT", {1, 1, -2, 0, 0, 0, 0}},
-        {"FREQUENCYUNIT", {0, 0, -1, 0, 0, 0, 0}},
-        {"ILLUMINANCEUNIT", {-2, 0, 0, 0, 0, 1, 1}},
-        {"INDUCTANCEUNIT", {2, 1, -2, -2, 0, 0, 0}},
-        {"LENGTHUNIT", {1, 0, 0, 0, 0, 0, 0}},
-        {"LUMINOUSFLUXUNIT", {0, 0, 0, 0, 0, 1, 1}},
-        {"LUMINOUSINTENSITYUNIT", {0, 0, 0, 0, 0, 0, 1}},
-        {"MAGNETICFLUXDENSITYUNIT", {0, 1, -2, -1, 0, 0, 0}},
-        {"MAGNETICFLUXUNIT", {2, 1, -2, -1, 0, 0, 0}},
-        {"MASSUNIT", {0, 1, 0, 0, 0, 0, 0}},
-        {"PLANEANGLEUNIT", {0, 0, 0, 0, 0, 0, 0}},
-        {"POWERUNIT", {2, 1, -3, 0, 0, 0, 0}},
-        {"PRESSUREUNIT", {-1, 1, -2, 0, 0, 0, 0}},
-        {"RADIOACTIVITYUNIT", {0, 0, -1, 0, 0, 0, 0}},
-        {"SOLIDANGLEUNIT", {0, 0, 0, 0, 0, 0, 0}},
-        {"THERMODYNAMICTEMPERATUREUNIT", {0, 0, 0, 0, 1, 0, 0}},
-        {"TIMEUNIT", {0, 0, 1, 0, 0, 0, 0}},
-        {"VOLUMEUNIT", {3, 0, 0, 0, 0, 0, 0}},
-        {"USERDEFINED", {0, 0, 0, 0, 0, 0, 0}},
     };
     return t;
 }
@@ -244,7 +160,7 @@ const char* find_unit_name_in(const std::string& upper) {
 }
 
 const char* find_imperial_in(const std::string& upper) {
-    for (const auto& kv : imperial_types_table()) {
+    for (const auto& kv : ifcapi::detail::unit::imperial_types()) {
         if (upper.find(upper_str(kv.first)) != std::string::npos) return kv.first.c_str();
     }
     return nullptr;
@@ -438,7 +354,7 @@ std::vector<int> unit_get_si_dimensions(const std::string& name) {
 
 std::vector<int> unit_get_named_dimensions(const std::string& name) {
     std::vector<int> result(7);
-    const auto& tbl = named_dimensions_table();
+    const auto& tbl = ifcapi::detail::unit::named_dimensions();
     auto it = tbl.find(name);
     if (it == tbl.end()) return result;
     for (int i = 0; i < 7; ++i) result[i] = it->second[i];
@@ -454,7 +370,7 @@ double unit_convert(
     std::string fu = from_unit, tu = to_unit;
     std::string fu_low = lower_str(fu);
     std::string tu_low = lower_str(tu);
-    const auto& sic = si_conversions_table();
+    const auto& sic = ifcapi::detail::unit::si_conversions();
     auto fit = sic.find(fu_low);
     if (fit != sic.end()) {
         value *= fit->second;

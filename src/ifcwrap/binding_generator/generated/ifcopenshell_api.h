@@ -1762,6 +1762,35 @@ typedef struct ifcopenshell_type_unassign_type_options_t {
     bool has_application;
 } ifcopenshell_type_unassign_type_options_t;
 
+typedef struct ifcopenshell_unit_add_conversion_based_unit_options_t {
+    const char* name;
+    bool has_name;
+    double conversion_offset;
+    bool has_conversion_offset;
+} ifcopenshell_unit_add_conversion_based_unit_options_t;
+
+typedef struct ifcopenshell_unit_assign_unit_options_t {
+    ifcopenshell_parse_instance_list_t* units;
+    bool has_units;
+    bool length_is_metric;
+    bool has_length_is_metric;
+    const char* length_raw;
+    bool has_length_raw;
+    bool area_is_metric;
+    bool has_area_is_metric;
+    const char* area_raw;
+    bool has_area_raw;
+    bool volume_is_metric;
+    bool has_volume_is_metric;
+    const char* volume_raw;
+    bool has_volume_raw;
+} ifcopenshell_unit_assign_unit_options_t;
+
+typedef struct ifcopenshell_unit_edit_named_unit_options_t {
+    ifcopenshell_instance_t* unit;
+    void* attributes;
+} ifcopenshell_unit_edit_named_unit_options_t;
+
 typedef struct ifcopenshell_shape_builder_mep_transition_shape_result_t {
     ifcopenshell_instance_t* representation;
     double start_length;
@@ -5717,6 +5746,14 @@ bool ifcopenshell_type_unassign_type(ifcopenshell_file_t* file, const ifcopenshe
  */
 bool ifcopenshell_unit_add_context_dependent_unit(ifcopenshell_file_t* file, const char* unit_type, const char* name, const ifcopenshell_int64_list_t* dimensions, ifcopenshell_instance_t** out_result);
 /**
+ * Create a conversion-based named unit from the native unit table.
+ *
+ * The operation creates dimensional exponents, the SI conversion target, an
+ * IfcReal conversion value, and an IfcMeasureWithUnit. A nonzero effective
+ * offset selects IfcConversionBasedUnitWithOffset when the schema provides it.
+ */
+bool ifcopenshell_unit_add_conversion_based_unit(ifcopenshell_file_t* file, const ifcopenshell_unit_add_conversion_based_unit_options_t* options, ifcopenshell_instance_t** out_result);
+/**
  * Create an IfcDerivedUnit entity.
  *
  * Constructs a derived unit from a list of component units and their
@@ -5750,6 +5787,14 @@ bool ifcopenshell_unit_add_monetary_unit(ifcopenshell_file_t* file, const char* 
  * @return Newly created IfcSIUnit.
  */
 bool ifcopenshell_unit_add_si_unit(ifcopenshell_file_t* file, const char* unit_type, const char* prefix, ifcopenshell_instance_t** out_result);
+/**
+ * Assign explicit or convenience units to the first IfcProject.
+ *
+ * Reuses an existing IfcUnitAssignment, replaces assigned units with matching
+ * UnitType (or the existing monetary unit), preserves unrelated units, and
+ * returns the effective assignment. Replaced unit entities remain in the file.
+ */
+bool ifcopenshell_unit_assign_unit(ifcopenshell_file_t* file, const ifcopenshell_unit_assign_unit_options_t* options, ifcopenshell_instance_t** out_result);
 /**
  * Calculate the scale factor from SI for a project unit type.
  *
@@ -5788,6 +5833,14 @@ bool ifcopenshell_unit_convert(double value, const char* from_prefix, const char
  * @return The converted value.
  */
 bool ifcopenshell_unit_convert_unit(double value, ifcopenshell_instance_t* from_unit, ifcopenshell_instance_t* to_unit, double* out_result);
+/**
+ * Edit a named unit without owner-history or predefined-type synchronization.
+ *
+ * Shared dimensional exponents are copied before editing; uniquely owned
+ * dimensions are mutated in place. Remaining attributes are applied in input
+ * order after Dimensions has been handled.
+ */
+bool ifcopenshell_unit_edit_named_unit(ifcopenshell_file_t* file, const ifcopenshell_unit_edit_named_unit_options_t* options);
 /**
  * Format a length value as an imperial or metric string.
  *

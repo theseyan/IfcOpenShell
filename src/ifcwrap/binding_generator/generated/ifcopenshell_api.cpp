@@ -14715,6 +14715,37 @@ bool ifcopenshell_unit_add_context_dependent_unit(ifcopenshell_file_t* file, con
     }
 }
 
+bool ifcopenshell_unit_add_conversion_based_unit(ifcopenshell_file_t* file, const ifcopenshell_unit_add_conversion_based_unit_options_t* options, ifcopenshell_instance_t** out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::UnitAddConversionBasedUnitOptions options_cpp{};
+    if (options->has_name) {
+        if (options->name == nullptr) { throw std::runtime_error("Options field \"name\" must not be null"); }
+        options_cpp.name = std::string(options->name);
+    }
+    if (options->has_conversion_offset) {
+        options_cpp.conversion_offset = options->conversion_offset;
+    }
+        auto result_value = ifcapi::bindings::unit_add_conversion_based_unit(file_cpp, options_cpp);
+        if (!static_cast<bool>(result_value)) {
+            *out_result = nullptr;
+        } else {
+            *out_result = new ifcopenshell_instance_t{std::move(result_value)};
+        }
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
 bool ifcopenshell_unit_add_derived_unit(ifcopenshell_file_t* file, const char* unit_type, const char* userdefinedtype, const ifcopenshell_instance_list_t* units, const ifcopenshell_int64_list_t* exponents, ifcopenshell_instance_t** out_result) {
     try {
         ifcopenshell_clear_error();
@@ -14793,6 +14824,55 @@ bool ifcopenshell_unit_add_si_unit(ifcopenshell_file_t* file, const char* unit_t
     }
 }
 
+bool ifcopenshell_unit_assign_unit(ifcopenshell_file_t* file, const ifcopenshell_unit_assign_unit_options_t* options, ifcopenshell_instance_t** out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::UnitAssignUnitOptions options_cpp{};
+    if (options->has_units) {
+        if (options->units == nullptr) { throw std::runtime_error("Options field \"units\" must not be null"); }
+        options_cpp.units = options->units->value;
+    }
+    if (options->has_length_is_metric) {
+        options_cpp.length_is_metric = options->length_is_metric;
+    }
+    if (options->has_length_raw) {
+        if (options->length_raw == nullptr) { throw std::runtime_error("Options field \"length_raw\" must not be null"); }
+        options_cpp.length_raw = std::string(options->length_raw);
+    }
+    if (options->has_area_is_metric) {
+        options_cpp.area_is_metric = options->area_is_metric;
+    }
+    if (options->has_area_raw) {
+        if (options->area_raw == nullptr) { throw std::runtime_error("Options field \"area_raw\" must not be null"); }
+        options_cpp.area_raw = std::string(options->area_raw);
+    }
+    if (options->has_volume_is_metric) {
+        options_cpp.volume_is_metric = options->volume_is_metric;
+    }
+    if (options->has_volume_raw) {
+        if (options->volume_raw == nullptr) { throw std::runtime_error("Options field \"volume_raw\" must not be null"); }
+        options_cpp.volume_raw = std::string(options->volume_raw);
+    }
+        auto result_value = ifcapi::bindings::unit_assign_unit(file_cpp, options_cpp);
+        if (!static_cast<bool>(result_value)) {
+            *out_result = nullptr;
+        } else {
+            *out_result = new ifcopenshell_instance_t{std::move(result_value)};
+        }
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
 bool ifcopenshell_unit_calculate_unit_scale(ifcopenshell_file_t* file, const char* unit_type, double* out_result) {
     try {
         ifcopenshell_clear_error();
@@ -14846,6 +14926,27 @@ bool ifcopenshell_unit_convert_unit(double value, ifcopenshell_instance_t* from_
     if (to_unit == nullptr) { throw std::runtime_error("Handle parameter \"to_unit\" must not be null"); }
     auto to_unit_cpp = &to_unit->value;
         *out_result = static_cast<double>(ifcapi::bindings::unit_convert_unit(value_cpp, from_unit_cpp, to_unit_cpp));
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_unit_edit_named_unit(ifcopenshell_file_t* file, const ifcopenshell_unit_edit_named_unit_options_t* options) {
+    try {
+        ifcopenshell_clear_error();
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::UnitEditNamedUnitOptions options_cpp{};
+    if (options->unit == nullptr) { throw std::runtime_error("Options field \"unit\" must not be null"); }
+    options_cpp.unit = options->unit->value;
+    options_cpp.attributes = static_cast<ifcopenshell_pset_props_t*>(options->attributes);
+        ifcapi::bindings::unit_edit_named_unit(file_cpp, options_cpp);
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());

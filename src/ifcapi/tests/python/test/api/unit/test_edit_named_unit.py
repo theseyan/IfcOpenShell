@@ -21,6 +21,41 @@ import test.bootstrap
 
 
 class TestEditNamedUnitIFC2X3(test.bootstrap.IFC2X3):
+    def test_copying_shared_dimensions_before_editing(self):
+        dimensions = self.file.createIfcDimensionalExponents(1, 0, 0, 0, 0, 0, 0)
+        unit = self.file.createIfcContextDependentUnit(dimensions, "LENGTHUNIT", "A")
+        other = self.file.createIfcContextDependentUnit(dimensions, "LENGTHUNIT", "B")
+        ifcopenshell.api.unit.edit_named_unit(self.file, unit=unit, attributes={"Dimensions": (2, 3, 4, 5, 6, 7, 8)})
+        assert unit.Dimensions != dimensions
+        assert tuple(unit.Dimensions) == (2, 3, 4, 5, 6, 7, 8)
+        assert other.Dimensions == dimensions
+        assert tuple(other.Dimensions) == (1, 0, 0, 0, 0, 0, 0)
+
+    def test_mutating_uniquely_owned_dimensions_in_place(self):
+        dimensions = self.file.createIfcDimensionalExponents(1, 0, 0, 0, 0, 0, 0)
+        unit = self.file.createIfcContextDependentUnit(dimensions, "LENGTHUNIT", "A")
+        dimensions_id = dimensions.id()
+        ifcopenshell.api.unit.edit_named_unit(self.file, unit=unit, attributes={"Dimensions": (2, 3, 4, 5, 6, 7, 8)})
+        assert unit.Dimensions.id() == dimensions_id
+        assert tuple(unit.Dimensions) == (2, 3, 4, 5, 6, 7, 8)
+
+    def test_short_dimensions_mutate_a_single_owner_partially(self):
+        unit = self.file.createIfcContextDependentUnit(
+            self.file.createIfcDimensionalExponents(), "USERDEFINED", "A"
+        )
+        ifcopenshell.api.unit.edit_named_unit(self.file, unit=unit, attributes={"Dimensions": (1, 2)})
+        assert tuple(unit.Dimensions) == (1, 2, None, None, None, None, None)
+
+    def test_short_shared_dimensions_create_a_partial_copy(self):
+        dimensions = self.file.createIfcDimensionalExponents()
+        unit = self.file.createIfcContextDependentUnit(dimensions, "USERDEFINED", "A")
+        other = self.file.createIfcContextDependentUnit(dimensions, "USERDEFINED", "B")
+        ifcopenshell.api.unit.edit_named_unit(self.file, unit=unit, attributes={"Dimensions": (1, 2)})
+        assert unit.Dimensions != dimensions
+        assert tuple(unit.Dimensions) == (1, 2, None, None, None, None, None)
+        assert other.Dimensions == dimensions
+        assert tuple(dimensions) == (None, None, None, None, None, None, None)
+
     def test_edit_context_dependent_unit(self):
         unit = self.file.createIfcContextDependentUnit()
         unit.Dimensions = self.file.createIfcDimensionalExponents()

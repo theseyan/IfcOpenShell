@@ -16850,6 +16850,177 @@ static int fill_input_type_unassign_type_options(PyObject *obj, ifcopenshell_typ
 }
 
 
+static void free_input_unit_add_conversion_based_unit_options(ifcopenshell_unit_add_conversion_based_unit_options_t *value) {
+    (void)value;
+}
+
+static int fill_input_unit_add_conversion_based_unit_options(PyObject *obj, ifcopenshell_unit_add_conversion_based_unit_options_t *out, PyObject **refs) {
+    if (!PyMapping_Check(obj)) {
+        PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
+        return 0;
+    }
+    PyObject *field_0 = get_option_field(obj, "name", 0);
+    if (!field_0) {
+        if (PyErr_Occurred()) return 0;
+    } else {
+        refs[0] = field_0;
+        if (field_0 != Py_None) {
+            out->name = PyUnicode_AsUTF8(field_0);
+            if (!out->name) return 0;
+        out->has_name = true;
+        }
+    }
+    PyObject *field_1 = get_option_field(obj, "conversion_offset", 0);
+    if (!field_1) {
+        if (PyErr_Occurred()) return 0;
+    } else {
+        refs[1] = field_1;
+        if (field_1 != Py_None) {
+            out->conversion_offset = PyFloat_AsDouble(field_1);
+            if (PyErr_Occurred()) return 0;
+        out->has_conversion_offset = true;
+        }
+    }
+    return 1;
+}
+
+
+static void free_input_unit_assign_unit_options(ifcopenshell_unit_assign_unit_options_t *value) {
+    if (value->units) {
+        ifcopenshell_parse_instance_list_destroy(value->units);
+        value->units = NULL;
+    }
+}
+
+static int fill_input_unit_assign_unit_options(PyObject *obj, ifcopenshell_unit_assign_unit_options_t *out, PyObject **refs) {
+    if (!PyMapping_Check(obj)) {
+        PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
+        return 0;
+    }
+    PyObject *field_0 = get_option_field(obj, "units", 0);
+    if (!field_0) {
+        if (PyErr_Occurred()) return 0;
+    } else {
+        refs[0] = field_0;
+        if (field_0 != Py_None) {
+            ifcopenshell_instance_list_t units_items_0 = {0};
+            if (!make_input_instance_list(field_0, &units_items_0)) {
+                return 0;
+            }
+            if (!ifcopenshell_parse_instance_list_create_from_handles(&units_items_0, &out->units)) {
+                free_input_instance_list(&units_items_0);
+                raise_last_error("ifcopenshell_parse_instance_list_create_from_handles failed");
+                return 0;
+            }
+            free_input_instance_list(&units_items_0);
+        out->has_units = true;
+        }
+    }
+    PyObject *field_1 = get_option_field(obj, "length_is_metric", 0);
+    if (!field_1) {
+        if (PyErr_Occurred()) return 0;
+    } else {
+        refs[1] = field_1;
+        if (field_1 != Py_None) {
+            int value_1 = PyObject_IsTrue(field_1);
+            if (value_1 < 0) return 0;
+            out->length_is_metric = (bool)value_1;
+        out->has_length_is_metric = true;
+        }
+    }
+    PyObject *field_2 = get_option_field(obj, "length_raw", 0);
+    if (!field_2) {
+        if (PyErr_Occurred()) return 0;
+    } else {
+        refs[2] = field_2;
+        if (field_2 != Py_None) {
+            out->length_raw = PyUnicode_AsUTF8(field_2);
+            if (!out->length_raw) return 0;
+        out->has_length_raw = true;
+        }
+    }
+    PyObject *field_3 = get_option_field(obj, "area_is_metric", 0);
+    if (!field_3) {
+        if (PyErr_Occurred()) return 0;
+    } else {
+        refs[3] = field_3;
+        if (field_3 != Py_None) {
+            int value_3 = PyObject_IsTrue(field_3);
+            if (value_3 < 0) return 0;
+            out->area_is_metric = (bool)value_3;
+        out->has_area_is_metric = true;
+        }
+    }
+    PyObject *field_4 = get_option_field(obj, "area_raw", 0);
+    if (!field_4) {
+        if (PyErr_Occurred()) return 0;
+    } else {
+        refs[4] = field_4;
+        if (field_4 != Py_None) {
+            out->area_raw = PyUnicode_AsUTF8(field_4);
+            if (!out->area_raw) return 0;
+        out->has_area_raw = true;
+        }
+    }
+    PyObject *field_5 = get_option_field(obj, "volume_is_metric", 0);
+    if (!field_5) {
+        if (PyErr_Occurred()) return 0;
+    } else {
+        refs[5] = field_5;
+        if (field_5 != Py_None) {
+            int value_5 = PyObject_IsTrue(field_5);
+            if (value_5 < 0) return 0;
+            out->volume_is_metric = (bool)value_5;
+        out->has_volume_is_metric = true;
+        }
+    }
+    PyObject *field_6 = get_option_field(obj, "volume_raw", 0);
+    if (!field_6) {
+        if (PyErr_Occurred()) return 0;
+    } else {
+        refs[6] = field_6;
+        if (field_6 != Py_None) {
+            out->volume_raw = PyUnicode_AsUTF8(field_6);
+            if (!out->volume_raw) return 0;
+        out->has_volume_raw = true;
+        }
+    }
+    return 1;
+}
+
+
+static void free_input_unit_edit_named_unit_options(ifcopenshell_unit_edit_named_unit_options_t *value) {
+    (void)value;
+}
+
+static int fill_input_unit_edit_named_unit_options(PyObject *obj, ifcopenshell_unit_edit_named_unit_options_t *out, PyObject **refs) {
+    if (!PyMapping_Check(obj)) {
+        PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
+        return 0;
+    }
+    PyObject *field_0 = get_option_field(obj, "unit", 1);
+    if (!field_0) {
+        return 0;
+    }
+    refs[0] = field_0;
+    if (!extract_handle(field_0, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->unit, 0)) {
+        return 0;
+    }
+    PyObject *field_1 = get_option_field(obj, "attributes", 1);
+    if (!field_1) {
+        return 0;
+    }
+    refs[1] = field_1;
+    if (PyCapsule_IsValid(field_1, NULL)) {
+        out->attributes = PyCapsule_GetPointer(field_1, NULL);
+    } else {
+        PyErr_SetString(PyExc_TypeError, "Expected a capsule");
+        return 0;
+    }
+    return 1;
+}
+
+
 static PyObject *convert_ifcopenshell_string_copy(ifcopenshell_string_t *value) {
     if (!value->data) Py_RETURN_NONE;
     return PyUnicode_FromStringAndSize(value->data, (Py_ssize_t)value->size);
@@ -48091,6 +48262,41 @@ __cleanup:
     return __py_result;
 }
 
+static PyObject *py_ifcopenshell_unit_add_conversion_based_unit(PyObject *self, PyObject *args) {
+    PyObject *__py_result = NULL;
+    bool ok = false;
+    PyObject *arg_file_obj = NULL;
+    ifcopenshell_file_t *arg_file = NULL;
+    PyObject *arg_options_obj = NULL;
+    ifcopenshell_unit_add_conversion_based_unit_options_t arg_options = {0};
+    PyObject *arg_options_refs[2] = {0};
+    ifcopenshell_instance_t *result = NULL;
+    if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_options_obj)) return NULL;
+
+    if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
+        goto __cleanup;
+    }
+    if (!fill_input_unit_add_conversion_based_unit_options(arg_options_obj, &arg_options, arg_options_refs)) {
+        goto __cleanup;
+    }
+
+    ifcopenshell_clear_error();
+    ok = ifcopenshell_unit_add_conversion_based_unit(arg_file, &arg_options, &result);
+    if (!ok) {
+        raise_last_error("ifcopenshell_unit_add_conversion_based_unit failed");
+        goto __cleanup;
+    }
+    if (result == nullptr && ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_unit_add_conversion_based_unit failed");
+        goto __cleanup;
+    }
+    __py_result = wrap_instance(result, 1);
+__cleanup:
+        release_option_refs(arg_options_refs, 2);
+        free_input_unit_add_conversion_based_unit_options(&arg_options);
+    return __py_result;
+}
+
 static PyObject *py_ifcopenshell_unit_add_derived_unit(PyObject *self, PyObject *args) {
     PyObject *__py_result = NULL;
     bool ok = false;
@@ -48188,6 +48394,41 @@ __cleanup:
     return __py_result;
 }
 
+static PyObject *py_ifcopenshell_unit_assign_unit(PyObject *self, PyObject *args) {
+    PyObject *__py_result = NULL;
+    bool ok = false;
+    PyObject *arg_file_obj = NULL;
+    ifcopenshell_file_t *arg_file = NULL;
+    PyObject *arg_options_obj = NULL;
+    ifcopenshell_unit_assign_unit_options_t arg_options = {0};
+    PyObject *arg_options_refs[7] = {0};
+    ifcopenshell_instance_t *result = NULL;
+    if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_options_obj)) return NULL;
+
+    if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
+        goto __cleanup;
+    }
+    if (!fill_input_unit_assign_unit_options(arg_options_obj, &arg_options, arg_options_refs)) {
+        goto __cleanup;
+    }
+
+    ifcopenshell_clear_error();
+    ok = ifcopenshell_unit_assign_unit(arg_file, &arg_options, &result);
+    if (!ok) {
+        raise_last_error("ifcopenshell_unit_assign_unit failed");
+        goto __cleanup;
+    }
+    if (result == nullptr && ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_unit_assign_unit failed");
+        goto __cleanup;
+    }
+    __py_result = wrap_instance(result, 1);
+__cleanup:
+        release_option_refs(arg_options_refs, 7);
+        free_input_unit_assign_unit_options(&arg_options);
+    return __py_result;
+}
+
 static PyObject *py_ifcopenshell_unit_calculate_unit_scale(PyObject *self, PyObject *args) {
     PyObject *__py_result = NULL;
     bool ok = false;
@@ -48262,6 +48503,42 @@ static PyObject *py_ifcopenshell_unit_convert_unit(PyObject *self, PyObject *arg
     }
     __py_result = PyFloat_FromDouble(result);
 __cleanup:
+    return __py_result;
+}
+
+static PyObject *py_ifcopenshell_unit_edit_named_unit(PyObject *self, PyObject *args) {
+    PyObject *__py_result = NULL;
+    bool ok = false;
+    PyObject *arg_file_obj = NULL;
+    ifcopenshell_file_t *arg_file = NULL;
+    PyObject *arg_options_obj = NULL;
+    ifcopenshell_unit_edit_named_unit_options_t arg_options = {0};
+    PyObject *arg_options_refs[2] = {0};
+
+    if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_options_obj)) return NULL;
+
+    if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
+        goto __cleanup;
+    }
+    if (!fill_input_unit_edit_named_unit_options(arg_options_obj, &arg_options, arg_options_refs)) {
+        goto __cleanup;
+    }
+
+    ifcopenshell_clear_error();
+    ok = ifcopenshell_unit_edit_named_unit(arg_file, &arg_options);
+    if (!ok) {
+        raise_last_error("ifcopenshell_unit_edit_named_unit failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_unit_edit_named_unit failed");
+        goto __cleanup;
+    }
+    Py_INCREF(Py_None);
+    __py_result = Py_None;
+__cleanup:
+        release_option_refs(arg_options_refs, 2);
+        free_input_unit_edit_named_unit_options(&arg_options);
     return __py_result;
 }
 
@@ -50450,12 +50727,15 @@ static PyMethodDef module_methods[] = {
     {"type_map_type_representations", py_ifcopenshell_type_map_type_representations, METH_VARARGS, "Wrap ifcopenshell_type_map_type_representations"},
     {"type_unassign_type", py_ifcopenshell_type_unassign_type, METH_VARARGS, "Wrap ifcopenshell_type_unassign_type"},
     {"unit_add_context_dependent_unit", py_ifcopenshell_unit_add_context_dependent_unit, METH_VARARGS, "Wrap ifcopenshell_unit_add_context_dependent_unit"},
+    {"unit_add_conversion_based_unit", py_ifcopenshell_unit_add_conversion_based_unit, METH_VARARGS, "Wrap ifcopenshell_unit_add_conversion_based_unit"},
     {"unit_add_derived_unit", py_ifcopenshell_unit_add_derived_unit, METH_VARARGS, "Wrap ifcopenshell_unit_add_derived_unit"},
     {"unit_add_monetary_unit", py_ifcopenshell_unit_add_monetary_unit, METH_VARARGS, "Wrap ifcopenshell_unit_add_monetary_unit"},
     {"unit_add_si_unit", py_ifcopenshell_unit_add_si_unit, METH_VARARGS, "Wrap ifcopenshell_unit_add_si_unit"},
+    {"unit_assign_unit", py_ifcopenshell_unit_assign_unit, METH_VARARGS, "Wrap ifcopenshell_unit_assign_unit"},
     {"unit_calculate_unit_scale", py_ifcopenshell_unit_calculate_unit_scale, METH_VARARGS, "Wrap ifcopenshell_unit_calculate_unit_scale"},
     {"unit_convert", py_ifcopenshell_unit_convert, METH_VARARGS, "Wrap ifcopenshell_unit_convert"},
     {"unit_convert_unit", py_ifcopenshell_unit_convert_unit, METH_VARARGS, "Wrap ifcopenshell_unit_convert_unit"},
+    {"unit_edit_named_unit", py_ifcopenshell_unit_edit_named_unit, METH_VARARGS, "Wrap ifcopenshell_unit_edit_named_unit"},
     {"unit_format_length", py_ifcopenshell_unit_format_length, METH_VARARGS, "Wrap ifcopenshell_unit_format_length"},
     {"unit_get_full_unit_name", py_ifcopenshell_unit_get_full_unit_name, METH_VARARGS, "Wrap ifcopenshell_unit_get_full_unit_name"},
     {"unit_get_measure_class", py_ifcopenshell_unit_get_measure_class, METH_VARARGS, "Wrap ifcopenshell_unit_get_measure_class"},
@@ -51527,12 +51807,15 @@ static PyMethodDef module_methods[] = {
     {"ifcopenshell_type_map_type_representations", py_ifcopenshell_type_map_type_representations, METH_VARARGS, "Wrap ifcopenshell_type_map_type_representations"},
     {"ifcopenshell_type_unassign_type", py_ifcopenshell_type_unassign_type, METH_VARARGS, "Wrap ifcopenshell_type_unassign_type"},
     {"ifcopenshell_unit_add_context_dependent_unit", py_ifcopenshell_unit_add_context_dependent_unit, METH_VARARGS, "Wrap ifcopenshell_unit_add_context_dependent_unit"},
+    {"ifcopenshell_unit_add_conversion_based_unit", py_ifcopenshell_unit_add_conversion_based_unit, METH_VARARGS, "Wrap ifcopenshell_unit_add_conversion_based_unit"},
     {"ifcopenshell_unit_add_derived_unit", py_ifcopenshell_unit_add_derived_unit, METH_VARARGS, "Wrap ifcopenshell_unit_add_derived_unit"},
     {"ifcopenshell_unit_add_monetary_unit", py_ifcopenshell_unit_add_monetary_unit, METH_VARARGS, "Wrap ifcopenshell_unit_add_monetary_unit"},
     {"ifcopenshell_unit_add_si_unit", py_ifcopenshell_unit_add_si_unit, METH_VARARGS, "Wrap ifcopenshell_unit_add_si_unit"},
+    {"ifcopenshell_unit_assign_unit", py_ifcopenshell_unit_assign_unit, METH_VARARGS, "Wrap ifcopenshell_unit_assign_unit"},
     {"ifcopenshell_unit_calculate_unit_scale", py_ifcopenshell_unit_calculate_unit_scale, METH_VARARGS, "Wrap ifcopenshell_unit_calculate_unit_scale"},
     {"ifcopenshell_unit_convert", py_ifcopenshell_unit_convert, METH_VARARGS, "Wrap ifcopenshell_unit_convert"},
     {"ifcopenshell_unit_convert_unit", py_ifcopenshell_unit_convert_unit, METH_VARARGS, "Wrap ifcopenshell_unit_convert_unit"},
+    {"ifcopenshell_unit_edit_named_unit", py_ifcopenshell_unit_edit_named_unit, METH_VARARGS, "Wrap ifcopenshell_unit_edit_named_unit"},
     {"ifcopenshell_unit_format_length", py_ifcopenshell_unit_format_length, METH_VARARGS, "Wrap ifcopenshell_unit_format_length"},
     {"ifcopenshell_unit_get_full_unit_name", py_ifcopenshell_unit_get_full_unit_name, METH_VARARGS, "Wrap ifcopenshell_unit_get_full_unit_name"},
     {"ifcopenshell_unit_get_measure_class", py_ifcopenshell_unit_get_measure_class, METH_VARARGS, "Wrap ifcopenshell_unit_get_measure_class"},

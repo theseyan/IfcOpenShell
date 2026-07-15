@@ -163,10 +163,63 @@ static void test_unit_unassign_and_remove(void) {
     printf("  Unit unassign/remove C ABI tests done.\n\n");
 }
 
+static void test_unit_authoring_workflows(void) {
+    printf("=== Unit authoring workflow C ABI tests ===\n");
+
+    ifcopenshell_file_t* file = NULL;
+    ASSERT(ifcopenshell_parse_new_file("IFC4", 0, "", &file), "new IFC4 file succeeds");
+
+    ifcopenshell_instance_t* project = NULL;
+    ifcopenshell_root_create_entity_options_t project_options = {0};
+    project_options.ifc_class = "IfcProject";
+    ASSERT(ifcopenshell_root_create_entity(file, &project_options, &project), "create project succeeds");
+
+    ifcopenshell_unit_assign_unit_options_t assign_options = {0};
+    ifcopenshell_instance_t* assignment = NULL;
+    ASSERT(ifcopenshell_unit_assign_unit(file, &assign_options, &assignment), "default unit assignment succeeds");
+    ASSERT(assignment != NULL, "default assignment is non-NULL");
+    ifcopenshell_parse_instance_list_t* assigned_units = instance_list_argument(assignment, 0);
+    ASSERT(list_size(assigned_units) == 3, "default assignment creates length, area, and volume units");
+    ifcopenshell_parse_instance_list_destroy(assigned_units);
+
+    ifcopenshell_unit_add_conversion_based_unit_options_t conversion_options = {0};
+    ifcopenshell_instance_t* conversion = NULL;
+    ASSERT(ifcopenshell_unit_add_conversion_based_unit(file, &conversion_options, &conversion),
+           "default conversion-based unit succeeds");
+    assert_instance_is(conversion, "IfcConversionBasedUnit", "default conversion unit has expected type");
+
+    int64_t original_dimensions[7] = {1, 0, 0, 0, 0, 0, 0};
+    ifcopenshell_int64_list_t original_dimension_list = {original_dimensions, 7, NULL};
+    ifcopenshell_instance_t* context = NULL;
+    ASSERT(ifcopenshell_unit_add_context_dependent_unit(
+        file, "LENGTHUNIT", "BOXES", &original_dimension_list, &context), "context unit creation succeeds");
+    void* attributes = NULL;
+    ASSERT(ifcopenshell_pset_props_new(&attributes), "attribute property bag creation succeeds");
+    int64_t edited_dimensions[7] = {2, 3, 4, 5, 6, 7, 8};
+    ifcopenshell_int64_list_t edited_dimension_list = {edited_dimensions, 7, NULL};
+    ASSERT(ifcopenshell_pset_props_set_int_list(attributes, "Dimensions", &edited_dimension_list),
+           "dimensions property creation succeeds");
+    ASSERT(ifcopenshell_pset_props_set_string(attributes, "Name", "CRATES"), "name property creation succeeds");
+    ifcopenshell_unit_edit_named_unit_options_t edit_options = {0};
+    edit_options.unit = context;
+    edit_options.attributes = attributes;
+    ASSERT(ifcopenshell_unit_edit_named_unit(file, &edit_options), "named unit edit succeeds");
+    ifcopenshell_pset_props_free(attributes);
+
+    ifcopenshell_instance_destroy(context);
+    ifcopenshell_instance_destroy(conversion);
+    ifcopenshell_instance_destroy(assignment);
+    ifcopenshell_instance_destroy(project);
+    ifcopenshell_file_destroy(file);
+
+    printf("  Unit authoring workflow C ABI tests done.\n\n");
+}
+
 int ifcapi_run_unit_smoke_tests(void) {
     printf("ifcapi unit C ABI smoke tests\n\n");
 
     test_unit_creation();
+    test_unit_authoring_workflows();
     test_unit_unassign_and_remove();
 
     printf("=== Results: %d/%d passed ===\n", tests_run - tests_failed, tests_run);

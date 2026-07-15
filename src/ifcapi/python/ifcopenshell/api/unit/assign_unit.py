@@ -16,10 +16,10 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
-from typing import Any, Optional
+from typing import Optional
 
 import ifcopenshell
-import ifcopenshell.util.unit
+from ifcopenshell import _ifcopenshell_capi as _capi
 
 
 def assign_unit(
@@ -69,100 +69,21 @@ def assign_unit(
         # prioritise metric here.
         ifcopenshell.api.unit.assign_unit(model)
     """
-    usecase = Usecase()
-    usecase.file = file
-    usecase.settings = {"units": units}
-    # This is a convenience function, likely to be deprecated in the future.
-    usecase.settings["length"] = length or {"is_metric": True, "raw": "MILLIMETERS"}
-    usecase.settings["area"] = area or {"is_metric": True, "raw": "METERS"}
-    usecase.settings["volume"] = volume or {"is_metric": True, "raw": "METERS"}
-    return usecase.execute()
-
-
-class Usecase:
-    file: ifcopenshell.file
-    settings: dict[str, Any]
-
-    def execute(self):
-        # We're going to refactor this to split unit creation and assignment
-        if self.settings["units"]:
-            units = self.settings["units"]
-        else:
-            del self.settings["units"]  # TODO refactor
-            units = []
-            for unit_type, data in self.settings.items():
-                if data["is_metric"]:
-                    units.append(self.create_metric_unit(unit_type, data))
-                else:
-                    units.append(self.create_imperial_unit(unit_type, data))
-
-        unit_assignment = self.get_unit_assignment()
-        self.assign_units(unit_assignment, units)
-        return unit_assignment
-
-    def get_unit_assignment(self) -> ifcopenshell.entity_instance:
-        if not (unit_assignment := ifcopenshell.util.unit.get_unit_assignment(self.file)):
-            unit_assignment = self.file.createIfcUnitAssignment()
-            self.file.by_type("IfcProject")[0].UnitsInContext = unit_assignment
-        return unit_assignment
-
-    def assign_units(
-        self, unit_assignment: ifcopenshell.entity_instance, new_units: list[ifcopenshell.entity_instance]
-    ) -> None:
-        new_unit_types = [u.UnitType if not u.is_a("IfcMonetaryUnit") else u.is_a() for u in new_units]
-        units = set(
-            [
-                u
-                for u in (unit_assignment.Units or [])
-                if u.is_a() not in new_unit_types and getattr(u, "UnitType", None) not in new_unit_types
-            ]
-        )
-        for unit in new_units:
-            units.add(unit)
-        unit_assignment.Units = list(units)
-
-    def create_metric_unit(self, unit_type: str, data: dict) -> ifcopenshell.entity_instance:
-        type_prefix = ""
-        if unit_type == "area":
-            type_prefix = "SQUARE_"
-        elif unit_type == "volume":
-            type_prefix = "CUBIC_"
-        return self.file.createIfcSIUnit(
-            None,
-            "{}UNIT".format(unit_type.upper()),
-            ifcopenshell.util.unit.get_prefix(data["raw"]),
-            type_prefix + ifcopenshell.util.unit.get_unit_name(data["raw"]),
-        )
-
-    def create_imperial_unit(self, unit_type: str, data: dict) -> ifcopenshell.entity_instance:
-        if unit_type == "length":
-            dimensional_exponents = self.file.createIfcDimensionalExponents(1, 0, 0, 0, 0, 0, 0)
-            name_prefix = ""
-        elif unit_type == "area":
-            dimensional_exponents = self.file.createIfcDimensionalExponents(2, 0, 0, 0, 0, 0, 0)
-            name_prefix = "square"
-        elif unit_type == "volume":
-            dimensional_exponents = self.file.createIfcDimensionalExponents(3, 0, 0, 0, 0, 0, 0)
-            name_prefix = "cubic"
-
-        si_unit = self.file.createIfcSIUnit(
-            None,
-            "{}UNIT".format(unit_type.upper()),
-            None,
-            "{}METRE".format(name_prefix.upper() + "_" if name_prefix else ""),
-        )
-        if data["raw"] == "INCHES":
-            name = "{}inch".format(name_prefix + " " if name_prefix else "")
-        elif data["raw"] == "FEET":
-            name = "{}foot".format(name_prefix + " " if name_prefix else "")
-        elif data["raw"] == "MILES":
-            name = "{}mile".format(name_prefix + " " if name_prefix else "")
-        elif data["raw"] == "THOU":
-            name = "{}thou".format(name_prefix + " " if name_prefix else "")
-        value_component = self.file.create_entity(
-            "IfcReal", **{"wrappedValue": ifcopenshell.util.unit.si_conversions[name]}
-        )
-        conversion_factor = self.file.createIfcMeasureWithUnit(value_component, si_unit)
-        return self.file.createIfcConversionBasedUnit(
-            dimensional_exponents, "{}UNIT".format(unit_type.upper()), name, conversion_factor
-        )
+    length = length or {"is_metric": True, "raw": "MILLIMETERS"}
+    area = area or {"is_metric": True, "raw": "METERS"}
+    volume = volume or {"is_metric": True, "raw": "METERS"}
+    handle = _capi.unit_assign_unit(
+        file._handle,
+        {
+            "units": None if units is None else [unit._handle for unit in units],
+            "length_is_metric": length["is_metric"],
+            "length_raw": length["raw"],
+            "area_is_metric": area["is_metric"],
+            "area_raw": area["raw"],
+            "volume_is_metric": volume["is_metric"],
+            "volume_raw": volume["raw"],
+        },
+    )
+    if handle:
+        return ifcopenshell.entity_instance(file, handle)
+    raise RuntimeError(_capi.last_error_message() or "Failed to assign units")

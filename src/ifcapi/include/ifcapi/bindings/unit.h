@@ -9,8 +9,11 @@
 #include "ifcparse/file.h"
 
 #include <cstdint>
+#include <optional>
 #include <string>
 #include <vector>
+
+struct ifcopenshell_pset_props_t;
 
 namespace ifcapi {
 namespace bindings {
@@ -292,6 +295,80 @@ IFCAPI_BINDING std::string unit_resolve_property_table_defined_measure_class(exp
  * @return Scale factor to SI.
  */
 IFCAPI_BINDING double unit_calculate_unit_scale(ifcopenshell::file* file, const std::string& unit_type);
+
+/**
+ * Options for assigning project units.
+ *
+ * A non-empty explicit units sequence bypasses convenience-unit creation.
+ * When units is omitted or empty, length, area, and volume convenience units
+ * are created from the corresponding metric flag and raw unit text. Omitted
+ * convenience fields default to millimetres, square metres, and cubic metres.
+ */
+struct UnitAssignUnitOptions {
+    /// Explicit units to assign. Omission and an empty sequence both select convenience-unit creation.
+    std::optional<std::vector<express::Base>> units = std::nullopt;
+    /// Whether the convenience length unit is metric. Omission defaults to true.
+    std::optional<bool> length_is_metric = true;
+    /// Raw convenience length text. Omission defaults to MILLIMETERS.
+    std::optional<std::string> length_raw = "MILLIMETERS";
+    /// Whether the convenience area unit is metric. Omission defaults to true.
+    std::optional<bool> area_is_metric = true;
+    /// Raw convenience area text. Omission defaults to METERS.
+    std::optional<std::string> area_raw = "METERS";
+    /// Whether the convenience volume unit is metric. Omission defaults to true.
+    std::optional<bool> volume_is_metric = true;
+    /// Raw convenience volume text. Omission defaults to METERS.
+    std::optional<std::string> volume_raw = "METERS";
+};
+
+/**
+ * Assign explicit or convenience units to the first IfcProject.
+ *
+ * Reuses an existing IfcUnitAssignment, replaces assigned units with matching
+ * UnitType (or the existing monetary unit), preserves unrelated units, and
+ * returns the effective assignment. Replaced unit entities remain in the file.
+ */
+IFCAPI_BINDING express::Base unit_assign_unit(
+    ifcopenshell::file* file,
+    const UnitAssignUnitOptions& options);
+
+/** Options for creating an IfcConversionBasedUnit. */
+struct UnitAddConversionBasedUnitOptions {
+    /// Conversion name. Omission defaults to foot; unknown names use USERDEFINED fallback semantics.
+    std::optional<std::string> name = "foot";
+    /// Explicit nonzero offset. Zero and omission use the built-in offset for the selected name.
+    std::optional<double> conversion_offset = std::nullopt;
+};
+
+/**
+ * Create a conversion-based named unit from the native unit table.
+ *
+ * The operation creates dimensional exponents, the SI conversion target, an
+ * IfcReal conversion value, and an IfcMeasureWithUnit. A nonzero effective
+ * offset selects IfcConversionBasedUnitWithOffset when the schema provides it.
+ */
+IFCAPI_BINDING express::Base unit_add_conversion_based_unit(
+    ifcopenshell::file* file,
+    const UnitAddConversionBasedUnitOptions& options);
+
+/** Options for editing an IfcNamedUnit. */
+struct UnitEditNamedUnitOptions {
+    /// IfcSIUnit, IfcConversionBasedUnit, IfcConversionBasedUnitWithOffset, or IfcContextDependentUnit to edit.
+    express::Base unit;
+    /// Plain attribute property bag. Dimensions accepts up to seven integer exponents; omitted trailing values stay unset.
+    ifcopenshell_pset_props_t* attributes;
+};
+
+/**
+ * Edit a named unit without owner-history or predefined-type synchronization.
+ *
+ * Shared dimensional exponents are copied before editing; uniquely owned
+ * dimensions are mutated in place. Remaining attributes are applied in input
+ * order after Dimensions has been handled.
+ */
+IFCAPI_BINDING void unit_edit_named_unit(
+    ifcopenshell::file* file,
+    const UnitEditNamedUnitOptions& options);
 /**
  * Create an IfcSIUnit entity.
  *
