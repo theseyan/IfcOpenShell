@@ -16,10 +16,13 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
-import ifcopenshell.util.date
+import ifcopenshell
+from ifcopenshell.api.resource import _capi
 
 
-def add_resource_time(file: ifcopenshell.file, resource: ifcopenshell.entity_instance) -> ifcopenshell.entity_instance:
+def add_resource_time(
+    file: ifcopenshell.file, resource: ifcopenshell.entity_instance
+) -> ifcopenshell.entity_instance:
     """Adds the time that a resource is used for
 
     For labour and equipment resources, the total duration that the resource
@@ -54,6 +57,9 @@ def add_resource_time(file: ifcopenshell.file, resource: ifcopenshell.entity_ins
         ifcopenshell.api.resource.edit_resource_time(model,
             resource_time=time, attributes={"ScheduleWork": "PT16H"})
     """
-    resource_time = file.create_entity("IfcResourceTime")
-    resource.Usage = resource_time
-    return resource_time
+    return _capi.call_handle(
+        file,
+        "resource_add_resource_time",
+        _capi.file_handle(file),
+        _capi.instance_handle(resource),
+    )

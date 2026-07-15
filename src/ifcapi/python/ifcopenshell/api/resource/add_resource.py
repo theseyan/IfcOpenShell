@@ -18,9 +18,8 @@
 
 from typing import Optional
 
-import ifcopenshell.api.nest
-import ifcopenshell.api.project
-import ifcopenshell.api.root
+import ifcopenshell
+from ifcopenshell.api.resource import _capi
 
 
 def add_resource(
@@ -73,17 +72,15 @@ def add_resource(
         ifcopenshell.api.resource.add_resource(model, parent_resource=crew, ifc_class="IfcLaborResource")
     """
 
-    resource = ifcopenshell.api.root.create_entity(
-        file,
-        ifc_class=ifc_class,
-        predefined_type=predefined_type,
-        name=name or "Unnamed",
+    owner_options, owner_refs = _capi.owner_options(file)
+    options = {
+        "ifc_class": ifc_class,
+        "name": name or "Unnamed",
+        "predefined_type": predefined_type,
+        **owner_options,
+    }
+    if parent_resource is not None:
+        options["parent_resource"] = _capi.instance_handle(parent_resource)
+    return _capi.call_handle(
+        file, "resource_add_resource", _capi.file_handle(file), options
     )
-    # TODO: this is an ambiguity by buildingSMART: Can we nest an IfcCrewResource under an IfcCrewResource ?
-    # https://forums.buildingsmart.org/t/what-are-allowed-to-be-root-level-construction-resources/3550
-    if parent_resource:
-        ifcopenshell.api.nest.assign_object(file, related_objects=[resource], relating_object=parent_resource)
-    elif file.schema != "IFC2X3":
-        context = file.by_type("IfcContext")[0]
-        ifcopenshell.api.project.assign_declaration(file, definitions=[resource], relating_context=context)
-    return resource

@@ -16,12 +16,13 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
-import ifcopenshell.api.resource
-import ifcopenshell.util.constraint
-import ifcopenshell.util.resource
+import ifcopenshell
+from ifcopenshell.api.resource import _capi
 
 
-def calculate_resource_work(file: ifcopenshell.file, resource: ifcopenshell.entity_instance) -> None:
+def calculate_resource_work(
+    file: ifcopenshell.file, resource: ifcopenshell.entity_instance
+) -> None:
     """Calculates the work that a resource is used for
 
     This is an unofficial parametric calculation that may be done on a
@@ -51,11 +52,8 @@ def calculate_resource_work(file: ifcopenshell.file, resource: ifcopenshell.enti
         the work performed.
     :return None:
     """
-    if ifcopenshell.util.constraint.is_attribute_locked(resource, "Usage.ScheduleWork"):
-        return
-    amount_worked = ifcopenshell.util.resource.get_resource_required_work(resource)
-    if not amount_worked:
-        return
-    if not resource.Usage:
-        ifcopenshell.api.resource.add_resource_time(file, resource=resource)
-    resource.Usage.ScheduleWork = amount_worked
+    _capi.call_status(
+        "resource_calculate_resource_work",
+        _capi.file_handle(file),
+        _capi.instance_handle(resource),
+    )

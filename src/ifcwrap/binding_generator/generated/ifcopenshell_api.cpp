@@ -8715,6 +8715,74 @@ bool ifcopenshell_nest_assign_object(ifcopenshell_file_t* file, const ifcopenshe
     }
 }
 
+bool ifcopenshell_nest_change_nest(ifcopenshell_file_t* file, const ifcopenshell_nest_change_nest_options_t* options) {
+    try {
+        ifcopenshell_clear_error();
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::NestChangeNestOptions options_cpp{};
+    if (options->item == nullptr) { throw std::runtime_error("Options field \"item\" must not be null"); }
+    options_cpp.item = options->item->value;
+    if (options->new_parent == nullptr) { throw std::runtime_error("Options field \"new_parent\" must not be null"); }
+    options_cpp.new_parent = options->new_parent->value;
+    if (options->has_owner_history) {
+        if (options->owner_history == nullptr) { throw std::runtime_error("Options field \"owner_history\" must not be null"); }
+        options_cpp.owner_history = options->owner_history->value;
+    }
+    if (options->has_user) {
+        if (options->user == nullptr) { throw std::runtime_error("Options field \"user\" must not be null"); }
+        options_cpp.user = options->user->value;
+    }
+    if (options->has_application) {
+        if (options->application == nullptr) { throw std::runtime_error("Options field \"application\" must not be null"); }
+        options_cpp.application = options->application->value;
+    }
+        ifcapi::bindings::nest_change_nest(file_cpp, options_cpp);
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_nest_reorder_nesting(ifcopenshell_file_t* file, const ifcopenshell_nest_reorder_nesting_options_t* options) {
+    try {
+        ifcopenshell_clear_error();
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::NestReorderNestingOptions options_cpp{};
+    if (options->item == nullptr) { throw std::runtime_error("Options field \"item\" must not be null"); }
+    options_cpp.item = options->item->value;
+    if (options->has_old_index) {
+        options_cpp.old_index = options->old_index;
+    }
+    if (options->has_new_index) {
+        options_cpp.new_index = options->new_index;
+    }
+    if (options->has_user) {
+        if (options->user == nullptr) { throw std::runtime_error("Options field \"user\" must not be null"); }
+        options_cpp.user = options->user->value;
+    }
+    if (options->has_application) {
+        if (options->application == nullptr) { throw std::runtime_error("Options field \"application\" must not be null"); }
+        options_cpp.application = options->application->value;
+    }
+        ifcapi::bindings::nest_reorder_nesting(file_cpp, options_cpp);
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
 bool ifcopenshell_nest_unassign_object(ifcopenshell_file_t* file, const ifcopenshell_nest_unassign_object_options_t* options) {
     try {
         ifcopenshell_clear_error();
@@ -10771,6 +10839,184 @@ bool ifcopenshell_representation_resolve_base_items(ifcopenshell_instance_t* rep
     }
 }
 
+bool ifcopenshell_resource_add_resource(ifcopenshell_file_t* file, const ifcopenshell_resource_add_resource_options_t* options, ifcopenshell_instance_t** out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::ResourceAddResourceOptions options_cpp{};
+    if (options->has_parent_resource) {
+        if (options->parent_resource == nullptr) { throw std::runtime_error("Options field \"parent_resource\" must not be null"); }
+        options_cpp.parent_resource = options->parent_resource->value;
+    }
+    if (options->has_ifc_class) {
+        if (options->ifc_class == nullptr) { throw std::runtime_error("Options field \"ifc_class\" must not be null"); }
+        options_cpp.ifc_class = std::string(options->ifc_class);
+    }
+    if (options->has_name) {
+        if (options->name == nullptr) { throw std::runtime_error("Options field \"name\" must not be null"); }
+        options_cpp.name = std::string(options->name);
+    }
+    if (options->has_predefined_type) {
+        if (options->predefined_type == nullptr) { throw std::runtime_error("Options field \"predefined_type\" must not be null"); }
+        options_cpp.predefined_type = std::string(options->predefined_type);
+    }
+    if (options->has_owner_history) {
+        if (options->owner_history == nullptr) { throw std::runtime_error("Options field \"owner_history\" must not be null"); }
+        options_cpp.owner_history = options->owner_history->value;
+    }
+    if (options->has_user) {
+        if (options->user == nullptr) { throw std::runtime_error("Options field \"user\" must not be null"); }
+        options_cpp.user = options->user->value;
+    }
+    if (options->has_application) {
+        if (options->application == nullptr) { throw std::runtime_error("Options field \"application\" must not be null"); }
+        options_cpp.application = options->application->value;
+    }
+        auto result_value = ifcapi::bindings::resource_add_resource(file_cpp, options_cpp);
+        if (!static_cast<bool>(result_value)) {
+            *out_result = nullptr;
+        } else {
+            *out_result = new ifcopenshell_instance_t{std::move(result_value)};
+        }
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_resource_add_resource_quantity(ifcopenshell_file_t* file, ifcopenshell_instance_t* resource, const char* ifc_class, ifcopenshell_instance_t** out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    if (resource == nullptr) { throw std::runtime_error("Handle parameter \"resource\" must not be null"); }
+    auto resource_cpp = &resource->value;
+    if (ifc_class == nullptr) { throw std::runtime_error("Parameter \"ifc_class\" must not be null"); }
+    std::string ifc_class_cpp(ifc_class);
+        auto result_value = ifcapi::bindings::resource_add_resource_quantity(file_cpp, resource_cpp, ifc_class_cpp);
+        if (!static_cast<bool>(result_value)) {
+            *out_result = nullptr;
+        } else {
+            *out_result = new ifcopenshell_instance_t{std::move(result_value)};
+        }
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_resource_add_resource_time(ifcopenshell_file_t* file, ifcopenshell_instance_t* resource, ifcopenshell_instance_t** out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    if (resource == nullptr) { throw std::runtime_error("Handle parameter \"resource\" must not be null"); }
+    auto resource_cpp = &resource->value;
+        auto result_value = ifcapi::bindings::resource_add_resource_time(file_cpp, resource_cpp);
+        if (!static_cast<bool>(result_value)) {
+            *out_result = nullptr;
+        } else {
+            *out_result = new ifcopenshell_instance_t{std::move(result_value)};
+        }
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_resource_assign_resource(ifcopenshell_file_t* file, const ifcopenshell_resource_assignment_options_t* options, ifcopenshell_instance_t** out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::ResourceAssignmentOptions options_cpp{};
+    if (options->relating_resource == nullptr) { throw std::runtime_error("Options field \"relating_resource\" must not be null"); }
+    options_cpp.relating_resource = options->relating_resource->value;
+    if (options->related_object == nullptr) { throw std::runtime_error("Options field \"related_object\" must not be null"); }
+    options_cpp.related_object = options->related_object->value;
+    if (options->has_owner_history) {
+        if (options->owner_history == nullptr) { throw std::runtime_error("Options field \"owner_history\" must not be null"); }
+        options_cpp.owner_history = options->owner_history->value;
+    }
+    if (options->has_user) {
+        if (options->user == nullptr) { throw std::runtime_error("Options field \"user\" must not be null"); }
+        options_cpp.user = options->user->value;
+    }
+    if (options->has_application) {
+        if (options->application == nullptr) { throw std::runtime_error("Options field \"application\" must not be null"); }
+        options_cpp.application = options->application->value;
+    }
+        auto result_value = ifcapi::bindings::resource_assign_resource(file_cpp, options_cpp);
+        if (!static_cast<bool>(result_value)) {
+            *out_result = nullptr;
+        } else {
+            *out_result = new ifcopenshell_instance_t{std::move(result_value)};
+        }
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_resource_calculate_resource_usage(ifcopenshell_file_t* file, ifcopenshell_instance_t* resource) {
+    try {
+        ifcopenshell_clear_error();
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    if (resource == nullptr) { throw std::runtime_error("Handle parameter \"resource\" must not be null"); }
+    auto resource_cpp = &resource->value;
+        ifcapi::bindings::resource_calculate_resource_usage(file_cpp, resource_cpp);
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_resource_calculate_resource_work(ifcopenshell_file_t* file, ifcopenshell_instance_t* resource) {
+    try {
+        ifcopenshell_clear_error();
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    if (resource == nullptr) { throw std::runtime_error("Handle parameter \"resource\" must not be null"); }
+    auto resource_cpp = &resource->value;
+        ifcapi::bindings::resource_calculate_resource_work(file_cpp, resource_cpp);
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
 bool ifcopenshell_resource_edit_resource_time(ifcopenshell_file_t* file, ifcopenshell_instance_t* resource_time, void* attributes) {
     try {
         ifcopenshell_clear_error();
@@ -10781,6 +11027,86 @@ bool ifcopenshell_resource_edit_resource_time(ifcopenshell_file_t* file, ifcopen
     if (attributes == nullptr) { throw std::runtime_error("Parameter \"attributes\" must not be null"); }
     auto attributes_cpp = static_cast<ifcopenshell_pset_props_t*>(attributes);
         ifcapi::bindings::resource_edit_resource_time(file_cpp, resource_time_cpp, attributes_cpp);
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_resource_remove_resource(ifcopenshell_file_t* file, const ifcopenshell_resource_remove_resource_options_t* options) {
+    try {
+        ifcopenshell_clear_error();
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::ResourceRemoveResourceOptions options_cpp{};
+    if (options->resource == nullptr) { throw std::runtime_error("Options field \"resource\" must not be null"); }
+    options_cpp.resource = options->resource->value;
+    if (options->has_user) {
+        if (options->user == nullptr) { throw std::runtime_error("Options field \"user\" must not be null"); }
+        options_cpp.user = options->user->value;
+    }
+    if (options->has_application) {
+        if (options->application == nullptr) { throw std::runtime_error("Options field \"application\" must not be null"); }
+        options_cpp.application = options->application->value;
+    }
+        ifcapi::bindings::resource_remove_resource(file_cpp, options_cpp);
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_resource_remove_resource_quantity(ifcopenshell_file_t* file, ifcopenshell_instance_t* resource) {
+    try {
+        ifcopenshell_clear_error();
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    if (resource == nullptr) { throw std::runtime_error("Handle parameter \"resource\" must not be null"); }
+    auto resource_cpp = &resource->value;
+        ifcapi::bindings::resource_remove_resource_quantity(file_cpp, resource_cpp);
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_resource_unassign_resource(ifcopenshell_file_t* file, const ifcopenshell_resource_assignment_options_t* options) {
+    try {
+        ifcopenshell_clear_error();
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::ResourceAssignmentOptions options_cpp{};
+    if (options->relating_resource == nullptr) { throw std::runtime_error("Options field \"relating_resource\" must not be null"); }
+    options_cpp.relating_resource = options->relating_resource->value;
+    if (options->related_object == nullptr) { throw std::runtime_error("Options field \"related_object\" must not be null"); }
+    options_cpp.related_object = options->related_object->value;
+    if (options->has_owner_history) {
+        if (options->owner_history == nullptr) { throw std::runtime_error("Options field \"owner_history\" must not be null"); }
+        options_cpp.owner_history = options->owner_history->value;
+    }
+    if (options->has_user) {
+        if (options->user == nullptr) { throw std::runtime_error("Options field \"user\" must not be null"); }
+        options_cpp.user = options->user->value;
+    }
+    if (options->has_application) {
+        if (options->application == nullptr) { throw std::runtime_error("Options field \"application\" must not be null"); }
+        options_cpp.application = options->application->value;
+    }
+        ifcapi::bindings::resource_unassign_resource(file_cpp, options_cpp);
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());

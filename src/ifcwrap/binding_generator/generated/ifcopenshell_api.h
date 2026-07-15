@@ -1064,6 +1064,29 @@ typedef struct ifcopenshell_nest_assign_object_options_t {
     bool has_application;
 } ifcopenshell_nest_assign_object_options_t;
 
+typedef struct ifcopenshell_nest_change_nest_options_t {
+    ifcopenshell_instance_t* item;
+    ifcopenshell_instance_t* new_parent;
+    ifcopenshell_instance_t* owner_history;
+    bool has_owner_history;
+    ifcopenshell_instance_t* user;
+    bool has_user;
+    ifcopenshell_instance_t* application;
+    bool has_application;
+} ifcopenshell_nest_change_nest_options_t;
+
+typedef struct ifcopenshell_nest_reorder_nesting_options_t {
+    ifcopenshell_instance_t* item;
+    int32_t old_index;
+    bool has_old_index;
+    int32_t new_index;
+    bool has_new_index;
+    ifcopenshell_instance_t* user;
+    bool has_user;
+    ifcopenshell_instance_t* application;
+    bool has_application;
+} ifcopenshell_nest_reorder_nesting_options_t;
+
 typedef struct ifcopenshell_nest_unassign_object_options_t {
     ifcopenshell_parse_instance_list_t* products;
     ifcopenshell_instance_t* user;
@@ -1250,6 +1273,42 @@ typedef struct ifcopenshell_representation_get_product_representation_options_t 
     const char* target_view;
     bool has_target_view;
 } ifcopenshell_representation_get_product_representation_options_t;
+
+typedef struct ifcopenshell_resource_add_resource_options_t {
+    ifcopenshell_instance_t* parent_resource;
+    bool has_parent_resource;
+    const char* ifc_class;
+    bool has_ifc_class;
+    const char* name;
+    bool has_name;
+    const char* predefined_type;
+    bool has_predefined_type;
+    ifcopenshell_instance_t* owner_history;
+    bool has_owner_history;
+    ifcopenshell_instance_t* user;
+    bool has_user;
+    ifcopenshell_instance_t* application;
+    bool has_application;
+} ifcopenshell_resource_add_resource_options_t;
+
+typedef struct ifcopenshell_resource_assignment_options_t {
+    ifcopenshell_instance_t* relating_resource;
+    ifcopenshell_instance_t* related_object;
+    ifcopenshell_instance_t* owner_history;
+    bool has_owner_history;
+    ifcopenshell_instance_t* user;
+    bool has_user;
+    ifcopenshell_instance_t* application;
+    bool has_application;
+} ifcopenshell_resource_assignment_options_t;
+
+typedef struct ifcopenshell_resource_remove_resource_options_t {
+    ifcopenshell_instance_t* resource;
+    ifcopenshell_instance_t* user;
+    bool has_user;
+    ifcopenshell_instance_t* application;
+    bool has_application;
+} ifcopenshell_resource_remove_resource_options_t;
 
 typedef struct ifcopenshell_root_create_entity_options_t {
     const char* ifc_class;
@@ -3663,6 +3722,10 @@ bool ifcopenshell_material_unassign_material(ifcopenshell_file_t* file, const if
  * are merged into it while preserving insertion order.
  */
 bool ifcopenshell_nest_assign_object(ifcopenshell_file_t* file, const ifcopenshell_nest_assign_object_options_t* options, ifcopenshell_instance_t** out_result);
+/** Move an already nested child to a new parent, appending it after the target parent's current children. */
+bool ifcopenshell_nest_change_nest(ifcopenshell_file_t* file, const ifcopenshell_nest_change_nest_options_t* options);
+/** Reorder an existing nested child with Python-compatible index semantics; omitted old_index locates item. */
+bool ifcopenshell_nest_reorder_nesting(ifcopenshell_file_t* file, const ifcopenshell_nest_reorder_nesting_options_t* options);
 /**
  * Remove objects from their IfcRelNests relationships.
  *
@@ -4311,6 +4374,18 @@ bool ifcopenshell_representation_resolve(ifcopenshell_instance_t* representation
  * @return List of leaf-level IfcRepresentationItem entities.
  */
 bool ifcopenshell_representation_resolve_base_items(ifcopenshell_instance_t* representation, ifcopenshell_parse_instance_list_t** out_result);
+/** Create a construction resource, nesting it below a parent when supplied or declaring it to the first IFC4+ context. */
+bool ifcopenshell_resource_add_resource(ifcopenshell_file_t* file, const ifcopenshell_resource_add_resource_options_t* options, ifcopenshell_instance_t** out_result);
+/** Create and attach a schema-valid base quantity. Validation precedes replacement of any existing quantity. */
+bool ifcopenshell_resource_add_resource_quantity(ifcopenshell_file_t* file, ifcopenshell_instance_t* resource, const char* ifc_class, ifcopenshell_instance_t** out_result);
+/** Create an IfcResourceTime and replace the resource Usage reference. */
+bool ifcopenshell_resource_add_resource_time(ifcopenshell_file_t* file, ifcopenshell_instance_t* resource, ifcopenshell_instance_t** out_result);
+/** Assign one product or actor to a resource, reusing its ordered relationship and suppressing duplicates. */
+bool ifcopenshell_resource_assign_resource(ifcopenshell_file_t* file, const ifcopenshell_resource_assignment_options_t* options, ifcopenshell_instance_t** out_result);
+/** Calculate ScheduleUsage from ScheduleWork and the first applicable task duration. */
+bool ifcopenshell_resource_calculate_resource_usage(ifcopenshell_file_t* file, ifcopenshell_instance_t* resource);
+/** Calculate ScheduleWork from EPset_Productivity and the first applicable task/product assignments. */
+bool ifcopenshell_resource_calculate_resource_work(ifcopenshell_file_t* file, ifcopenshell_instance_t* resource);
 /**
  * Edit attributes of an IfcResourceTime entity.
  *
@@ -4327,6 +4402,12 @@ bool ifcopenshell_representation_resolve_base_items(ifcopenshell_instance_t* rep
  * @param attributes Property bag of attribute name/value pairs.
  */
 bool ifcopenshell_resource_edit_resource_time(ifcopenshell_file_t* file, ifcopenshell_instance_t* resource_time, void* attributes);
+/** Recursively remove a resource and clean its nesting, declaration, control, resource assignments, usage, quantity, and orphan history. */
+bool ifcopenshell_resource_remove_resource(ifcopenshell_file_t* file, const ifcopenshell_resource_remove_resource_options_t* options);
+/** Detach and deep-remove the current base quantity, or do nothing when absent. */
+bool ifcopenshell_resource_remove_resource_quantity(ifcopenshell_file_t* file, ifcopenshell_instance_t* resource);
+/** Remove exactly one resource/object assignment pair, preserving other ordered members. */
+bool ifcopenshell_resource_unassign_resource(ifcopenshell_file_t* file, const ifcopenshell_resource_assignment_options_t* options);
 /**
  * Copy a product with a fresh GlobalId and independent authoring data.
  *

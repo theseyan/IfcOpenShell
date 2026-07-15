@@ -156,7 +156,9 @@ inline bool parse_duration(const std::string& value, Duration& result) {
         } else if (designator == 'W') {
             result.days += static_cast<int>(amount * 7);
         } else if (designator == 'D') {
-            result.days += static_cast<int>(amount);
+            int whole_days = static_cast<int>(amount);
+            result.days += whole_days;
+            result.seconds += static_cast<int>((amount - whole_days) * 24 * 60 * 60);
         } else if (designator == 'H') {
             result.seconds += static_cast<int>(amount * 60 * 60);
         } else if (designator == 'M' && in_time) {

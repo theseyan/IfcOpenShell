@@ -239,6 +239,8 @@ type RawApi = {
   };
   nest: {
     assignObject: (file: RawValue, options: RawValue) => RawValue;
+    changeNest: (file: RawValue, options: RawValue) => void;
+    reorderNesting: (file: RawValue, options: RawValue) => void;
     unassignObject: (file: RawValue, options: RawValue) => void;
   };
   owner: {
@@ -319,7 +321,16 @@ type RawApi = {
     resolveBaseItems: (representation: RawValue) => RawValue;
   };
   resource: {
+    addResource: (file: RawValue, options: RawValue) => RawValue;
+    addResourceQuantity: (file: RawValue, resource: RawValue, ifc_class: string) => RawValue;
+    addResourceTime: (file: RawValue, resource: RawValue) => RawValue;
+    assignResource: (file: RawValue, options: RawValue) => RawValue;
+    calculateResourceUsage: (file: RawValue, resource: RawValue) => void;
+    calculateResourceWork: (file: RawValue, resource: RawValue) => void;
     editResourceTime: (file: RawValue, resource_time: RawValue, attributes: RawValue) => void;
+    removeResource: (file: RawValue, options: RawValue) => void;
+    removeResourceQuantity: (file: RawValue, resource: RawValue) => void;
+    unassignResource: (file: RawValue, options: RawValue) => void;
   };
   root: {
     copyClass: (file: RawValue, product: RawValue) => RawValue;
@@ -1511,6 +1522,22 @@ export interface IfcOpenShellNestAssignObjectOptions {
   application?: Entity;
 }
 
+export interface IfcOpenShellNestChangeNestOptions {
+  item: Entity;
+  newParent: Entity;
+  ownerHistory?: Entity;
+  user?: Entity;
+  application?: Entity;
+}
+
+export interface IfcOpenShellNestReorderNestingOptions {
+  item: Entity;
+  oldIndex?: number;
+  newIndex?: number;
+  user?: Entity;
+  application?: Entity;
+}
+
 export interface IfcOpenShellNestUnassignObjectOptions {
   /** Objects to remove from their current nesting relationships. */
   products: Entity[];
@@ -1757,6 +1784,30 @@ export interface IfcOpenShellRepresentationGetProductRepresentationOptions {
   subcontext?: string;
   /** Target view filter (e.g. "MODEL_VIEW", "GRAPH_VIEW"). Ignored when context is set. */
   targetView?: string;
+}
+
+export interface IfcOpenShellResourceAddResourceOptions {
+  parentResource?: Entity;
+  ifcClass?: string;
+  name?: string;
+  predefinedType?: string;
+  ownerHistory?: Entity;
+  user?: Entity;
+  application?: Entity;
+}
+
+export interface IfcOpenShellResourceAssignmentOptions {
+  relatingResource: Entity;
+  relatedObject: Entity;
+  ownerHistory?: Entity;
+  user?: Entity;
+  application?: Entity;
+}
+
+export interface IfcOpenShellResourceRemoveResourceOptions {
+  resource: Entity;
+  user?: Entity;
+  application?: Entity;
 }
 
 export interface IfcOpenShellRootCreateEntityOptions {
@@ -4101,6 +4152,10 @@ export interface NestApi {
      * are merged into it while preserving insertion order.
      */
     assignObject(file: IfcFile, options: IfcOpenShellNestAssignObjectOptions): Entity;
+    /** Move an already nested child to a new parent, appending it after the target parent's current children. */
+    changeNest(file: IfcFile, options: IfcOpenShellNestChangeNestOptions): void;
+    /** Reorder an existing nested child with Python-compatible index semantics; omitted old_index locates item. */
+    reorderNesting(file: IfcFile, options: IfcOpenShellNestReorderNestingOptions): void;
     /**
      * Remove objects from their IfcRelNests relationships.
      *
@@ -4706,6 +4761,18 @@ export interface RepresentationApi {
     resolveBaseItems(representation: Entity): Entity[];
 }
 export interface ResourceApi {
+    /** Create a construction resource, nesting it below a parent when supplied or declaring it to the first IFC4+ context. */
+    addResource(file: IfcFile, options: IfcOpenShellResourceAddResourceOptions): Entity;
+    /** Create and attach a schema-valid base quantity. Validation precedes replacement of any existing quantity. */
+    addResourceQuantity(file: IfcFile, resource: Entity, ifc_class: string): Entity;
+    /** Create an IfcResourceTime and replace the resource Usage reference. */
+    addResourceTime(file: IfcFile, resource: Entity): Entity;
+    /** Assign one product or actor to a resource, reusing its ordered relationship and suppressing duplicates. */
+    assignResource(file: IfcFile, options: IfcOpenShellResourceAssignmentOptions): Entity;
+    /** Calculate ScheduleUsage from ScheduleWork and the first applicable task duration. */
+    calculateResourceUsage(file: IfcFile, resource: Entity): void;
+    /** Calculate ScheduleWork from EPset_Productivity and the first applicable task/product assignments. */
+    calculateResourceWork(file: IfcFile, resource: Entity): void;
     /**
      * Edit attributes of an IfcResourceTime entity.
      *
@@ -4722,6 +4789,12 @@ export interface ResourceApi {
      * @param attributes Property bag of attribute name/value pairs.
      */
     editResourceTime(file: IfcFile, resource_time: Entity, attributes: PsetProperties | PsetInput): void;
+    /** Recursively remove a resource and clean its nesting, declaration, control, resource assignments, usage, quantity, and orphan history. */
+    removeResource(file: IfcFile, options: IfcOpenShellResourceRemoveResourceOptions): void;
+    /** Detach and deep-remove the current base quantity, or do nothing when absent. */
+    removeResourceQuantity(file: IfcFile, resource: Entity): void;
+    /** Remove exactly one resource/object assignment pair, preserving other ordered members. */
+    unassignResource(file: IfcFile, options: IfcOpenShellResourceAssignmentOptions): void;
 }
 export interface RootApi {
     /**
@@ -9458,6 +9531,24 @@ export function createApi(shell: IfcOpenShell): Api {
         disposeAll(temps);
       }
     },
+    /** Move an already nested child to a new parent, appending it after the target parent's current children. */
+    changeNest(file: IfcFile, options: IfcOpenShellNestChangeNestOptions): void {
+      const temps: Disposable[] = [];
+      try {
+        raw.nest.changeNest(file.raw, encodeOptions(options, {"application": "application", "item": "item", "newParent": "new_parent", "ownerHistory": "owner_history", "user": "user"}, shell, temps));
+      } finally {
+        disposeAll(temps);
+      }
+    },
+    /** Reorder an existing nested child with Python-compatible index semantics; omitted old_index locates item. */
+    reorderNesting(file: IfcFile, options: IfcOpenShellNestReorderNestingOptions): void {
+      const temps: Disposable[] = [];
+      try {
+        raw.nest.reorderNesting(file.raw, encodeOptions(options, {"application": "application", "item": "item", "newIndex": "new_index", "oldIndex": "old_index", "user": "user"}, shell, temps));
+      } finally {
+        disposeAll(temps);
+      }
+    },
     /**
      * Remove objects from their IfcRelNests relationships.
      *
@@ -10558,6 +10649,64 @@ export function createApi(shell: IfcOpenShell): Api {
     },
     }),
     resource: Object.freeze({
+    /** Create a construction resource, nesting it below a parent when supplied or declaring it to the first IFC4+ context. */
+    addResource(file: IfcFile, options: IfcOpenShellResourceAddResourceOptions): Entity {
+      const temps: Disposable[] = [];
+      try {
+        const result = raw.resource.addResource(file.raw, encodeOptions(options, {"application": "application", "ifcClass": "ifc_class", "name": "name", "ownerHistory": "owner_history", "parentResource": "parent_resource", "predefinedType": "predefined_type", "user": "user"}, shell, temps));
+        return wrapEntity(shell, result) as Entity;
+      } finally {
+        disposeAll(temps);
+      }
+    },
+    /** Create and attach a schema-valid base quantity. Validation precedes replacement of any existing quantity. */
+    addResourceQuantity(file: IfcFile, resource: Entity, ifc_class: string): Entity {
+      const temps: Disposable[] = [];
+      try {
+        const result = raw.resource.addResourceQuantity(file.raw, resource.raw, ifc_class);
+        return wrapEntity(shell, result) as Entity;
+      } finally {
+        disposeAll(temps);
+      }
+    },
+    /** Create an IfcResourceTime and replace the resource Usage reference. */
+    addResourceTime(file: IfcFile, resource: Entity): Entity {
+      const temps: Disposable[] = [];
+      try {
+        const result = raw.resource.addResourceTime(file.raw, resource.raw);
+        return wrapEntity(shell, result) as Entity;
+      } finally {
+        disposeAll(temps);
+      }
+    },
+    /** Assign one product or actor to a resource, reusing its ordered relationship and suppressing duplicates. */
+    assignResource(file: IfcFile, options: IfcOpenShellResourceAssignmentOptions): Entity {
+      const temps: Disposable[] = [];
+      try {
+        const result = raw.resource.assignResource(file.raw, encodeOptions(options, {"application": "application", "ownerHistory": "owner_history", "relatedObject": "related_object", "relatingResource": "relating_resource", "user": "user"}, shell, temps));
+        return wrapEntity(shell, result) as Entity;
+      } finally {
+        disposeAll(temps);
+      }
+    },
+    /** Calculate ScheduleUsage from ScheduleWork and the first applicable task duration. */
+    calculateResourceUsage(file: IfcFile, resource: Entity): void {
+      const temps: Disposable[] = [];
+      try {
+        raw.resource.calculateResourceUsage(file.raw, resource.raw);
+      } finally {
+        disposeAll(temps);
+      }
+    },
+    /** Calculate ScheduleWork from EPset_Productivity and the first applicable task/product assignments. */
+    calculateResourceWork(file: IfcFile, resource: Entity): void {
+      const temps: Disposable[] = [];
+      try {
+        raw.resource.calculateResourceWork(file.raw, resource.raw);
+      } finally {
+        disposeAll(temps);
+      }
+    },
     /**
      * Edit attributes of an IfcResourceTime entity.
      *
@@ -10577,6 +10726,33 @@ export function createApi(shell: IfcOpenShell): Api {
       const temps: Disposable[] = [];
       try {
         raw.resource.editResourceTime(file.raw, resource_time.raw, toRawPsetProperties(shell, attributes as PsetProperties | PsetInput, temps));
+      } finally {
+        disposeAll(temps);
+      }
+    },
+    /** Recursively remove a resource and clean its nesting, declaration, control, resource assignments, usage, quantity, and orphan history. */
+    removeResource(file: IfcFile, options: IfcOpenShellResourceRemoveResourceOptions): void {
+      const temps: Disposable[] = [];
+      try {
+        raw.resource.removeResource(file.raw, encodeOptions(options, {"application": "application", "resource": "resource", "user": "user"}, shell, temps));
+      } finally {
+        disposeAll(temps);
+      }
+    },
+    /** Detach and deep-remove the current base quantity, or do nothing when absent. */
+    removeResourceQuantity(file: IfcFile, resource: Entity): void {
+      const temps: Disposable[] = [];
+      try {
+        raw.resource.removeResourceQuantity(file.raw, resource.raw);
+      } finally {
+        disposeAll(temps);
+      }
+    },
+    /** Remove exactly one resource/object assignment pair, preserving other ordered members. */
+    unassignResource(file: IfcFile, options: IfcOpenShellResourceAssignmentOptions): void {
+      const temps: Disposable[] = [];
+      try {
+        raw.resource.unassignResource(file.raw, encodeOptions(options, {"application": "application", "ownerHistory": "owner_history", "relatedObject": "related_object", "relatingResource": "relating_resource", "user": "user"}, shell, temps));
       } finally {
         disposeAll(temps);
       }

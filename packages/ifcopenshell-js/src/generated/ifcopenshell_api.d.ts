@@ -614,6 +614,22 @@ declare module 'ifcopenshell-api' {
     application?: IfcOpenshellInstance;
   }
 
+  export interface IfcOpenshellNestChangeNestOptions {
+    item: IfcOpenshellInstance;
+    new_parent: IfcOpenshellInstance;
+    owner_history?: IfcOpenshellInstance;
+    user?: IfcOpenshellInstance;
+    application?: IfcOpenshellInstance;
+  }
+
+  export interface IfcOpenshellNestReorderNestingOptions {
+    item: IfcOpenshellInstance;
+    old_index?: number;
+    new_index?: number;
+    user?: IfcOpenshellInstance;
+    application?: IfcOpenshellInstance;
+  }
+
   export interface IfcOpenshellNestUnassignObjectOptions {
     products: IfcOpenshellParseInstanceList;
     user?: IfcOpenshellInstance;
@@ -750,6 +766,30 @@ declare module 'ifcopenshell-api' {
     context_type?: string;
     subcontext?: string;
     target_view?: string;
+  }
+
+  export interface IfcOpenshellResourceAddResourceOptions {
+    parent_resource?: IfcOpenshellInstance;
+    ifc_class?: string;
+    name?: string;
+    predefined_type?: string;
+    owner_history?: IfcOpenshellInstance;
+    user?: IfcOpenshellInstance;
+    application?: IfcOpenshellInstance;
+  }
+
+  export interface IfcOpenshellResourceAssignmentOptions {
+    relating_resource: IfcOpenshellInstance;
+    related_object: IfcOpenshellInstance;
+    owner_history?: IfcOpenshellInstance;
+    user?: IfcOpenshellInstance;
+    application?: IfcOpenshellInstance;
+  }
+
+  export interface IfcOpenshellResourceRemoveResourceOptions {
+    resource: IfcOpenshellInstance;
+    user?: IfcOpenshellInstance;
+    application?: IfcOpenshellInstance;
   }
 
   export interface IfcOpenshellRootCreateEntityOptions {
@@ -3835,6 +3875,10 @@ declare module 'ifcopenshell-api' {
      * are merged into it while preserving insertion order.
      */
     assignObject(file: IfcOpenshellFile, options: IfcOpenshellNestAssignObjectOptions): IfcOpenshellInstance;
+    /** Move an already nested child to a new parent, appending it after the target parent's current children. */
+    changeNest(file: IfcOpenshellFile, options: IfcOpenshellNestChangeNestOptions): void;
+    /** Reorder an existing nested child with Python-compatible index semantics; omitted old_index locates item. */
+    reorderNesting(file: IfcOpenshellFile, options: IfcOpenshellNestReorderNestingOptions): void;
     /**
      * Remove objects from their IfcRelNests relationships.
      *
@@ -4546,6 +4590,18 @@ declare module 'ifcopenshell-api' {
   }
 
   export interface IfcOpenshellResourceModule {
+    /** Create a construction resource, nesting it below a parent when supplied or declaring it to the first IFC4+ context. */
+    addResource(file: IfcOpenshellFile, options: IfcOpenshellResourceAddResourceOptions): IfcOpenshellInstance;
+    /** Create and attach a schema-valid base quantity. Validation precedes replacement of any existing quantity. */
+    addResourceQuantity(file: IfcOpenshellFile, resource: IfcOpenshellInstance, ifc_class: string): IfcOpenshellInstance;
+    /** Create an IfcResourceTime and replace the resource Usage reference. */
+    addResourceTime(file: IfcOpenshellFile, resource: IfcOpenshellInstance): IfcOpenshellInstance;
+    /** Assign one product or actor to a resource, reusing its ordered relationship and suppressing duplicates. */
+    assignResource(file: IfcOpenshellFile, options: IfcOpenshellResourceAssignmentOptions): IfcOpenshellInstance;
+    /** Calculate ScheduleUsage from ScheduleWork and the first applicable task duration. */
+    calculateResourceUsage(file: IfcOpenshellFile, resource: IfcOpenshellInstance): void;
+    /** Calculate ScheduleWork from EPset_Productivity and the first applicable task/product assignments. */
+    calculateResourceWork(file: IfcOpenshellFile, resource: IfcOpenshellInstance): void;
     /**
      * Edit attributes of an IfcResourceTime entity.
      *
@@ -4562,6 +4618,12 @@ declare module 'ifcopenshell-api' {
      * @param attributes Property bag of attribute name/value pairs.
      */
     editResourceTime(file: IfcOpenshellFile, resource_time: IfcOpenshellInstance, attributes: number): void;
+    /** Recursively remove a resource and clean its nesting, declaration, control, resource assignments, usage, quantity, and orphan history. */
+    removeResource(file: IfcOpenshellFile, options: IfcOpenshellResourceRemoveResourceOptions): void;
+    /** Detach and deep-remove the current base quantity, or do nothing when absent. */
+    removeResourceQuantity(file: IfcOpenshellFile, resource: IfcOpenshellInstance): void;
+    /** Remove exactly one resource/object assignment pair, preserving other ordered members. */
+    unassignResource(file: IfcOpenshellFile, options: IfcOpenshellResourceAssignmentOptions): void;
   }
 
   export interface IfcOpenshellRootModule {

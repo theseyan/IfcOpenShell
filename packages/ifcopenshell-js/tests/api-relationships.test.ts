@@ -275,6 +275,44 @@ describeGeneratedOrSkip('generated relationship API', () => {
       const after = await shell.api.element.getNest(part);
       expect(after).toBeNull();
     });
+
+    it('changes parents and reorders with optional and explicit indexes', async () => {
+      await using file = await IfcFile.createEmpty(shell, 'IFC4');
+      const firstParent = await shell.api.root.createEntity(file, {
+        ifcClass: 'IfcElementAssembly',
+        name: 'First parent',
+      });
+      const secondParent = await shell.api.root.createEntity(file, {
+        ifcClass: 'IfcElementAssembly',
+        name: 'Second parent',
+      });
+      const children = await Promise.all(['A', 'B', 'C'].map((name) =>
+        shell.api.root.createEntity(file, { ifcClass: 'IfcBuildingElementProxy', name })));
+      const relation = await shell.api.nest.assignObject(file, {
+        products: children,
+        relatingObject: firstParent,
+      });
+
+      shell.api.nest.reorderNesting(file, { item: children[2] });
+      expect((relation.get('RelatedObjects') as { id: number }[]).map((item) => item.id))
+        .toEqual([children[2].id, children[0].id, children[1].id]);
+      shell.api.nest.reorderNesting(file, { item: children[2], oldIndex: -1, newIndex: -99 });
+      expect((relation.get('RelatedObjects') as { id: number }[]).map((item) => item.id))
+        .toEqual([children[1].id, children[2].id, children[0].id]);
+
+      const before = (relation.get('RelatedObjects') as { id: number }[]).map((item) => item.id);
+      expect(() => shell.api.nest.reorderNesting(file, {
+        item: children[0],
+        oldIndex: 99,
+        newIndex: 0,
+      })).toThrow();
+      expect((relation.get('RelatedObjects') as { id: number }[]).map((item) => item.id)).toEqual(before);
+
+      shell.api.nest.changeNest(file, { item: children[2], newParent: secondParent });
+      expect(shell.api.element.getNest(children[2])?.id).toBe(secondParent.id);
+      expect((relation.get('RelatedObjects') as { id: number }[]).map((item) => item.id))
+        .toEqual([children[1].id, children[0].id]);
+    });
   });
 
   describe('project', () => {

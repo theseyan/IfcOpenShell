@@ -16,17 +16,24 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 import ifcopenshell
+from ifcopenshell.api import _relationship_capi
 
 
 def reorder_nesting(
-    file: ifcopenshell.file, item: ifcopenshell.entity_instance, old_index: int = 0, new_index: int = 0
+    file: ifcopenshell.file,
+    item: ifcopenshell.entity_instance,
+    old_index: int = 0,
+    new_index: int = 0,
 ) -> None:
-    """Reorders an item in a nesting set"""
-    if not item.Nests:
-        return
-    nesting_set = item.Nests[0]
-    if not old_index:
-        old_index = nesting_set.RelatedObjects.index(item)
-    items = list(getattr(nesting_set, "RelatedObjects") or [])
-    items.insert(new_index, items.pop(old_index))
-    setattr(nesting_set, "RelatedObjects", items)
+    """Reorder an item in its nesting set using Python list-compatible indexes."""
+    user, application = _relationship_capi.owner_user_application(file)
+    options = {"item": _relationship_capi.instance_handle(item), "new_index": new_index}
+    if old_index:
+        options["old_index"] = old_index
+    if user is not None:
+        options["user"] = _relationship_capi.instance_handle(user)
+    if application is not None:
+        options["application"] = _relationship_capi.instance_handle(application)
+    _relationship_capi.call_status(
+        "nest_reorder_nesting", _relationship_capi.file_handle(file), options
+    )

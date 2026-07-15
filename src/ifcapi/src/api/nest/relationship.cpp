@@ -14,19 +14,12 @@
 #include "ifcparse/instance_data.h"
 
 #include <cstring>
+#include <stdexcept>
 #include <set>
 #include <string>
 #include <vector>
 
 #include "ifcopenshell_api_internal.hpp"
-
-// Route error reporting through the autogen layer's shared error string
-// so that ifcopenshell_last_error_message() returns errors raised by the
-// high-level layer too.
-namespace {
-inline void set_error(const char* msg) { ifcopenshell::capi::set_last_error(msg); }
-inline void set_error(const std::string& msg) { ifcopenshell::capi::set_last_error(msg); }
-}
 
 // Find IfcRelNests where this entity is the RelatingObject (the whole).
 // IFC4+: inverse "IsNestedBy"; IFC2X3: filter "IsDecomposedBy" for IfcRelNests.
@@ -60,6 +53,12 @@ static express::Base find_nests(ifcopenshell::file* file, express::Base entity) 
     return {};
 }
 
+static void require_owned(ifcopenshell::file* file, express::Base entity, const char* name) {
+    if (!entity || entity.file() != file) {
+        throw std::runtime_error(std::string(name) + " must belong to the target file");
+    }
+}
+
 static std::set<express::Base> collect_previous_nest_rels(
     ifcopenshell::file* file,
     const std::set<express::Base>& objects_set,
@@ -85,22 +84,19 @@ express::Base nest_assign_object(
 {
     ifcopenshell_clear_error();
     if (!file || options.products.empty()) {
-        set_error("Invalid arguments");
-        return {};
+        throw std::invalid_argument("nest_assign_object requires a file and at least one product");
     }
 
     try {
         auto relating = options.relating_object;
-        if (!relating) {
-            set_error("Relating object not found");
-            return {};
-        }
+        require_owned(file, relating, "Relating object");
 
         // Maintain insertion order (nesting order matters in IFC).
         std::vector<express::Base> objects_vec;
         std::set<express::Base> objects_set;
         for (auto object : options.products) {
-            if (object && objects_set.insert(object).second) {
+            require_owned(file, object, "Nested object");
+            if (objects_set.insert(object).second) {
                 objects_vec.push_back(object);
             }
         }
@@ -189,8 +185,7 @@ express::Base nest_assign_object(
         } else {
             auto rel = file->create(nests_decl);
             if (!rel) {
-                set_error("Failed to create IfcRelNests");
-                return {};
+                throw std::runtime_error("Failed to create IfcRelNests");
             }
             int gi_idx = find_attr_index(nests_entity_decl, "GlobalId");
             if (gi_idx >= 0) {
@@ -204,8 +199,8 @@ express::Base nest_assign_object(
             return rel;
         }
     } catch (const std::exception& e) {
-        set_error(e.what());
-        return {};
+        ifcopenshell::capi::set_last_error(e.what());
+        throw;
     }
 }
 
@@ -213,6 +208,7 @@ void nest_unassign_object(
     ifcopenshell::file* file,
     const NestUnassignObjectOptions& options)
 {
+    ifcopenshell_clear_error();
     if (!file || options.products.empty()) return;
 
     try {
@@ -224,7 +220,8 @@ void nest_unassign_object(
 
         std::set<express::Base> objects_set;
         for (auto object : options.products) {
-            if (object) objects_set.insert(object);
+            require_owned(file, object, "Nested object");
+            objects_set.insert(object);
         }
 
         std::set<express::Base> rels;
@@ -249,7 +246,89 @@ void nest_unassign_object(
                 update_owner_history(file, rel, user_value, application_value);
             }
         }
-    } catch (...) {}
+    } catch (const std::exception& e) {
+        ifcopenshell::capi::set_last_error(e.what());
+        throw;
+    }
+}
+
+void nest_change_nest(ifcopenshell::file* file, const NestChangeNestOptions& options) {
+    ifcopenshell_clear_error();
+    try {
+        if (!file) throw std::runtime_error("nest_change_nest requires a file");
+        require_owned(file, options.item, "Item");
+        require_owned(file, options.new_parent, "New parent");
+        auto old_rel = find_nests(file, options.item);
+        if (!old_rel) return;
+
+        auto related = read_ref_aggregate(old_rel, "RelatedObjects");
+        std::vector<express::Base> remaining;
+        for (auto child : related) {
+            if (!same_instance(child, options.item)) remaining.push_back(child);
+        }
+        auto user = options.user.value_or(express::Base());
+        auto application = options.application.value_or(express::Base());
+        if (remaining.empty()) {
+            remove_with_history(file, old_rel);
+        } else {
+            write_ref_aggregate(old_rel, "RelatedObjects", remaining);
+            update_owner_history(file, old_rel, user, application);
+        }
+
+        NestAssignObjectOptions assign;
+        assign.products = {options.item};
+        assign.relating_object = options.new_parent;
+        assign.owner_history = options.owner_history;
+        assign.user = options.user;
+        assign.application = options.application;
+        auto result = nest_assign_object(file, assign);
+        if (!result) {
+            auto message = ifcopenshell_last_error_message();
+            throw std::runtime_error(message && *message ? message : "Failed to assign new nest");
+        }
+    } catch (const std::exception& e) {
+        ifcopenshell::capi::set_last_error(e.what());
+        throw;
+    }
+}
+
+void nest_reorder_nesting(ifcopenshell::file* file, const NestReorderNestingOptions& options) {
+    ifcopenshell_clear_error();
+    try {
+        if (!file) throw std::runtime_error("nest_reorder_nesting requires a file");
+        require_owned(file, options.item, "Item");
+        auto rel = find_nests(file, options.item);
+        if (!rel) return;
+        auto items = read_ref_aggregate(rel, "RelatedObjects");
+        if (items.empty()) return;
+
+        long old_index = 0;
+        if (options.old_index) {
+            old_index = *options.old_index;
+            if (old_index < 0) old_index += static_cast<long>(items.size());
+        } else {
+            auto it = std::find_if(items.begin(), items.end(), [&](express::Base value) {
+                return same_instance(value, options.item);
+            });
+            if (it == items.end()) throw std::runtime_error("Item is not present in its nesting relationship");
+            old_index = std::distance(items.begin(), it);
+        }
+        if (old_index < 0 || old_index >= static_cast<long>(items.size())) {
+            throw std::out_of_range("old_index is outside RelatedObjects");
+        }
+
+        auto moved = items[static_cast<size_t>(old_index)];
+        items.erase(items.begin() + old_index);
+        long new_index = options.new_index.value_or(0);
+        if (new_index < 0) new_index = std::max<long>(0, static_cast<long>(items.size()) + new_index);
+        if (new_index > static_cast<long>(items.size())) new_index = static_cast<long>(items.size());
+        items.insert(items.begin() + new_index, moved);
+        write_ref_aggregate(rel, "RelatedObjects", items);
+        update_owner_history(file, rel, options.user.value_or(express::Base()), options.application.value_or(express::Base()));
+    } catch (const std::exception& e) {
+        ifcopenshell::capi::set_last_error(e.what());
+        throw;
+    }
 }
 
 } // namespace bindings

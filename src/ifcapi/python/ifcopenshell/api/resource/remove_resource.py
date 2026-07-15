@@ -17,11 +17,12 @@
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
 import ifcopenshell
-import ifcopenshell.api.resource
-import ifcopenshell.util.element
+from ifcopenshell.api.resource import _capi
 
 
-def remove_resource(file: ifcopenshell.file, resource: ifcopenshell.entity_instance) -> None:
+def remove_resource(
+    file: ifcopenshell.file, resource: ifcopenshell.entity_instance
+) -> None:
     """Removes a resource and all relationships
 
     Example:
@@ -34,45 +35,7 @@ def remove_resource(file: ifcopenshell.file, resource: ifcopenshell.entity_insta
         # Fire our crew
         ifcopenshell.api.resource.remove_resource(model, resource=crew)
     """
-    settings = {"resource": resource}
-
-    def remove_consider_history(root: ifcopenshell.entity_instance) -> None:
-        history = root.OwnerHistory
-        file.remove(root)
-        if history:
-            ifcopenshell.util.element.remove_deep2(file, history)
-
-    # TODO: review deep purge
-    for inverse in file.get_inverse(settings["resource"]):
-        if inverse.is_a("IfcRelNests"):
-            if inverse.RelatingObject == settings["resource"]:
-                # Remove rel before iteration over objects
-                # to simplify removal of nested resources and avoid crashes.
-                related_objects = inverse.RelatedObjects
-                remove_consider_history(inverse)
-                for related_object in related_objects:
-                    ifcopenshell.api.resource.remove_resource(file, resource=related_object)
-            elif inverse.RelatedObjects == (resource,):
-                remove_consider_history(inverse)
-
-        elif inverse.is_a("IfcRelAssignsToControl"):
-            if len(inverse.RelatedObjects) == 1:
-                remove_consider_history(inverse)
-            else:
-                related_objects = list(inverse.RelatedObjects)
-                related_objects.remove(settings["resource"])
-                inverse.RelatedObjects = related_objects
-        elif inverse.is_a("IfcRelAssignsToResource"):
-            if inverse.RelatingResource == settings["resource"]:
-                for related_object in inverse.RelatedObjects:
-                    ifcopenshell.api.resource.unassign_resource(
-                        file, related_object=related_object, relating_resource=settings["resource"]
-                    )
-            elif inverse.RelatedObjects == (resource,):
-                remove_consider_history(inverse)
-    # Usage was added in IFC4.
-    if usage := getattr(settings["resource"], "Usage", None):
-        file.remove(usage)
-    if settings["resource"].BaseQuantity:
-        ifcopenshell.api.resource.remove_resource_quantity(file, resource=settings["resource"])
-    remove_consider_history(resource)
+    owner_options, owner_refs = _capi.owner_options(file)
+    options = {"resource": _capi.instance_handle(resource), **owner_options}
+    _capi.call_status("resource_remove_resource", _capi.file_handle(file), options)
+    _capi.invalidate(resource)

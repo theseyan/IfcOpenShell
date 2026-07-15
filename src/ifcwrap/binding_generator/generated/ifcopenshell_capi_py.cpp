@@ -6139,6 +6139,10 @@ static void free_input_material_unassign_material_options(ifcopenshell_material_
 static int fill_input_material_unassign_material_options(PyObject *obj, ifcopenshell_material_unassign_material_options_t *out, PyObject **refs);
 static void free_input_nest_assign_object_options(ifcopenshell_nest_assign_object_options_t *value);
 static int fill_input_nest_assign_object_options(PyObject *obj, ifcopenshell_nest_assign_object_options_t *out, PyObject **refs);
+static void free_input_nest_change_nest_options(ifcopenshell_nest_change_nest_options_t *value);
+static int fill_input_nest_change_nest_options(PyObject *obj, ifcopenshell_nest_change_nest_options_t *out, PyObject **refs);
+static void free_input_nest_reorder_nesting_options(ifcopenshell_nest_reorder_nesting_options_t *value);
+static int fill_input_nest_reorder_nesting_options(PyObject *obj, ifcopenshell_nest_reorder_nesting_options_t *out, PyObject **refs);
 static void free_input_nest_unassign_object_options(ifcopenshell_nest_unassign_object_options_t *value);
 static int fill_input_nest_unassign_object_options(PyObject *obj, ifcopenshell_nest_unassign_object_options_t *out, PyObject **refs);
 static void free_input_owner_add_actor_options(ifcopenshell_owner_add_actor_options_t *value);
@@ -6177,6 +6181,12 @@ static void free_input_pset_unshare_pset_options(ifcopenshell_pset_unshare_pset_
 static int fill_input_pset_unshare_pset_options(PyObject *obj, ifcopenshell_pset_unshare_pset_options_t *out, PyObject **refs);
 static void free_input_representation_get_product_representation_options(ifcopenshell_representation_get_product_representation_options_t *value);
 static int fill_input_representation_get_product_representation_options(PyObject *obj, ifcopenshell_representation_get_product_representation_options_t *out, PyObject **refs);
+static void free_input_resource_add_resource_options(ifcopenshell_resource_add_resource_options_t *value);
+static int fill_input_resource_add_resource_options(PyObject *obj, ifcopenshell_resource_add_resource_options_t *out, PyObject **refs);
+static void free_input_resource_assignment_options(ifcopenshell_resource_assignment_options_t *value);
+static int fill_input_resource_assignment_options(PyObject *obj, ifcopenshell_resource_assignment_options_t *out, PyObject **refs);
+static void free_input_resource_remove_resource_options(ifcopenshell_resource_remove_resource_options_t *value);
+static int fill_input_resource_remove_resource_options(PyObject *obj, ifcopenshell_resource_remove_resource_options_t *out, PyObject **refs);
 static void free_input_root_create_entity_options(ifcopenshell_root_create_entity_options_t *value);
 static int fill_input_root_create_entity_options(PyObject *obj, ifcopenshell_root_create_entity_options_t *out, PyObject **refs);
 static void free_input_root_reassign_class_options(ifcopenshell_root_reassign_class_options_t *value);
@@ -12659,6 +12669,138 @@ static int fill_input_nest_assign_object_options(PyObject *obj, ifcopenshell_nes
 }
 
 
+static void free_input_nest_change_nest_options(ifcopenshell_nest_change_nest_options_t *value) {
+    (void)value;
+}
+
+static int fill_input_nest_change_nest_options(PyObject *obj, ifcopenshell_nest_change_nest_options_t *out, PyObject **refs) {
+    if (!PyMapping_Check(obj)) {
+        PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
+        return 0;
+    }
+    PyObject *field_0 = get_option_field(obj, "item", 1);
+    if (!field_0) {
+        return 0;
+    }
+    refs[0] = field_0;
+    if (!extract_handle(field_0, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->item, 0)) {
+        return 0;
+    }
+    PyObject *field_1 = get_option_field(obj, "new_parent", 1);
+    if (!field_1) {
+        return 0;
+    }
+    refs[1] = field_1;
+    if (!extract_handle(field_1, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->new_parent, 0)) {
+        return 0;
+    }
+    PyObject *field_2 = get_option_field(obj, "owner_history", 0);
+    if (!field_2) {
+        if (PyErr_Occurred()) return 0;
+    } else {
+        refs[2] = field_2;
+        if (field_2 != Py_None) {
+            if (!extract_handle(field_2, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->owner_history, 0)) {
+                return 0;
+            }
+        out->has_owner_history = true;
+        }
+    }
+    PyObject *field_3 = get_option_field(obj, "user", 0);
+    if (!field_3) {
+        if (PyErr_Occurred()) return 0;
+    } else {
+        refs[3] = field_3;
+        if (field_3 != Py_None) {
+            if (!extract_handle(field_3, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->user, 0)) {
+                return 0;
+            }
+        out->has_user = true;
+        }
+    }
+    PyObject *field_4 = get_option_field(obj, "application", 0);
+    if (!field_4) {
+        if (PyErr_Occurred()) return 0;
+    } else {
+        refs[4] = field_4;
+        if (field_4 != Py_None) {
+            if (!extract_handle(field_4, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->application, 0)) {
+                return 0;
+            }
+        out->has_application = true;
+        }
+    }
+    return 1;
+}
+
+
+static void free_input_nest_reorder_nesting_options(ifcopenshell_nest_reorder_nesting_options_t *value) {
+    (void)value;
+}
+
+static int fill_input_nest_reorder_nesting_options(PyObject *obj, ifcopenshell_nest_reorder_nesting_options_t *out, PyObject **refs) {
+    if (!PyMapping_Check(obj)) {
+        PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
+        return 0;
+    }
+    PyObject *field_0 = get_option_field(obj, "item", 1);
+    if (!field_0) {
+        return 0;
+    }
+    refs[0] = field_0;
+    if (!extract_handle(field_0, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->item, 0)) {
+        return 0;
+    }
+    PyObject *field_1 = get_option_field(obj, "old_index", 0);
+    if (!field_1) {
+        if (PyErr_Occurred()) return 0;
+    } else {
+        refs[1] = field_1;
+        if (field_1 != Py_None) {
+            out->old_index = (int32_t)PyLong_AsLong(field_1);
+            if (PyErr_Occurred()) return 0;
+        out->has_old_index = true;
+        }
+    }
+    PyObject *field_2 = get_option_field(obj, "new_index", 0);
+    if (!field_2) {
+        if (PyErr_Occurred()) return 0;
+    } else {
+        refs[2] = field_2;
+        if (field_2 != Py_None) {
+            out->new_index = (int32_t)PyLong_AsLong(field_2);
+            if (PyErr_Occurred()) return 0;
+        out->has_new_index = true;
+        }
+    }
+    PyObject *field_3 = get_option_field(obj, "user", 0);
+    if (!field_3) {
+        if (PyErr_Occurred()) return 0;
+    } else {
+        refs[3] = field_3;
+        if (field_3 != Py_None) {
+            if (!extract_handle(field_3, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->user, 0)) {
+                return 0;
+            }
+        out->has_user = true;
+        }
+    }
+    PyObject *field_4 = get_option_field(obj, "application", 0);
+    if (!field_4) {
+        if (PyErr_Occurred()) return 0;
+    } else {
+        refs[4] = field_4;
+        if (field_4 != Py_None) {
+            if (!extract_handle(field_4, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->application, 0)) {
+                return 0;
+            }
+        out->has_application = true;
+        }
+    }
+    return 1;
+}
+
+
 static void free_input_nest_unassign_object_options(ifcopenshell_nest_unassign_object_options_t *value) {
     if (value->products) {
         ifcopenshell_parse_instance_list_destroy(value->products);
@@ -13820,6 +13962,210 @@ static int fill_input_representation_get_product_representation_options(PyObject
             out->target_view = PyUnicode_AsUTF8(field_3);
             if (!out->target_view) return 0;
         out->has_target_view = true;
+        }
+    }
+    return 1;
+}
+
+
+static void free_input_resource_add_resource_options(ifcopenshell_resource_add_resource_options_t *value) {
+    (void)value;
+}
+
+static int fill_input_resource_add_resource_options(PyObject *obj, ifcopenshell_resource_add_resource_options_t *out, PyObject **refs) {
+    if (!PyMapping_Check(obj)) {
+        PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
+        return 0;
+    }
+    PyObject *field_0 = get_option_field(obj, "parent_resource", 0);
+    if (!field_0) {
+        if (PyErr_Occurred()) return 0;
+    } else {
+        refs[0] = field_0;
+        if (field_0 != Py_None) {
+            if (!extract_handle(field_0, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->parent_resource, 0)) {
+                return 0;
+            }
+        out->has_parent_resource = true;
+        }
+    }
+    PyObject *field_1 = get_option_field(obj, "ifc_class", 0);
+    if (!field_1) {
+        if (PyErr_Occurred()) return 0;
+    } else {
+        refs[1] = field_1;
+        if (field_1 != Py_None) {
+            out->ifc_class = PyUnicode_AsUTF8(field_1);
+            if (!out->ifc_class) return 0;
+        out->has_ifc_class = true;
+        }
+    }
+    PyObject *field_2 = get_option_field(obj, "name", 0);
+    if (!field_2) {
+        if (PyErr_Occurred()) return 0;
+    } else {
+        refs[2] = field_2;
+        if (field_2 != Py_None) {
+            out->name = PyUnicode_AsUTF8(field_2);
+            if (!out->name) return 0;
+        out->has_name = true;
+        }
+    }
+    PyObject *field_3 = get_option_field(obj, "predefined_type", 0);
+    if (!field_3) {
+        if (PyErr_Occurred()) return 0;
+    } else {
+        refs[3] = field_3;
+        if (field_3 != Py_None) {
+            out->predefined_type = PyUnicode_AsUTF8(field_3);
+            if (!out->predefined_type) return 0;
+        out->has_predefined_type = true;
+        }
+    }
+    PyObject *field_4 = get_option_field(obj, "owner_history", 0);
+    if (!field_4) {
+        if (PyErr_Occurred()) return 0;
+    } else {
+        refs[4] = field_4;
+        if (field_4 != Py_None) {
+            if (!extract_handle(field_4, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->owner_history, 0)) {
+                return 0;
+            }
+        out->has_owner_history = true;
+        }
+    }
+    PyObject *field_5 = get_option_field(obj, "user", 0);
+    if (!field_5) {
+        if (PyErr_Occurred()) return 0;
+    } else {
+        refs[5] = field_5;
+        if (field_5 != Py_None) {
+            if (!extract_handle(field_5, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->user, 0)) {
+                return 0;
+            }
+        out->has_user = true;
+        }
+    }
+    PyObject *field_6 = get_option_field(obj, "application", 0);
+    if (!field_6) {
+        if (PyErr_Occurred()) return 0;
+    } else {
+        refs[6] = field_6;
+        if (field_6 != Py_None) {
+            if (!extract_handle(field_6, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->application, 0)) {
+                return 0;
+            }
+        out->has_application = true;
+        }
+    }
+    return 1;
+}
+
+
+static void free_input_resource_assignment_options(ifcopenshell_resource_assignment_options_t *value) {
+    (void)value;
+}
+
+static int fill_input_resource_assignment_options(PyObject *obj, ifcopenshell_resource_assignment_options_t *out, PyObject **refs) {
+    if (!PyMapping_Check(obj)) {
+        PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
+        return 0;
+    }
+    PyObject *field_0 = get_option_field(obj, "relating_resource", 1);
+    if (!field_0) {
+        return 0;
+    }
+    refs[0] = field_0;
+    if (!extract_handle(field_0, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->relating_resource, 0)) {
+        return 0;
+    }
+    PyObject *field_1 = get_option_field(obj, "related_object", 1);
+    if (!field_1) {
+        return 0;
+    }
+    refs[1] = field_1;
+    if (!extract_handle(field_1, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->related_object, 0)) {
+        return 0;
+    }
+    PyObject *field_2 = get_option_field(obj, "owner_history", 0);
+    if (!field_2) {
+        if (PyErr_Occurred()) return 0;
+    } else {
+        refs[2] = field_2;
+        if (field_2 != Py_None) {
+            if (!extract_handle(field_2, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->owner_history, 0)) {
+                return 0;
+            }
+        out->has_owner_history = true;
+        }
+    }
+    PyObject *field_3 = get_option_field(obj, "user", 0);
+    if (!field_3) {
+        if (PyErr_Occurred()) return 0;
+    } else {
+        refs[3] = field_3;
+        if (field_3 != Py_None) {
+            if (!extract_handle(field_3, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->user, 0)) {
+                return 0;
+            }
+        out->has_user = true;
+        }
+    }
+    PyObject *field_4 = get_option_field(obj, "application", 0);
+    if (!field_4) {
+        if (PyErr_Occurred()) return 0;
+    } else {
+        refs[4] = field_4;
+        if (field_4 != Py_None) {
+            if (!extract_handle(field_4, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->application, 0)) {
+                return 0;
+            }
+        out->has_application = true;
+        }
+    }
+    return 1;
+}
+
+
+static void free_input_resource_remove_resource_options(ifcopenshell_resource_remove_resource_options_t *value) {
+    (void)value;
+}
+
+static int fill_input_resource_remove_resource_options(PyObject *obj, ifcopenshell_resource_remove_resource_options_t *out, PyObject **refs) {
+    if (!PyMapping_Check(obj)) {
+        PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
+        return 0;
+    }
+    PyObject *field_0 = get_option_field(obj, "resource", 1);
+    if (!field_0) {
+        return 0;
+    }
+    refs[0] = field_0;
+    if (!extract_handle(field_0, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->resource, 0)) {
+        return 0;
+    }
+    PyObject *field_1 = get_option_field(obj, "user", 0);
+    if (!field_1) {
+        if (PyErr_Occurred()) return 0;
+    } else {
+        refs[1] = field_1;
+        if (field_1 != Py_None) {
+            if (!extract_handle(field_1, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->user, 0)) {
+                return 0;
+            }
+        out->has_user = true;
+        }
+    }
+    PyObject *field_2 = get_option_field(obj, "application", 0);
+    if (!field_2) {
+        if (PyErr_Occurred()) return 0;
+    } else {
+        refs[2] = field_2;
+        if (field_2 != Py_None) {
+            if (!extract_handle(field_2, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->application, 0)) {
+                return 0;
+            }
+        out->has_application = true;
         }
     }
     return 1;
@@ -38829,6 +39175,78 @@ __cleanup:
     return __py_result;
 }
 
+static PyObject *py_ifcopenshell_nest_change_nest(PyObject *self, PyObject *args) {
+    PyObject *__py_result = NULL;
+    bool ok = false;
+    PyObject *arg_file_obj = NULL;
+    ifcopenshell_file_t *arg_file = NULL;
+    PyObject *arg_options_obj = NULL;
+    ifcopenshell_nest_change_nest_options_t arg_options = {0};
+    PyObject *arg_options_refs[5] = {0};
+
+    if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_options_obj)) return NULL;
+
+    if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
+        goto __cleanup;
+    }
+    if (!fill_input_nest_change_nest_options(arg_options_obj, &arg_options, arg_options_refs)) {
+        goto __cleanup;
+    }
+
+    ifcopenshell_clear_error();
+    ok = ifcopenshell_nest_change_nest(arg_file, &arg_options);
+    if (!ok) {
+        raise_last_error("ifcopenshell_nest_change_nest failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_nest_change_nest failed");
+        goto __cleanup;
+    }
+    Py_INCREF(Py_None);
+    __py_result = Py_None;
+__cleanup:
+        release_option_refs(arg_options_refs, 5);
+        free_input_nest_change_nest_options(&arg_options);
+    return __py_result;
+}
+
+static PyObject *py_ifcopenshell_nest_reorder_nesting(PyObject *self, PyObject *args) {
+    PyObject *__py_result = NULL;
+    bool ok = false;
+    PyObject *arg_file_obj = NULL;
+    ifcopenshell_file_t *arg_file = NULL;
+    PyObject *arg_options_obj = NULL;
+    ifcopenshell_nest_reorder_nesting_options_t arg_options = {0};
+    PyObject *arg_options_refs[5] = {0};
+
+    if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_options_obj)) return NULL;
+
+    if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
+        goto __cleanup;
+    }
+    if (!fill_input_nest_reorder_nesting_options(arg_options_obj, &arg_options, arg_options_refs)) {
+        goto __cleanup;
+    }
+
+    ifcopenshell_clear_error();
+    ok = ifcopenshell_nest_reorder_nesting(arg_file, &arg_options);
+    if (!ok) {
+        raise_last_error("ifcopenshell_nest_reorder_nesting failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_nest_reorder_nesting failed");
+        goto __cleanup;
+    }
+    Py_INCREF(Py_None);
+    __py_result = Py_None;
+__cleanup:
+        release_option_refs(arg_options_refs, 5);
+        free_input_nest_reorder_nesting_options(&arg_options);
+    return __py_result;
+}
+
 static PyObject *py_ifcopenshell_nest_unassign_object(PyObject *self, PyObject *args) {
     PyObject *__py_result = NULL;
     bool ok = false;
@@ -43231,6 +43649,207 @@ __cleanup:
     return __py_result;
 }
 
+static PyObject *py_ifcopenshell_resource_add_resource(PyObject *self, PyObject *args) {
+    PyObject *__py_result = NULL;
+    bool ok = false;
+    PyObject *arg_file_obj = NULL;
+    ifcopenshell_file_t *arg_file = NULL;
+    PyObject *arg_options_obj = NULL;
+    ifcopenshell_resource_add_resource_options_t arg_options = {0};
+    PyObject *arg_options_refs[7] = {0};
+    ifcopenshell_instance_t *result = NULL;
+    if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_options_obj)) return NULL;
+
+    if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
+        goto __cleanup;
+    }
+    if (!fill_input_resource_add_resource_options(arg_options_obj, &arg_options, arg_options_refs)) {
+        goto __cleanup;
+    }
+
+    ifcopenshell_clear_error();
+    ok = ifcopenshell_resource_add_resource(arg_file, &arg_options, &result);
+    if (!ok) {
+        raise_last_error("ifcopenshell_resource_add_resource failed");
+        goto __cleanup;
+    }
+    if (result == nullptr && ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_resource_add_resource failed");
+        goto __cleanup;
+    }
+    __py_result = wrap_instance(result, 1);
+__cleanup:
+        release_option_refs(arg_options_refs, 7);
+        free_input_resource_add_resource_options(&arg_options);
+    return __py_result;
+}
+
+static PyObject *py_ifcopenshell_resource_add_resource_quantity(PyObject *self, PyObject *args) {
+    PyObject *__py_result = NULL;
+    bool ok = false;
+    PyObject *arg_file_obj = NULL;
+    ifcopenshell_file_t *arg_file = NULL;
+    PyObject *arg_resource_obj = NULL;
+    ifcopenshell_instance_t *arg_resource = NULL;
+    const char *arg_ifc_class = NULL;
+    ifcopenshell_instance_t *result = NULL;
+    if (!PyArg_ParseTuple(args, "OOs", &arg_file_obj, &arg_resource_obj, &arg_ifc_class)) return NULL;
+
+    if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
+        goto __cleanup;
+    }
+    if (!extract_handle(arg_resource_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_resource, 0)) {
+        goto __cleanup;
+    }
+
+    ifcopenshell_clear_error();
+    ok = ifcopenshell_resource_add_resource_quantity(arg_file, arg_resource, arg_ifc_class, &result);
+    if (!ok) {
+        raise_last_error("ifcopenshell_resource_add_resource_quantity failed");
+        goto __cleanup;
+    }
+    if (result == nullptr && ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_resource_add_resource_quantity failed");
+        goto __cleanup;
+    }
+    __py_result = wrap_instance(result, 1);
+__cleanup:
+    return __py_result;
+}
+
+static PyObject *py_ifcopenshell_resource_add_resource_time(PyObject *self, PyObject *args) {
+    PyObject *__py_result = NULL;
+    bool ok = false;
+    PyObject *arg_file_obj = NULL;
+    ifcopenshell_file_t *arg_file = NULL;
+    PyObject *arg_resource_obj = NULL;
+    ifcopenshell_instance_t *arg_resource = NULL;
+    ifcopenshell_instance_t *result = NULL;
+    if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_resource_obj)) return NULL;
+
+    if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
+        goto __cleanup;
+    }
+    if (!extract_handle(arg_resource_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_resource, 0)) {
+        goto __cleanup;
+    }
+
+    ifcopenshell_clear_error();
+    ok = ifcopenshell_resource_add_resource_time(arg_file, arg_resource, &result);
+    if (!ok) {
+        raise_last_error("ifcopenshell_resource_add_resource_time failed");
+        goto __cleanup;
+    }
+    if (result == nullptr && ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_resource_add_resource_time failed");
+        goto __cleanup;
+    }
+    __py_result = wrap_instance(result, 1);
+__cleanup:
+    return __py_result;
+}
+
+static PyObject *py_ifcopenshell_resource_assign_resource(PyObject *self, PyObject *args) {
+    PyObject *__py_result = NULL;
+    bool ok = false;
+    PyObject *arg_file_obj = NULL;
+    ifcopenshell_file_t *arg_file = NULL;
+    PyObject *arg_options_obj = NULL;
+    ifcopenshell_resource_assignment_options_t arg_options = {0};
+    PyObject *arg_options_refs[5] = {0};
+    ifcopenshell_instance_t *result = NULL;
+    if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_options_obj)) return NULL;
+
+    if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
+        goto __cleanup;
+    }
+    if (!fill_input_resource_assignment_options(arg_options_obj, &arg_options, arg_options_refs)) {
+        goto __cleanup;
+    }
+
+    ifcopenshell_clear_error();
+    ok = ifcopenshell_resource_assign_resource(arg_file, &arg_options, &result);
+    if (!ok) {
+        raise_last_error("ifcopenshell_resource_assign_resource failed");
+        goto __cleanup;
+    }
+    if (result == nullptr && ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_resource_assign_resource failed");
+        goto __cleanup;
+    }
+    __py_result = wrap_instance(result, 1);
+__cleanup:
+        release_option_refs(arg_options_refs, 5);
+        free_input_resource_assignment_options(&arg_options);
+    return __py_result;
+}
+
+static PyObject *py_ifcopenshell_resource_calculate_resource_usage(PyObject *self, PyObject *args) {
+    PyObject *__py_result = NULL;
+    bool ok = false;
+    PyObject *arg_file_obj = NULL;
+    ifcopenshell_file_t *arg_file = NULL;
+    PyObject *arg_resource_obj = NULL;
+    ifcopenshell_instance_t *arg_resource = NULL;
+
+    if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_resource_obj)) return NULL;
+
+    if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
+        goto __cleanup;
+    }
+    if (!extract_handle(arg_resource_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_resource, 0)) {
+        goto __cleanup;
+    }
+
+    ifcopenshell_clear_error();
+    ok = ifcopenshell_resource_calculate_resource_usage(arg_file, arg_resource);
+    if (!ok) {
+        raise_last_error("ifcopenshell_resource_calculate_resource_usage failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_resource_calculate_resource_usage failed");
+        goto __cleanup;
+    }
+    Py_INCREF(Py_None);
+    __py_result = Py_None;
+__cleanup:
+    return __py_result;
+}
+
+static PyObject *py_ifcopenshell_resource_calculate_resource_work(PyObject *self, PyObject *args) {
+    PyObject *__py_result = NULL;
+    bool ok = false;
+    PyObject *arg_file_obj = NULL;
+    ifcopenshell_file_t *arg_file = NULL;
+    PyObject *arg_resource_obj = NULL;
+    ifcopenshell_instance_t *arg_resource = NULL;
+
+    if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_resource_obj)) return NULL;
+
+    if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
+        goto __cleanup;
+    }
+    if (!extract_handle(arg_resource_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_resource, 0)) {
+        goto __cleanup;
+    }
+
+    ifcopenshell_clear_error();
+    ok = ifcopenshell_resource_calculate_resource_work(arg_file, arg_resource);
+    if (!ok) {
+        raise_last_error("ifcopenshell_resource_calculate_resource_work failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_resource_calculate_resource_work failed");
+        goto __cleanup;
+    }
+    Py_INCREF(Py_None);
+    __py_result = Py_None;
+__cleanup:
+    return __py_result;
+}
+
 static PyObject *py_ifcopenshell_resource_edit_resource_time(PyObject *self, PyObject *args) {
     PyObject *__py_result = NULL;
     bool ok = false;
@@ -43275,6 +43894,111 @@ static PyObject *py_ifcopenshell_resource_edit_resource_time(PyObject *self, PyO
     __py_result = Py_None;
 __cleanup:
         if (arg_attributes_has_view) PyBuffer_Release(&arg_attributes_view);
+    return __py_result;
+}
+
+static PyObject *py_ifcopenshell_resource_remove_resource(PyObject *self, PyObject *args) {
+    PyObject *__py_result = NULL;
+    bool ok = false;
+    PyObject *arg_file_obj = NULL;
+    ifcopenshell_file_t *arg_file = NULL;
+    PyObject *arg_options_obj = NULL;
+    ifcopenshell_resource_remove_resource_options_t arg_options = {0};
+    PyObject *arg_options_refs[3] = {0};
+
+    if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_options_obj)) return NULL;
+
+    if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
+        goto __cleanup;
+    }
+    if (!fill_input_resource_remove_resource_options(arg_options_obj, &arg_options, arg_options_refs)) {
+        goto __cleanup;
+    }
+
+    ifcopenshell_clear_error();
+    ok = ifcopenshell_resource_remove_resource(arg_file, &arg_options);
+    if (!ok) {
+        raise_last_error("ifcopenshell_resource_remove_resource failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_resource_remove_resource failed");
+        goto __cleanup;
+    }
+    Py_INCREF(Py_None);
+    __py_result = Py_None;
+__cleanup:
+        release_option_refs(arg_options_refs, 3);
+        free_input_resource_remove_resource_options(&arg_options);
+    return __py_result;
+}
+
+static PyObject *py_ifcopenshell_resource_remove_resource_quantity(PyObject *self, PyObject *args) {
+    PyObject *__py_result = NULL;
+    bool ok = false;
+    PyObject *arg_file_obj = NULL;
+    ifcopenshell_file_t *arg_file = NULL;
+    PyObject *arg_resource_obj = NULL;
+    ifcopenshell_instance_t *arg_resource = NULL;
+
+    if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_resource_obj)) return NULL;
+
+    if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
+        goto __cleanup;
+    }
+    if (!extract_handle(arg_resource_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_resource, 0)) {
+        goto __cleanup;
+    }
+
+    ifcopenshell_clear_error();
+    ok = ifcopenshell_resource_remove_resource_quantity(arg_file, arg_resource);
+    if (!ok) {
+        raise_last_error("ifcopenshell_resource_remove_resource_quantity failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_resource_remove_resource_quantity failed");
+        goto __cleanup;
+    }
+    Py_INCREF(Py_None);
+    __py_result = Py_None;
+__cleanup:
+    return __py_result;
+}
+
+static PyObject *py_ifcopenshell_resource_unassign_resource(PyObject *self, PyObject *args) {
+    PyObject *__py_result = NULL;
+    bool ok = false;
+    PyObject *arg_file_obj = NULL;
+    ifcopenshell_file_t *arg_file = NULL;
+    PyObject *arg_options_obj = NULL;
+    ifcopenshell_resource_assignment_options_t arg_options = {0};
+    PyObject *arg_options_refs[5] = {0};
+
+    if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_options_obj)) return NULL;
+
+    if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
+        goto __cleanup;
+    }
+    if (!fill_input_resource_assignment_options(arg_options_obj, &arg_options, arg_options_refs)) {
+        goto __cleanup;
+    }
+
+    ifcopenshell_clear_error();
+    ok = ifcopenshell_resource_unassign_resource(arg_file, &arg_options);
+    if (!ok) {
+        raise_last_error("ifcopenshell_resource_unassign_resource failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_resource_unassign_resource failed");
+        goto __cleanup;
+    }
+    Py_INCREF(Py_None);
+    __py_result = Py_None;
+__cleanup:
+        release_option_refs(arg_options_refs, 5);
+        free_input_resource_assignment_options(&arg_options);
     return __py_result;
 }
 
@@ -51142,6 +51866,8 @@ static PyMethodDef module_methods[] = {
     {"named_type_declared_type", py_ifcopenshell_named_type_declared_type, METH_VARARGS, "Wrap ifcopenshell_named_type_declared_type"},
     {"named_type_is_a", py_ifcopenshell_named_type_is_a, METH_VARARGS, "Wrap ifcopenshell_named_type_is_a"},
     {"nest_assign_object", py_ifcopenshell_nest_assign_object, METH_VARARGS, "Wrap ifcopenshell_nest_assign_object"},
+    {"nest_change_nest", py_ifcopenshell_nest_change_nest, METH_VARARGS, "Wrap ifcopenshell_nest_change_nest"},
+    {"nest_reorder_nesting", py_ifcopenshell_nest_reorder_nesting, METH_VARARGS, "Wrap ifcopenshell_nest_reorder_nesting"},
     {"nest_unassign_object", py_ifcopenshell_nest_unassign_object, METH_VARARGS, "Wrap ifcopenshell_nest_unassign_object"},
     {"owner_add_actor", py_ifcopenshell_owner_add_actor, METH_VARARGS, "Wrap ifcopenshell_owner_add_actor"},
     {"owner_add_address", py_ifcopenshell_owner_add_address, METH_VARARGS, "Wrap ifcopenshell_owner_add_address"},
@@ -51291,7 +52017,16 @@ static PyMethodDef module_methods[] = {
     {"representation_get_product_representation", py_ifcopenshell_representation_get_product_representation, METH_VARARGS, "Wrap ifcopenshell_representation_get_product_representation"},
     {"representation_resolve", py_ifcopenshell_representation_resolve, METH_VARARGS, "Wrap ifcopenshell_representation_resolve"},
     {"representation_resolve_base_items", py_ifcopenshell_representation_resolve_base_items, METH_VARARGS, "Wrap ifcopenshell_representation_resolve_base_items"},
+    {"resource_add_resource", py_ifcopenshell_resource_add_resource, METH_VARARGS, "Wrap ifcopenshell_resource_add_resource"},
+    {"resource_add_resource_quantity", py_ifcopenshell_resource_add_resource_quantity, METH_VARARGS, "Wrap ifcopenshell_resource_add_resource_quantity"},
+    {"resource_add_resource_time", py_ifcopenshell_resource_add_resource_time, METH_VARARGS, "Wrap ifcopenshell_resource_add_resource_time"},
+    {"resource_assign_resource", py_ifcopenshell_resource_assign_resource, METH_VARARGS, "Wrap ifcopenshell_resource_assign_resource"},
+    {"resource_calculate_resource_usage", py_ifcopenshell_resource_calculate_resource_usage, METH_VARARGS, "Wrap ifcopenshell_resource_calculate_resource_usage"},
+    {"resource_calculate_resource_work", py_ifcopenshell_resource_calculate_resource_work, METH_VARARGS, "Wrap ifcopenshell_resource_calculate_resource_work"},
     {"resource_edit_resource_time", py_ifcopenshell_resource_edit_resource_time, METH_VARARGS, "Wrap ifcopenshell_resource_edit_resource_time"},
+    {"resource_remove_resource", py_ifcopenshell_resource_remove_resource, METH_VARARGS, "Wrap ifcopenshell_resource_remove_resource"},
+    {"resource_remove_resource_quantity", py_ifcopenshell_resource_remove_resource_quantity, METH_VARARGS, "Wrap ifcopenshell_resource_remove_resource_quantity"},
+    {"resource_unassign_resource", py_ifcopenshell_resource_unassign_resource, METH_VARARGS, "Wrap ifcopenshell_resource_unassign_resource"},
     {"root_copy_class", py_ifcopenshell_root_copy_class, METH_VARARGS, "Wrap ifcopenshell_root_copy_class"},
     {"root_create_entity", py_ifcopenshell_root_create_entity, METH_VARARGS, "Wrap ifcopenshell_root_create_entity"},
     {"root_reassign_class", py_ifcopenshell_root_reassign_class, METH_VARARGS, "Wrap ifcopenshell_root_reassign_class"},
@@ -52226,6 +52961,8 @@ static PyMethodDef module_methods[] = {
     {"ifcopenshell_named_type_declared_type", py_ifcopenshell_named_type_declared_type, METH_VARARGS, "Wrap ifcopenshell_named_type_declared_type"},
     {"ifcopenshell_named_type_is_a", py_ifcopenshell_named_type_is_a, METH_VARARGS, "Wrap ifcopenshell_named_type_is_a"},
     {"ifcopenshell_nest_assign_object", py_ifcopenshell_nest_assign_object, METH_VARARGS, "Wrap ifcopenshell_nest_assign_object"},
+    {"ifcopenshell_nest_change_nest", py_ifcopenshell_nest_change_nest, METH_VARARGS, "Wrap ifcopenshell_nest_change_nest"},
+    {"ifcopenshell_nest_reorder_nesting", py_ifcopenshell_nest_reorder_nesting, METH_VARARGS, "Wrap ifcopenshell_nest_reorder_nesting"},
     {"ifcopenshell_nest_unassign_object", py_ifcopenshell_nest_unassign_object, METH_VARARGS, "Wrap ifcopenshell_nest_unassign_object"},
     {"ifcopenshell_owner_add_actor", py_ifcopenshell_owner_add_actor, METH_VARARGS, "Wrap ifcopenshell_owner_add_actor"},
     {"ifcopenshell_owner_add_address", py_ifcopenshell_owner_add_address, METH_VARARGS, "Wrap ifcopenshell_owner_add_address"},
@@ -52375,7 +53112,16 @@ static PyMethodDef module_methods[] = {
     {"ifcopenshell_representation_get_product_representation", py_ifcopenshell_representation_get_product_representation, METH_VARARGS, "Wrap ifcopenshell_representation_get_product_representation"},
     {"ifcopenshell_representation_resolve", py_ifcopenshell_representation_resolve, METH_VARARGS, "Wrap ifcopenshell_representation_resolve"},
     {"ifcopenshell_representation_resolve_base_items", py_ifcopenshell_representation_resolve_base_items, METH_VARARGS, "Wrap ifcopenshell_representation_resolve_base_items"},
+    {"ifcopenshell_resource_add_resource", py_ifcopenshell_resource_add_resource, METH_VARARGS, "Wrap ifcopenshell_resource_add_resource"},
+    {"ifcopenshell_resource_add_resource_quantity", py_ifcopenshell_resource_add_resource_quantity, METH_VARARGS, "Wrap ifcopenshell_resource_add_resource_quantity"},
+    {"ifcopenshell_resource_add_resource_time", py_ifcopenshell_resource_add_resource_time, METH_VARARGS, "Wrap ifcopenshell_resource_add_resource_time"},
+    {"ifcopenshell_resource_assign_resource", py_ifcopenshell_resource_assign_resource, METH_VARARGS, "Wrap ifcopenshell_resource_assign_resource"},
+    {"ifcopenshell_resource_calculate_resource_usage", py_ifcopenshell_resource_calculate_resource_usage, METH_VARARGS, "Wrap ifcopenshell_resource_calculate_resource_usage"},
+    {"ifcopenshell_resource_calculate_resource_work", py_ifcopenshell_resource_calculate_resource_work, METH_VARARGS, "Wrap ifcopenshell_resource_calculate_resource_work"},
     {"ifcopenshell_resource_edit_resource_time", py_ifcopenshell_resource_edit_resource_time, METH_VARARGS, "Wrap ifcopenshell_resource_edit_resource_time"},
+    {"ifcopenshell_resource_remove_resource", py_ifcopenshell_resource_remove_resource, METH_VARARGS, "Wrap ifcopenshell_resource_remove_resource"},
+    {"ifcopenshell_resource_remove_resource_quantity", py_ifcopenshell_resource_remove_resource_quantity, METH_VARARGS, "Wrap ifcopenshell_resource_remove_resource_quantity"},
+    {"ifcopenshell_resource_unassign_resource", py_ifcopenshell_resource_unassign_resource, METH_VARARGS, "Wrap ifcopenshell_resource_unassign_resource"},
     {"ifcopenshell_root_copy_class", py_ifcopenshell_root_copy_class, METH_VARARGS, "Wrap ifcopenshell_root_copy_class"},
     {"ifcopenshell_root_create_entity", py_ifcopenshell_root_create_entity, METH_VARARGS, "Wrap ifcopenshell_root_create_entity"},
     {"ifcopenshell_root_reassign_class", py_ifcopenshell_root_reassign_class, METH_VARARGS, "Wrap ifcopenshell_root_reassign_class"},

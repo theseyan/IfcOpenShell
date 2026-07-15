@@ -42,6 +42,28 @@ struct NestUnassignObjectOptions {
     std::optional<express::Base> application;
 };
 
+struct NestChangeNestOptions {
+    express::Base item;
+    express::Base new_parent;
+    std::optional<express::Base> owner_history;
+    std::optional<express::Base> user;
+    std::optional<express::Base> application;
+};
+
+/** Move an already nested child to a new parent, appending it after the target parent's current children. */
+IFCAPI_BINDING void nest_change_nest(ifcopenshell::file* file, const NestChangeNestOptions& options);
+
+struct NestReorderNestingOptions {
+    express::Base item;
+    std::optional<int> old_index;
+    std::optional<int> new_index = 0;
+    std::optional<express::Base> user;
+    std::optional<express::Base> application;
+};
+
+/** Reorder an existing nested child with Python-compatible index semantics; omitted old_index locates item. */
+IFCAPI_BINDING void nest_reorder_nesting(ifcopenshell::file* file, const NestReorderNestingOptions& options);
+
 /**
  * Assign objects as nested children of a parent host via IfcRelNests.
  *

@@ -17,26 +17,27 @@
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
 import ifcopenshell
-import ifcopenshell.api.nest
-import ifcopenshell.api.owner
-import ifcopenshell.util.element
+from ifcopenshell.api import _relationship_capi
 
 
 def change_nest(
-    file: ifcopenshell.file, item: ifcopenshell.entity_instance, new_parent: ifcopenshell.entity_instance
+    file: ifcopenshell.file,
+    item: ifcopenshell.entity_instance,
+    new_parent: ifcopenshell.entity_instance,
 ) -> None:
-    """Assigns a cost item to a new parent cost item"""
-    if not item.Nests:
-        return
-    nests = item.Nests[0]
-    related_objects = list(nests.RelatedObjects)
-    related_objects.remove(item)
-    if related_objects:
-        nests.RelatedObjects = related_objects
-        ifcopenshell.api.owner.update_owner_history(file, element=nests)
-    else:
-        history = nests.OwnerHistory
-        file.remove(nests)
-        if history:
-            ifcopenshell.util.element.remove_deep2(file, history)
-    ifcopenshell.api.nest.assign_object(file, related_objects=[item], relating_object=new_parent)
+    """Move an already nested child to a new parent, appending it after existing children."""
+    owner_history, user, application = _relationship_capi.owner_context(file)
+    options = {
+        "item": _relationship_capi.instance_handle(item),
+        "new_parent": _relationship_capi.instance_handle(new_parent),
+    }
+    for key, value in (
+        ("owner_history", owner_history),
+        ("user", user),
+        ("application", application),
+    ):
+        if value is not None:
+            options[key] = _relationship_capi.instance_handle(value)
+    _relationship_capi.call_status(
+        "nest_change_nest", _relationship_capi.file_handle(file), options
+    )

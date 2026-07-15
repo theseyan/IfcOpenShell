@@ -16,10 +16,13 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
-import ifcopenshell.util.element
+import ifcopenshell
+from ifcopenshell.api.resource import _capi
 
 
-def remove_resource_quantity(file: ifcopenshell.file, resource: ifcopenshell.entity_instance) -> None:
+def remove_resource_quantity(
+    file: ifcopenshell.file, resource: ifcopenshell.entity_instance
+) -> None:
     """Removes the base quantity of a resource
 
     :param resource: The IfcConstructionResource to remove the quantity from.
@@ -44,7 +47,8 @@ def remove_resource_quantity(file: ifcopenshell.file, resource: ifcopenshell.ent
         # let's clean up our mess and remove the quantity.
         ifcopenshell.api.resource.remove_resource_quantity(model, resource=labour)
     """
-    old_quantity = resource.BaseQuantity
-    resource.BaseQuantity = None
-    if old_quantity:
-        ifcopenshell.util.element.remove_deep2(file, old_quantity)
+    _capi.call_status(
+        "resource_remove_resource_quantity",
+        _capi.file_handle(file),
+        _capi.instance_handle(resource),
+    )

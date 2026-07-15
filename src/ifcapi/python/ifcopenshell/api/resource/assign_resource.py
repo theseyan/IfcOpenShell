@@ -17,8 +17,7 @@
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
 import ifcopenshell
-import ifcopenshell.api.owner
-import ifcopenshell.guid
+from ifcopenshell.api.resource import _capi
 
 
 def assign_resource(
@@ -79,28 +78,12 @@ def assign_resource(
         # This means that UCO is now our crane operator.
         ifcopenshell.api.resource.assign_resource(model, relating_resource=crane, related_object=actor)
     """
-    if related_object.HasAssignments:
-        for assignment in related_object.HasAssignments:
-            if assignment.is_a("IfclRelAssignsToResource") and assignment.RelatingResource == relating_resource:
-                return assignment
-
-    resource_of = None
-    if relating_resource.ResourceOf:
-        resource_of = relating_resource.ResourceOf[0]
-
-    if resource_of:
-        related_objects = list(resource_of.RelatedObjects)
-        related_objects.append(related_object)
-        resource_of.RelatedObjects = related_objects
-        ifcopenshell.api.owner.update_owner_history(file, element=resource_of)
-    else:
-        resource_of = file.create_entity(
-            "IfcRelAssignsToResource",
-            **{
-                "GlobalId": ifcopenshell.guid.new(),
-                "OwnerHistory": ifcopenshell.api.owner.create_owner_history(file),
-                "RelatedObjects": [related_object],
-                "RelatingResource": relating_resource,
-            }
-        )
-    return resource_of
+    owner_options, owner_refs = _capi.owner_options(file)
+    options = {
+        "relating_resource": _capi.instance_handle(relating_resource),
+        "related_object": _capi.instance_handle(related_object),
+        **owner_options,
+    }
+    return _capi.call_handle(
+        file, "resource_assign_resource", _capi.file_handle(file), options
+    )

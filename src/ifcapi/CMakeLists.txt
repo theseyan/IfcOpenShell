@@ -134,6 +134,8 @@ if(BUILD_TESTING AND NOT WASM_BUILD)
         tests/test_style.c
         tests/test_material.c
         tests/test_unit.c
+        tests/test_resource.c
+        tests/test_nest.c
     )
     target_link_libraries(ifcapi_c_smoke_test PRIVATE ifcopenshell_capi)
     target_include_directories(ifcapi_c_smoke_test PRIVATE

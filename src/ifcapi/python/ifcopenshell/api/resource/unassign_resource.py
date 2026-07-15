@@ -17,8 +17,7 @@
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
 import ifcopenshell
-import ifcopenshell.api.owner
-import ifcopenshell.util.element
+from ifcopenshell.api.resource import _capi
 
 
 def unassign_resource(
@@ -57,16 +56,10 @@ def unassign_resource(
         ifcopenshell.api.resource.unassign_resource(model,
             relating_resource=crane, related_object=product)
     """
-    for rel in related_object.HasAssignments or []:
-        if not rel.is_a("IfcRelAssignsToResource") or rel.RelatingResource != relating_resource:
-            continue
-        if len(rel.RelatedObjects) == 1:
-            history = rel.OwnerHistory
-            file.remove(rel)
-            if history:
-                ifcopenshell.util.element.remove_deep2(file, history)
-            return
-        related_objects = list(rel.RelatedObjects)
-        related_objects.remove(related_object)
-        rel.RelatedObjects = related_objects
-        ifcopenshell.api.owner.update_owner_history(file, element=rel)
+    owner_options, owner_refs = _capi.owner_options(file)
+    options = {
+        "relating_resource": _capi.instance_handle(relating_resource),
+        "related_object": _capi.instance_handle(related_object),
+        **owner_options,
+    }
+    _capi.call_status("resource_unassign_resource", _capi.file_handle(file), options)

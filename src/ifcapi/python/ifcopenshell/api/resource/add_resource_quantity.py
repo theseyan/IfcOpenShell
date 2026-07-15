@@ -16,12 +16,14 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
-import ifcopenshell.util.element
-import ifcopenshell.util.resource
+import ifcopenshell
+from ifcopenshell.api.resource import _capi
 
 
 def add_resource_quantity(
-    file: ifcopenshell.file, resource: ifcopenshell.entity_instance, ifc_class: str = "IfcQuantityCount"
+    file: ifcopenshell.file,
+    resource: ifcopenshell.entity_instance,
+    ifc_class: str = "IfcQuantityCount",
 ) -> ifcopenshell.entity_instance:
     """Adds a quantity to a resource
 
@@ -62,22 +64,17 @@ def add_resource_quantity(
         ifcopenshell.api.resource.edit_resource_quantity(model,
             physical_quantity=quantity, attributes={"TimeValue": 8.0})
     """
-    resource_type = resource.is_a()
-    supported_quantities = ifcopenshell.util.resource.RESOURCES_TO_QUANTITIES[resource_type]
-    if ifc_class not in supported_quantities:
-        raise ValueError(
-            f"Resource type '{resource_type}' does not support quantity type '{ifc_class}'. "
-            f"Supported quantities: {','.join(supported_quantities)}"
+    try:
+        return _capi.call_handle(
+            file,
+            "resource_add_resource_quantity",
+            _capi.file_handle(file),
+            _capi.instance_handle(resource),
+            ifc_class,
         )
-
-    quantity = file.create_entity(ifc_class, Name="Unnamed")
-    # 3 IfcPhysicalSimpleQuantity Value
-    if ifc_class == "IfcQuantityCount":
-        quantity[3] = 0
-    else:
-        quantity[3] = 0.0
-    old_quantity = resource.BaseQuantity
-    resource.BaseQuantity = quantity
-    if old_quantity:
-        ifcopenshell.util.element.remove_deep2(file, old_quantity)
-    return quantity
+    except RuntimeError as error:
+        if "does not support quantity type" in str(
+            error
+        ) or "Invalid resource quantity class" in str(error):
+            raise ValueError(str(error)) from error
+        raise
