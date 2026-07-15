@@ -543,6 +543,70 @@ def test_c_abi_result_structs_destroy_nested_values_and_handle_envelopes() -> No
     )
 
 
+def test_c_abi_result_record_sequences_are_owned_and_dependency_ordered() -> None:
+    support = ResultStructSpec(
+        name="Support",
+        cpp_type="Demo::Support",
+        c_type="ifcopenshell_demo_support_t",
+        fields=(
+            ResultStructFieldSpec("points", TypeSpec(kind="double", sequence_depth=2)),
+        ),
+    )
+    result = ResultStructSpec(
+        name="Result",
+        cpp_type="Demo::Result",
+        c_type="ifcopenshell_demo_result_t",
+        fields=(
+            ResultStructFieldSpec(
+                "supports",
+                TypeSpec(kind="struct", struct="Support", sequence_depth=1),
+            ),
+        ),
+    )
+    spec = finalize_binding_ir(
+        BindingIR(
+            module="demo",
+            c_prefix="ifcopenshell_demo",
+            public_headers=(),
+            handles={},
+            result_structs={"Result": result, "Support": support},
+            calls=(
+                CallIR(
+                    expose_as="supports",
+                    c_name="ifcopenshell_demo_supports",
+                    receiver=None,
+                    returns=TypeSpec(kind="struct", struct="Support", sequence_depth=1),
+                    params=(),
+                    operation=DirectCallOp(cpp_name="Demo::supports"),
+                ),
+                CallIR(
+                    expose_as="result",
+                    c_name="ifcopenshell_demo_result",
+                    receiver=None,
+                    returns=TypeSpec(kind="struct", struct="Result"),
+                    params=(),
+                    operation=DirectCallOp(cpp_name="Demo::result"),
+                ),
+            ),
+        )
+    )
+
+    header = _render_header(spec)
+    cpp = _render_cpp(spec, "demo_api.h")
+    support_pos = header.index("} ifcopenshell_demo_support_t;")
+    list_pos = header.index("} ifcopenshell_demo_support_list_t;")
+    result_pos = header.index("} ifcopenshell_demo_result_t;")
+
+    assert support_pos < list_pos < result_pos
+    assert "ifcopenshell_demo_support_t* items;" in header
+    assert "ifcopenshell_demo_support_list_t supports;" in header
+    assert "ifcopenshell_demo_support_list_destroy" in header
+    assert "new ifcopenshell_demo_support_t[values.size()]{}" in cpp
+    assert "ifcopenshell_demo_support_destroy(&items[i]);" in cpp
+    assert "ifcopenshell_demo_support_list_destroy(&value->supports);" in cpp
+    assert "catch (...)" in cpp
+
+
 def test_generated_compound_cleanup_runtime_preserves_transferred_handles(
     tmp_path: Path,
 ) -> None:

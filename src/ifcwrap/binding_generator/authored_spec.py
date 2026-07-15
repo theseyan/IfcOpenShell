@@ -1358,7 +1358,11 @@ def _parse_discovery(
                 if ownership_raw is not None
                 else None
             )
-            if ownership is not None and ownership not in {"owned", "borrowed", "static"}:
+            if ownership is not None and ownership not in {
+                "owned",
+                "borrowed",
+                "static",
+            }:
                 msg = f"{accessor_context}.ownership must be one of owned, borrowed, static"
                 raise ValueError(msg)
             method_at_accessors.append(
@@ -1995,7 +1999,9 @@ def _type_spec_from_record_semantic(
             )
             normalized = _normalize_cpp_type(semantic.cpp_type)
             is_reference = normalized.endswith("&") or normalized.endswith("&&")
-            is_raw_pointer = semantic.pointer_wrapper is None and normalized.endswith("*")
+            is_raw_pointer = semantic.pointer_wrapper is None and normalized.endswith(
+                "*"
+            )
             is_nullable_pointer = semantic.pointer_wrapper == "unique_ptr"
             resolved_ownership = (
                 "owned"
@@ -2068,11 +2074,21 @@ def _lower_generic_sequence_type(
     *,
     handles: dict[str, HandleSpec],
     ownership: str,
+    result_structs: dict[str, ResultStructSpec] | None = None,
 ) -> TypeSpec | None:
     leaf = semantic_leaf_type(semantic)
     depth = semantic_sequence_depth(semantic)
 
     if isinstance(leaf, RecordSemanticType):
+        result_spec = _type_spec_from_result_struct_semantic(leaf, result_structs or {})
+        if result_spec is not None:
+            return TypeSpec(
+                kind="struct",
+                struct=result_spec.struct,
+                ownership="copy",
+                cpp_type=semantic.cpp_type,
+                sequence_depth=depth,
+            )
         record_spec = _type_spec_from_record_semantic(
             leaf, handles=handles, ownership=ownership, nullable=False
         )
@@ -2220,7 +2236,10 @@ def _infer_type(
                     cpp_type=_cpp_type_storage(cpp_type),
                 )
         sequence_spec = _lower_generic_sequence_type(
-            semantic, handles=handles, ownership=ownership
+            semantic,
+            handles=handles,
+            ownership=ownership,
+            result_structs=result_structs,
         )
         if sequence_spec is None:
             reparsed_sequence = analyze_cpp_type(semantic.cpp_type)
@@ -2229,7 +2248,10 @@ def _infer_type(
                 and reparsed_sequence != semantic
             ):
                 sequence_spec = _lower_generic_sequence_type(
-                    reparsed_sequence, handles=handles, ownership=ownership
+                    reparsed_sequence,
+                    handles=handles,
+                    ownership=ownership,
+                    result_structs=result_structs,
                 )
         if sequence_spec is not None:
             return sequence_spec
@@ -3844,9 +3866,7 @@ def _discover_method_calls(
                     f"which does not contain item handle type '{item_handle.cpp_type}'"
                 )
                 raise ValueError(msg)
-            inferred_container = _infer_return_type(
-                discovered.return_type_ref, handles
-            )
+            inferred_container = _infer_return_type(discovered.return_type_ref, handles)
             if (
                 inferred_container.kind != "handle"
                 or inferred_container.handle != accessor.item_handle

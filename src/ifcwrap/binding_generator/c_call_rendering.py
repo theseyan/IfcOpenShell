@@ -4,7 +4,13 @@ from __future__ import annotations
 
 import json
 
-from .abi_ir import _BUFFER_TYPES, _SCALAR_PARAM_TYPES, _snake_name, _variant_c_type
+from .abi_ir import (
+    _BUFFER_TYPES,
+    _SCALAR_PARAM_TYPES,
+    _result_record_list_make_name,
+    _snake_name,
+    _variant_c_type,
+)
 from .authored_spec import ParamSpec, TypeSpec, _extract_optional_inner_type
 from .binding_ir import (
     ArrayElementFieldOp,
@@ -155,12 +161,18 @@ def _render_result_struct_field_assignments(
                     f"Result struct field {field.name} is missing struct name"
                 )
             nested = spec.result_structs[field_type.struct]
-            assignments.append(f"{indent}{target_field} = {{}};")
-            assignments.extend(
-                _render_result_struct_field_assignments(
-                    nested, spec, field_expr, target_field, indent
+            if field_type.sequence_depth == 1:
+                assignments.append(
+                    f"{indent}{target_field} = "
+                    f"{_result_record_list_make_name(nested)}(std::move({field_expr}));"
                 )
-            )
+            else:
+                assignments.append(f"{indent}{target_field} = {{}};")
+                assignments.extend(
+                    _render_result_struct_field_assignments(
+                        nested, spec, field_expr, target_field, indent
+                    )
+                )
         else:
             raise ValueError(f"Unsupported result struct field kind: {field_type.kind}")
     return assignments
@@ -334,6 +346,8 @@ def _render_result_assignment(call: CallIR, spec: BindingIR, expr: str) -> str:
         if type_spec.struct is None:
             raise ValueError(f"{call.c_name} struct return is missing struct name")
         struct = spec.result_structs[type_spec.struct]
+        if type_spec.sequence_depth == 1:
+            return f"*out_result = {_result_record_list_make_name(struct)}({expr});"
         if spec.abi is None:
             raise ValueError("C emission requires a finalized BindingIR")
         out_param = next(

@@ -2,7 +2,13 @@
 
 from __future__ import annotations
 
-from .abi_ir import _handle_destroy_name, _option_list_c_type
+from .abi_ir import (
+    _handle_destroy_name,
+    _option_list_c_type,
+    _result_record_list_c_type,
+    _result_record_list_destroy_name,
+    _used_result_record_lists,
+)
 from .authored_spec import HandleSpec
 from .binding_ir import BindingIR
 from .c_sequence_helpers import (
@@ -56,10 +62,21 @@ def _render_header(spec: BindingIR) -> str:
         f"}} {_handle_list_list_c_type(handle)};"
         for handle in handle_list_types
     )
-    result_struct_decls = "\n\n".join(
-        _render_result_struct_decl(struct, spec)
-        for struct in _ordered_result_structs(spec)
-    )
+    result_record_lists = {
+        struct.name: struct for struct in _used_result_record_lists(spec)
+    }
+    result_decl_blocks = []
+    for struct in _ordered_result_structs(spec):
+        result_decl_blocks.append(_render_result_struct_decl(struct, spec))
+        if struct.name in result_record_lists:
+            list_type = _result_record_list_c_type(struct)
+            result_decl_blocks.append(
+                f"typedef struct {list_type} {{\n"
+                f"    {struct.c_type}* items;\n"
+                f"    size_t size;\n"
+                f"}} {list_type};"
+            )
+    result_struct_decls = "\n\n".join(result_decl_blocks)
     optional_result_struct_decls = "\n\n".join(
         _render_optional_result_struct_decl(call.returns, spec)
         for call in spec.calls
@@ -99,6 +116,11 @@ def _render_header(spec: BindingIR) -> str:
     )
     variant_destroy_decls = _render_variant_destroy_decls(spec)
     result_struct_destroy_decls = _render_result_struct_destroy_decls(spec.abi)
+    result_record_list_destroy_decls = "\n".join(
+        f"void {_result_record_list_destroy_name(struct)}("
+        f"{_result_record_list_c_type(struct)}* value);"
+        for struct in _used_result_record_lists(spec)
+    )
     call_decls = "\n".join(_render_call_decl(call, spec) for call in spec.calls)
     sequence_kinds = _used_scalar_sequence_kinds(spec)
     common_type_decls = _render_common_type_decls(sequence_kinds)
@@ -154,6 +176,7 @@ int {spec.c_prefix}_last_error_kind(void);
 {handle_list_destroy_decls}
 {handle_list_list_destroy_decls}
 {result_struct_destroy_decls}
+{result_record_list_destroy_decls}
 {variant_destroy_decls}
 
 {call_decls}

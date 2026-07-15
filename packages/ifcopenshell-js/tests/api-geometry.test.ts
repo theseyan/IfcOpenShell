@@ -1,6 +1,7 @@
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { IfcFile, type Entity, type IfcOpenShell } from '../src/index.js';
+import type { IfcOpenShellGeometryWallMountedHandrailResult } from '../src/generated/ifcopenshell_api.js';
 import { createInstance, describeGeneratedOrSkip, GENERATED_WASM_DIR } from './_helper.js';
 
 describeGeneratedOrSkip('generated geometry and presentation API', () => {
@@ -155,6 +156,91 @@ describeGeneratedOrSkip('generated geometry and presentation API', () => {
   });
 
   describe('geometry', () => {
+    it('computes ergonomic nested railing geometry without an IFC file', () => {
+      const result: IfcOpenShellGeometryWallMountedHandrailResult =
+        shell.api.geometry.computeWallMountedHandrailGeometry({
+          railingPath: [[0, 0, 1], [2, 0, 1]],
+          supportSpacing: 1,
+          railingDiameter: 0.05,
+          clearWidth: 0.04,
+          height: 1,
+          terminalType: 'NONE',
+        });
+
+      expect(result).toEqual({
+        handrailPolyline: [[0, 0, 1.025], [2, 0, 1.025]],
+        handrailArcPointIndices: [],
+        handrailRadius: 0.025,
+        supports: expect.any(Array),
+      });
+      expect(result.supports).toHaveLength(3);
+      expect(result.supports[0]).toMatchObject({
+        arcPolyline: expect.any(Array),
+        arcRadius: 0.01,
+        diskPosition: expect.any(Array),
+        diskRadius: 0.025,
+        diskDepth: 0.02,
+        diskZRotation: expect.any(Number),
+      });
+      expect(result.supports[0].arcPolyline).toHaveLength(3);
+      expect(result.supports[0].diskPosition).toEqual(result.supports[0].arcPolyline[2]);
+    });
+
+    it('handles manual, looped, collinear, and degenerate railing paths', () => {
+      const required = {
+        supportSpacing: 1,
+        railingDiameter: 0.05,
+        clearWidth: 0.04,
+        height: 1,
+      };
+      const manual = shell.api.geometry.computeWallMountedHandrailGeometry({
+        ...required,
+        railingPath: [[0, 0, 1], [1, 0, 1], [2, 0, 1]],
+        useManualSupports: true,
+        terminalType: 'NONE',
+      });
+      expect(manual.supports).toHaveLength(1);
+
+      const loop = shell.api.geometry.computeWallMountedHandrailGeometry({
+        ...required,
+        railingPath: [[0, 0, 1], [2, 0, 1], [2, 2, 1], [0, 2, 1]],
+        loopedPath: true,
+      });
+      expect(loop.handrailArcPointIndices).toHaveLength(4);
+      expect(loop.handrailPolyline.flat().every(Number.isFinite)).toBe(true);
+
+      const degenerate = shell.api.geometry.computeWallMountedHandrailGeometry({
+        ...required,
+        railingPath: [[0, 0, 1], [0, 0, 1], [0.6, 0.8, 1], [1.2, 1.6, 1]],
+        terminalType: 'NONE',
+      });
+      expect(degenerate.handrailArcPointIndices).toEqual([]);
+      expect(degenerate.handrailPolyline.flat().every(Number.isFinite)).toBe(true);
+
+      expect(() => shell.api.geometry.computeWallMountedHandrailGeometry({
+        ...required,
+        railingPath: [[0, 0, 1]],
+      })).toThrow(/at least two/i);
+    });
+
+    it('materializes a default railing with the handrail item last', async () => {
+      await using file = await IfcFile.createEmpty(shell, 'IFC4');
+      const context = await withBodyContext(file);
+      const representation = shell.api.geometry.addRailingRepresentation(file, {
+        context,
+        railingPath: [[0, 0, 1], [2, 0, 1]],
+        terminalType: 'NONE',
+      });
+
+      expect(representation.type).toBe('IfcShapeRepresentation');
+      expect(representation.get('RepresentationType')).toBe('SolidModel');
+      using itemsAttribute = representation.attribute('Items');
+      const items = itemsAttribute.entities();
+      expect(items).toHaveLength(7);
+      expect(items.at(-1)?.type).toBe('IfcSweptDiskSolid');
+      items.forEach((item) => item.dispose());
+    });
+
     it('adds profile representation through the generated API', async () => {
       await using file = await IfcFile.createEmpty(shell, 'IFC4');
       const context = await withBodyContext(file);

@@ -3,6 +3,7 @@
 
 #include "ifcapi/bindings/geometry.h"
 #include "ifcapi/bindings/shape_builder.h"
+#include "ifcapi/bindings/unit.h"
 #include "ifcapi/detail/shape_builder.h"
 #include "ifcapi/detail/vector.h"
 
@@ -10,7 +11,9 @@
 #include "ifcparse/file.h"
 
 #include <algorithm>
+#include <array>
 #include <cmath>
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -19,288 +22,400 @@
 
 namespace {
 
+using Point = std::vector<double>;
+using Points = std::vector<Point>;
+using ifcapi::bindings::GeometryRailingSupport;
+using ifcapi::bindings::GeometryWallMountedHandrailResult;
+
 constexpr double PI = 3.141592653589793238462643383279502884;
+constexpr double PRECISION = 1e-5;
+constexpr double NUMERIC_EPSILON = 1e-12;
+constexpr double ARC_MIDDLE_POINT_COS = 0.707106781186547524400844362104849039;
 
-inline double mm(double value) { return value / 1000.0; }
-inline double to_unit(double value, double unit_scale) { return value / unit_scale; }
-inline void set_error(const char* msg) { ifcopenshell::capi::set_last_error(msg); }
+double mm(double value) { return value / 1000.0; }
 
-std::vector<double> xy_yx_orthogonal(const std::vector<double>& direction) {
-    return ifcapi::detail::np_normalized(ifcapi::detail::np_to_3d({direction.at(1), -direction.at(0)}));
+struct RailingDims {
+    double railing_radius;
+    double height_below_handrail;
+    double terminal_radius;
+    double fillet_radius;
+    double support_spacing;
+    double support_length;
+    double support_arc_radius;
+    double support_disk_radius;
+    double support_disk_depth;
+    double clear_width;
+    std::string cap_type;
+};
+
+bool finite(double value) { return std::isfinite(value); }
+
+bool finite_point(const Point& point) {
+    return point.size() == 3 && std::all_of(point.begin(), point.end(), [](double value) { return finite(value); });
 }
 
-express::Base extrude_support_disk(
-    ifcopenshell::file* file,
-    express::Base circle,
-    double depth,
-    const std::vector<double>& position,
-    double angle)
-{
-    const double rotated = -angle;
-    return ifcapi::bindings::shape_builder_extrude(
-        file,
-        ifcapi::bindings::ShapeBuilderExtrudeOptions{
-            circle,
-            depth,
-            position,
-            {0.0, 0.0, -1.0},
-            ifcapi::detail::rotate_xy({0.0, -1.0, 0.0}, rotated),
-            ifcapi::detail::rotate_xy({1.0, 0.0, 0.0}, rotated),
-            {}});
+bool finite_points(const Points& points) {
+    return std::all_of(points.begin(), points.end(), finite_point);
 }
 
-std::vector<express::Base> add_support_on_point(
-    ifcopenshell::file* file,
-    const std::vector<double>& point,
-    const std::vector<double>& railing_direction,
-    double support_length,
-    double support_radius,
-    double support_disk_radius,
-    double support_disk_depth)
+std::optional<Point> normalized(const Point& value) {
+    if (!finite_point(value)) return std::nullopt;
+    const double length = ifcapi::detail::vec_norm(value);
+    if (!finite(length) || length <= NUMERIC_EPSILON) return std::nullopt;
+    auto result = ifcapi::detail::vec_mul(value, 1.0 / length);
+    return finite_point(result) ? std::optional<Point>(std::move(result)) : std::nullopt;
+}
+
+bool collinear(const Point& d0, const Point& d1) {
+    return ifcapi::detail::vec_norm(ifcapi::detail::vec_cross3(d0, d1)) < PRECISION;
+}
+
+std::optional<Point> horizontal_orthogonal(const Point& direction) {
+    if (direction.size() != 3) return std::nullopt;
+    return normalized({direction[1], -direction[0], 0.0});
+}
+
+Point cap_orthogonal(const Point& direction) {
+    if (auto result = horizontal_orthogonal(direction)) return *result;
+    return {1.0, 0.0, 0.0};
+}
+
+std::optional<Point> line_intersection(
+    const Point& p1,
+    const Point& p2,
+    const Point& p3,
+    const Point& p4)
 {
-    const auto z_down = ifcapi::detail::v3(0.0, 0.0, -1.0);
-    const auto ortho_dir = xy_yx_orthogonal(railing_direction);
-    const auto arc_center = ifcapi::detail::vec_add(point, ifcapi::detail::vec_mul(ortho_dir, support_length));
-    std::vector<std::vector<double>> support_points = {
+    const auto u = ifcapi::detail::vec_sub(p2, p1);
+    const auto v = ifcapi::detail::vec_sub(p4, p3);
+    const auto w = ifcapi::detail::vec_sub(p1, p3);
+    const double uu = ifcapi::detail::vec_dot(u, u);
+    const double uv = ifcapi::detail::vec_dot(u, v);
+    const double vv = ifcapi::detail::vec_dot(v, v);
+    const double uw = ifcapi::detail::vec_dot(u, w);
+    const double vw = ifcapi::detail::vec_dot(v, w);
+    const double denominator = uu * vv - uv * uv;
+    const double scale = std::max(1.0, uu * vv);
+    if (!finite(denominator) || std::abs(denominator) <= NUMERIC_EPSILON * scale) return std::nullopt;
+    const double s = (uv * vw - vv * uw) / denominator;
+    const double t = (uu * vw - uv * uw) / denominator;
+    if (!finite(s) || !finite(t)) return std::nullopt;
+    auto first = ifcapi::detail::vec_add(p1, ifcapi::detail::vec_mul(u, s));
+    auto second = ifcapi::detail::vec_add(p3, ifcapi::detail::vec_mul(v, t));
+    if (!finite_point(first) || !finite_point(second) ||
+        ifcapi::detail::vec_norm(ifcapi::detail::vec_sub(first, second)) > PRECISION) {
+        return std::nullopt;
+    }
+    return first;
+}
+
+std::optional<Points> fillet_points(const Point& v0, const Point& v1, const Point& v2, double radius) {
+    const auto dir1 = normalized(ifcapi::detail::vec_sub(v0, v1));
+    const auto dir2 = normalized(ifcapi::detail::vec_sub(v2, v1));
+    if (!dir1 || !dir2) return std::nullopt;
+    const double cosine = std::clamp(ifcapi::detail::vec_dot(*dir1, *dir2), -1.0, 1.0);
+    const double edge_angle = std::acos(cosine);
+    const double tangent = std::tan(edge_angle / 2.0);
+    if (!finite(tangent) || std::abs(tangent) <= NUMERIC_EPSILON) return std::nullopt;
+    const double slide_distance = radius / tangent;
+    if (!finite(slide_distance)) return std::nullopt;
+
+    auto first = ifcapi::detail::vec_add(v1, ifcapi::detail::vec_mul(*dir1, slide_distance));
+    auto last = ifcapi::detail::vec_add(v1, ifcapi::detail::vec_mul(*dir2, slide_distance));
+    const auto normal = normalized(ifcapi::detail::vec_cross3(
+        ifcapi::detail::vec_sub(v1, v0), ifcapi::detail::vec_sub(v2, v0)));
+    if (!normal) return std::nullopt;
+    const auto center = line_intersection(
+        first,
+        ifcapi::detail::vec_add(first, ifcapi::detail::vec_cross3(*normal, *dir1)),
+        last,
+        ifcapi::detail::vec_add(last, ifcapi::detail::vec_cross3(*normal, *dir2)));
+    if (!center) return std::nullopt;
+    const auto middle_direction = normalized(ifcapi::detail::vec_sub(ifcapi::detail::np_lerp(first, last, 0.5), *center));
+    if (!middle_direction) return std::nullopt;
+    auto middle = ifcapi::detail::vec_add(*center, ifcapi::detail::vec_mul(*middle_direction, radius));
+    Points result = {std::move(first), std::move(middle), std::move(last)};
+    return finite_points(result) ? std::optional<Points>(std::move(result)) : std::nullopt;
+}
+
+std::optional<GeometryRailingSupport> make_support(
+    const Point& point,
+    const Point& railing_direction,
+    const RailingDims& dims)
+{
+    const auto ortho = horizontal_orthogonal(railing_direction);
+    if (!ortho) return std::nullopt;
+    const Point z_down = {0.0, 0.0, -1.0};
+    const auto arc_center = ifcapi::detail::vec_add(point, ifcapi::detail::vec_mul(*ortho, dims.support_length));
+    Points support_points = {
         point,
         ifcapi::detail::vec_add(
-            ifcapi::detail::vec_sub(arc_center, ifcapi::detail::vec_mul(ortho_dir, support_length * std::cos(PI / 4.0))),
-            ifcapi::detail::vec_mul(z_down, support_length * std::sin(PI / 4.0))),
-        ifcapi::detail::vec_add(arc_center, ifcapi::detail::vec_mul(z_down, support_length)),
+            ifcapi::detail::vec_sub(
+                arc_center,
+                ifcapi::detail::vec_mul(*ortho, dims.support_length * std::cos(PI / 4.0))),
+            ifcapi::detail::vec_mul(z_down, dims.support_length * std::sin(PI / 4.0))),
+        ifcapi::detail::vec_add(arc_center, ifcapi::detail::vec_mul(z_down, dims.support_length)),
     };
-    auto polyline = ifcapi::bindings::shape_builder_polyline(
-        file,
-        ifcapi::bindings::ShapeBuilderPolylineOptions{support_points, false, {}, {1}});
-    auto solid = ifcapi::bindings::shape_builder_swept_disk_solid(file, &polyline, support_radius);
-    auto disk_circle = ifcapi::bindings::shape_builder_circle(file, {}, support_disk_radius);
-    const double angle = ifcapi::detail::np_angle_signed({0.0, 1.0}, {ortho_dir[0], ortho_dir[1]});
-    auto disk = extrude_support_disk(file, disk_circle, support_disk_depth, support_points.back(), angle);
-    return {solid, disk};
+    if (!finite_points(support_points)) return std::nullopt;
+    const double disk_rotation = std::atan2((*ortho)[0], (*ortho)[1]);
+    if (!finite(disk_rotation)) return std::nullopt;
+    return GeometryRailingSupport{
+        support_points,
+        dims.support_arc_radius,
+        support_points.back(),
+        dims.support_disk_radius,
+        dims.support_disk_depth,
+        disk_rotation};
 }
 
-std::vector<double> get_fillet_points_midpoint(
-    const std::vector<double>& v0,
-    const std::vector<double>& v1,
-    const std::vector<double>& v2,
-    double radius,
-    std::vector<double>& out_first,
-    std::vector<double>& out_last)
-{
-    const auto dir1 = ifcapi::detail::np_normalized(ifcapi::detail::vec_sub(v0, v1));
-    const auto dir2 = ifcapi::detail::np_normalized(ifcapi::detail::vec_sub(v2, v1));
-    const double edge_angle = ifcapi::detail::np_angle(dir1, dir2);
-    const double slide_distance = radius / std::tan(edge_angle / 2.0);
-    out_first = ifcapi::detail::vec_add(v1, ifcapi::detail::vec_mul(dir1, slide_distance));
-    out_last = ifcapi::detail::vec_add(v1, ifcapi::detail::vec_mul(dir2, slide_distance));
-    const auto normal = ifcapi::detail::np_normal({v0, v1, v2});
-    const auto center = ifcapi::detail::np_intersect_line_line(
-        out_first,
-        ifcapi::detail::vec_add(out_first, ifcapi::detail::vec_cross3(normal, dir1)),
-        out_last,
-        ifcapi::detail::vec_add(out_last, ifcapi::detail::vec_cross3(normal, dir2)))[0];
-    const auto dir = ifcapi::detail::np_normalized(ifcapi::detail::vec_sub(ifcapi::detail::np_lerp(out_first, out_last, 0.5), center));
-    return ifcapi::detail::vec_add(center, ifcapi::detail::vec_mul(dir, radius));
-}
-
-std::vector<std::vector<double>> get_fillet_points(
-    const std::vector<double>& v0,
-    const std::vector<double>& v1,
-    const std::vector<double>& v2,
-    double radius)
-{
-    std::vector<double> first;
-    std::vector<double> last;
-    auto middle = get_fillet_points_midpoint(v0, v1, v2, radius, first, last);
-    return {first, middle, last};
-}
-
-bool collinear(const std::vector<double>& d0, const std::vector<double>& d1) {
-    return ifcapi::detail::is_x(ifcapi::detail::np_angle(d0, d1), 0.0);
-}
-
-std::vector<std::vector<double>> add_arcs_on_turning_points(
-    const std::vector<std::vector<double>>& base_points,
-    std::vector<std::vector<double>>& arc_points,
-    double railing_fillet_radius,
-    bool looped_path)
-{
-    if (base_points.size() < 3) {
-        return base_points;
-    }
-    std::vector<std::vector<double>> output = {base_points.front()};
-    auto prev_dir = ifcapi::detail::np_normalized(ifcapi::detail::vec_sub(base_points[1], base_points[0]));
-    size_t i = 1;
-    while (i < base_points.size() - 1) {
-        auto cur_dir = ifcapi::detail::np_normalized(ifcapi::detail::vec_sub(base_points[i + 1], base_points[i]));
-        if (collinear(cur_dir, prev_dir)) {
-            output.push_back(base_points[i]);
-        } else {
-            auto fillet_points = get_fillet_points(base_points[i - 1], base_points[i], base_points[i + 1], railing_fillet_radius);
-            output.insert(output.end(), fillet_points.begin(), fillet_points.end());
-            arc_points.push_back(fillet_points[1]);
-        }
-        prev_dir = cur_dir;
-        ++i;
-    }
-    if (looped_path) {
-        output[0] = output.back();
-    } else {
-        output.push_back(base_points.back());
-    }
-    return output;
-}
-
-std::vector<express::Base> create_supports_items(
-    ifcopenshell::file* file,
-    const std::vector<std::vector<double>>& railing_coords,
+std::vector<GeometryRailingSupport> collect_supports(
+    const Points& coords,
     bool manual_supports,
-    double support_spacing,
-    double support_length,
-    double support_radius,
-    double support_disk_radius,
-    double support_disk_depth)
+    const RailingDims& dims)
 {
-    std::vector<express::Base> supports;
-    std::vector<std::vector<double>> simplified = {railing_coords.front()};
-    auto prev_dir = ifcapi::detail::np_normalized(ifcapi::detail::vec_sub(railing_coords[1], railing_coords[0]));
-    for (size_t i = 1; i < railing_coords.size() - 1; ++i) {
-        auto cur_dir = ifcapi::detail::np_normalized(ifcapi::detail::vec_sub(railing_coords[i + 1], railing_coords[i]));
-        if (!collinear(cur_dir, prev_dir)) {
-            simplified.push_back(railing_coords[i]);
-            prev_dir = cur_dir;
+    std::vector<GeometryRailingSupport> supports;
+    Points simplified = {coords.front()};
+    std::optional<Point> previous_direction = normalized(ifcapi::detail::vec_sub(coords[1], coords[0]));
+
+    for (size_t i = 1; i + 1 < coords.size(); ++i) {
+        const auto current_direction = normalized(ifcapi::detail::vec_sub(coords[i + 1], coords[i]));
+        if (!current_direction) continue;
+        if (!previous_direction) {
+            previous_direction = current_direction;
+            continue;
+        }
+        if (!collinear(*current_direction, *previous_direction)) {
+            simplified.push_back(coords[i]);
+            previous_direction = current_direction;
         } else if (manual_supports) {
-            ifcapi::detail::append_items(
-                supports,
-                add_support_on_point(file, railing_coords[i], cur_dir, support_length, support_radius, support_disk_radius, support_disk_depth));
+            if (auto support = make_support(coords[i], *current_direction, dims)) supports.push_back(std::move(*support));
         }
     }
-    simplified.push_back(railing_coords.back());
-    if (manual_supports) {
-        return supports;
-    }
+    simplified.push_back(coords.back());
+    if (manual_supports) return supports;
 
     for (size_t i = 0; i + 1 < simplified.size(); ++i) {
         const auto edge = ifcapi::detail::vec_sub(simplified[i + 1], simplified[i]);
         const double length = ifcapi::detail::vec_norm(edge);
-        const auto edge_dir = ifcapi::detail::np_normalized(edge);
-        double n_supports_d = 0.0;
-        double support_offset = std::fmod(length, support_spacing);
-        n_supports_d = std::floor(length / support_spacing);
-        const int n_supports = static_cast<int>(n_supports_d) + 1;
-        support_offset /= 2.0;
-        const auto start_position = ifcapi::detail::vec_add(simplified[i], ifcapi::detail::vec_mul(edge_dir, support_offset));
-        for (int support_i = 0; support_i < n_supports; ++support_i) {
-            const auto support_position = ifcapi::detail::vec_add(start_position, ifcapi::detail::vec_mul(edge_dir, support_i * support_spacing));
-            ifcapi::detail::append_items(
-                supports,
-                add_support_on_point(file, support_position, edge, support_length, support_radius, support_disk_radius, support_disk_depth));
+        const auto edge_direction = normalized(edge);
+        if (!edge_direction || !finite(length) || !horizontal_orthogonal(edge)) continue;
+        const int count = static_cast<int>(std::floor(length / dims.support_spacing)) + 1;
+        const double remainder = std::fmod(length, dims.support_spacing);
+        const auto start = ifcapi::detail::vec_add(simplified[i], ifcapi::detail::vec_mul(*edge_direction, remainder / 2.0));
+        for (int support_index = 0; support_index < count; ++support_index) {
+            const auto position = ifcapi::detail::vec_add(
+                start, ifcapi::detail::vec_mul(*edge_direction, support_index * dims.support_spacing));
+            if (auto support = make_support(position, edge, dims)) supports.push_back(std::move(*support));
         }
     }
     return supports;
 }
 
-void add_cap(
-    std::vector<std::vector<double>>& railing_coords,
-    std::vector<std::vector<double>>& arc_points,
-    const std::string& cap_type,
-    double terminal_radius,
-    double clear_width,
-    double height,
-    bool start)
-{
-    auto coords = railing_coords;
-    auto arcs = arc_points;
+std::pair<Points, Points> add_turning_fillets(const Points& base_points, const RailingDims& dims, bool looped_path) {
+    Points arc_points;
+    if (base_points.size() < 3) return {base_points, arc_points};
+
+    Points output = {base_points.front()};
+    std::optional<Point> previous_direction = normalized(ifcapi::detail::vec_sub(base_points[1], base_points[0]));
+    for (size_t i = 1; i + 1 < base_points.size(); ++i) {
+        const auto current_direction = normalized(ifcapi::detail::vec_sub(base_points[i + 1], base_points[i]));
+        if (!current_direction) {
+            output.push_back(base_points[i]);
+            continue;
+        }
+        if (!previous_direction || collinear(*current_direction, *previous_direction)) {
+            output.push_back(base_points[i]);
+        } else if (auto fillet = fillet_points(base_points[i - 1], base_points[i], base_points[i + 1], dims.fillet_radius)) {
+            output.insert(output.end(), fillet->begin(), fillet->end());
+            arc_points.push_back((*fillet)[1]);
+        } else {
+            output.push_back(base_points[i]);
+        }
+        previous_direction = current_direction;
+    }
+    if (looped_path) {
+        output.front() = output.back();
+    } else {
+        output.push_back(base_points.back());
+    }
+    return {std::move(output), std::move(arc_points)};
+}
+
+std::optional<Point> terminal_direction(const Points& coords) {
+    if (coords.size() < 2) return std::nullopt;
+    for (size_t offset = 1; offset < coords.size(); ++offset) {
+        if (auto direction = normalized(ifcapi::detail::vec_sub(coords.back(), coords[coords.size() - 1 - offset]))) {
+            return direction;
+        }
+    }
+    return std::nullopt;
+}
+
+void add_cap(Points& railing_coords, Points& arc_points, bool start, const RailingDims& dims) {
+    if (dims.cap_type == "NONE") return;
+    Points coords = railing_coords;
+    Points arcs = arc_points;
     if (start) {
         std::reverse(coords.begin(), coords.end());
         std::reverse(arcs.begin(), arcs.end());
     }
-    auto start_point = coords.back();
-    auto cap_dir = ifcapi::detail::np_normalized(ifcapi::detail::vec_sub(coords.back(), coords[coords.size() - 2]));
-    auto ortho_dir = xy_yx_orthogonal(cap_dir);
-    auto local_z_down = ifcapi::detail::vec_cross3(cap_dir, ortho_dir);
-    if (start) {
-        ortho_dir = ifcapi::detail::vec_mul(ortho_dir, -1.0);
-    }
+    const auto direction = terminal_direction(coords);
+    if (!direction) return;
+    const Point start_point = coords.back();
+    Point ortho = cap_orthogonal(*direction);
+    Point local_z_down = ifcapi::detail::vec_cross3(*direction, ortho);
+    if (start) ortho = ifcapi::detail::vec_mul(ortho, -1.0);
+    const Point z_down = {0.0, 0.0, -1.0};
+    Points cap_coords;
 
-    const double arc_middle_point_cos = std::sin(45.0 * PI / 180.0);
-    std::vector<std::vector<double>> cap_coords;
-    if (cap_type == "180" || cap_type == "TO_END_POST") {
+    if (dims.cap_type == "180" || dims.cap_type == "TO_END_POST") {
         auto arc_point = ifcapi::detail::vec_add(
-            ifcapi::detail::vec_add(start_point, ifcapi::detail::vec_mul(cap_dir, terminal_radius)),
-            ifcapi::detail::vec_mul(local_z_down, terminal_radius));
+            ifcapi::detail::vec_add(start_point, ifcapi::detail::vec_mul(*direction, dims.terminal_radius)),
+            ifcapi::detail::vec_mul(local_z_down, dims.terminal_radius));
         arcs.push_back(arc_point);
-        cap_coords = {arc_point, ifcapi::detail::vec_add(start_point, ifcapi::detail::vec_mul(local_z_down, terminal_radius * 2.0))};
-        if (cap_type == "TO_END_POST") {
+        cap_coords = {arc_point, ifcapi::detail::vec_add(start_point, ifcapi::detail::vec_mul(local_z_down, 2.0 * dims.terminal_radius))};
+        if (dims.cap_type == "TO_END_POST") {
             auto end_point = coords[coords.size() - 2];
-            end_point[2] -= terminal_radius * 2.0;
-            cap_coords.push_back(end_point);
+            end_point[2] -= 2.0 * dims.terminal_radius;
+            cap_coords.push_back(std::move(end_point));
         }
-    } else if (cap_type == "TO_WALL") {
+    } else if (dims.cap_type == "TO_WALL") {
         auto arc_point = ifcapi::detail::vec_add(
-            ifcapi::detail::vec_add(start_point, ifcapi::detail::vec_mul(cap_dir, clear_width * arc_middle_point_cos)),
-            ifcapi::detail::vec_mul(ortho_dir, clear_width * (1.0 - arc_middle_point_cos)));
+            ifcapi::detail::vec_add(start_point, ifcapi::detail::vec_mul(*direction, dims.clear_width * ARC_MIDDLE_POINT_COS)),
+            ifcapi::detail::vec_mul(ortho, dims.clear_width * (1.0 - ARC_MIDDLE_POINT_COS)));
         arcs.push_back(arc_point);
-        cap_coords = {arc_point, ifcapi::detail::vec_add(ifcapi::detail::vec_add(start_point, ifcapi::detail::vec_mul(ortho_dir, clear_width)), ifcapi::detail::vec_mul(cap_dir, clear_width))};
-    } else if (cap_type == "TO_FLOOR") {
-        const auto z_down = ifcapi::detail::v3(0.0, 0.0, -1.0);
+        cap_coords = {arc_point, ifcapi::detail::vec_add(
+            ifcapi::detail::vec_add(start_point, ifcapi::detail::vec_mul(ortho, dims.clear_width)),
+            ifcapi::detail::vec_mul(*direction, dims.clear_width))};
+    } else if (dims.cap_type == "TO_FLOOR") {
         auto arc_point = ifcapi::detail::vec_add(
-            ifcapi::detail::vec_add(start_point, ifcapi::detail::vec_mul(cap_dir, terminal_radius * arc_middle_point_cos)),
-            ifcapi::detail::vec_mul(z_down, terminal_radius * (1.0 - arc_middle_point_cos)));
+            ifcapi::detail::vec_add(start_point, ifcapi::detail::vec_mul(*direction, dims.terminal_radius * ARC_MIDDLE_POINT_COS)),
+            ifcapi::detail::vec_mul(z_down, dims.terminal_radius * (1.0 - ARC_MIDDLE_POINT_COS)));
+        auto arc_end = ifcapi::detail::vec_add(
+            ifcapi::detail::vec_add(start_point, ifcapi::detail::vec_mul(*direction, dims.terminal_radius)),
+            ifcapi::detail::vec_mul(z_down, dims.terminal_radius));
         arcs.push_back(arc_point);
-        auto arc_end = ifcapi::detail::vec_add(ifcapi::detail::vec_add(start_point, ifcapi::detail::vec_mul(cap_dir, terminal_radius)), ifcapi::detail::vec_mul(z_down, terminal_radius));
-        cap_coords = {arc_point, arc_end, ifcapi::detail::vec_add(arc_end, ifcapi::detail::vec_mul(z_down, height - terminal_radius))};
-    } else if (cap_type == "TO_END_POST_AND_FLOOR") {
+        cap_coords = {arc_point, arc_end, ifcapi::detail::vec_add(
+            arc_end, ifcapi::detail::vec_mul(z_down, dims.height_below_handrail - dims.terminal_radius))};
+    } else if (dims.cap_type == "TO_END_POST_AND_FLOOR") {
         auto first_arc_end = ifcapi::detail::vec_add(
-            ifcapi::detail::vec_add(start_point, ifcapi::detail::vec_mul(cap_dir, terminal_radius)),
-            ifcapi::detail::vec_mul(local_z_down, terminal_radius));
-        auto first_arc = get_fillet_points(start_point, ifcapi::detail::vec_add(start_point, ifcapi::detail::vec_mul(cap_dir, terminal_radius)), first_arc_end, terminal_radius);
-        arcs.push_back(first_arc[1]);
+            ifcapi::detail::vec_add(start_point, ifcapi::detail::vec_mul(*direction, dims.terminal_radius)),
+            ifcapi::detail::vec_mul(local_z_down, dims.terminal_radius));
         auto end_point = coords[coords.size() - 2];
-        end_point[2] -= height;
-        auto second_arc = get_fillet_points(first_arc_end, ifcapi::detail::vec_add(first_arc_end, ifcapi::detail::vec_mul(local_z_down, terminal_radius)), end_point, terminal_radius);
-        arcs.push_back(second_arc[1]);
-        cap_coords = {start_point};
-        cap_coords.insert(cap_coords.end(), first_arc.begin(), first_arc.end());
-        cap_coords.insert(cap_coords.end(), second_arc.begin(), second_arc.end());
-        cap_coords.push_back(end_point);
-    } else if (cap_type != "NONE") {
-        throw std::runtime_error("Unsupported railing terminal type");
+        end_point[2] -= dims.height_below_handrail;
+        auto first = fillet_points(
+            start_point,
+            ifcapi::detail::vec_add(start_point, ifcapi::detail::vec_mul(*direction, dims.terminal_radius)),
+            first_arc_end,
+            dims.terminal_radius);
+        auto second = fillet_points(
+            first_arc_end,
+            ifcapi::detail::vec_add(first_arc_end, ifcapi::detail::vec_mul(local_z_down, dims.terminal_radius)),
+            end_point,
+            dims.terminal_radius);
+        if (first && second) {
+            cap_coords = {start_point};
+            cap_coords.insert(cap_coords.end(), first->begin(), first->end());
+            cap_coords.insert(cap_coords.end(), second->begin(), second->end());
+            cap_coords.push_back(end_point);
+            arcs.push_back((*first)[1]);
+            arcs.push_back((*second)[1]);
+        } else {
+            cap_coords = {first_arc_end, end_point};
+        }
     }
 
+    if (!finite_points(cap_coords)) return;
     coords.insert(coords.end(), cap_coords.begin(), cap_coords.end());
     if (start) {
         std::reverse(coords.begin(), coords.end());
         std::reverse(arcs.begin(), arcs.end());
     }
-    railing_coords = coords;
-    arc_points = arcs;
+    railing_coords = std::move(coords);
+    arc_points = std::move(arcs);
 }
 
-std::vector<int> get_arc_indices(
-    const std::vector<std::vector<double>>& points,
-    const std::vector<std::vector<double>>& arc_points)
-{
-    std::vector<int> arc_indices;
-    size_t i_base = 0;
+std::vector<int> arc_indices(const Points& points, const Points& arc_points) {
+    std::vector<int> result;
     size_t start = 0;
     for (const auto& arc_point : arc_points) {
         bool found = false;
         for (size_t i = start; i < points.size(); ++i) {
-            if (ifcapi::detail::vec_allclose(arc_point, points[i])) {
-                const size_t current = i;
-                arc_indices.push_back(static_cast<int>(current));
-                i_base = current + 1;
+            if (ifcapi::detail::np_allclose(arc_point, points[i])) {
+                result.push_back(static_cast<int>(i));
                 start = i + 1;
                 found = true;
                 break;
             }
         }
-        if (!found) {
-            throw std::runtime_error("Arc point is not present in railing points");
-        }
-        (void)i_base;
+        if (!found) throw std::runtime_error("Arc midpoint is not present in the handrail polyline");
     }
-    return arc_indices;
+    return result;
+}
+
+void validate_compute_options(
+    const ifcapi::bindings::GeometryComputeWallMountedHandrailOptions& options,
+    bool manual_supports,
+    const std::string& terminal_type,
+    double unit_scale)
+{
+    static const std::array<const char*, 6> terminals = {
+        "180", "TO_END_POST", "TO_WALL", "TO_FLOOR", "TO_END_POST_AND_FLOOR", "NONE"};
+    if (options.railing_path.size() < 2) throw std::invalid_argument("Railing path requires at least two points");
+    if (!finite_points(options.railing_path)) throw std::invalid_argument("Railing path must contain finite XYZ points");
+    if (std::find(terminals.begin(), terminals.end(), terminal_type) == terminals.end()) {
+        throw std::invalid_argument("Unsupported railing terminal type: " + terminal_type);
+    }
+    if (!finite(options.railing_diameter) || options.railing_diameter <= 0.0) {
+        throw std::invalid_argument("Railing diameter must be positive");
+    }
+    if (!finite(options.clear_width) || options.clear_width <= 0.0) {
+        throw std::invalid_argument("Railing clear width must be positive");
+    }
+    if (!finite(unit_scale) || unit_scale <= 0.0) throw std::invalid_argument("Unit scale must be positive");
+    const double radius = options.railing_diameter / 2.0;
+    if (!finite(options.height) || options.height < radius) {
+        throw std::invalid_argument("Railing height must be at least the handrail radius");
+    }
+    if (!finite(options.support_spacing)) throw std::invalid_argument("Support spacing must be finite");
+    if (!manual_supports && options.support_spacing <= 0.0) {
+        throw std::invalid_argument("Automatic support spacing must be positive");
+    }
+}
+
+express::Base require_entity(express::Base value, const char* operation) {
+    if (value) return value;
+    const char* detail = ifcopenshell_last_error_message();
+    throw std::runtime_error(detail && *detail ? detail : operation);
+}
+
+express::Base materialize_support(ifcopenshell::file* file, const GeometryRailingSupport& support) {
+    auto polyline = require_entity(
+        ifcapi::bindings::shape_builder_polyline(
+            file, ifcapi::bindings::ShapeBuilderPolylineOptions{support.arc_polyline, false, {}, {1}}),
+        "Failed to create railing support polyline");
+    return require_entity(
+        ifcapi::bindings::shape_builder_swept_disk_solid(file, &polyline, support.arc_radius),
+        "Failed to create railing support swept disk");
+}
+
+express::Base materialize_disk(ifcopenshell::file* file, const GeometryRailingSupport& support) {
+    auto circle = require_entity(
+        ifcapi::bindings::shape_builder_circle(file, {}, support.disk_radius),
+        "Failed to create railing support disk circle");
+    const double rotated = -support.disk_z_rotation;
+    return require_entity(
+        ifcapi::bindings::shape_builder_extrude(
+            file,
+            ifcapi::bindings::ShapeBuilderExtrudeOptions{
+                circle,
+                support.disk_depth,
+                support.disk_position,
+                {0.0, 0.0, -1.0},
+                ifcapi::detail::rotate_xy({0.0, -1.0, 0.0}, rotated),
+                ifcapi::detail::rotate_xy({1.0, 0.0, 0.0}, rotated),
+                {}}),
+        "Failed to create railing support attachment disk");
 }
 
 } // namespace
@@ -308,72 +423,100 @@ std::vector<int> get_arc_indices(
 namespace ifcapi {
 namespace bindings {
 
+GeometryWallMountedHandrailResult geometry_compute_wall_mounted_handrail_geometry(
+    const GeometryComputeWallMountedHandrailOptions& options)
+{
+    const bool manual_supports = options.use_manual_supports.value_or(false);
+    const bool looped_path = options.looped_path.value_or(false);
+    const std::string terminal_type = options.terminal_type.value_or("180");
+    const double unit_scale = options.unit_scale.value_or(1.0);
+    validate_compute_options(options, manual_supports, terminal_type, unit_scale);
+
+    const double railing_radius = options.railing_diameter / 2.0;
+    const RailingDims dims{
+        railing_radius,
+        options.height - railing_radius,
+        mm(150.0) / unit_scale,
+        mm(100.0) / unit_scale,
+        options.support_spacing,
+        options.clear_width + railing_radius,
+        mm(10.0) / unit_scale,
+        railing_radius,
+        mm(20.0) / unit_scale,
+        options.clear_width,
+        terminal_type};
+
+    Points railing_coords = options.railing_path;
+    for (auto& point : railing_coords) point[2] += railing_radius;
+    if (looped_path && railing_coords.size() > 2 &&
+        ifcapi::detail::np_allclose(railing_coords.front(), railing_coords.back())) {
+        railing_coords.pop_back();
+    }
+    if (looped_path) {
+        railing_coords.push_back(railing_coords[0]);
+        railing_coords.push_back(railing_coords[1]);
+    }
+
+    auto supports = collect_supports(railing_coords, manual_supports, dims);
+    auto [polyline, arc_points] = add_turning_fillets(railing_coords, dims, looped_path);
+    if (!looped_path) {
+        add_cap(polyline, arc_points, true, dims);
+        add_cap(polyline, arc_points, false, dims);
+    }
+    if (!finite_points(polyline)) throw std::runtime_error("Railing computation produced non-finite coordinates");
+    return GeometryWallMountedHandrailResult{
+        polyline, arc_indices(polyline, arc_points), railing_radius, supports};
+}
+
 express::Base geometry_add_railing_representation(
     ifcopenshell::file* file,
     const GeometryAddRailingRepresentationOptions& options)
 {
-    ifcopenshell_clear_error();
-    if (!file || !options.context) {
-        set_error("Invalid arguments");
-        return {};
-    }
-    try {
-        express::Base context_value = options.context;
-        express::Base* context = &context_value;
-        const auto& input_railing_path = options.railing_path;
-        const bool use_manual_supports = options.use_manual_supports;
-        const double support_spacing = options.support_spacing;
-        const double railing_diameter = options.railing_diameter;
-        const double clear_width = options.clear_width;
-        const std::string& terminal_type = options.terminal_type;
-        const double input_height = options.height;
-        const bool looped_path = options.looped_path;
-        const double unit_scale = options.unit_scale;
-        if (input_railing_path.size() < 2) {
-            throw std::runtime_error("Railing path requires at least two points");
-        }
-        std::vector<std::vector<double>> arc_points;
-        std::vector<express::Base> items;
-        const auto z_down = ifcapi::detail::v3(0.0, 0.0, -1.0);
-        const double railing_radius = railing_diameter / 2.0;
-        const double height = input_height - railing_radius;
-        const double terminal_radius = to_unit(mm(150), unit_scale);
-        const double railing_fillet_radius = to_unit(mm(100), unit_scale);
-        const double support_length = clear_width + railing_radius;
-        const double support_radius = to_unit(mm(10), unit_scale);
-        const double support_disk_radius = railing_radius;
-        const double support_disk_depth = to_unit(mm(20), unit_scale);
+    if (!file || !options.context) throw std::invalid_argument("Railing representation requires a file and context");
+    if (options.context.file() != file) throw std::invalid_argument("Railing context must belong to the supplied file");
 
-        std::vector<std::vector<double>> railing_coords;
-        railing_coords.reserve(input_railing_path.size() + 2);
-        for (const auto& point : input_railing_path) {
-            railing_coords.push_back(ifcapi::detail::vec_sub(point, ifcapi::detail::vec_mul(z_down, railing_radius)));
-        }
-        if (looped_path) {
-            railing_coords.push_back(railing_coords[0]);
-            railing_coords.push_back(railing_coords[1]);
-        }
+    const double unit_scale = options.unit_scale.value_or(unit_calculate_unit_scale(file, "LENGTHUNIT"));
+    const auto default_dimension = [unit_scale](double millimetres) { return mm(millimetres) / unit_scale; };
+    Points path = options.railing_path.value_or(Points{
+        {0.0, 0.0, 1.0 / unit_scale},
+        {1.0 / unit_scale, 0.0, 1.0 / unit_scale},
+        {2.0 / unit_scale, 0.0, 1.0 / unit_scale}});
+    GeometryComputeWallMountedHandrailOptions compute_options{
+        path,
+        options.support_spacing.value_or(default_dimension(1000.0)),
+        options.railing_diameter.value_or(default_dimension(50.0)),
+        options.clear_width.value_or(default_dimension(40.0)),
+        options.height.value_or(default_dimension(1000.0)),
+        options.use_manual_supports,
+        options.terminal_type,
+        options.looped_path,
+        unit_scale};
 
-        ifcapi::detail::append_items(
-            items,
-            create_supports_items(file, railing_coords, use_manual_supports, support_spacing, support_length, support_radius, support_disk_radius, support_disk_depth));
-        railing_coords = add_arcs_on_turning_points(railing_coords, arc_points, railing_fillet_radius, looped_path);
-        if (!looped_path && terminal_type != "NONE") {
-            add_cap(railing_coords, arc_points, terminal_type, terminal_radius, clear_width, height, true);
-            add_cap(railing_coords, arc_points, terminal_type, terminal_radius, clear_width, height, false);
-        }
-        auto path = ifcapi::bindings::shape_builder_polyline(
-            file,
-            ifcapi::bindings::ShapeBuilderPolylineOptions{
-                railing_coords, false, {}, get_arc_indices(railing_coords, arc_points)});
-        items.push_back(ifcapi::bindings::shape_builder_swept_disk_solid(file, &path, railing_radius));
-        return shape_builder_representation(
-            file,
-            ShapeBuilderRepresentationOptions{*context, ifcapi::detail::const_refs(items), "SolidModel"});
-    } catch (const std::exception& e) {
-        set_error(e.what());
-        return {};
+    auto geometry = geometry_compute_wall_mounted_handrail_geometry(compute_options);
+    if (file->schema() && file->schema()->name() == "IFC2X3" &&
+        (!geometry.supports.empty() || !geometry.handrail_arc_point_indices.empty())) {
+        throw std::invalid_argument("Railing arcs are not supported for IFC2X3");
     }
+
+    std::vector<express::Base> items;
+    items.reserve(geometry.supports.size() * 2 + 1);
+    for (const auto& support : geometry.supports) {
+        items.push_back(materialize_support(file, support));
+        items.push_back(materialize_disk(file, support));
+    }
+    auto handrail_path = require_entity(
+        shape_builder_polyline(
+            file,
+            ShapeBuilderPolylineOptions{
+                geometry.handrail_polyline, false, {}, geometry.handrail_arc_point_indices}),
+        "Failed to create handrail polyline");
+    items.push_back(require_entity(
+        shape_builder_swept_disk_solid(file, &handrail_path, geometry.handrail_radius),
+        "Failed to create handrail swept disk"));
+    return require_entity(
+        shape_builder_representation(
+            file, ShapeBuilderRepresentationOptions{options.context, ifcapi::detail::const_refs(items), "SolidModel"}),
+        "Failed to create railing representation");
 }
 
 } // namespace bindings

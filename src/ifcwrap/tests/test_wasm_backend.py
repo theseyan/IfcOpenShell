@@ -1352,6 +1352,58 @@ class TestWasmApiBridge:
         assert "  undocumented: boolean;" in code
         assert "/** */" not in code
 
+    def test_result_record_sequences_have_exact_nested_types_and_lowering(self):
+        metadata = _make_metadata(
+            c_prefix="ifcopenshell",
+            value_types={
+                "double_list": CTypeIR(
+                    c_type="ifcopenshell_double_list_t",
+                    kind="sequence",
+                    fields=(CFieldIR("items", "double*"), CFieldIR("size", "size_t")),
+                    destroy_function="ifcopenshell_double_list_destroy",
+                    element_type="double",
+                    sequence_depth=1,
+                ),
+                "support": CTypeIR(
+                    c_type="ifcopenshell_geometry_railing_support_t",
+                    kind="result_struct",
+                    fields=(CFieldIR("arc_polyline", "ifcopenshell_double_list_t"),),
+                    destroy_function="ifcopenshell_geometry_railing_support_destroy",
+                ),
+                "support_list": CTypeIR(
+                    c_type="ifcopenshell_geometry_railing_support_list_t",
+                    kind="result_record_sequence",
+                    fields=(
+                        CFieldIR("items", "ifcopenshell_geometry_railing_support_t*"),
+                        CFieldIR("size", "size_t"),
+                    ),
+                    destroy_function="ifcopenshell_geometry_railing_support_list_destroy",
+                    element_type="ifcopenshell_geometry_railing_support_t",
+                    sequence_depth=1,
+                ),
+                "result": CTypeIR(
+                    c_type="ifcopenshell_geometry_wall_mounted_handrail_result_t",
+                    kind="result_struct",
+                    fields=(
+                        CFieldIR(
+                            "supports", "ifcopenshell_geometry_railing_support_list_t"
+                        ),
+                    ),
+                    destroy_function="ifcopenshell_geometry_wall_mounted_handrail_result_destroy",
+                ),
+            },
+        )
+
+        declarations = render_typescript_declarations(metadata)
+        bridge = render_api_direct(metadata)
+        glue = render_js_glue(metadata)
+
+        assert "supports: IfcOpenshellGeometryRailingSupport[];" in declarations
+        assert "arcPolyline: number[];" in bridge
+        assert "supports: IfcOpenShellGeometryRailingSupport[];" in bridge
+        assert "supports: any" not in bridge
+        assert "case 'result_record_sequence': return _readSequenceValue" in glue
+
     def test_direct_api_facade_wraps_option_handles(self):
         metadata = _make_metadata(
             c_prefix="ifcopenshell",

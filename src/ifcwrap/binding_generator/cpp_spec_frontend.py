@@ -822,7 +822,15 @@ def lower_cpp_spec_result_structs_to_specs(
     environment: DiscoveryEnvironment | None = None,
     translation_unit: Path | None = None,
 ) -> dict[str, ResultStructSpec]:
-    result: dict[str, ResultStructSpec] = {}
+    result: dict[str, ResultStructSpec] = {
+        struct.name: ResultStructSpec(
+            name=struct.name,
+            cpp_type=struct.cpp_type,
+            c_type=struct.c_type,
+            fields=(),
+        )
+        for struct in structs
+    }
     for struct in structs:
         semantic_fields = (
             discover_public_fields(environment, translation_unit, struct.cpp_type)
@@ -832,7 +840,7 @@ def lower_cpp_spec_result_structs_to_specs(
         fields = tuple(
             ResultStructFieldSpec(
                 name=field_name,
-                type=_infer_return_type(field_cpp_type, handles),
+                type=_infer_return_type(field_cpp_type, handles, result),
                 cpp_field=field_name,
                 doc=(
                     semantic_fields[field_name].doc

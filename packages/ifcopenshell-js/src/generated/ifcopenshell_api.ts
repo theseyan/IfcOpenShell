@@ -161,6 +161,7 @@ type RawApi = {
     assignRepresentation: (file: RawValue, product: RawValue, representation: RawValue) => RawValue;
     clipSolid: (file: RawValue, options: RawValue) => RawValue;
     clipSolidBounded: (file: RawValue, options: RawValue) => RawValue;
+    computeWallMountedHandrailGeometry: (options: RawValue) => RawValue;
     connectElement: (file: RawValue, options: RawValue) => RawValue;
     connectPath: (file: RawValue, options: RawValue) => RawValue;
     connectWall: (file: RawValue, options: RawValue) => RawValue;
@@ -521,6 +522,32 @@ type RawApi = {
     unassignUnit: (file: RawValue, units: RawValue) => void;
   };
 };
+
+export interface IfcOpenShellGeometryRailingSupport {
+  /** Ordered three-point support arc polyline. */
+  arcPolyline: number[][];
+  /** Radius swept along the support arc. */
+  arcRadius: number;
+  /** XYZ position of the wall attachment disk; equals the final arc point. */
+  diskPosition: number[];
+  /** Radius of the attachment disk. */
+  diskRadius: number;
+  /** Extrusion depth of the attachment disk. */
+  diskDepth: number;
+  /** Signed rotation around Z for the disk's local Y extrusion orientation. */
+  diskZRotation: number;
+}
+
+export interface IfcOpenShellGeometryWallMountedHandrailResult {
+  /** Ordered XYZ centerline points, including arc tangent and midpoint points. */
+  handrailPolyline: number[][];
+  /** Ordered zero-based indices of arc midpoint coordinates. */
+  handrailArcPointIndices: number[];
+  /** Radius swept along the handrail centerline. */
+  handrailRadius: number;
+  /** Supports ordered by straight run and then position along that run. */
+  supports: IfcOpenShellGeometryRailingSupport[];
+}
 
 export interface IfcOpenShellProjectAppendAssetCacheEntry {
   sourceIdentities: bigint[];
@@ -983,24 +1010,24 @@ export interface IfcOpenShellGeometryAddProfileRepresentationOptions {
 export interface IfcOpenShellGeometryAddRailingRepresentationOptions {
   /** IfcGeometricRepresentationContext for the representation. */
   context: Entity;
-  /** Ordered XYZ points defining the railing path. */
-  railingPath: number[][];
-  /** If true, use manually placed supports instead of auto-spacing. */
-  useManualSupports: boolean;
-  /** Spacing between automatic supports in model units. Defaults to 1.0. */
-  supportSpacing: number;
-  /** Railing tube diameter in model units. Defaults to 0.05. */
-  railingDiameter: number;
-  /** Clear width between rail elements in model units. Defaults to 0.05. */
-  clearWidth: number;
-  /** Terminal type string (e.g. "FLAT", "BLOB"). */
-  terminalType: string;
-  /** Railing height in model units. Defaults to 1.0. */
-  height: number;
-  /** If true, close the railing path into a loop. Defaults to false. */
-  loopedPath: boolean;
-  /** Scale factor from model units to SI metres. Defaults to 1.0. */
-  unitScale: number;
+  /** Optional finite XYZ path. When omitted, uses the documented three-point default path. */
+  railingPath?: number[][];
+  /** Optional manual-support mode. Defaults to false. */
+  useManualSupports?: boolean;
+  /** Optional automatic support spacing; defaults to 1000 mm in project units. */
+  supportSpacing?: number;
+  /** Optional tube diameter; defaults to 50 mm in project units. */
+  railingDiameter?: number;
+  /** Optional clear wall gap; defaults to 40 mm in project units. */
+  clearWidth?: number;
+  /** Optional terminal style; defaults to "180". */
+  terminalType?: string;
+  /** Optional total height; defaults to 1000 mm in project units. */
+  height?: number;
+  /** Optional loop mode. Defaults to false. */
+  loopedPath?: boolean;
+  /** Optional project-unit scale in SI metres. When omitted, it is read from the file. */
+  unitScale?: number;
 }
 
 export interface IfcOpenShellGeometryAddShapeAspectOptions {
@@ -1132,6 +1159,27 @@ export interface IfcOpenShellGeometryClipSolidOptions {
   user?: Entity;
   /** Optional IfcApplication for OwnerHistory creation. */
   application?: Entity;
+}
+
+export interface IfcOpenShellGeometryComputeWallMountedHandrailOptions {
+  /** Required unclosed sequence of finite XYZ points in project units. */
+  railingPath: number[][];
+  /** Required automatic support spacing in project units; unused in manual mode. */
+  supportSpacing: number;
+  /** Required positive handrail diameter in project units. */
+  railingDiameter: number;
+  /** Required positive clear gap between the wall and tube in project units. */
+  clearWidth: number;
+  /** Required top-of-handrail height in project units. */
+  height: number;
+  /** When true, place supports only on collinear internal subdivision vertices. */
+  useManualSupports?: boolean;
+  /** Terminal style. When omitted, uses "180". */
+  terminalType?: string;
+  /** When true, treat the input as an unclosed loop and omit terminal caps. */
+  loopedPath?: boolean;
+  /** Project-unit scale in SI metres, used only for fixed metric constants. Defaults to 1.0. */
+  unitScale?: number;
 }
 
 export interface IfcOpenShellGeometryConnectElementOptions {
@@ -3520,10 +3568,10 @@ export interface GeometryApi {
      */
     addProfileRepresentation(file: IfcFile, options: IfcOpenShellGeometryAddProfileRepresentationOptions): Entity;
     /**
-     * Create a railing representation along a path.
+     * Create a railing representation from the shared pure-compute result.
      *
      * @param file IFC file that receives the representation.
-     * @param options Railing path, support spacing, dimensions, and terminal type.
+     * @param options Context plus optional path, dimensions, terminal policy, and unit scale.
      * @return IfcShapeRepresentation entity, or no result if creation fails.
      */
     addRailingRepresentation(file: IfcFile, options: IfcOpenShellGeometryAddRailingRepresentationOptions): Entity;
@@ -3608,6 +3656,19 @@ export interface GeometryApi {
      * @return IfcBooleanClippingResult entity, or no result if creation fails.
      */
     clipSolidBounded(file: IfcFile, options: IfcOpenShellGeometryClipSolidBoundedOptions): Entity;
+    /**
+     * Compute wall-mounted handrail geometry without an IFC file or context.
+     *
+     * The input and output coordinates and dimensions use project units. Fixed
+     * metric design constants are divided by the supplied unit scale. Manual mode
+     * permits a non-positive unused support-spacing value; automatic mode requires
+     * positive spacing. Degenerate edges retain finite sharp vertices and do not
+     * produce support or fillet geometry with undefined directions.
+     *
+     * @param options Required dimensions and path plus optional terminal/support policy.
+     * @return Pure handrail and nested support geometry owned by the caller.
+     */
+    computeWallMountedHandrailGeometry(options: IfcOpenShellGeometryComputeWallMountedHandrailOptions): IfcOpenShellGeometryWallMountedHandrailResult;
     /**
      * Create an IfcRelConnectsElements between two elements.
      *
@@ -8363,10 +8424,10 @@ export function createApi(shell: IfcOpenShell): Api {
       }
     },
     /**
-     * Create a railing representation along a path.
+     * Create a railing representation from the shared pure-compute result.
      *
      * @param file IFC file that receives the representation.
-     * @param options Railing path, support spacing, dimensions, and terminal type.
+     * @param options Context plus optional path, dimensions, terminal policy, and unit scale.
      * @return IfcShapeRepresentation entity, or no result if creation fails.
      */
     addRailingRepresentation(file: IfcFile, options: IfcOpenShellGeometryAddRailingRepresentationOptions): Entity {
@@ -8519,6 +8580,28 @@ export function createApi(shell: IfcOpenShell): Api {
       try {
         const result = raw.geometry.clipSolidBounded(file.raw, encodeOptions(options, {"application": "application", "boundaryPoints": "boundary_points", "boundaryPosition": "boundary_position", "element": "element", "item": "item", "location": "location", "normal": "normal", "ownerHistory": "owner_history", "user": "user"}, shell, temps));
         return wrapEntity(shell, result) as Entity;
+      } finally {
+        disposeAll(temps);
+      }
+    },
+    /**
+     * Compute wall-mounted handrail geometry without an IFC file or context.
+     *
+     * The input and output coordinates and dimensions use project units. Fixed
+     * metric design constants are divided by the supplied unit scale. Manual mode
+     * permits a non-positive unused support-spacing value; automatic mode requires
+     * positive spacing. Degenerate edges retain finite sharp vertices and do not
+     * produce support or fillet geometry with undefined directions.
+     *
+     * @param options Required dimensions and path plus optional terminal/support policy.
+     * @return Pure handrail and nested support geometry owned by the caller.
+     */
+    computeWallMountedHandrailGeometry(options: IfcOpenShellGeometryComputeWallMountedHandrailOptions): IfcOpenShellGeometryWallMountedHandrailResult {
+      const temps: Disposable[] = [];
+      try {
+        const result = raw.geometry.computeWallMountedHandrailGeometry(encodeOptions(options, {"clearWidth": "clear_width", "height": "height", "loopedPath": "looped_path", "railingDiameter": "railing_diameter", "railingPath": "railing_path", "supportSpacing": "support_spacing", "terminalType": "terminal_type", "unitScale": "unit_scale", "useManualSupports": "use_manual_supports"}, shell, temps));
+        const data = result as { handrail_polyline: RawValue; handrail_arc_point_indices: RawValue; handrail_radius: number; supports: RawValue };
+        return { handrailPolyline: wrap(shell, data.handrail_polyline), handrailArcPointIndices: wrap(shell, data.handrail_arc_point_indices), handrailRadius: data.handrail_radius as number, supports: (data.supports as RawValue[]).map((item) => (() => { const itemData = item as { arc_polyline: RawValue; arc_radius: number; disk_position: RawValue; disk_radius: number; disk_depth: number; disk_z_rotation: number }; return { arcPolyline: wrap(shell, itemData.arc_polyline), arcRadius: itemData.arc_radius as number, diskPosition: wrap(shell, itemData.disk_position), diskRadius: itemData.disk_radius as number, diskDepth: itemData.disk_depth as number, diskZRotation: itemData.disk_z_rotation as number }; })()) } as IfcOpenShellGeometryWallMountedHandrailResult;
       } finally {
         disposeAll(temps);
       }

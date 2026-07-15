@@ -646,14 +646,23 @@ typedef struct ifcopenshell_geometry_add_profile_representation_options_t {
 typedef struct ifcopenshell_geometry_add_railing_representation_options_t {
     ifcopenshell_instance_t* context;
     const ifcopenshell_double_list_list_t* railing_path;
+    bool has_railing_path;
     bool use_manual_supports;
+    bool has_use_manual_supports;
     double support_spacing;
+    bool has_support_spacing;
     double railing_diameter;
+    bool has_railing_diameter;
     double clear_width;
+    bool has_clear_width;
     const char* terminal_type;
+    bool has_terminal_type;
     double height;
+    bool has_height;
     bool looped_path;
+    bool has_looped_path;
     double unit_scale;
+    bool has_unit_scale;
 } ifcopenshell_geometry_add_railing_representation_options_t;
 
 typedef struct ifcopenshell_geometry_add_shape_aspect_options_t {
@@ -744,6 +753,22 @@ typedef struct ifcopenshell_geometry_clip_solid_bounded_options_t {
     ifcopenshell_instance_t* application;
     bool has_application;
 } ifcopenshell_geometry_clip_solid_bounded_options_t;
+
+typedef struct ifcopenshell_geometry_compute_wall_mounted_handrail_options_t {
+    const ifcopenshell_double_list_list_t* railing_path;
+    double support_spacing;
+    double railing_diameter;
+    double clear_width;
+    double height;
+    bool use_manual_supports;
+    bool has_use_manual_supports;
+    const char* terminal_type;
+    bool has_terminal_type;
+    bool looped_path;
+    bool has_looped_path;
+    double unit_scale;
+    bool has_unit_scale;
+} ifcopenshell_geometry_compute_wall_mounted_handrail_options_t;
 
 typedef struct ifcopenshell_geometry_connect_element_options_t {
     ifcopenshell_instance_t* relating_element;
@@ -1888,6 +1913,27 @@ typedef struct ifcopenshell_style_surface_texture_options_list_t {
     size_t size;
 } ifcopenshell_style_surface_texture_options_list_t;
 
+typedef struct ifcopenshell_geometry_railing_support_t {
+    ifcopenshell_double_list_list_t arc_polyline;
+    double arc_radius;
+    ifcopenshell_double_list_t disk_position;
+    double disk_radius;
+    double disk_depth;
+    double disk_z_rotation;
+} ifcopenshell_geometry_railing_support_t;
+
+typedef struct ifcopenshell_geometry_railing_support_list_t {
+    ifcopenshell_geometry_railing_support_t* items;
+    size_t size;
+} ifcopenshell_geometry_railing_support_list_t;
+
+typedef struct ifcopenshell_geometry_wall_mounted_handrail_result_t {
+    ifcopenshell_double_list_list_t handrail_polyline;
+    ifcopenshell_int32_list_t handrail_arc_point_indices;
+    double handrail_radius;
+    ifcopenshell_geometry_railing_support_list_t supports;
+} ifcopenshell_geometry_wall_mounted_handrail_result_t;
+
 typedef struct ifcopenshell_shape_builder_mep_transition_shape_result_t {
     ifcopenshell_instance_t* representation;
     double start_length;
@@ -2049,11 +2095,14 @@ void ifcopenshell_inverse_attribute_list_list_destroy(ifcopenshell_inverse_attri
 void ifcopenshell_geom_taxonomy_style_list_list_destroy(ifcopenshell_geom_taxonomy_style_list_list_t* value);
 void ifcopenshell_geom_taxonomy_item_list_list_destroy(ifcopenshell_geom_taxonomy_item_list_list_t* value);
 void ifcopenshell_geom_element_list_list_destroy(ifcopenshell_geom_element_list_list_t* value);
+void ifcopenshell_geometry_railing_support_destroy(ifcopenshell_geometry_railing_support_t* value);
+void ifcopenshell_geometry_wall_mounted_handrail_result_destroy(ifcopenshell_geometry_wall_mounted_handrail_result_t* value);
 void ifcopenshell_shape_builder_mep_transition_shape_result_destroy(ifcopenshell_shape_builder_mep_transition_shape_result_t* value);
 void ifcopenshell_shape_builder_mep_bend_shape_result_destroy(ifcopenshell_shape_builder_mep_bend_shape_result_t* value);
 void ifcopenshell_sequence_duplicate_task_result_destroy(ifcopenshell_sequence_duplicate_task_result_t* value);
 void ifcopenshell_project_append_asset_cache_entry_destroy(ifcopenshell_project_append_asset_cache_entry_t* value);
 void ifcopenshell_optional_shape_builder_mep_transition_shape_result_destroy(ifcopenshell_optional_shape_builder_mep_transition_shape_result_t* value);
+void ifcopenshell_geometry_railing_support_list_destroy(ifcopenshell_geometry_railing_support_list_t* value);
 void ifcopenshell_instance_string_variant_destroy(ifcopenshell_instance_string_variant_t* value);
 
 bool ifcopenshell_geom_create_xml_serializer(ifcopenshell_file_t* file, const char* filename, ifcopenshell_geom_serializer_t** out_result);
@@ -3106,10 +3155,10 @@ bool ifcopenshell_geometry_add_mesh_representation(ifcopenshell_file_t* file, if
  */
 bool ifcopenshell_geometry_add_profile_representation(ifcopenshell_file_t* file, const ifcopenshell_geometry_add_profile_representation_options_t* options, ifcopenshell_instance_t** out_result);
 /**
- * Create a railing representation along a path.
+ * Create a railing representation from the shared pure-compute result.
  *
  * @param file IFC file that receives the representation.
- * @param options Railing path, support spacing, dimensions, and terminal type.
+ * @param options Context plus optional path, dimensions, terminal policy, and unit scale.
  * @return IfcShapeRepresentation entity, or no result if creation fails.
  */
 bool ifcopenshell_geometry_add_railing_representation(ifcopenshell_file_t* file, const ifcopenshell_geometry_add_railing_representation_options_t* options, ifcopenshell_instance_t** out_result);
@@ -3194,6 +3243,19 @@ bool ifcopenshell_geometry_clip_solid(ifcopenshell_file_t* file, const ifcopensh
  * @return IfcBooleanClippingResult entity, or no result if creation fails.
  */
 bool ifcopenshell_geometry_clip_solid_bounded(ifcopenshell_file_t* file, const ifcopenshell_geometry_clip_solid_bounded_options_t* options, ifcopenshell_instance_t** out_result);
+/**
+ * Compute wall-mounted handrail geometry without an IFC file or context.
+ *
+ * The input and output coordinates and dimensions use project units. Fixed
+ * metric design constants are divided by the supplied unit scale. Manual mode
+ * permits a non-positive unused support-spacing value; automatic mode requires
+ * positive spacing. Degenerate edges retain finite sharp vertices and do not
+ * produce support or fillet geometry with undefined directions.
+ *
+ * @param options Required dimensions and path plus optional terminal/support policy.
+ * @return Pure handrail and nested support geometry owned by the caller.
+ */
+bool ifcopenshell_geometry_compute_wall_mounted_handrail_geometry(const ifcopenshell_geometry_compute_wall_mounted_handrail_options_t* options, ifcopenshell_geometry_wall_mounted_handrail_result_t* out_result);
 /**
  * Create an IfcRelConnectsElements between two elements.
  *

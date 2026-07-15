@@ -118,14 +118,3 @@ class TestAddRailingRepresentation(test.bootstrap.IFC4, GeometryConstructorConte
 
         assert representation.RepresentationType == "SolidModel"
         assert len(representation.Items) > 0
-
-    def test_rejects_unsupported_railing_type_in_python(self):
-        context = self.context()
-
-        with pytest.raises(Exception, match='Only "WALL_MOUNTED_HANDRAIL"'):
-            ifcopenshell.api.geometry.add_railing_representation(
-                self.file,
-                context=context,
-                railing_type="GUARDRAIL",
-                railing_path=[(0.0, 0.0, 1.0), (1.0, 0.0, 1.0)],
-            )

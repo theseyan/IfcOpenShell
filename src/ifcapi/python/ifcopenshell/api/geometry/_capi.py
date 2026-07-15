@@ -49,6 +49,10 @@ def bool_result(fn_name: str, *args) -> bool:
     return bool(fn(*args))
 
 
+def call_value(fn_name: str, *args):
+    return getattr(_capi, fn_name)(*args)
+
+
 def double_list_list_list(values):
     return [[list(v) for v in inner] for inner in values]
 

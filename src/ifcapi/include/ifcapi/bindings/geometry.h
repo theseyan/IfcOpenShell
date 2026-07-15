@@ -238,30 +238,78 @@ struct GeometryAddDoorRepresentationOptions {
     double unit_scale = 1.0;
 };
 
-/**
- * Options for creating a railing representation.
- */
+/** Pure geometry for one wall-mounted handrail support, in project units. */
+struct GeometryRailingSupport {
+    /// Ordered three-point support arc polyline.
+    std::vector<std::vector<double>> arc_polyline;
+    /// Radius swept along the support arc.
+    double arc_radius;
+    /// XYZ position of the wall attachment disk; equals the final arc point.
+    std::vector<double> disk_position;
+    /// Radius of the attachment disk.
+    double disk_radius;
+    /// Extrusion depth of the attachment disk.
+    double disk_depth;
+    /// Signed rotation around Z for the disk's local Y extrusion orientation.
+    double disk_z_rotation;
+};
+
+/** Pure wall-mounted handrail geometry, with no IFC entities or file dependency. */
+struct GeometryWallMountedHandrailResult {
+    /// Ordered XYZ centerline points, including arc tangent and midpoint points.
+    std::vector<std::vector<double>> handrail_polyline;
+    /// Ordered zero-based indices of arc midpoint coordinates.
+    std::vector<int> handrail_arc_point_indices;
+    /// Radius swept along the handrail centerline.
+    double handrail_radius;
+    /// Supports ordered by straight run and then position along that run.
+    std::vector<GeometryRailingSupport> supports;
+};
+
+/** Options for pure wall-mounted handrail computation. */
+struct GeometryComputeWallMountedHandrailOptions {
+    /// Required unclosed sequence of finite XYZ points in project units.
+    std::vector<std::vector<double>> railing_path;
+    /// Required automatic support spacing in project units; unused in manual mode.
+    double support_spacing;
+    /// Required positive handrail diameter in project units.
+    double railing_diameter;
+    /// Required positive clear gap between the wall and tube in project units.
+    double clear_width;
+    /// Required top-of-handrail height in project units.
+    double height;
+    /// When true, place supports only on collinear internal subdivision vertices.
+    std::optional<bool> use_manual_supports;
+    /// Terminal style. When omitted, uses "180".
+    std::optional<std::string> terminal_type;
+    /// When true, treat the input as an unclosed loop and omit terminal caps.
+    std::optional<bool> looped_path;
+    /// Project-unit scale in SI metres, used only for fixed metric constants. Defaults to 1.0.
+    std::optional<double> unit_scale;
+};
+
+/** Options for materializing a railing representation in an IFC file. */
 struct GeometryAddRailingRepresentationOptions {
     /// IfcGeometricRepresentationContext for the representation.
     express::Base context;
-    /// Ordered XYZ points defining the railing path.
-    std::vector<std::vector<double>> railing_path;
-    /// If true, use manually placed supports instead of auto-spacing.
-    bool use_manual_supports = false;
-    /// Spacing between automatic supports in model units. Defaults to 1.0.
-    double support_spacing = 1.0;
-    /// Railing tube diameter in model units. Defaults to 0.05.
-    double railing_diameter = 0.05;
-    /// Clear width between rail elements in model units. Defaults to 0.05.
-    double clear_width = 0.05;
-    /// Terminal type string (e.g. "FLAT", "BLOB").
-    std::string terminal_type;
-    /// Railing height in model units. Defaults to 1.0.
-    double height = 1.0;
-    /// If true, close the railing path into a loop. Defaults to false.
-    bool looped_path = false;
-    /// Scale factor from model units to SI metres. Defaults to 1.0.
-    double unit_scale = 1.0;
+    /// Optional finite XYZ path. When omitted, uses the documented three-point default path.
+    std::optional<std::vector<std::vector<double>>> railing_path;
+    /// Optional manual-support mode. Defaults to false.
+    std::optional<bool> use_manual_supports;
+    /// Optional automatic support spacing; defaults to 1000 mm in project units.
+    std::optional<double> support_spacing;
+    /// Optional tube diameter; defaults to 50 mm in project units.
+    std::optional<double> railing_diameter;
+    /// Optional clear wall gap; defaults to 40 mm in project units.
+    std::optional<double> clear_width;
+    /// Optional terminal style; defaults to "180".
+    std::optional<std::string> terminal_type;
+    /// Optional total height; defaults to 1000 mm in project units.
+    std::optional<double> height;
+    /// Optional loop mode. Defaults to false.
+    std::optional<bool> looped_path;
+    /// Optional project-unit scale in SI metres. When omitted, it is read from the file.
+    std::optional<double> unit_scale;
 };
 
 /**
@@ -601,10 +649,25 @@ IFCAPI_BINDING express::Base geometry_add_door_representation(
     const GeometryAddDoorRepresentationOptions& options);
 
 /**
- * Create a railing representation along a path.
+ * Compute wall-mounted handrail geometry without an IFC file or context.
+ *
+ * The input and output coordinates and dimensions use project units. Fixed
+ * metric design constants are divided by the supplied unit scale. Manual mode
+ * permits a non-positive unused support-spacing value; automatic mode requires
+ * positive spacing. Degenerate edges retain finite sharp vertices and do not
+ * produce support or fillet geometry with undefined directions.
+ *
+ * @param options Required dimensions and path plus optional terminal/support policy.
+ * @return Pure handrail and nested support geometry owned by the caller.
+ */
+IFCAPI_BINDING GeometryWallMountedHandrailResult geometry_compute_wall_mounted_handrail_geometry(
+    const GeometryComputeWallMountedHandrailOptions& options);
+
+/**
+ * Create a railing representation from the shared pure-compute result.
  *
  * @param file IFC file that receives the representation.
- * @param options Railing path, support spacing, dimensions, and terminal type.
+ * @param options Context plus optional path, dimensions, terminal policy, and unit scale.
  * @return IfcShapeRepresentation entity, or no result if creation fails.
  */
 IFCAPI_BINDING express::Base geometry_add_railing_representation(

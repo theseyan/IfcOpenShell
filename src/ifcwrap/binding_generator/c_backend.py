@@ -7,6 +7,7 @@ from .c_call_rendering import _render_call_impl
 from .c_handle_rendering import _destroy_body, _handle_storage_type
 from .c_header_rendering import _render_header
 from .c_internal_header import _render_internal_header
+from .c_record_sequence_helpers import _render_result_record_list_helpers
 from .c_runtime_support import _render_cpp_support_runtime
 from .c_sequence_helpers import (
     _render_common_type_impls,
@@ -122,6 +123,8 @@ def _render_cpp(ir: BindingIR, header_name: str) -> str:
 {common_type_impls}
 
 {sequence_helpers}
+
+{_render_result_record_list_helpers(ir)}
 
 void {ir.c_prefix}_clear_error(void) {{
     ifcopenshell::capi::g_last_error.clear();

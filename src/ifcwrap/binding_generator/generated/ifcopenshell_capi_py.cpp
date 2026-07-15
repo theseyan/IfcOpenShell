@@ -6067,6 +6067,8 @@ static void free_input_geometry_clip_solid_bounded_options(ifcopenshell_geometry
 static int fill_input_geometry_clip_solid_bounded_options(PyObject *obj, ifcopenshell_geometry_clip_solid_bounded_options_t *out, PyObject **refs);
 static void free_input_geometry_clip_solid_options(ifcopenshell_geometry_clip_solid_options_t *value);
 static int fill_input_geometry_clip_solid_options(PyObject *obj, ifcopenshell_geometry_clip_solid_options_t *out, PyObject **refs);
+static void free_input_geometry_compute_wall_mounted_handrail_options(ifcopenshell_geometry_compute_wall_mounted_handrail_options_t *value);
+static int fill_input_geometry_compute_wall_mounted_handrail_options(PyObject *obj, ifcopenshell_geometry_compute_wall_mounted_handrail_options_t *out, PyObject **refs);
 static void free_input_geometry_connect_element_options(ifcopenshell_geometry_connect_element_options_t *value);
 static int fill_input_geometry_connect_element_options(PyObject *obj, ifcopenshell_geometry_connect_element_options_t *out, PyObject **refs);
 static void free_input_geometry_connect_path_options(ifcopenshell_geometry_connect_path_options_t *value);
@@ -9879,79 +9881,115 @@ static int fill_input_geometry_add_railing_representation_options(PyObject *obj,
     if (!extract_handle(field_0, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->context, 0)) {
         return 0;
     }
-    PyObject *field_1 = get_option_field(obj, "railing_path", 1);
+    PyObject *field_1 = get_option_field(obj, "railing_path", 0);
     if (!field_1) {
-        return 0;
+        if (PyErr_Occurred()) return 0;
+    } else {
+        refs[1] = field_1;
+        if (field_1 != Py_None) {
+            ifcopenshell_double_list_list_t *sequence_1 = (ifcopenshell_double_list_list_t *)PyMem_Calloc(1, sizeof(ifcopenshell_double_list_list_t));
+            if (!sequence_1) {
+                PyErr_NoMemory();
+                return 0;
+            }
+            if (!make_input_double_list_list(field_1, sequence_1)) {
+                PyMem_Free(sequence_1);
+                return 0;
+            }
+            out->railing_path = sequence_1;
+        out->has_railing_path = true;
+        }
     }
-    refs[1] = field_1;
-    ifcopenshell_double_list_list_t *sequence_1 = (ifcopenshell_double_list_list_t *)PyMem_Calloc(1, sizeof(ifcopenshell_double_list_list_t));
-    if (!sequence_1) {
-        PyErr_NoMemory();
-        return 0;
-    }
-    if (!make_input_double_list_list(field_1, sequence_1)) {
-        PyMem_Free(sequence_1);
-        return 0;
-    }
-    out->railing_path = sequence_1;
-    PyObject *field_2 = get_option_field(obj, "use_manual_supports", 1);
+    PyObject *field_2 = get_option_field(obj, "use_manual_supports", 0);
     if (!field_2) {
-        return 0;
+        if (PyErr_Occurred()) return 0;
+    } else {
+        refs[2] = field_2;
+        if (field_2 != Py_None) {
+            int value_2 = PyObject_IsTrue(field_2);
+            if (value_2 < 0) return 0;
+            out->use_manual_supports = (bool)value_2;
+        out->has_use_manual_supports = true;
+        }
     }
-    refs[2] = field_2;
-    int value_2 = PyObject_IsTrue(field_2);
-    if (value_2 < 0) return 0;
-    out->use_manual_supports = (bool)value_2;
-    PyObject *field_3 = get_option_field(obj, "support_spacing", 1);
+    PyObject *field_3 = get_option_field(obj, "support_spacing", 0);
     if (!field_3) {
-        return 0;
+        if (PyErr_Occurred()) return 0;
+    } else {
+        refs[3] = field_3;
+        if (field_3 != Py_None) {
+            out->support_spacing = PyFloat_AsDouble(field_3);
+            if (PyErr_Occurred()) return 0;
+        out->has_support_spacing = true;
+        }
     }
-    refs[3] = field_3;
-    out->support_spacing = PyFloat_AsDouble(field_3);
-    if (PyErr_Occurred()) return 0;
-    PyObject *field_4 = get_option_field(obj, "railing_diameter", 1);
+    PyObject *field_4 = get_option_field(obj, "railing_diameter", 0);
     if (!field_4) {
-        return 0;
+        if (PyErr_Occurred()) return 0;
+    } else {
+        refs[4] = field_4;
+        if (field_4 != Py_None) {
+            out->railing_diameter = PyFloat_AsDouble(field_4);
+            if (PyErr_Occurred()) return 0;
+        out->has_railing_diameter = true;
+        }
     }
-    refs[4] = field_4;
-    out->railing_diameter = PyFloat_AsDouble(field_4);
-    if (PyErr_Occurred()) return 0;
-    PyObject *field_5 = get_option_field(obj, "clear_width", 1);
+    PyObject *field_5 = get_option_field(obj, "clear_width", 0);
     if (!field_5) {
-        return 0;
+        if (PyErr_Occurred()) return 0;
+    } else {
+        refs[5] = field_5;
+        if (field_5 != Py_None) {
+            out->clear_width = PyFloat_AsDouble(field_5);
+            if (PyErr_Occurred()) return 0;
+        out->has_clear_width = true;
+        }
     }
-    refs[5] = field_5;
-    out->clear_width = PyFloat_AsDouble(field_5);
-    if (PyErr_Occurred()) return 0;
-    PyObject *field_6 = get_option_field(obj, "terminal_type", 1);
+    PyObject *field_6 = get_option_field(obj, "terminal_type", 0);
     if (!field_6) {
-        return 0;
+        if (PyErr_Occurred()) return 0;
+    } else {
+        refs[6] = field_6;
+        if (field_6 != Py_None) {
+            out->terminal_type = PyUnicode_AsUTF8(field_6);
+            if (!out->terminal_type) return 0;
+        out->has_terminal_type = true;
+        }
     }
-    refs[6] = field_6;
-    out->terminal_type = PyUnicode_AsUTF8(field_6);
-    if (!out->terminal_type) return 0;
-    PyObject *field_7 = get_option_field(obj, "height", 1);
+    PyObject *field_7 = get_option_field(obj, "height", 0);
     if (!field_7) {
-        return 0;
+        if (PyErr_Occurred()) return 0;
+    } else {
+        refs[7] = field_7;
+        if (field_7 != Py_None) {
+            out->height = PyFloat_AsDouble(field_7);
+            if (PyErr_Occurred()) return 0;
+        out->has_height = true;
+        }
     }
-    refs[7] = field_7;
-    out->height = PyFloat_AsDouble(field_7);
-    if (PyErr_Occurred()) return 0;
-    PyObject *field_8 = get_option_field(obj, "looped_path", 1);
+    PyObject *field_8 = get_option_field(obj, "looped_path", 0);
     if (!field_8) {
-        return 0;
+        if (PyErr_Occurred()) return 0;
+    } else {
+        refs[8] = field_8;
+        if (field_8 != Py_None) {
+            int value_8 = PyObject_IsTrue(field_8);
+            if (value_8 < 0) return 0;
+            out->looped_path = (bool)value_8;
+        out->has_looped_path = true;
+        }
     }
-    refs[8] = field_8;
-    int value_8 = PyObject_IsTrue(field_8);
-    if (value_8 < 0) return 0;
-    out->looped_path = (bool)value_8;
-    PyObject *field_9 = get_option_field(obj, "unit_scale", 1);
+    PyObject *field_9 = get_option_field(obj, "unit_scale", 0);
     if (!field_9) {
-        return 0;
+        if (PyErr_Occurred()) return 0;
+    } else {
+        refs[9] = field_9;
+        if (field_9 != Py_None) {
+            out->unit_scale = PyFloat_AsDouble(field_9);
+            if (PyErr_Occurred()) return 0;
+        out->has_unit_scale = true;
+        }
     }
-    refs[9] = field_9;
-    out->unit_scale = PyFloat_AsDouble(field_9);
-    if (PyErr_Occurred()) return 0;
     return 1;
 }
 
@@ -10746,6 +10784,112 @@ static int fill_input_geometry_clip_solid_options(PyObject *obj, ifcopenshell_ge
                 return 0;
             }
         out->has_application = true;
+        }
+    }
+    return 1;
+}
+
+
+static void free_input_geometry_compute_wall_mounted_handrail_options(ifcopenshell_geometry_compute_wall_mounted_handrail_options_t *value) {
+    if (value->railing_path) {
+        free_input_double_list_list((ifcopenshell_double_list_list_t *)value->railing_path);
+        PyMem_Free((void *)value->railing_path);
+        value->railing_path = NULL;
+    }
+}
+
+static int fill_input_geometry_compute_wall_mounted_handrail_options(PyObject *obj, ifcopenshell_geometry_compute_wall_mounted_handrail_options_t *out, PyObject **refs) {
+    if (!PyMapping_Check(obj)) {
+        PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
+        return 0;
+    }
+    PyObject *field_0 = get_option_field(obj, "railing_path", 1);
+    if (!field_0) {
+        return 0;
+    }
+    refs[0] = field_0;
+    ifcopenshell_double_list_list_t *sequence_0 = (ifcopenshell_double_list_list_t *)PyMem_Calloc(1, sizeof(ifcopenshell_double_list_list_t));
+    if (!sequence_0) {
+        PyErr_NoMemory();
+        return 0;
+    }
+    if (!make_input_double_list_list(field_0, sequence_0)) {
+        PyMem_Free(sequence_0);
+        return 0;
+    }
+    out->railing_path = sequence_0;
+    PyObject *field_1 = get_option_field(obj, "support_spacing", 1);
+    if (!field_1) {
+        return 0;
+    }
+    refs[1] = field_1;
+    out->support_spacing = PyFloat_AsDouble(field_1);
+    if (PyErr_Occurred()) return 0;
+    PyObject *field_2 = get_option_field(obj, "railing_diameter", 1);
+    if (!field_2) {
+        return 0;
+    }
+    refs[2] = field_2;
+    out->railing_diameter = PyFloat_AsDouble(field_2);
+    if (PyErr_Occurred()) return 0;
+    PyObject *field_3 = get_option_field(obj, "clear_width", 1);
+    if (!field_3) {
+        return 0;
+    }
+    refs[3] = field_3;
+    out->clear_width = PyFloat_AsDouble(field_3);
+    if (PyErr_Occurred()) return 0;
+    PyObject *field_4 = get_option_field(obj, "height", 1);
+    if (!field_4) {
+        return 0;
+    }
+    refs[4] = field_4;
+    out->height = PyFloat_AsDouble(field_4);
+    if (PyErr_Occurred()) return 0;
+    PyObject *field_5 = get_option_field(obj, "use_manual_supports", 0);
+    if (!field_5) {
+        if (PyErr_Occurred()) return 0;
+    } else {
+        refs[5] = field_5;
+        if (field_5 != Py_None) {
+            int value_5 = PyObject_IsTrue(field_5);
+            if (value_5 < 0) return 0;
+            out->use_manual_supports = (bool)value_5;
+        out->has_use_manual_supports = true;
+        }
+    }
+    PyObject *field_6 = get_option_field(obj, "terminal_type", 0);
+    if (!field_6) {
+        if (PyErr_Occurred()) return 0;
+    } else {
+        refs[6] = field_6;
+        if (field_6 != Py_None) {
+            out->terminal_type = PyUnicode_AsUTF8(field_6);
+            if (!out->terminal_type) return 0;
+        out->has_terminal_type = true;
+        }
+    }
+    PyObject *field_7 = get_option_field(obj, "looped_path", 0);
+    if (!field_7) {
+        if (PyErr_Occurred()) return 0;
+    } else {
+        refs[7] = field_7;
+        if (field_7 != Py_None) {
+            int value_7 = PyObject_IsTrue(field_7);
+            if (value_7 < 0) return 0;
+            out->looped_path = (bool)value_7;
+        out->has_looped_path = true;
+        }
+    }
+    PyObject *field_8 = get_option_field(obj, "unit_scale", 0);
+    if (!field_8) {
+        if (PyErr_Occurred()) return 0;
+    } else {
+        refs[8] = field_8;
+        if (field_8 != Py_None) {
+            out->unit_scale = PyFloat_AsDouble(field_8);
+            if (PyErr_Occurred()) return 0;
+        out->has_unit_scale = true;
         }
     }
     return 1;
@@ -17937,6 +18081,55 @@ static PyObject *convert_string(ifcopenshell_string_t *value) {
     return result;
 }
 
+static PyObject *convert_double_list(ifcopenshell_double_list_t *value, int owned);
+static PyObject *convert_string_list(ifcopenshell_string_list_t *value, int owned);
+static PyObject *convert_int64_list(ifcopenshell_int64_list_t *value, int owned);
+static PyObject *convert_int32_list(ifcopenshell_int32_list_t *value, int owned);
+static PyObject *convert_bool_list(ifcopenshell_bool_list_t *value, int owned);
+static PyObject *convert_uint32_list(ifcopenshell_uint32_list_t *value, int owned);
+static PyObject *convert_uint8_list(ifcopenshell_uint8_list_t *value, int owned);
+static PyObject *convert_instance_list(ifcopenshell_instance_list_t *value, int owned);
+static PyObject *convert_file_list(ifcopenshell_file_list_t *value, int owned);
+static PyObject *convert_geom_svgfill_polygon_list(ifcopenshell_geom_svgfill_polygon_list_t *value, int owned);
+static PyObject *convert_geom_conversion_result_shape_list(ifcopenshell_geom_conversion_result_shape_list_t *value, int owned);
+static PyObject *convert_declaration_list(ifcopenshell_declaration_list_t *value, int owned);
+static PyObject *convert_entity_list(ifcopenshell_entity_list_t *value, int owned);
+static PyObject *convert_enumeration_list(ifcopenshell_enumeration_list_t *value, int owned);
+static PyObject *convert_select_type_list(ifcopenshell_select_type_list_t *value, int owned);
+static PyObject *convert_type_declaration_list(ifcopenshell_type_declaration_list_t *value, int owned);
+static PyObject *convert_attribute_list(ifcopenshell_attribute_list_t *value, int owned);
+static PyObject *convert_inverse_attribute_list(ifcopenshell_inverse_attribute_list_t *value, int owned);
+static PyObject *convert_geom_taxonomy_style_list(ifcopenshell_geom_taxonomy_style_list_t *value, int owned);
+static PyObject *convert_geom_taxonomy_item_list(ifcopenshell_geom_taxonomy_item_list_t *value, int owned);
+static PyObject *convert_geom_element_list(ifcopenshell_geom_element_list_t *value, int owned);
+static PyObject *convert_geometry_railing_support_list(ifcopenshell_geometry_railing_support_list_t *value, int owned);
+static PyObject *convert_double_list_list(ifcopenshell_double_list_list_t *value, int owned);
+static PyObject *convert_int32_list_list(ifcopenshell_int32_list_list_t *value, int owned);
+static PyObject *convert_instance_list_list(ifcopenshell_instance_list_list_t *value, int owned);
+static PyObject *convert_file_list_list(ifcopenshell_file_list_list_t *value, int owned);
+static PyObject *convert_geom_svgfill_polygon_list_list(ifcopenshell_geom_svgfill_polygon_list_list_t *value, int owned);
+static PyObject *convert_geom_conversion_result_shape_list_list(ifcopenshell_geom_conversion_result_shape_list_list_t *value, int owned);
+static PyObject *convert_declaration_list_list(ifcopenshell_declaration_list_list_t *value, int owned);
+static PyObject *convert_entity_list_list(ifcopenshell_entity_list_list_t *value, int owned);
+static PyObject *convert_enumeration_list_list(ifcopenshell_enumeration_list_list_t *value, int owned);
+static PyObject *convert_select_type_list_list(ifcopenshell_select_type_list_list_t *value, int owned);
+static PyObject *convert_type_declaration_list_list(ifcopenshell_type_declaration_list_list_t *value, int owned);
+static PyObject *convert_attribute_list_list(ifcopenshell_attribute_list_list_t *value, int owned);
+static PyObject *convert_inverse_attribute_list_list(ifcopenshell_inverse_attribute_list_list_t *value, int owned);
+static PyObject *convert_geom_taxonomy_style_list_list(ifcopenshell_geom_taxonomy_style_list_list_t *value, int owned);
+static PyObject *convert_geom_taxonomy_item_list_list(ifcopenshell_geom_taxonomy_item_list_list_t *value, int owned);
+static PyObject *convert_geom_element_list_list(ifcopenshell_geom_element_list_list_t *value, int owned);
+static PyObject *convert_int32_list_list_list(ifcopenshell_int32_list_list_list_t *value, int owned);
+static PyObject *convert_double_list_list_list(ifcopenshell_double_list_list_list_t *value, int owned);
+static PyObject *convert_int32_list_list_list_list(ifcopenshell_int32_list_list_list_list_t *value, int owned);
+static PyObject *convert_geometry_railing_support(ifcopenshell_geometry_railing_support_t *value, int owned);
+static PyObject *convert_geometry_wall_mounted_handrail_result(ifcopenshell_geometry_wall_mounted_handrail_result_t *value, int owned);
+static PyObject *convert_shape_builder_mep_transition_shape_result(ifcopenshell_shape_builder_mep_transition_shape_result_t *value, int owned);
+static PyObject *convert_shape_builder_mep_bend_shape_result(ifcopenshell_shape_builder_mep_bend_shape_result_t *value, int owned);
+static PyObject *convert_sequence_duplicate_task_result(ifcopenshell_sequence_duplicate_task_result_t *value, int owned);
+static PyObject *convert_project_append_asset_cache_entry(ifcopenshell_project_append_asset_cache_entry_t *value, int owned);
+static PyObject *convert_optional_shape_builder_mep_transition_shape_result(ifcopenshell_optional_shape_builder_mep_transition_shape_result_t *value, int owned);
+static PyObject *convert_instance_string_variant(ifcopenshell_instance_string_variant_t *value, int owned);
 static PyObject *convert_double_list(ifcopenshell_double_list_t *value, int owned) {
     (void)owned;
     PyObject *result = make_owned_buffer(
@@ -18290,6 +18483,25 @@ static PyObject *convert_geom_element_list(ifcopenshell_geom_element_list_t *val
         value->items[i] = NULL;
     }
     ifcopenshell_geom_element_list_destroy(value);
+    return result;
+}
+
+static PyObject *convert_geometry_railing_support_list(ifcopenshell_geometry_railing_support_list_t *value, int owned) {
+    PyObject *result = PyTuple_New((Py_ssize_t)value->size);
+    if (!result) {
+        ifcopenshell_geometry_railing_support_list_destroy(value);
+        return NULL;
+    }
+    for (size_t i = 0; i < value->size; ++i) {
+        PyObject *item = convert_geometry_railing_support(&value->items[i], owned);
+        if (!item) {
+            Py_DECREF(result);
+            ifcopenshell_geometry_railing_support_list_destroy(value);
+            return NULL;
+        }
+        PyTuple_SET_ITEM(result, (Py_ssize_t)i, item);
+    }
+    ifcopenshell_geometry_railing_support_list_destroy(value);
     return result;
 }
 
@@ -18651,6 +18863,72 @@ static PyObject *convert_int32_list_list_list_list(ifcopenshell_int32_list_list_
         PyTuple_SET_ITEM(result, (Py_ssize_t)i, item);
     }
     ifcopenshell_int32_list_list_list_list_destroy(value);
+    return result;
+}
+
+static PyObject *convert_geometry_railing_support(ifcopenshell_geometry_railing_support_t *value, int owned) {
+    if (!SimpleNamespaceType) {
+        ifcopenshell_geometry_railing_support_destroy(value);
+        PyErr_SetString(PyExc_RuntimeError, "types.SimpleNamespace is not available");
+        return NULL;
+    }
+    PyObject *result = PyObject_CallNoArgs(SimpleNamespaceType);
+    if (!result) { ifcopenshell_geometry_railing_support_destroy(value); return NULL; }
+    PyObject *item = NULL;
+    item = convert_double_list_list(&value->arc_polyline, 1);
+    if (!item) { Py_DECREF(result); ifcopenshell_geometry_railing_support_destroy(value); return NULL; }
+    if (PyObject_SetAttrString(result, "arc_polyline", item) < 0) { Py_DECREF(item); Py_DECREF(result); ifcopenshell_geometry_railing_support_destroy(value); return NULL; }
+    Py_DECREF(item);
+    item = PyFloat_FromDouble(value->arc_radius);
+    if (!item) { Py_DECREF(result); ifcopenshell_geometry_railing_support_destroy(value); return NULL; }
+    if (PyObject_SetAttrString(result, "arc_radius", item) < 0) { Py_DECREF(item); Py_DECREF(result); ifcopenshell_geometry_railing_support_destroy(value); return NULL; }
+    Py_DECREF(item);
+    item = convert_double_list(&value->disk_position, 1);
+    if (!item) { Py_DECREF(result); ifcopenshell_geometry_railing_support_destroy(value); return NULL; }
+    if (PyObject_SetAttrString(result, "disk_position", item) < 0) { Py_DECREF(item); Py_DECREF(result); ifcopenshell_geometry_railing_support_destroy(value); return NULL; }
+    Py_DECREF(item);
+    item = PyFloat_FromDouble(value->disk_radius);
+    if (!item) { Py_DECREF(result); ifcopenshell_geometry_railing_support_destroy(value); return NULL; }
+    if (PyObject_SetAttrString(result, "disk_radius", item) < 0) { Py_DECREF(item); Py_DECREF(result); ifcopenshell_geometry_railing_support_destroy(value); return NULL; }
+    Py_DECREF(item);
+    item = PyFloat_FromDouble(value->disk_depth);
+    if (!item) { Py_DECREF(result); ifcopenshell_geometry_railing_support_destroy(value); return NULL; }
+    if (PyObject_SetAttrString(result, "disk_depth", item) < 0) { Py_DECREF(item); Py_DECREF(result); ifcopenshell_geometry_railing_support_destroy(value); return NULL; }
+    Py_DECREF(item);
+    item = PyFloat_FromDouble(value->disk_z_rotation);
+    if (!item) { Py_DECREF(result); ifcopenshell_geometry_railing_support_destroy(value); return NULL; }
+    if (PyObject_SetAttrString(result, "disk_z_rotation", item) < 0) { Py_DECREF(item); Py_DECREF(result); ifcopenshell_geometry_railing_support_destroy(value); return NULL; }
+    Py_DECREF(item);
+    ifcopenshell_geometry_railing_support_destroy(value);
+    return result;
+}
+
+static PyObject *convert_geometry_wall_mounted_handrail_result(ifcopenshell_geometry_wall_mounted_handrail_result_t *value, int owned) {
+    if (!SimpleNamespaceType) {
+        ifcopenshell_geometry_wall_mounted_handrail_result_destroy(value);
+        PyErr_SetString(PyExc_RuntimeError, "types.SimpleNamespace is not available");
+        return NULL;
+    }
+    PyObject *result = PyObject_CallNoArgs(SimpleNamespaceType);
+    if (!result) { ifcopenshell_geometry_wall_mounted_handrail_result_destroy(value); return NULL; }
+    PyObject *item = NULL;
+    item = convert_double_list_list(&value->handrail_polyline, 1);
+    if (!item) { Py_DECREF(result); ifcopenshell_geometry_wall_mounted_handrail_result_destroy(value); return NULL; }
+    if (PyObject_SetAttrString(result, "handrail_polyline", item) < 0) { Py_DECREF(item); Py_DECREF(result); ifcopenshell_geometry_wall_mounted_handrail_result_destroy(value); return NULL; }
+    Py_DECREF(item);
+    item = convert_int32_list(&value->handrail_arc_point_indices, 1);
+    if (!item) { Py_DECREF(result); ifcopenshell_geometry_wall_mounted_handrail_result_destroy(value); return NULL; }
+    if (PyObject_SetAttrString(result, "handrail_arc_point_indices", item) < 0) { Py_DECREF(item); Py_DECREF(result); ifcopenshell_geometry_wall_mounted_handrail_result_destroy(value); return NULL; }
+    Py_DECREF(item);
+    item = PyFloat_FromDouble(value->handrail_radius);
+    if (!item) { Py_DECREF(result); ifcopenshell_geometry_wall_mounted_handrail_result_destroy(value); return NULL; }
+    if (PyObject_SetAttrString(result, "handrail_radius", item) < 0) { Py_DECREF(item); Py_DECREF(result); ifcopenshell_geometry_wall_mounted_handrail_result_destroy(value); return NULL; }
+    Py_DECREF(item);
+    item = convert_geometry_railing_support_list(&value->supports, 1);
+    if (!item) { Py_DECREF(result); ifcopenshell_geometry_wall_mounted_handrail_result_destroy(value); return NULL; }
+    if (PyObject_SetAttrString(result, "supports", item) < 0) { Py_DECREF(item); Py_DECREF(result); ifcopenshell_geometry_wall_mounted_handrail_result_destroy(value); return NULL; }
+    Py_DECREF(item);
+    ifcopenshell_geometry_wall_mounted_handrail_result_destroy(value);
     return result;
 }
 
@@ -35356,6 +35634,32 @@ __cleanup:
     return __py_result;
 }
 
+static PyObject *py_ifcopenshell_geometry_compute_wall_mounted_handrail_geometry(PyObject *self, PyObject *args) {
+    PyObject *__py_result = NULL;
+    bool ok = false;
+    PyObject *arg_options_obj = NULL;
+    ifcopenshell_geometry_compute_wall_mounted_handrail_options_t arg_options = {0};
+    PyObject *arg_options_refs[9] = {0};
+    ifcopenshell_geometry_wall_mounted_handrail_result_t result = {0};
+    if (!PyArg_ParseTuple(args, "O", &arg_options_obj)) return NULL;
+
+    if (!fill_input_geometry_compute_wall_mounted_handrail_options(arg_options_obj, &arg_options, arg_options_refs)) {
+        goto __cleanup;
+    }
+
+    ifcopenshell_clear_error();
+    ok = ifcopenshell_geometry_compute_wall_mounted_handrail_geometry(&arg_options, &result);
+    if (!ok) {
+        raise_last_error("ifcopenshell_geometry_compute_wall_mounted_handrail_geometry failed");
+        goto __cleanup;
+    }
+    __py_result = convert_geometry_wall_mounted_handrail_result(&result, 1);
+__cleanup:
+        release_option_refs(arg_options_refs, 9);
+        free_input_geometry_compute_wall_mounted_handrail_options(&arg_options);
+    return __py_result;
+}
+
 static PyObject *py_ifcopenshell_geometry_connect_element(PyObject *self, PyObject *args) {
     PyObject *__py_result = NULL;
     bool ok = false;
@@ -51744,6 +52048,7 @@ static PyMethodDef module_methods[] = {
     {"geometry_assign_representation", py_ifcopenshell_geometry_assign_representation, METH_VARARGS, "Wrap ifcopenshell_geometry_assign_representation"},
     {"geometry_clip_solid", py_ifcopenshell_geometry_clip_solid, METH_VARARGS, "Wrap ifcopenshell_geometry_clip_solid"},
     {"geometry_clip_solid_bounded", py_ifcopenshell_geometry_clip_solid_bounded, METH_VARARGS, "Wrap ifcopenshell_geometry_clip_solid_bounded"},
+    {"geometry_compute_wall_mounted_handrail_geometry", py_ifcopenshell_geometry_compute_wall_mounted_handrail_geometry, METH_VARARGS, "Wrap ifcopenshell_geometry_compute_wall_mounted_handrail_geometry"},
     {"geometry_connect_element", py_ifcopenshell_geometry_connect_element, METH_VARARGS, "Wrap ifcopenshell_geometry_connect_element"},
     {"geometry_connect_path", py_ifcopenshell_geometry_connect_path, METH_VARARGS, "Wrap ifcopenshell_geometry_connect_path"},
     {"geometry_connect_wall", py_ifcopenshell_geometry_connect_wall, METH_VARARGS, "Wrap ifcopenshell_geometry_connect_wall"},
@@ -52839,6 +53144,7 @@ static PyMethodDef module_methods[] = {
     {"ifcopenshell_geometry_assign_representation", py_ifcopenshell_geometry_assign_representation, METH_VARARGS, "Wrap ifcopenshell_geometry_assign_representation"},
     {"ifcopenshell_geometry_clip_solid", py_ifcopenshell_geometry_clip_solid, METH_VARARGS, "Wrap ifcopenshell_geometry_clip_solid"},
     {"ifcopenshell_geometry_clip_solid_bounded", py_ifcopenshell_geometry_clip_solid_bounded, METH_VARARGS, "Wrap ifcopenshell_geometry_clip_solid_bounded"},
+    {"ifcopenshell_geometry_compute_wall_mounted_handrail_geometry", py_ifcopenshell_geometry_compute_wall_mounted_handrail_geometry, METH_VARARGS, "Wrap ifcopenshell_geometry_compute_wall_mounted_handrail_geometry"},
     {"ifcopenshell_geometry_connect_element", py_ifcopenshell_geometry_connect_element, METH_VARARGS, "Wrap ifcopenshell_geometry_connect_element"},
     {"ifcopenshell_geometry_connect_path", py_ifcopenshell_geometry_connect_path, METH_VARARGS, "Wrap ifcopenshell_geometry_connect_path"},
     {"ifcopenshell_geometry_connect_wall", py_ifcopenshell_geometry_connect_wall, METH_VARARGS, "Wrap ifcopenshell_geometry_connect_wall"},

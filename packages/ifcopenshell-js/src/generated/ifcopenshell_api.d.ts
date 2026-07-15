@@ -8,6 +8,22 @@ declare module 'ifcopenshell-api' {
     new (arrayLike: ArrayLike<number>): T;
   }
 
+  export interface IfcOpenshellGeometryRailingSupport {
+    arc_polyline: number[][];
+    arc_radius: number;
+    disk_position: number[];
+    disk_radius: number;
+    disk_depth: number;
+    disk_z_rotation: number;
+  }
+
+  export interface IfcOpenshellGeometryWallMountedHandrailResult {
+    handrail_polyline: number[][];
+    handrail_arc_point_indices: number[];
+    handrail_radius: number;
+    supports: IfcOpenshellGeometryRailingSupport[];
+  }
+
   export interface IfcOpenshellProjectAppendAssetCacheEntry {
     source_identities: bigint[];
     source_ids: bigint[];
@@ -290,15 +306,15 @@ declare module 'ifcopenshell-api' {
 
   export interface IfcOpenshellGeometryAddRailingRepresentationOptions {
     context: IfcOpenshellInstance;
-    railing_path: number[][];
-    use_manual_supports: boolean;
-    support_spacing: number;
-    railing_diameter: number;
-    clear_width: number;
-    terminal_type: string;
-    height: number;
-    looped_path: boolean;
-    unit_scale: number;
+    railing_path?: number[][];
+    use_manual_supports?: boolean;
+    support_spacing?: number;
+    railing_diameter?: number;
+    clear_width?: number;
+    terminal_type?: string;
+    height?: number;
+    looped_path?: boolean;
+    unit_scale?: number;
   }
 
   export interface IfcOpenshellGeometryAddShapeAspectOptions {
@@ -375,6 +391,18 @@ declare module 'ifcopenshell-api' {
     owner_history?: IfcOpenshellInstance;
     user?: IfcOpenshellInstance;
     application?: IfcOpenshellInstance;
+  }
+
+  export interface IfcOpenshellGeometryComputeWallMountedHandrailOptions {
+    railing_path: number[][];
+    support_spacing: number;
+    railing_diameter: number;
+    clear_width: number;
+    height: number;
+    use_manual_supports?: boolean;
+    terminal_type?: string;
+    looped_path?: boolean;
+    unit_scale?: number;
   }
 
   export interface IfcOpenshellGeometryConnectElementOptions {
@@ -3235,10 +3263,10 @@ declare module 'ifcopenshell-api' {
      */
     addProfileRepresentation(file: IfcOpenshellFile, options: IfcOpenshellGeometryAddProfileRepresentationOptions): IfcOpenshellInstance;
     /**
-     * Create a railing representation along a path.
+     * Create a railing representation from the shared pure-compute result.
      *
      * @param file IFC file that receives the representation.
-     * @param options Railing path, support spacing, dimensions, and terminal type.
+     * @param options Context plus optional path, dimensions, terminal policy, and unit scale.
      * @return IfcShapeRepresentation entity, or no result if creation fails.
      */
     addRailingRepresentation(file: IfcOpenshellFile, options: IfcOpenshellGeometryAddRailingRepresentationOptions): IfcOpenshellInstance;
@@ -3323,6 +3351,19 @@ declare module 'ifcopenshell-api' {
      * @return IfcBooleanClippingResult entity, or no result if creation fails.
      */
     clipSolidBounded(file: IfcOpenshellFile, options: IfcOpenshellGeometryClipSolidBoundedOptions): IfcOpenshellInstance;
+    /**
+     * Compute wall-mounted handrail geometry without an IFC file or context.
+     *
+     * The input and output coordinates and dimensions use project units. Fixed
+     * metric design constants are divided by the supplied unit scale. Manual mode
+     * permits a non-positive unused support-spacing value; automatic mode requires
+     * positive spacing. Degenerate edges retain finite sharp vertices and do not
+     * produce support or fillet geometry with undefined directions.
+     *
+     * @param options Required dimensions and path plus optional terminal/support policy.
+     * @return Pure handrail and nested support geometry owned by the caller.
+     */
+    computeWallMountedHandrailGeometry(options: IfcOpenshellGeometryComputeWallMountedHandrailOptions): IfcOpenshellGeometryWallMountedHandrailResult;
     /**
      * Create an IfcRelConnectsElements between two elements.
      *

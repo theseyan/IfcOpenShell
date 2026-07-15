@@ -2220,6 +2220,39 @@ static std::vector<std::vector<std::vector<std::vector<int>>>> to_cpp_int32_list
     return result;
 }
 
+static ifcopenshell_geometry_railing_support_list_t make_geometry_railing_support_list(std::vector<ifcapi::bindings::GeometryRailingSupport> values) {
+    auto* items = values.empty() ? nullptr : new ifcopenshell_geometry_railing_support_t[values.size()]{};
+    try {
+        for (size_t i = 0; i < values.size(); ++i) {
+            items[i].arc_polyline = make_double_list_list(std::move(values[i].arc_polyline));
+            items[i].arc_radius = static_cast<double>(values[i].arc_radius);
+            items[i].disk_position = make_double_list(std::move(values[i].disk_position));
+            items[i].disk_radius = static_cast<double>(values[i].disk_radius);
+            items[i].disk_depth = static_cast<double>(values[i].disk_depth);
+            items[i].disk_z_rotation = static_cast<double>(values[i].disk_z_rotation);
+        }
+    } catch (...) {
+        for (size_t i = 0; i < values.size(); ++i) {
+            ifcopenshell_geometry_railing_support_destroy(&items[i]);
+        }
+        delete[] items;
+        throw;
+    }
+    return ifcopenshell_geometry_railing_support_list_t{items, values.size()};
+}
+
+void ifcopenshell_geometry_railing_support_list_destroy(ifcopenshell_geometry_railing_support_list_t* value) {
+    if (value == nullptr) {
+        return;
+    }
+    for (size_t i = 0; i < value->size; ++i) {
+        ifcopenshell_geometry_railing_support_destroy(&value->items[i]);
+    }
+    delete[] value->items;
+    value->items = nullptr;
+    value->size = 0;
+}
+
 void ifcopenshell_clear_error(void) {
     ifcopenshell::capi::g_last_error.clear();
     ifcopenshell::capi::g_last_error_kind = 0;
@@ -3172,6 +3205,23 @@ void ifcopenshell_geom_element_list_list_destroy(ifcopenshell_geom_element_list_
     value->items = nullptr;
     value->size = 0;
 }
+void ifcopenshell_geometry_railing_support_destroy(ifcopenshell_geometry_railing_support_t* value) {
+    if (value == nullptr) {
+        return;
+    }
+    ifcopenshell_double_list_list_destroy(&value->arc_polyline);
+    ifcopenshell_double_list_destroy(&value->disk_position);
+}
+
+void ifcopenshell_geometry_wall_mounted_handrail_result_destroy(ifcopenshell_geometry_wall_mounted_handrail_result_t* value) {
+    if (value == nullptr) {
+        return;
+    }
+    ifcopenshell_double_list_list_destroy(&value->handrail_polyline);
+    ifcopenshell_int32_list_destroy(&value->handrail_arc_point_indices);
+    ifcopenshell_geometry_railing_support_list_destroy(&value->supports);
+}
+
 void ifcopenshell_shape_builder_mep_transition_shape_result_destroy(ifcopenshell_shape_builder_mep_transition_shape_result_t* value) {
     if (value == nullptr) {
         return;
@@ -6651,17 +6701,35 @@ bool ifcopenshell_geometry_add_railing_representation(ifcopenshell_file_t* file,
     ifcapi::bindings::GeometryAddRailingRepresentationOptions options_cpp{};
     if (options->context == nullptr) { throw std::runtime_error("Options field \"context\" must not be null"); }
     options_cpp.context = options->context->value;
-    if (options->railing_path == nullptr) { throw std::runtime_error("Options field \"railing_path\" must not be null"); }
-    options_cpp.railing_path = to_cpp_double_list_list(options->railing_path);
-    options_cpp.use_manual_supports = static_cast<bool>(options->use_manual_supports);
-    options_cpp.support_spacing = static_cast<double>(options->support_spacing);
-    options_cpp.railing_diameter = static_cast<double>(options->railing_diameter);
-    options_cpp.clear_width = static_cast<double>(options->clear_width);
-    if (options->terminal_type == nullptr) { throw std::runtime_error("Options field \"terminal_type\" must not be null"); }
-    options_cpp.terminal_type = std::string(options->terminal_type);
-    options_cpp.height = static_cast<double>(options->height);
-    options_cpp.looped_path = static_cast<bool>(options->looped_path);
-    options_cpp.unit_scale = static_cast<double>(options->unit_scale);
+    if (options->has_railing_path) {
+        if (options->railing_path == nullptr) { throw std::runtime_error("Options field \"railing_path\" must not be null"); }
+        options_cpp.railing_path = to_cpp_double_list_list(options->railing_path);
+    }
+    if (options->has_use_manual_supports) {
+        options_cpp.use_manual_supports = options->use_manual_supports;
+    }
+    if (options->has_support_spacing) {
+        options_cpp.support_spacing = options->support_spacing;
+    }
+    if (options->has_railing_diameter) {
+        options_cpp.railing_diameter = options->railing_diameter;
+    }
+    if (options->has_clear_width) {
+        options_cpp.clear_width = options->clear_width;
+    }
+    if (options->has_terminal_type) {
+        if (options->terminal_type == nullptr) { throw std::runtime_error("Options field \"terminal_type\" must not be null"); }
+        options_cpp.terminal_type = std::string(options->terminal_type);
+    }
+    if (options->has_height) {
+        options_cpp.height = options->height;
+    }
+    if (options->has_looped_path) {
+        options_cpp.looped_path = options->looped_path;
+    }
+    if (options->has_unit_scale) {
+        options_cpp.unit_scale = options->unit_scale;
+    }
         auto result_value = ifcapi::bindings::geometry_add_railing_representation(file_cpp, options_cpp);
         if (!static_cast<bool>(result_value)) {
             *out_result = nullptr;
@@ -6986,6 +7054,54 @@ bool ifcopenshell_geometry_clip_solid_bounded(ifcopenshell_file_t* file, const i
             *out_result = nullptr;
         } else {
             *out_result = new ifcopenshell_instance_t{std::move(result_value)};
+        }
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_geometry_compute_wall_mounted_handrail_geometry(const ifcopenshell_geometry_compute_wall_mounted_handrail_options_t* options, ifcopenshell_geometry_wall_mounted_handrail_result_t* out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::GeometryComputeWallMountedHandrailOptions options_cpp{};
+    if (options->railing_path == nullptr) { throw std::runtime_error("Options field \"railing_path\" must not be null"); }
+    options_cpp.railing_path = to_cpp_double_list_list(options->railing_path);
+    options_cpp.support_spacing = static_cast<double>(options->support_spacing);
+    options_cpp.railing_diameter = static_cast<double>(options->railing_diameter);
+    options_cpp.clear_width = static_cast<double>(options->clear_width);
+    options_cpp.height = static_cast<double>(options->height);
+    if (options->has_use_manual_supports) {
+        options_cpp.use_manual_supports = options->use_manual_supports;
+    }
+    if (options->has_terminal_type) {
+        if (options->terminal_type == nullptr) { throw std::runtime_error("Options field \"terminal_type\" must not be null"); }
+        options_cpp.terminal_type = std::string(options->terminal_type);
+    }
+    if (options->has_looped_path) {
+        options_cpp.looped_path = options->looped_path;
+    }
+    if (options->has_unit_scale) {
+        options_cpp.unit_scale = options->unit_scale;
+    }
+        auto result_value = ifcapi::bindings::geometry_compute_wall_mounted_handrail_geometry(options_cpp);
+        ifcopenshell_geometry_wall_mounted_handrail_result_t result_value_c{};
+        try {
+            result_value_c.handrail_polyline = make_double_list_list(std::move(result_value.handrail_polyline));
+            result_value_c.handrail_arc_point_indices = make_int32_list(std::move(result_value.handrail_arc_point_indices));
+            result_value_c.handrail_radius = static_cast<double>(result_value.handrail_radius);
+            result_value_c.supports = make_geometry_railing_support_list(std::move(result_value.supports));
+            *out_result = result_value_c;
+            result_value_c = {};
+        } catch (...) {
+            ifcopenshell_geometry_wall_mounted_handrail_result_destroy(&result_value_c);
+            throw;
         }
         return true;
     } catch (const std::exception& e) {

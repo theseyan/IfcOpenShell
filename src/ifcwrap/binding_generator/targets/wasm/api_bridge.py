@@ -257,6 +257,17 @@ def _sequence_ts_type(struct: CTypeIR, metadata: BindingABI) -> str:
             item_type = f"{item_type}[]"
         return item_type
 
+    if struct.kind == "result_record_sequence":
+        item = next(
+            (
+                value
+                for value in metadata.value_types.values()
+                if value.c_type == struct.element_type and value.kind == "result_struct"
+            ),
+            None,
+        )
+        return f"{_struct_type_name(item)}[]" if item is not None else "ApiData[]"
+
     elem = (struct.element_type or "").removeprefix("const ").removesuffix("*").strip()
     scalar = {
         "bool": "boolean",
@@ -273,7 +284,11 @@ def _sequence_ts_type(struct: CTypeIR, metadata: BindingABI) -> str:
     nested = next(
         (item for item in metadata.value_types.values() if item.c_type == elem), None
     )
-    if nested is not None and nested.kind in {"sequence", "handle_sequence"}:
+    if nested is not None and nested.kind in {
+        "sequence",
+        "handle_sequence",
+        "result_record_sequence",
+    }:
         return f"{_sequence_ts_type(nested, metadata)}[]"
     return "ApiData[]"
 
@@ -306,7 +321,13 @@ def _direct_ts_type_from_c_type(c_type: str, metadata: BindingABI) -> str:
             item
             for item in metadata.value_types.values()
             if item.c_type == normalized_base
-            and item.kind in {"sequence", "handle_sequence", "input_record_sequence"}
+            and item.kind
+            in {
+                "sequence",
+                "handle_sequence",
+                "input_record_sequence",
+                "result_record_sequence",
+            }
         ),
         None,
     )
@@ -362,7 +383,13 @@ def _param_ts_type(
             item
             for item in metadata.value_types.values()
             if item.c_type == normalized_base
-            and item.kind in {"sequence", "handle_sequence", "input_record_sequence"}
+            and item.kind
+            in {
+                "sequence",
+                "handle_sequence",
+                "input_record_sequence",
+                "result_record_sequence",
+            }
         ),
         None,
     )
@@ -487,7 +514,13 @@ def _param_expr(
             item
             for item in metadata.value_types.values()
             if item.c_type == normalized_base
-            and item.kind in {"sequence", "handle_sequence", "input_record_sequence"}
+            and item.kind
+            in {
+                "sequence",
+                "handle_sequence",
+                "input_record_sequence",
+                "result_record_sequence",
+            }
         ),
         None,
     )
@@ -552,21 +585,31 @@ def _result_wrap_expr(value_expr: str, c_type: str, metadata: BindingABI) -> str
             .removeprefix("const ")
             .removesuffix("*")
             .strip()
-            and item.kind in {"sequence", "handle_sequence"}
+            and item.kind in {"sequence", "handle_sequence", "result_record_sequence"}
         ),
         None,
     )
     if sequence is not None:
+        if sequence.kind == "result_record_sequence":
+            item = next(
+                (
+                    value
+                    for value in metadata.value_types.values()
+                    if value.c_type == sequence.element_type
+                    and value.kind == "result_struct"
+                ),
+                None,
+            )
+            if item is not None:
+                return (
+                    f"({value_expr} as RawValue[]).map((item) => "
+                    f"{_result_record_expr('item', item, metadata, 'itemData')})"
+                )
         return f"wrap(shell, {value_expr})"
     return f"wrap(shell, {value_expr})"
 
 
-def _raw_result_struct_type(function: CFunctionIR, metadata: BindingABI) -> str:
-    if function.returns.struct is None:
-        return "RawValue"
-    struct = metadata.value_types.get(function.returns.struct)
-    if struct is None or struct.kind != "result_struct":
-        return "RawValue"
+def _raw_result_record_type(struct: CTypeIR, metadata: BindingABI) -> str:
     fields = []
     for field in struct.fields:
         field_type = _direct_ts_type_from_c_type(field.c_type, metadata)
@@ -579,6 +622,32 @@ def _raw_result_struct_type(function: CFunctionIR, metadata: BindingABI) -> str:
     return f"{{ {'; '.join(fields)} }}"
 
 
+def _result_record_expr(
+    value_expr: str,
+    struct: CTypeIR,
+    metadata: BindingABI,
+    data_name: str,
+) -> str:
+    fields = ", ".join(
+        f"{_camel_name(field.name)}: "
+        f"{_result_wrap_expr(f'{data_name}.{field.name}', field.c_type, metadata)}"
+        for field in struct.fields
+    )
+    return (
+        f"(() => {{ const {data_name} = {value_expr} as "
+        f"{_raw_result_record_type(struct, metadata)}; return {{ {fields} }}; }})()"
+    )
+
+
+def _raw_result_struct_type(function: CFunctionIR, metadata: BindingABI) -> str:
+    if function.returns.struct is None:
+        return "RawValue"
+    struct = metadata.value_types.get(function.returns.struct)
+    if struct is None or struct.kind != "result_struct":
+        return "RawValue"
+    return _raw_result_record_type(struct, metadata)
+
+
 def _result_struct_expr(
     function: CFunctionIR, return_type: str, metadata: BindingABI
 ) -> str:
@@ -587,6 +656,11 @@ def _result_struct_expr(
     struct = metadata.value_types.get(function.returns.struct)
     if struct is None or struct.kind != "result_struct":
         return f"wrap(shell, result) as {return_type}"
+    if function.returns.sequence_depth == 1:
+        return (
+            "(result as RawValue[]).map((item) => "
+            f"{_result_record_expr('item', struct, metadata, 'itemData')})"
+        )
     fields = ", ".join(
         f"{_camel_name(field.name)}: {_result_wrap_expr(f'data.{field.name}', field.c_type, metadata)}"
         for field in struct.fields

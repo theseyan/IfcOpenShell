@@ -66,6 +66,24 @@ struct ifcopenshell_project_append_asset_cache_t;
 
 namespace ifcapi::bindings {
 
+IFCAPI_RESULT_STRUCT(ifcapi::bindings::GeometryRailingSupport)
+struct ifcopenshell_geometry_railing_support_t {
+    std::vector<std::vector<double>> arc_polyline;
+    double arc_radius;
+    std::vector<double> disk_position;
+    double disk_radius;
+    double disk_depth;
+    double disk_z_rotation;
+};
+
+IFCAPI_RESULT_STRUCT(ifcapi::bindings::GeometryWallMountedHandrailResult)
+struct ifcopenshell_geometry_wall_mounted_handrail_result_t {
+    std::vector<std::vector<double>> handrail_polyline;
+    std::vector<int> handrail_arc_point_indices;
+    double handrail_radius;
+    std::vector<GeometryRailingSupport> supports;
+};
+
 IFCAPI_RESULT_STRUCT(ifcapi::bindings::ShapeBuilderMepTransitionShapeResult)
 struct ifcopenshell_shape_builder_mep_transition_shape_result_t {
     express::Base representation;

@@ -976,6 +976,57 @@ class TestOutputHandling:
         assert "ifcopenshell_demo_result_destroy(value);" in code
         assert "convert_demo_item_list(&value->items, 1)" in code
 
+    def test_result_record_sequence_conversion_is_recursive_and_failure_safe(self):
+        meta = _make_metadata(
+            value_types={
+                "double_list": CTypeIR(
+                    c_type="ifcopenshell_double_list_t",
+                    kind="sequence",
+                    fields=(CFieldIR("items", "double*"), CFieldIR("size", "size_t")),
+                    destroy_function="ifcopenshell_double_list_destroy",
+                    element_type="double",
+                    sequence_depth=1,
+                ),
+                "support": CTypeIR(
+                    c_type="ifcopenshell_demo_support_t",
+                    kind="result_struct",
+                    fields=(CFieldIR("points", "ifcopenshell_double_list_t"),),
+                    destroy_function="ifcopenshell_demo_support_destroy",
+                ),
+                "support_list": CTypeIR(
+                    c_type="ifcopenshell_demo_support_list_t",
+                    kind="result_record_sequence",
+                    fields=(
+                        CFieldIR("items", "ifcopenshell_demo_support_t*"),
+                        CFieldIR("size", "size_t"),
+                    ),
+                    destroy_function="ifcopenshell_demo_support_list_destroy",
+                    element_type="ifcopenshell_demo_support_t",
+                    sequence_depth=1,
+                ),
+                "result": CTypeIR(
+                    c_type="ifcopenshell_demo_result_t",
+                    kind="result_struct",
+                    fields=(CFieldIR("supports", "ifcopenshell_demo_support_list_t"),),
+                    destroy_function="ifcopenshell_demo_result_destroy",
+                ),
+            },
+            functions={
+                "ifcopenshell_demo_result": _make_function(
+                    c_name="ifcopenshell_demo_result",
+                    returns=TypeSpec(kind="struct", struct="result"),
+                )
+            },
+        )
+
+        code = render_python_extension(meta)
+
+        assert "static PyObject *convert_demo_support(" in code
+        assert "convert_demo_support(&value->items[i], owned)" in code
+        assert "if (!item) {" in code
+        assert "ifcopenshell_demo_support_list_destroy(value);" in code
+        assert "convert_demo_support_list(&value->supports, 1)" in code
+
     def test_nullable_result_struct_cleanup_handles_absent_and_present_values(self):
         meta = _make_metadata(
             value_types={

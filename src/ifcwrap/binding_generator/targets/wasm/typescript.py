@@ -75,7 +75,13 @@ def _ts_type_from_c_type(c_type: str, metadata: BindingABI) -> str:
             item
             for item in metadata.value_types.values()
             if item.c_type == normalized_base
-            and item.kind in {"sequence", "handle_sequence", "input_record_sequence"}
+            and item.kind
+            in {
+                "sequence",
+                "handle_sequence",
+                "input_record_sequence",
+                "result_record_sequence",
+            }
         ),
         None,
     )
@@ -112,6 +118,21 @@ def _sequence_ts_type(struct: CTypeIR, metadata: BindingABI) -> str:
         )
         return f"{item}[]"
 
+    if struct.kind == "result_record_sequence":
+        item = next(
+            (
+                value
+                for value in metadata.value_types.values()
+                if value.c_type == struct.element_type and value.kind == "result_struct"
+            ),
+            None,
+        )
+        return (
+            f"{_interface_name(item.c_type)}[]"
+            if item is not None
+            else "IfcOpenshellRawValue[]"
+        )
+
     elem = (struct.element_type or "").removeprefix("const ").removesuffix("*").strip()
     scalar = {
         "bool": "boolean",
@@ -128,7 +149,11 @@ def _sequence_ts_type(struct: CTypeIR, metadata: BindingABI) -> str:
     nested = next(
         (item for item in metadata.value_types.values() if item.c_type == elem), None
     )
-    if nested is not None and nested.kind in {"sequence", "handle_sequence"}:
+    if nested is not None and nested.kind in {
+        "sequence",
+        "handle_sequence",
+        "result_record_sequence",
+    }:
         return f"{_sequence_ts_type(nested, metadata)}[]"
     return "IfcOpenshellRawValue[]"
 

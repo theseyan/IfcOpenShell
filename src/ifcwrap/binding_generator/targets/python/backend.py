@@ -511,7 +511,11 @@ def _list_leaf_type(c_type: str) -> str:
 
 
 def _is_sequence(struct: CTypeIR | None) -> bool:
-    return struct is not None and struct.kind in {"sequence", "handle_sequence"}
+    return struct is not None and struct.kind in {
+        "sequence",
+        "handle_sequence",
+        "result_record_sequence",
+    }
 
 
 def _is_input_sequence(struct: CTypeIR | None) -> bool:
@@ -700,6 +704,10 @@ def _render_value_converters(metadata: BindingABI, handles: dict[str, CTypeIR]) 
         s for s in metadata.value_types.values() if s.kind == "optional_result_struct"
     ]
     variants = [s for s in metadata.value_types.values() if s.kind == "variant"]
+    forward_declarations = "\n".join(
+        f"static PyObject *convert_{_snake_name(struct.c_type)}({struct.c_type} *value, int owned);"
+        for struct in (*sequences, *result_structs, *optional_result_structs, *variants)
+    )
     converters = [
         """
 static PyObject *convert_ifcopenshell_string_copy(ifcopenshell_string_t *value) {
@@ -714,7 +722,8 @@ static PyObject *convert_string(ifcopenshell_string_t *value) {
     ifcopenshell_string_destroy(value);
     return result;
 }
-"""
+""",
+        forward_declarations,
     ]
     converters.extend(_render_sequence_converter(struct) for struct in sequences)
     converters.extend(

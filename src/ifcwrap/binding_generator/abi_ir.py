@@ -190,8 +190,24 @@ def _value_destroy_name(c_type: str) -> str:
     return f"ifcopenshell_{_snake_name(c_type)}_destroy"
 
 
+def _result_record_list_c_type(struct: object) -> str:
+    return f"{struct.c_type.removesuffix('_t')}_list_t"
+
+
+def _result_record_list_destroy_name(struct: object) -> str:
+    return f"ifcopenshell_{_snake_name(_result_record_list_c_type(struct))}_destroy"
+
+
+def _result_record_list_make_name(struct: object) -> str:
+    return f"make_{_snake_name(_result_record_list_c_type(struct))}"
+
+
 def _type_spec_sequence_kind(type_spec: TypeSpec) -> str | None:
-    if type_spec.sequence_depth <= 0 or type_spec.kind in {"handle", "option"}:
+    if type_spec.sequence_depth <= 0 or type_spec.kind in {
+        "handle",
+        "option",
+        "struct",
+    }:
         return None
     return f"{type_spec.kind}{'_list' * type_spec.sequence_depth}"
 
@@ -254,6 +270,29 @@ def _used_handle_list_handles(ir: BindingIR) -> tuple[HandleSpec, ...]:
         for field in struct.fields:
             add(field.type)
     return tuple(handles)
+
+
+def _used_result_record_lists(ir: BindingIR) -> tuple[object, ...]:
+    seen: set[str] = set()
+    structs: list[object] = []
+
+    def add(type_spec: TypeSpec) -> None:
+        if (
+            type_spec.kind != "struct"
+            or type_spec.sequence_depth != 1
+            or type_spec.struct is None
+            or type_spec.struct in seen
+        ):
+            return
+        seen.add(type_spec.struct)
+        structs.append(ir.result_structs[type_spec.struct])
+
+    for call in ir.calls:
+        add(call.returns)
+    for struct in ir.result_structs.values():
+        for field in struct.fields:
+            add(field.type)
+    return tuple(structs)
 
 
 def _param_c_type(type_spec: TypeSpec, ir: BindingIR) -> str:
@@ -345,6 +384,8 @@ def _out_c_type(type_spec: TypeSpec, ir: BindingIR) -> str:
     if type_spec.kind == "struct":
         if type_spec.struct is None:
             raise ValueError("struct type is missing struct name")
+        if type_spec.sequence_depth == 1:
+            return f"{_result_record_list_c_type(ir.result_structs[type_spec.struct])}*"
         if type_spec.nullable:
             return f"{_optional_struct_c_type(type_spec, ir)}*"
         return f"{ir.result_structs[type_spec.struct].c_type}*"
@@ -373,6 +414,8 @@ def _field_c_type(type_spec: TypeSpec, ir: BindingIR) -> str:
     if type_spec.kind == "struct":
         if type_spec.struct is None:
             raise ValueError("struct type is missing struct name")
+        if type_spec.sequence_depth == 1:
+            return _result_record_list_c_type(ir.result_structs[type_spec.struct])
         return ir.result_structs[type_spec.struct].c_type
     if type_spec.kind == "opaque_ptr":
         return "void*"
@@ -455,6 +498,19 @@ def _finalize_value_types(ir: BindingIR) -> dict[str, CTypeIR]:
             destroy_function=_handle_list_list_destroy_name(handle),
             element_type=list_type,
             sequence_depth=2,
+        )
+    for struct in _used_result_record_lists(ir):
+        list_type = _result_record_list_c_type(struct)
+        result[_snake_name(list_type)] = CTypeIR(
+            c_type=list_type,
+            kind="result_record_sequence",
+            fields=(
+                CFieldIR("items", f"{struct.c_type}*"),
+                CFieldIR("size", "size_t"),
+            ),
+            destroy_function=_result_record_list_destroy_name(struct),
+            element_type=struct.c_type,
+            sequence_depth=1,
         )
     for struct in ir.result_structs.values():
         result[struct.name] = CTypeIR(
