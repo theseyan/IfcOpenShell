@@ -17,6 +17,7 @@ namespace ifcapi_pset {
 enum class Kind {
     NONE,
     BOOL,
+    BOOL_LIST,
     INT,
     DOUBLE,
     STRING,
@@ -46,6 +47,7 @@ struct Entry {
     express::Base inst;
     express::Base unit;
     std::vector<std::string> str_list;
+    std::vector<bool> bool_list;
     std::vector<double> dbl_list;
     std::vector<int64_t> int_list;
     std::vector<express::Base> inst_list;

@@ -27,6 +27,7 @@ type RawPsetApi = {
   propsFree(ptr: number): void;
   propsSetNull(ptr: number, key: string): void;
   propsSetBool(ptr: number, key: string, value: boolean): void;
+  propsSetBoolList(ptr: number, key: string, values: boolean[]): void;
   propsSetInt(ptr: number, key: string, value: bigint): void;
   propsSetDouble(ptr: number, key: string, value: number): void;
   propsSetString(ptr: number, key: string, value: string): void;
@@ -139,7 +140,8 @@ function writeTyped(api: RawPsetApi, ptr: number, key: string, value: TypedPsetV
 }
 
 function writeList(shell: IfcOpenShell, api: RawPsetApi, ptr: number, key: string, values: PsetValue[]): void {
-  if (values.every((item): item is string => typeof item === 'string')) api.propsSetStringList(ptr, key, values);
+  if (values.every((item): item is boolean => typeof item === 'boolean')) api.propsSetBoolList(ptr, key, values);
+  else if (values.every((item): item is string => typeof item === 'string')) api.propsSetStringList(ptr, key, values);
   else if (values.every((item): item is number => typeof item === 'number')) api.propsSetDoubleList(ptr, key, values);
   else if (values.every((item): item is bigint => typeof item === 'bigint')) api.propsSetIntList(ptr, key, values);
   else if (values.every((item): item is Entity => item instanceof Entity)) {

@@ -50,6 +50,17 @@ IFCAPI_BINDING express::Base library_add_library(
     const std::string& name);
 
 /**
+ * Set an IfcLibraryInformation VersionDate from an ISO-8601 date-time.
+ *
+ * IFC4 and later store the string directly. IFC2X3 creates and assigns an
+ * IfcCalendarDate containing the date components.
+ */
+IFCAPI_BINDING void library_edit_version_date(
+    ifcopenshell::file* file,
+    express::Base* library,
+    const std::string& iso_date_time);
+
+/**
  * Create a new IfcLibraryReference linked to a library.
  *
  * In IFC4+, the reference's ReferencedLibrary attribute is set. In IFC2X3,

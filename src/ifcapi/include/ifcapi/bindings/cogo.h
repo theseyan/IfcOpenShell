@@ -8,9 +8,19 @@
 #include "ifcparse/file.h"
 
 #include <optional>
+#include <string>
 
 namespace ifcapi {
 namespace bindings {
+
+/**
+ * Convert a quadrant bearing to decimal degrees.
+ *
+ * Accepts N/S, degrees, optional minutes and decimal seconds, and E/W,
+ * separated by arbitrary whitespace. Invalid input reports
+ * "Invalid bearing string".
+ */
+IFCAPI_BINDING double cogo_bearing2dd(const std::string& bearing);
 
 /**
  * Options for adding a survey point to the model.

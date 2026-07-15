@@ -18,10 +18,14 @@
 from typing import Any
 
 import ifcopenshell
-from ifcopenshell.entity_instance import _instance_attribute_names
+from ifcopenshell.api.attribute.edit_attributes import _edit_attributes
 
 
-def edit_profile(file: ifcopenshell.file, profile: ifcopenshell.entity_instance, attributes: dict[str, Any]) -> None:
+def edit_profile(
+    file: ifcopenshell.file,
+    profile: ifcopenshell.entity_instance,
+    attributes: dict[str, Any],
+) -> None:
     """Edits the attributes of an IfcProfileDef
 
     For more information about the attributes and data types of an
@@ -42,7 +46,4 @@ def edit_profile(file: ifcopenshell.file, profile: ifcopenshell.entity_instance,
         ifcopenshell.api.profile.edit_profile(model,
             profile=circle, attributes={"ProfileName": "1000mm Dia"})
     """
-    for name, value in attributes.items():
-        if name not in _instance_attribute_names(profile._handle):
-            raise RuntimeError(f"Attribute {name} not found")
-        setattr(profile, name, value)
+    _edit_attributes(file, profile, attributes)

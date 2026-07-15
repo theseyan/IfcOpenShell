@@ -17,21 +17,36 @@
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
 
-import pytest
-
 import ifcopenshell.api.cogo
+import pytest
 
 
 def test_bearing2dd():
-    assert 44.743888875 == pytest.approx(ifcopenshell.api.cogo.bearing2dd("N 45 15 22.5 E"))
-    assert 135.256111125 == pytest.approx(ifcopenshell.api.cogo.bearing2dd("N 45 15 22.5 W"))
-    assert 224.743888875 == pytest.approx(ifcopenshell.api.cogo.bearing2dd("S 45 15 22.5 W"))
-    assert 315.256111125 == pytest.approx(ifcopenshell.api.cogo.bearing2dd("S 45 15 22.5 E"))
+    assert 44.743888875 == pytest.approx(
+        ifcopenshell.api.cogo.bearing2dd("N 45 15 22.5 E")
+    )
+    assert 135.256111125 == pytest.approx(
+        ifcopenshell.api.cogo.bearing2dd("N 45 15 22.5 W")
+    )
+    assert 224.743888875 == pytest.approx(
+        ifcopenshell.api.cogo.bearing2dd("S 45 15 22.5 W")
+    )
+    assert 315.256111125 == pytest.approx(
+        ifcopenshell.api.cogo.bearing2dd("S 45 15 22.5 E")
+    )
 
-    assert 44.743888875 == pytest.approx(ifcopenshell.api.cogo.bearing2dd("n 45 15 22.5 e"))
-    assert 135.256111125 == pytest.approx(ifcopenshell.api.cogo.bearing2dd("n 45 15 22.5 w"))
-    assert 224.743888875 == pytest.approx(ifcopenshell.api.cogo.bearing2dd("s 45 15 22.5 w"))
-    assert 315.256111125 == pytest.approx(ifcopenshell.api.cogo.bearing2dd("s 45 15 22.5 e"))
+    assert 44.743888875 == pytest.approx(
+        ifcopenshell.api.cogo.bearing2dd("n 45 15 22.5 e")
+    )
+    assert 135.256111125 == pytest.approx(
+        ifcopenshell.api.cogo.bearing2dd("n 45 15 22.5 w")
+    )
+    assert 224.743888875 == pytest.approx(
+        ifcopenshell.api.cogo.bearing2dd("s 45 15 22.5 w")
+    )
+    assert 315.256111125 == pytest.approx(
+        ifcopenshell.api.cogo.bearing2dd("s 45 15 22.5 e")
+    )
 
     assert 0.0 == pytest.approx(ifcopenshell.api.cogo.bearing2dd("N 90 E"))
     assert 0.0 == pytest.approx(ifcopenshell.api.cogo.bearing2dd("S 90 E"))
@@ -40,11 +55,19 @@ def test_bearing2dd():
     assert 180.0 == pytest.approx(ifcopenshell.api.cogo.bearing2dd("S 90 W"))
 
     assert 120.0 == pytest.approx(ifcopenshell.api.cogo.bearing2dd("N 30 W"))
-    assert 120.16666666666667 == pytest.approx(ifcopenshell.api.cogo.bearing2dd("N 30 10 W"))
+    assert 120.16666666666667 == pytest.approx(
+        ifcopenshell.api.cogo.bearing2dd("N 30 10 W")
+    )
 
-    assert 89.999722222222228 == pytest.approx(ifcopenshell.api.cogo.bearing2dd("N 00 00 1 E"))
-    assert 89.99972222222222 == pytest.approx(ifcopenshell.api.cogo.bearing2dd("N 0 0 1 E"))
-    assert 89.99972222222222 == pytest.approx(ifcopenshell.api.cogo.bearing2dd("N 00 00 1.0 E"))
+    assert 89.999722222222228 == pytest.approx(
+        ifcopenshell.api.cogo.bearing2dd("N 00 00 1 E")
+    )
+    assert 89.99972222222222 == pytest.approx(
+        ifcopenshell.api.cogo.bearing2dd("N 0 0 1 E")
+    )
+    assert 89.99972222222222 == pytest.approx(
+        ifcopenshell.api.cogo.bearing2dd("N 00 00 1.0 E")
+    )
 
     with pytest.raises(ValueError, match="Invalid bearing string"):
         ifcopenshell.api.cogo.bearing2dd("Bad String")
@@ -69,6 +92,27 @@ def test_bearing2dd():
 
     with pytest.raises(ValueError, match="Invalid bearing string"):
         ifcopenshell.api.cogo.bearing2dd("N 45 15 99.5 E")
+
+
+def test_bearing2dd_whitespace_boundaries_and_strict_numeric_tokens():
+    assert ifcopenshell.api.cogo.bearing2dd("\tN\t0\tE  ") == pytest.approx(90.0)
+    assert ifcopenshell.api.cogo.bearing2dd(" S   90   E ") == pytest.approx(0.0)
+    assert ifcopenshell.api.cogo.bearing2dd("N 0 W") == pytest.approx(90.0)
+    assert ifcopenshell.api.cogo.bearing2dd("N 89 59 59.999999 W") > 179.999
+
+    for bearing in (
+        "N 45.5 E",
+        "N 45x E",
+        "N E",
+        "45 E",
+        "N 45",
+        "N nan E",
+        "N inf E",
+        "N 90 0 0.0001 E",
+        "N 89 60 E",
+    ):
+        with pytest.raises(ValueError, match="^Invalid bearing string$"):
+            ifcopenshell.api.cogo.bearing2dd(bearing)
 
 
 test_bearing2dd()

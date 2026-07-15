@@ -12,9 +12,18 @@
 #include <vector>
 
 struct ifcopenshell_pset_template_t;
+struct ifcopenshell_pset_props_t;
 
 namespace ifcapi {
 namespace bindings {
+
+/** Options for editing an IfcSimplePropertyTemplate. */
+struct PsetTemplateEditPropTemplateOptions {
+    /// Property template to edit.
+    express::Base prop_template;
+    /// Attributes to apply, including an optional Enumerators primitive sequence.
+    ifcopenshell_pset_props_t* attributes;
+};
 
 /**
  * Set the directory used to locate built-in pset/qto template files.
@@ -129,6 +138,18 @@ IFCAPI_BINDING express::Base pset_template_add_prop_template(
     const char* description,
     const char* template_type,
     const char* primary_measure_type);
+
+/**
+ * Edit a simple property template and its property enumeration.
+ *
+ * A populated Enumerators sequence is converted to wrapped IFC values using
+ * the incoming PrimaryMeasureType, the existing type, or IfcLabel. Existing
+ * IfcPropertyEnumeration entities are reused. An omitted, blank, or empty
+ * Enumerators value leaves the current enumeration unchanged.
+ */
+IFCAPI_BINDING void pset_template_edit_prop_template(
+    ifcopenshell::file* file,
+    const PsetTemplateEditPropTemplateOptions& options);
 
 /**
  * Remove a property set template and its child property templates.

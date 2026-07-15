@@ -1801,6 +1801,21 @@ void ifcopenshell_double_list_list_destroy(ifcopenshell_double_list_list_t* valu
     value->size = 0;
 }
 
+void ifcopenshell_bool_list_destroy(ifcopenshell_bool_list_t* value) {
+    if (value == nullptr) {
+        return;
+    }
+    if (value->owner == nullptr) {
+        value->items = nullptr;
+        value->size = 0;
+        return;
+    }
+
+    ifcopenshell_buffer_owner_destroy(&value->owner);
+    value->items = nullptr;
+    value->size = 0;
+}
+
 void ifcopenshell_int64_list_destroy(ifcopenshell_int64_list_t* value) {
     if (value == nullptr) {
         return;
@@ -1860,21 +1875,6 @@ void ifcopenshell_int32_list_list_list_destroy(ifcopenshell_int32_list_list_list
     for (size_t i = 0; i < value->size; ++i) {
         ifcopenshell_int32_list_list_destroy(&value->items[i]);
     }
-    ifcopenshell_buffer_owner_destroy(&value->owner);
-    value->items = nullptr;
-    value->size = 0;
-}
-
-void ifcopenshell_bool_list_destroy(ifcopenshell_bool_list_t* value) {
-    if (value == nullptr) {
-        return;
-    }
-    if (value->owner == nullptr) {
-        value->items = nullptr;
-        value->size = 0;
-        return;
-    }
-
     ifcopenshell_buffer_owner_destroy(&value->owner);
     value->items = nullptr;
     value->size = 0;
@@ -2020,6 +2020,26 @@ static std::vector<std::vector<double>> to_cpp_double_list_list(const ifcopenshe
     return result;
 }
 
+static ifcopenshell_bool_list_t make_bool_list(std::vector<bool> values) {
+    auto owner = std::make_unique<capi_array_owner<bool>>(values.size());
+    for (size_t i = 0; i < values.size(); ++i) {
+        owner->values[i] = values[i];
+    }
+    auto* items = owner->values.get();
+    const auto size = values.size();
+    return ifcopenshell_bool_list_t{items, size, owner.release()};
+}
+
+static std::vector<bool> to_cpp_bool_list(const ifcopenshell_bool_list_t* value) {
+    validate_list_items("bool_list", value->items, value->size);
+    std::vector<bool> result;
+    result.reserve(value->size);
+    for (size_t i = 0; i < value->size; ++i) {
+        result.push_back(value->items[i]);
+    }
+    return result;
+}
+
 static ifcopenshell_int64_list_t make_int64_list(std::vector<int64_t> values) {
     auto owner = std::make_unique<capi_value_owner<std::vector<int64_t>>>(std::move(values));
     auto& stored = owner->value;
@@ -2106,26 +2126,6 @@ static std::vector<std::vector<std::vector<int>>> to_cpp_int32_list_list_list(co
     result.reserve(value->size);
     for (size_t i = 0; i < value->size; ++i) {
         result.push_back(to_cpp_int32_list_list(&value->items[i]));
-    }
-    return result;
-}
-
-static ifcopenshell_bool_list_t make_bool_list(std::vector<bool> values) {
-    auto owner = std::make_unique<capi_array_owner<bool>>(values.size());
-    for (size_t i = 0; i < values.size(); ++i) {
-        owner->values[i] = values[i];
-    }
-    auto* items = owner->values.get();
-    const auto size = values.size();
-    return ifcopenshell_bool_list_t{items, size, owner.release()};
-}
-
-static std::vector<bool> to_cpp_bool_list(const ifcopenshell_bool_list_t* value) {
-    validate_list_items("bool_list", value->items, value->size);
-    std::vector<bool> result;
-    result.reserve(value->size);
-    for (size_t i = 0; i < value->size; ++i) {
-        result.push_back(value->items[i]);
     }
     return result;
 }
@@ -5731,6 +5731,23 @@ bool ifcopenshell_cogo_assign_survey_point(ifcopenshell_instance_t* annotation, 
     }
 }
 
+bool ifcopenshell_cogo_bearing2dd(const char* bearing, double* out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (bearing == nullptr) { throw std::runtime_error("Parameter \"bearing\" must not be null"); }
+    std::string bearing_cpp(bearing);
+        *out_result = static_cast<double>(ifcapi::bindings::cogo_bearing2dd(bearing_cpp));
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
 bool ifcopenshell_cogo_edit_survey_point(ifcopenshell_instance_t* annotation, double x, double y, double z) {
     try {
         ifcopenshell_clear_error();
@@ -9296,6 +9313,26 @@ bool ifcopenshell_library_assign_reference(ifcopenshell_file_t* file, const ifco
     }
 }
 
+bool ifcopenshell_library_edit_version_date(ifcopenshell_file_t* file, ifcopenshell_instance_t* library, const char* iso_date_time) {
+    try {
+        ifcopenshell_clear_error();
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    if (library == nullptr) { throw std::runtime_error("Handle parameter \"library\" must not be null"); }
+    auto library_cpp = &library->value;
+    if (iso_date_time == nullptr) { throw std::runtime_error("Parameter \"iso_date_time\" must not be null"); }
+    std::string iso_date_time_cpp(iso_date_time);
+        ifcapi::bindings::library_edit_version_date(file_cpp, library_cpp, iso_date_time_cpp);
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
 bool ifcopenshell_library_remove_library(ifcopenshell_file_t* file, ifcopenshell_instance_t* library) {
     try {
         ifcopenshell_clear_error();
@@ -11215,6 +11252,26 @@ bool ifcopenshell_pset_props_set_bool(void* props, const char* key, bool value) 
     }
 }
 
+bool ifcopenshell_pset_props_set_bool_list(void* props, const char* key, const ifcopenshell_bool_list_t* values) {
+    try {
+        ifcopenshell_clear_error();
+    if (props == nullptr) { throw std::runtime_error("Parameter \"props\" must not be null"); }
+    auto props_cpp = static_cast<ifcopenshell_pset_props_t*>(props);
+    if (key == nullptr) { throw std::runtime_error("Parameter \"key\" must not be null"); }
+    std::string key_cpp(key);
+    if (values == nullptr) { throw std::runtime_error("Parameter \"values\" must not be null"); }
+    auto values_cpp = to_cpp_bool_list(values);
+        ifcapi::bindings::pset_props_set_bool_list(props_cpp, key_cpp, values_cpp);
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
 bool ifcopenshell_pset_props_set_date(void* props, const char* key, int32_t year, int32_t month, int32_t day) {
     try {
         ifcopenshell_clear_error();
@@ -11679,6 +11736,27 @@ bool ifcopenshell_pset_template_create_from_files(const char* schema_identifier,
         } else {
             *out_result = new ifcopenshell_pset_template_handle_t{result_value, true};
         }
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_pset_template_edit_prop_template(ifcopenshell_file_t* file, const ifcopenshell_pset_template_edit_prop_template_options_t* options) {
+    try {
+        ifcopenshell_clear_error();
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::PsetTemplateEditPropTemplateOptions options_cpp{};
+    if (options->prop_template == nullptr) { throw std::runtime_error("Options field \"prop_template\" must not be null"); }
+    options_cpp.prop_template = options->prop_template->value;
+    options_cpp.attributes = static_cast<ifcopenshell_pset_props_t*>(options->attributes);
+        ifcapi::bindings::pset_template_edit_prop_template(file_cpp, options_cpp);
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -13570,14 +13648,16 @@ bool ifcopenshell_sequence_duplicate_task(ifcopenshell_file_t* file, ifcopenshel
     }
 }
 
-bool ifcopenshell_sequence_edit_lag_time(ifcopenshell_instance_t* lag_time, void* attributes) {
+bool ifcopenshell_sequence_edit_lag_time(ifcopenshell_file_t* file, ifcopenshell_instance_t* lag_time, void* attributes) {
     try {
         ifcopenshell_clear_error();
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
     if (lag_time == nullptr) { throw std::runtime_error("Handle parameter \"lag_time\" must not be null"); }
     auto lag_time_cpp = &lag_time->value;
     if (attributes == nullptr) { throw std::runtime_error("Parameter \"attributes\" must not be null"); }
     auto attributes_cpp = static_cast<ifcopenshell_pset_props_t*>(attributes);
-        ifcapi::bindings::sequence_edit_lag_time(lag_time_cpp, attributes_cpp);
+        ifcapi::bindings::sequence_edit_lag_time(file_cpp, lag_time_cpp, attributes_cpp);
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());
@@ -13606,14 +13686,16 @@ bool ifcopenshell_sequence_edit_recurrence_pattern(ifcopenshell_instance_t* recu
     }
 }
 
-bool ifcopenshell_sequence_edit_sequence(ifcopenshell_instance_t* rel_sequence, void* attributes) {
+bool ifcopenshell_sequence_edit_sequence(ifcopenshell_file_t* file, ifcopenshell_instance_t* rel_sequence, void* attributes) {
     try {
         ifcopenshell_clear_error();
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
     if (rel_sequence == nullptr) { throw std::runtime_error("Handle parameter \"rel_sequence\" must not be null"); }
     auto rel_sequence_cpp = &rel_sequence->value;
     if (attributes == nullptr) { throw std::runtime_error("Parameter \"attributes\" must not be null"); }
     auto attributes_cpp = static_cast<ifcopenshell_pset_props_t*>(attributes);
-        ifcapi::bindings::sequence_edit_sequence(rel_sequence_cpp, attributes_cpp);
+        ifcapi::bindings::sequence_edit_sequence(file_cpp, rel_sequence_cpp, attributes_cpp);
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());

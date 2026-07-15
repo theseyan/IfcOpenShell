@@ -215,7 +215,7 @@ describeGeneratedOrSkip('generated specialist API', () => {
         file, firstTask, secondTask, { sequenceType: 'FINISH_START' },
       );
 
-      shell.api.sequence.editSequence(sequence, { SequenceType: 'START_START' });
+      shell.api.sequence.editSequence(file, sequence, { SequenceType: 'START_START' });
 
       expect(await sequence.get('SequenceType')).toBe('START_START');
     });

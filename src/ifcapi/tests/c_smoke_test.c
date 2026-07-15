@@ -13,6 +13,7 @@ int ifcapi_run_resource_smoke_tests(void);
 int ifcapi_run_nest_smoke_tests(void);
 int ifcapi_run_geometry_smoke_tests(void);
 int ifcapi_run_alignment_smoke_tests(void);
+int ifcapi_run_pset_template_cogo_library_smoke_tests(void);
 
 int main(void) {
     int failures = 0;
@@ -27,6 +28,7 @@ int main(void) {
     failures += ifcapi_run_nest_smoke_tests();
     failures += ifcapi_run_geometry_smoke_tests();
     failures += ifcapi_run_alignment_smoke_tests();
+    failures += ifcapi_run_pset_template_cogo_library_smoke_tests();
 
     if (failures) {
         printf("ifcapi C smoke test suites failed: %d\n", failures);

@@ -18,11 +18,14 @@
 from typing import Any
 
 import ifcopenshell
-from ifcopenshell.api.attribute.edit_attributes import _edit_attributes
+from ifcopenshell import _ifcopenshell_capi as _capi
+from ifcopenshell.api.pset import _capi as pset_capi
 
 
 def edit_prop_template(
-    file: ifcopenshell.file, prop_template: ifcopenshell.entity_instance, attributes: dict[str, Any]
+    file: ifcopenshell.file,
+    prop_template: ifcopenshell.entity_instance,
+    attributes: dict[str, Any],
 ) -> None:
     """Edits the attributes of an IfcSimplePropertyTemplate
 
@@ -46,21 +49,11 @@ def edit_prop_template(
         ifcopenshell.api.pset_template.edit_prop_template(model,
             prop_template=prop, attributes={"Name": "DemoA", "PrimaryMeasureType": "IfcLengthMeasure"})
     """
-    if enum_values := attributes.get("Enumerators", None):
-        prop_name = attributes.get("Name", None) or getattr(prop_template, "Name", None) or "Unnamed"
-        primary_measure_type = (
-            attributes.get("PrimaryMeasureType", None)
-            or getattr(prop_template, "PrimaryMeasureType", None)
-            or "IfcLabel"
+    props = pset_capi.build_props(attributes)
+    try:
+        _capi.pset_template_edit_prop_template(
+            file._handle,
+            {"prop_template": prop_template._handle, "attributes": props},
         )
-        enum_values = [file.create_entity(primary_measure_type, v) for v in enum_values]
-        if enumerators := prop_template.Enumerators:
-            enumerators.Name = prop_name
-            enumerators.EnumerationValues = enum_values
-        else:
-            prop_template.Enumerators = file.create_entity("IfcPropertyEnumeration", prop_name, enum_values)
-
-    if "Enumerators" in attributes:
-        del attributes["Enumerators"]
-
-    _edit_attributes(file, prop_template, attributes)
+    finally:
+        pset_capi.free_props(props)

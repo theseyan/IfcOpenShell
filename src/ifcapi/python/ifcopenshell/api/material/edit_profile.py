@@ -77,8 +77,9 @@ def edit_profile(
         ifcopenshell.api.material.edit_profile(model,
             profile=profile_item, profile_def=hea200, material=steel2)
     """
-    _edit_attributes(file, profile, attributes or {})
+    native_attributes = (attributes or {}).copy()
     if material:
-        profile.Material = material
+        native_attributes["Material"] = material
     if profile_def:
-        profile.Profile = profile_def
+        native_attributes["Profile"] = profile_def
+    _edit_attributes(file, profile, native_attributes)

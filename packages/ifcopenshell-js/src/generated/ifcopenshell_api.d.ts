@@ -851,6 +851,11 @@ declare module 'ifcopenshell-api' {
     qto_template?: IfcOpenshellInstance;
   }
 
+  export interface IfcOpenshellPsetTemplateEditPropTemplateOptions {
+    prop_template: IfcOpenshellInstance;
+    attributes: number;
+  }
+
   export interface IfcOpenshellPsetUnsharePsetOptions {
     products: IfcOpenshellParseInstanceList;
     pset: IfcOpenshellInstance;
@@ -2430,6 +2435,14 @@ declare module 'ifcopenshell-api' {
      */
     assignSurveyPoint(annotation: IfcOpenshellInstance, survey_point: IfcOpenshellInstance): void;
     /**
+     * Convert a quadrant bearing to decimal degrees.
+     *
+     * Accepts N/S, degrees, optional minutes and decimal seconds, and E/W,
+     * separated by arbitrary whitespace. Invalid input reports
+     * "Invalid bearing string".
+     */
+    bearing2dd(bearing: string): number;
+    /**
      * Update the coordinates of the survey point inside an existing annotation.
      *
      * Updates the coordinates of the annotation's survey point. If the existing
@@ -3885,6 +3898,13 @@ declare module 'ifcopenshell-api' {
      */
     assignReference(file: IfcOpenshellFile, options: IfcOpenshellLibraryAssignReferenceOptions): IfcOpenshellInstance;
     /**
+     * Set an IfcLibraryInformation VersionDate from an ISO-8601 date-time.
+     *
+     * IFC4 and later store the string directly. IFC2X3 creates and assigns an
+     * IfcCalendarDate containing the date components.
+     */
+    editVersionDate(file: IfcOpenshellFile, library: IfcOpenshellInstance, iso_date_time: string): void;
+    /**
      * Remove an IfcLibraryInformation and all its references.
      *
      * Deletes all child IfcLibraryReference entities, the library entity itself,
@@ -4517,6 +4537,8 @@ declare module 'ifcopenshell-api' {
     propsNew(): number | null;
     /** Set a boolean property value. */
     propsSetBool(props: number, key: string, value: boolean): void;
+    /** Set a list-of-booleans property value. */
+    propsSetBoolList(props: number, key: string, values: boolean[]): void;
     /** Set a date property value (IfcCalendarDate / IfcDate). */
     propsSetDate(props: number, key: string, year: number, month: number, day: number): void;
     /** Set a date-time property value (IfcLocalTime / IfcDateTime). */
@@ -4602,6 +4624,15 @@ declare module 'ifcopenshell-api' {
      * released with pset_template_free.
      */
     templateCreateFromFiles(schema_identifier: string, template_files: IfcOpenshellFile[]): IfcOpenshellPsetTemplateHandle | null;
+    /**
+     * Edit a simple property template and its property enumeration.
+     *
+     * A populated Enumerators sequence is converted to wrapped IFC values using
+     * the incoming PrimaryMeasureType, the existing type, or IfcLabel. Existing
+     * IfcPropertyEnumeration entities are reused. An omitted, blank, or empty
+     * Enumerators value leaves the current enumeration unchanged.
+     */
+    templateEditPropTemplate(file: IfcOpenshellFile, options: IfcOpenshellPsetTemplateEditPropTemplateOptions): void;
     /**
      * Return property set templates applicable to an IFC class and predefined type.
      *
@@ -5263,10 +5294,13 @@ declare module 'ifcopenshell-api' {
     /**
      * Edit attributes of an IfcLagTime entity.
      *
+     * Cascades schedule changes to each IfcRelSequence that references the lag.
+     *
+     * @param file File containing the lag and task network.
      * @param lag_time IfcLagTime entity to edit.
      * @param attributes Property bag of attribute name/value pairs.
      */
-    editLagTime(lag_time: IfcOpenshellInstance, attributes: number): void;
+    editLagTime(file: IfcOpenshellFile, lag_time: IfcOpenshellInstance, attributes: number): void;
     /**
      * Edit attributes of an IfcRecurrencePattern entity.
      *
@@ -5277,10 +5311,13 @@ declare module 'ifcopenshell-api' {
     /**
      * Edit attributes of an IfcRelSequence entity.
      *
+     * Cascades the related task when SequenceType is supplied.
+     *
+     * @param file File containing the relationship and task network.
      * @param rel_sequence IfcRelSequence entity to edit.
      * @param attributes Property bag of attribute name/value pairs.
      */
-    editSequence(rel_sequence: IfcOpenshellInstance, attributes: number): void;
+    editSequence(file: IfcOpenshellFile, rel_sequence: IfcOpenshellInstance, attributes: number): void;
     /**
      * Edit attributes of an IfcTask entity.
      *

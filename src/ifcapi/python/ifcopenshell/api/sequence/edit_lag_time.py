@@ -24,7 +24,11 @@ from ifcopenshell.api.pset import _capi as pset_capi
 from ifcopenshell.api.sequence import _capi
 
 
-def edit_lag_time(file: ifcopenshell.file, lag_time: ifcopenshell.entity_instance, attributes: dict[str, Any]) -> None:
+def edit_lag_time(
+    file: ifcopenshell.file,
+    lag_time: ifcopenshell.entity_instance,
+    attributes: dict[str, Any],
+) -> None:
     """Edits the attributes of an IfcLagTime
 
     For more information about the attributes and data types of an
@@ -81,16 +85,17 @@ def edit_lag_time(file: ifcopenshell.file, lag_time: ifcopenshell.entity_instanc
             if isinstance(value, float):
                 value = file.createIfcRatioMeasure(value)
             else:
-                value = file.createIfcDuration(ifcopenshell.util.date.datetime2ifc(value, "IfcDuration"))
+                value = file.createIfcDuration(
+                    ifcopenshell.util.date.datetime2ifc(value, "IfcDuration")
+                )
         native_attributes[name] = value
     props = pset_capi.build_props(native_attributes)
     try:
         _capi.call_status(
             "sequence_edit_lag_time",
+            _capi.file_handle(file),
             _capi.instance_handle(lag_time),
             props,
         )
     finally:
         pset_capi.free_props(props)
-    for rel in [r for r in file.get_inverse(lag_time) if r.is_a("IfcRelSequence")]:
-        ifcopenshell.api.sequence.cascade_schedule(file, task=rel.RelatedProcess)

@@ -6193,6 +6193,8 @@ static void free_input_pset_edit_pset_options(ifcopenshell_pset_edit_pset_option
 static int fill_input_pset_edit_pset_options(PyObject *obj, ifcopenshell_pset_edit_pset_options_t *out, PyObject **refs);
 static void free_input_pset_edit_qto_options(ifcopenshell_pset_edit_qto_options_t *value);
 static int fill_input_pset_edit_qto_options(PyObject *obj, ifcopenshell_pset_edit_qto_options_t *out, PyObject **refs);
+static void free_input_pset_template_edit_prop_template_options(ifcopenshell_pset_template_edit_prop_template_options_t *value);
+static int fill_input_pset_template_edit_prop_template_options(PyObject *obj, ifcopenshell_pset_template_edit_prop_template_options_t *out, PyObject **refs);
 static void free_input_pset_unshare_pset_options(ifcopenshell_pset_unshare_pset_options_t *value);
 static int fill_input_pset_unshare_pset_options(PyObject *obj, ifcopenshell_pset_unshare_pset_options_t *out, PyObject **refs);
 static void free_input_representation_get_product_representation_options(ifcopenshell_representation_get_product_representation_options_t *value);
@@ -6400,6 +6402,35 @@ static int make_input_string_list(PyObject *obj, ifcopenshell_string_list_t *out
     return 1;
 }
 
+static void free_input_bool_list(ifcopenshell_bool_list_t *value) {
+    PyMem_Free(value->items);
+    value->items = NULL;
+    value->size = 0;
+}
+
+static int make_input_bool_list(PyObject *obj, ifcopenshell_bool_list_t *out) {
+    PyObject *seq = PySequence_Fast(obj, "Expected a sequence");
+    if (!seq) return 0;
+    Py_ssize_t size = PySequence_Fast_GET_SIZE(seq);
+    out->items = size ? (bool *)PyMem_Calloc((size_t)size, sizeof(bool)) : NULL;
+    out->size = (size_t)size;
+    if (size && !out->items) {
+        Py_DECREF(seq);
+        PyErr_NoMemory();
+        return 0;
+    }
+    for (size_t i = 0; i < (size_t)size; ++i) {
+        out->items[i] = PyObject_IsTrue(PySequence_Fast_GET_ITEM(seq, (Py_ssize_t)i));
+        if (PyErr_Occurred()) {
+            free_input_bool_list(out);
+            Py_DECREF(seq);
+            return 0;
+        }
+    }
+    Py_DECREF(seq);
+    return 1;
+}
+
 static void free_input_int64_list(ifcopenshell_int64_list_t *value) {
     PyMem_Free(value->items);
     value->items = NULL;
@@ -6450,35 +6481,6 @@ static int make_input_int32_list(PyObject *obj, ifcopenshell_int32_list_t *out) 
         out->items[i] = (int32_t)PyLong_AsLong(PySequence_Fast_GET_ITEM(seq, (Py_ssize_t)i));
         if (PyErr_Occurred()) {
             free_input_int32_list(out);
-            Py_DECREF(seq);
-            return 0;
-        }
-    }
-    Py_DECREF(seq);
-    return 1;
-}
-
-static void free_input_bool_list(ifcopenshell_bool_list_t *value) {
-    PyMem_Free(value->items);
-    value->items = NULL;
-    value->size = 0;
-}
-
-static int make_input_bool_list(PyObject *obj, ifcopenshell_bool_list_t *out) {
-    PyObject *seq = PySequence_Fast(obj, "Expected a sequence");
-    if (!seq) return 0;
-    Py_ssize_t size = PySequence_Fast_GET_SIZE(seq);
-    out->items = size ? (bool *)PyMem_Calloc((size_t)size, sizeof(bool)) : NULL;
-    out->size = (size_t)size;
-    if (size && !out->items) {
-        Py_DECREF(seq);
-        PyErr_NoMemory();
-        return 0;
-    }
-    for (size_t i = 0; i < (size_t)size; ++i) {
-        out->items[i] = PyObject_IsTrue(PySequence_Fast_GET_ITEM(seq, (Py_ssize_t)i));
-        if (PyErr_Occurred()) {
-            free_input_bool_list(out);
             Py_DECREF(seq);
             return 0;
         }
@@ -14558,6 +14560,38 @@ static int fill_input_pset_edit_qto_options(PyObject *obj, ifcopenshell_pset_edi
 }
 
 
+static void free_input_pset_template_edit_prop_template_options(ifcopenshell_pset_template_edit_prop_template_options_t *value) {
+    (void)value;
+}
+
+static int fill_input_pset_template_edit_prop_template_options(PyObject *obj, ifcopenshell_pset_template_edit_prop_template_options_t *out, PyObject **refs) {
+    if (!PyMapping_Check(obj)) {
+        PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
+        return 0;
+    }
+    PyObject *field_0 = get_option_field(obj, "prop_template", 1);
+    if (!field_0) {
+        return 0;
+    }
+    refs[0] = field_0;
+    if (!extract_handle(field_0, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->prop_template, 0)) {
+        return 0;
+    }
+    PyObject *field_1 = get_option_field(obj, "attributes", 1);
+    if (!field_1) {
+        return 0;
+    }
+    refs[1] = field_1;
+    if (PyCapsule_IsValid(field_1, NULL)) {
+        out->attributes = PyCapsule_GetPointer(field_1, NULL);
+    } else {
+        PyErr_SetString(PyExc_TypeError, "Expected a capsule");
+        return 0;
+    }
+    return 1;
+}
+
+
 static void free_input_pset_unshare_pset_options(ifcopenshell_pset_unshare_pset_options_t *value) {
     if (value->products) {
         ifcopenshell_parse_instance_list_destroy(value->products);
@@ -18662,9 +18696,9 @@ static PyObject *convert_string(ifcopenshell_string_t *value) {
 
 static PyObject *convert_double_list(ifcopenshell_double_list_t *value, int owned);
 static PyObject *convert_string_list(ifcopenshell_string_list_t *value, int owned);
+static PyObject *convert_bool_list(ifcopenshell_bool_list_t *value, int owned);
 static PyObject *convert_int64_list(ifcopenshell_int64_list_t *value, int owned);
 static PyObject *convert_int32_list(ifcopenshell_int32_list_t *value, int owned);
-static PyObject *convert_bool_list(ifcopenshell_bool_list_t *value, int owned);
 static PyObject *convert_uint32_list(ifcopenshell_uint32_list_t *value, int owned);
 static PyObject *convert_uint8_list(ifcopenshell_uint8_list_t *value, int owned);
 static PyObject *convert_instance_list(ifcopenshell_instance_list_t *value, int owned);
@@ -18737,22 +18771,6 @@ static PyObject *convert_string_list(ifcopenshell_string_list_t *value, int owne
     return result;
 }
 
-static PyObject *convert_int64_list(ifcopenshell_int64_list_t *value, int owned) {
-    (void)owned;
-    PyObject *result = make_owned_buffer(
-        value->items, value->size, sizeof(int64_t), "q", &value->owner);
-    ifcopenshell_int64_list_destroy(value);
-    return result;
-}
-
-static PyObject *convert_int32_list(ifcopenshell_int32_list_t *value, int owned) {
-    (void)owned;
-    PyObject *result = make_owned_buffer(
-        value->items, value->size, sizeof(int32_t), "i", &value->owner);
-    ifcopenshell_int32_list_destroy(value);
-    return result;
-}
-
 static PyObject *convert_bool_list(ifcopenshell_bool_list_t *value, int owned) {
     PyObject *result = PyTuple_New((Py_ssize_t)value->size);
     if (!result) {
@@ -18769,6 +18787,22 @@ static PyObject *convert_bool_list(ifcopenshell_bool_list_t *value, int owned) {
         PyTuple_SET_ITEM(result, (Py_ssize_t)i, item);
     }
     ifcopenshell_bool_list_destroy(value);
+    return result;
+}
+
+static PyObject *convert_int64_list(ifcopenshell_int64_list_t *value, int owned) {
+    (void)owned;
+    PyObject *result = make_owned_buffer(
+        value->items, value->size, sizeof(int64_t), "q", &value->owner);
+    ifcopenshell_int64_list_destroy(value);
+    return result;
+}
+
+static PyObject *convert_int32_list(ifcopenshell_int32_list_t *value, int owned) {
+    (void)owned;
+    PyObject *result = make_owned_buffer(
+        value->items, value->size, sizeof(int32_t), "i", &value->owner);
+    ifcopenshell_int32_list_destroy(value);
     return result;
 }
 
@@ -21734,6 +21768,26 @@ static PyObject *py_ifcopenshell_cogo_assign_survey_point(PyObject *self, PyObje
     }
     Py_INCREF(Py_None);
     __py_result = Py_None;
+__cleanup:
+    return __py_result;
+}
+
+static PyObject *py_ifcopenshell_cogo_bearing2dd(PyObject *self, PyObject *args) {
+    PyObject *__py_result = NULL;
+    bool ok = false;
+    const char *arg_bearing = NULL;
+    double result = {0};
+    if (!PyArg_ParseTuple(args, "s", &arg_bearing)) return NULL;
+
+
+
+    ifcopenshell_clear_error();
+    ok = ifcopenshell_cogo_bearing2dd(arg_bearing, &result);
+    if (!ok) {
+        raise_last_error("ifcopenshell_cogo_bearing2dd failed");
+        goto __cleanup;
+    }
+    __py_result = PyFloat_FromDouble(result);
 __cleanup:
     return __py_result;
 }
@@ -40434,6 +40488,40 @@ __cleanup:
     return __py_result;
 }
 
+static PyObject *py_ifcopenshell_library_edit_version_date(PyObject *self, PyObject *args) {
+    PyObject *__py_result = NULL;
+    bool ok = false;
+    PyObject *arg_file_obj = NULL;
+    ifcopenshell_file_t *arg_file = NULL;
+    PyObject *arg_library_obj = NULL;
+    ifcopenshell_instance_t *arg_library = NULL;
+    const char *arg_iso_date_time = NULL;
+
+    if (!PyArg_ParseTuple(args, "OOs", &arg_file_obj, &arg_library_obj, &arg_iso_date_time)) return NULL;
+
+    if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
+        goto __cleanup;
+    }
+    if (!extract_handle(arg_library_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_library, 0)) {
+        goto __cleanup;
+    }
+
+    ifcopenshell_clear_error();
+    ok = ifcopenshell_library_edit_version_date(arg_file, arg_library, arg_iso_date_time);
+    if (!ok) {
+        raise_last_error("ifcopenshell_library_edit_version_date failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_library_edit_version_date failed");
+        goto __cleanup;
+    }
+    Py_INCREF(Py_None);
+    __py_result = Py_None;
+__cleanup:
+    return __py_result;
+}
+
 static PyObject *py_ifcopenshell_library_remove_library(PyObject *self, PyObject *args) {
     PyObject *__py_result = NULL;
     bool ok = false;
@@ -44486,6 +44574,49 @@ __cleanup:
     return __py_result;
 }
 
+static PyObject *py_ifcopenshell_pset_props_set_bool_list(PyObject *self, PyObject *args) {
+    PyObject *__py_result = NULL;
+    bool ok = false;
+    PyObject *arg_props_obj = NULL;
+    Py_buffer arg_props_view = {0};
+    void *arg_props = NULL;
+    int arg_props_has_view = 0;
+    const char *arg_key = NULL;
+    PyObject *arg_values_obj = NULL;
+    ifcopenshell_bool_list_t arg_values = {0};
+
+    if (!PyArg_ParseTuple(args, "OsO", &arg_props_obj, &arg_key, &arg_values_obj)) return NULL;
+
+    if (PyCapsule_IsValid(arg_props_obj, NULL)) {
+        arg_props = PyCapsule_GetPointer(arg_props_obj, NULL);
+    } else if (PyObject_GetBuffer(arg_props_obj, &arg_props_view, PyBUF_SIMPLE) == 0) {
+        arg_props = arg_props_view.buf;
+        arg_props_has_view = 1;
+    } else {
+        PyErr_SetString(PyExc_TypeError, "Expected a capsule or buffer-compatible object");
+        goto __cleanup;
+    }
+    if (!make_input_bool_list(arg_values_obj, &arg_values)) {
+        goto __cleanup;
+    }
+    ifcopenshell_clear_error();
+    ok = ifcopenshell_pset_props_set_bool_list(arg_props, arg_key, &arg_values);
+    if (!ok) {
+        raise_last_error("ifcopenshell_pset_props_set_bool_list failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_pset_props_set_bool_list failed");
+        goto __cleanup;
+    }
+    Py_INCREF(Py_None);
+    __py_result = Py_None;
+__cleanup:
+        free_input_bool_list(&arg_values);
+        if (arg_props_has_view) PyBuffer_Release(&arg_props_view);
+    return __py_result;
+}
+
 static PyObject *py_ifcopenshell_pset_props_set_date(PyObject *self, PyObject *args) {
     PyObject *__py_result = NULL;
     bool ok = false;
@@ -45374,6 +45505,42 @@ static PyObject *py_ifcopenshell_pset_template_create_from_files(PyObject *self,
     __py_result = wrap_pset_template_handle(result, 1);
 __cleanup:
         free_input_file_list(&arg_template_files);
+    return __py_result;
+}
+
+static PyObject *py_ifcopenshell_pset_template_edit_prop_template(PyObject *self, PyObject *args) {
+    PyObject *__py_result = NULL;
+    bool ok = false;
+    PyObject *arg_file_obj = NULL;
+    ifcopenshell_file_t *arg_file = NULL;
+    PyObject *arg_options_obj = NULL;
+    ifcopenshell_pset_template_edit_prop_template_options_t arg_options = {0};
+    PyObject *arg_options_refs[2] = {0};
+
+    if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_options_obj)) return NULL;
+
+    if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
+        goto __cleanup;
+    }
+    if (!fill_input_pset_template_edit_prop_template_options(arg_options_obj, &arg_options, arg_options_refs)) {
+        goto __cleanup;
+    }
+
+    ifcopenshell_clear_error();
+    ok = ifcopenshell_pset_template_edit_prop_template(arg_file, &arg_options);
+    if (!ok) {
+        raise_last_error("ifcopenshell_pset_template_edit_prop_template failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_pset_template_edit_prop_template failed");
+        goto __cleanup;
+    }
+    Py_INCREF(Py_None);
+    __py_result = Py_None;
+__cleanup:
+        release_option_refs(arg_options_refs, 2);
+        free_input_pset_template_edit_prop_template_options(&arg_options);
     return __py_result;
 }
 
@@ -47942,6 +48109,8 @@ __cleanup:
 static PyObject *py_ifcopenshell_sequence_edit_lag_time(PyObject *self, PyObject *args) {
     PyObject *__py_result = NULL;
     bool ok = false;
+    PyObject *arg_file_obj = NULL;
+    ifcopenshell_file_t *arg_file = NULL;
     PyObject *arg_lag_time_obj = NULL;
     ifcopenshell_instance_t *arg_lag_time = NULL;
     PyObject *arg_attributes_obj = NULL;
@@ -47949,8 +48118,11 @@ static PyObject *py_ifcopenshell_sequence_edit_lag_time(PyObject *self, PyObject
     void *arg_attributes = NULL;
     int arg_attributes_has_view = 0;
 
-    if (!PyArg_ParseTuple(args, "OO", &arg_lag_time_obj, &arg_attributes_obj)) return NULL;
+    if (!PyArg_ParseTuple(args, "OOO", &arg_file_obj, &arg_lag_time_obj, &arg_attributes_obj)) return NULL;
 
+    if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
+        goto __cleanup;
+    }
     if (!extract_handle(arg_lag_time_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_lag_time, 0)) {
         goto __cleanup;
     }
@@ -47965,7 +48137,7 @@ static PyObject *py_ifcopenshell_sequence_edit_lag_time(PyObject *self, PyObject
     }
 
     ifcopenshell_clear_error();
-    ok = ifcopenshell_sequence_edit_lag_time(arg_lag_time, arg_attributes);
+    ok = ifcopenshell_sequence_edit_lag_time(arg_file, arg_lag_time, arg_attributes);
     if (!ok) {
         raise_last_error("ifcopenshell_sequence_edit_lag_time failed");
         goto __cleanup;
@@ -48026,6 +48198,8 @@ __cleanup:
 static PyObject *py_ifcopenshell_sequence_edit_sequence(PyObject *self, PyObject *args) {
     PyObject *__py_result = NULL;
     bool ok = false;
+    PyObject *arg_file_obj = NULL;
+    ifcopenshell_file_t *arg_file = NULL;
     PyObject *arg_rel_sequence_obj = NULL;
     ifcopenshell_instance_t *arg_rel_sequence = NULL;
     PyObject *arg_attributes_obj = NULL;
@@ -48033,8 +48207,11 @@ static PyObject *py_ifcopenshell_sequence_edit_sequence(PyObject *self, PyObject
     void *arg_attributes = NULL;
     int arg_attributes_has_view = 0;
 
-    if (!PyArg_ParseTuple(args, "OO", &arg_rel_sequence_obj, &arg_attributes_obj)) return NULL;
+    if (!PyArg_ParseTuple(args, "OOO", &arg_file_obj, &arg_rel_sequence_obj, &arg_attributes_obj)) return NULL;
 
+    if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
+        goto __cleanup;
+    }
     if (!extract_handle(arg_rel_sequence_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_rel_sequence, 0)) {
         goto __cleanup;
     }
@@ -48049,7 +48226,7 @@ static PyObject *py_ifcopenshell_sequence_edit_sequence(PyObject *self, PyObject
     }
 
     ifcopenshell_clear_error();
-    ok = ifcopenshell_sequence_edit_sequence(arg_rel_sequence, arg_attributes);
+    ok = ifcopenshell_sequence_edit_sequence(arg_file, arg_rel_sequence, arg_attributes);
     if (!ok) {
         raise_last_error("ifcopenshell_sequence_edit_sequence failed");
         goto __cleanup;
@@ -53432,6 +53609,7 @@ static PyMethodDef module_methods[] = {
     {"classification_remove_reference", py_ifcopenshell_classification_remove_reference, METH_VARARGS, "Wrap ifcopenshell_classification_remove_reference"},
     {"cogo_add_survey_point", py_ifcopenshell_cogo_add_survey_point, METH_VARARGS, "Wrap ifcopenshell_cogo_add_survey_point"},
     {"cogo_assign_survey_point", py_ifcopenshell_cogo_assign_survey_point, METH_VARARGS, "Wrap ifcopenshell_cogo_assign_survey_point"},
+    {"cogo_bearing2dd", py_ifcopenshell_cogo_bearing2dd, METH_VARARGS, "Wrap ifcopenshell_cogo_bearing2dd"},
     {"cogo_edit_survey_point", py_ifcopenshell_cogo_edit_survey_point, METH_VARARGS, "Wrap ifcopenshell_cogo_edit_survey_point"},
     {"compute_derived", py_ifcopenshell_compute_derived, METH_VARARGS, "Wrap ifcopenshell_compute_derived"},
     {"constraint_add_metric", py_ifcopenshell_constraint_add_metric, METH_VARARGS, "Wrap ifcopenshell_constraint_add_metric"},
@@ -54100,6 +54278,7 @@ static PyMethodDef module_methods[] = {
     {"library_add_library", py_ifcopenshell_library_add_library, METH_VARARGS, "Wrap ifcopenshell_library_add_library"},
     {"library_add_reference", py_ifcopenshell_library_add_reference, METH_VARARGS, "Wrap ifcopenshell_library_add_reference"},
     {"library_assign_reference", py_ifcopenshell_library_assign_reference, METH_VARARGS, "Wrap ifcopenshell_library_assign_reference"},
+    {"library_edit_version_date", py_ifcopenshell_library_edit_version_date, METH_VARARGS, "Wrap ifcopenshell_library_edit_version_date"},
     {"library_remove_library", py_ifcopenshell_library_remove_library, METH_VARARGS, "Wrap ifcopenshell_library_remove_library"},
     {"library_remove_reference", py_ifcopenshell_library_remove_reference, METH_VARARGS, "Wrap ifcopenshell_library_remove_reference"},
     {"library_unassign_reference", py_ifcopenshell_library_unassign_reference, METH_VARARGS, "Wrap ifcopenshell_library_unassign_reference"},
@@ -54238,6 +54417,7 @@ static PyMethodDef module_methods[] = {
     {"pset_props_free", py_ifcopenshell_pset_props_free, METH_VARARGS, "Wrap ifcopenshell_pset_props_free"},
     {"pset_props_new", py_ifcopenshell_pset_props_new, METH_VARARGS, "Wrap ifcopenshell_pset_props_new"},
     {"pset_props_set_bool", py_ifcopenshell_pset_props_set_bool, METH_VARARGS, "Wrap ifcopenshell_pset_props_set_bool"},
+    {"pset_props_set_bool_list", py_ifcopenshell_pset_props_set_bool_list, METH_VARARGS, "Wrap ifcopenshell_pset_props_set_bool_list"},
     {"pset_props_set_date", py_ifcopenshell_pset_props_set_date, METH_VARARGS, "Wrap ifcopenshell_pset_props_set_date"},
     {"pset_props_set_datetime", py_ifcopenshell_pset_props_set_datetime, METH_VARARGS, "Wrap ifcopenshell_pset_props_set_datetime"},
     {"pset_props_set_dict", py_ifcopenshell_pset_props_set_dict, METH_VARARGS, "Wrap ifcopenshell_pset_props_set_dict"},
@@ -54260,6 +54440,7 @@ static PyMethodDef module_methods[] = {
     {"pset_template_add_prop_template", py_ifcopenshell_pset_template_add_prop_template, METH_VARARGS, "Wrap ifcopenshell_pset_template_add_prop_template"},
     {"pset_template_add_pset_template", py_ifcopenshell_pset_template_add_pset_template, METH_VARARGS, "Wrap ifcopenshell_pset_template_add_pset_template"},
     {"pset_template_create_from_files", py_ifcopenshell_pset_template_create_from_files, METH_VARARGS, "Wrap ifcopenshell_pset_template_create_from_files"},
+    {"pset_template_edit_prop_template", py_ifcopenshell_pset_template_edit_prop_template, METH_VARARGS, "Wrap ifcopenshell_pset_template_edit_prop_template"},
     {"pset_template_get_applicable", py_ifcopenshell_pset_template_get_applicable, METH_VARARGS, "Wrap ifcopenshell_pset_template_get_applicable"},
     {"pset_template_get_applicable_names", py_ifcopenshell_pset_template_get_applicable_names, METH_VARARGS, "Wrap ifcopenshell_pset_template_get_applicable_names"},
     {"pset_template_get_by_name", py_ifcopenshell_pset_template_get_by_name, METH_VARARGS, "Wrap ifcopenshell_pset_template_get_by_name"},
@@ -54571,6 +54752,7 @@ static PyMethodDef module_methods[] = {
     {"ifcopenshell_classification_remove_reference", py_ifcopenshell_classification_remove_reference, METH_VARARGS, "Wrap ifcopenshell_classification_remove_reference"},
     {"ifcopenshell_cogo_add_survey_point", py_ifcopenshell_cogo_add_survey_point, METH_VARARGS, "Wrap ifcopenshell_cogo_add_survey_point"},
     {"ifcopenshell_cogo_assign_survey_point", py_ifcopenshell_cogo_assign_survey_point, METH_VARARGS, "Wrap ifcopenshell_cogo_assign_survey_point"},
+    {"ifcopenshell_cogo_bearing2dd", py_ifcopenshell_cogo_bearing2dd, METH_VARARGS, "Wrap ifcopenshell_cogo_bearing2dd"},
     {"ifcopenshell_cogo_edit_survey_point", py_ifcopenshell_cogo_edit_survey_point, METH_VARARGS, "Wrap ifcopenshell_cogo_edit_survey_point"},
     {"ifcopenshell_compute_derived", py_ifcopenshell_compute_derived, METH_VARARGS, "Wrap ifcopenshell_compute_derived"},
     {"ifcopenshell_constraint_add_metric", py_ifcopenshell_constraint_add_metric, METH_VARARGS, "Wrap ifcopenshell_constraint_add_metric"},
@@ -55239,6 +55421,7 @@ static PyMethodDef module_methods[] = {
     {"ifcopenshell_library_add_library", py_ifcopenshell_library_add_library, METH_VARARGS, "Wrap ifcopenshell_library_add_library"},
     {"ifcopenshell_library_add_reference", py_ifcopenshell_library_add_reference, METH_VARARGS, "Wrap ifcopenshell_library_add_reference"},
     {"ifcopenshell_library_assign_reference", py_ifcopenshell_library_assign_reference, METH_VARARGS, "Wrap ifcopenshell_library_assign_reference"},
+    {"ifcopenshell_library_edit_version_date", py_ifcopenshell_library_edit_version_date, METH_VARARGS, "Wrap ifcopenshell_library_edit_version_date"},
     {"ifcopenshell_library_remove_library", py_ifcopenshell_library_remove_library, METH_VARARGS, "Wrap ifcopenshell_library_remove_library"},
     {"ifcopenshell_library_remove_reference", py_ifcopenshell_library_remove_reference, METH_VARARGS, "Wrap ifcopenshell_library_remove_reference"},
     {"ifcopenshell_library_unassign_reference", py_ifcopenshell_library_unassign_reference, METH_VARARGS, "Wrap ifcopenshell_library_unassign_reference"},
@@ -55377,6 +55560,7 @@ static PyMethodDef module_methods[] = {
     {"ifcopenshell_pset_props_free", py_ifcopenshell_pset_props_free, METH_VARARGS, "Wrap ifcopenshell_pset_props_free"},
     {"ifcopenshell_pset_props_new", py_ifcopenshell_pset_props_new, METH_VARARGS, "Wrap ifcopenshell_pset_props_new"},
     {"ifcopenshell_pset_props_set_bool", py_ifcopenshell_pset_props_set_bool, METH_VARARGS, "Wrap ifcopenshell_pset_props_set_bool"},
+    {"ifcopenshell_pset_props_set_bool_list", py_ifcopenshell_pset_props_set_bool_list, METH_VARARGS, "Wrap ifcopenshell_pset_props_set_bool_list"},
     {"ifcopenshell_pset_props_set_date", py_ifcopenshell_pset_props_set_date, METH_VARARGS, "Wrap ifcopenshell_pset_props_set_date"},
     {"ifcopenshell_pset_props_set_datetime", py_ifcopenshell_pset_props_set_datetime, METH_VARARGS, "Wrap ifcopenshell_pset_props_set_datetime"},
     {"ifcopenshell_pset_props_set_dict", py_ifcopenshell_pset_props_set_dict, METH_VARARGS, "Wrap ifcopenshell_pset_props_set_dict"},
@@ -55399,6 +55583,7 @@ static PyMethodDef module_methods[] = {
     {"ifcopenshell_pset_template_add_prop_template", py_ifcopenshell_pset_template_add_prop_template, METH_VARARGS, "Wrap ifcopenshell_pset_template_add_prop_template"},
     {"ifcopenshell_pset_template_add_pset_template", py_ifcopenshell_pset_template_add_pset_template, METH_VARARGS, "Wrap ifcopenshell_pset_template_add_pset_template"},
     {"ifcopenshell_pset_template_create_from_files", py_ifcopenshell_pset_template_create_from_files, METH_VARARGS, "Wrap ifcopenshell_pset_template_create_from_files"},
+    {"ifcopenshell_pset_template_edit_prop_template", py_ifcopenshell_pset_template_edit_prop_template, METH_VARARGS, "Wrap ifcopenshell_pset_template_edit_prop_template"},
     {"ifcopenshell_pset_template_get_applicable", py_ifcopenshell_pset_template_get_applicable, METH_VARARGS, "Wrap ifcopenshell_pset_template_get_applicable"},
     {"ifcopenshell_pset_template_get_applicable_names", py_ifcopenshell_pset_template_get_applicable_names, METH_VARARGS, "Wrap ifcopenshell_pset_template_get_applicable_names"},
     {"ifcopenshell_pset_template_get_by_name", py_ifcopenshell_pset_template_get_by_name, METH_VARARGS, "Wrap ifcopenshell_pset_template_get_by_name"},

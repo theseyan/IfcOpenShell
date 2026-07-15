@@ -9,6 +9,10 @@
 #include "ifcapi/detail/attribute.h"
 
 #include <stdexcept>
+#include <cctype>
+#include <cmath>
+#include <sstream>
+#include <string>
 #include <vector>
 
 namespace ifcapi {
@@ -73,7 +77,70 @@ express::Base first_item(express::Base annotation) {
     return items.empty() ? express::Base() : items.front();
 }
 
+int parse_integer_token(const std::string& token) {
+    if (token.empty()) throw std::invalid_argument("Invalid bearing string");
+    size_t consumed = 0;
+    int value = 0;
+    try {
+        value = std::stoi(token, &consumed);
+    } catch (...) {
+        throw std::invalid_argument("Invalid bearing string");
+    }
+    if (consumed != token.size()) throw std::invalid_argument("Invalid bearing string");
+    return value;
+}
+
+double parse_seconds_token(const std::string& token) {
+    if (token.empty()) throw std::invalid_argument("Invalid bearing string");
+    size_t consumed = 0;
+    double value = 0.0;
+    try {
+        value = std::stod(token, &consumed);
+    } catch (...) {
+        throw std::invalid_argument("Invalid bearing string");
+    }
+    if (consumed != token.size() || !std::isfinite(value)) {
+        throw std::invalid_argument("Invalid bearing string");
+    }
+    return value;
+}
+
 } // namespace
+
+double cogo_bearing2dd(const std::string& bearing) {
+    std::istringstream input(bearing);
+    std::vector<std::string> parts;
+    for (std::string part; input >> part;) parts.push_back(part);
+    if (parts.size() < 3 || parts.size() > 5 || parts.front().size() != 1 || parts.back().size() != 1) {
+        throw std::invalid_argument("Invalid bearing string");
+    }
+
+    const char north_south = static_cast<char>(std::toupper(static_cast<unsigned char>(parts.front()[0])));
+    const char east_west = static_cast<char>(std::toupper(static_cast<unsigned char>(parts.back()[0])));
+    if ((north_south != 'N' && north_south != 'S') || (east_west != 'E' && east_west != 'W')) {
+        throw std::invalid_argument("Invalid bearing string");
+    }
+
+    const int degrees = parse_integer_token(parts[1]);
+    const int minutes = parts.size() >= 4 ? parse_integer_token(parts[2]) : 0;
+    const double seconds_value = parts.size() == 5 ? parse_seconds_token(parts[3]) : 0.0;
+    const int seconds = static_cast<int>(seconds_value);
+    const double hundredths = 100.0 * (seconds_value - seconds);
+    if (degrees < 0 || minutes < 0 || minutes >= 60 || seconds_value < 0.0 || seconds >= 60 || hundredths < 0.0) {
+        throw std::invalid_argument("Invalid bearing string");
+    }
+
+    const double quadrant = static_cast<double>(degrees) + static_cast<double>(minutes) / 60.0
+        + static_cast<double>(seconds) / 3600.0 + hundredths / 3600000.0;
+    if (!std::isfinite(quadrant) || quadrant > 90.0) {
+        throw std::invalid_argument("Invalid bearing string");
+    }
+
+    double angle = north_south == 'N' ? 90.0 : 270.0;
+    const double sign = (north_south == 'N') == (east_west == 'E') ? -1.0 : 1.0;
+    angle += sign * quadrant;
+    return angle == 360.0 ? 0.0 : angle;
+}
 
 express::Base cogo_add_survey_point(
     ifcopenshell::file* file,

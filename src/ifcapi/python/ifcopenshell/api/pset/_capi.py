@@ -40,7 +40,9 @@ def _add_entry(props, key, value):
         if "NominalValue" in value and "Unit" in value:
             _add_entry(props, key, value["NominalValue"])
             unit = value["Unit"]
-            unit_handle = unit._handle if isinstance(unit, ifcopenshell.entity_instance) else None
+            unit_handle = (
+                unit._handle if isinstance(unit, ifcopenshell.entity_instance) else None
+            )
             _call("ifcopenshell_pset_props_set_unit_for_last", props, unit_handle)
             return
         inner = _new_props()
@@ -75,13 +77,32 @@ def _add_entry(props, key, value):
             _call("ifcopenshell_pset_props_set_string_list", props, key, [])
             return
         if all(isinstance(v, ifcopenshell.entity_instance) for v in value):
-            _call("ifcopenshell_pset_props_set_instance_list", props, key, [v._handle for v in value])
+            _call(
+                "ifcopenshell_pset_props_set_instance_list",
+                props,
+                key,
+                [v._handle for v in value],
+            )
             return
         # Detect uniform element kind. Mixed -> coerce to strings.
-        if all(isinstance(v, bool) or isinstance(v, int) and not isinstance(v, bool) for v in value):
-            _call("ifcopenshell_pset_props_set_int_list", props, key, [int(v) for v in value])
-        elif all(isinstance(v, (int, float)) and not isinstance(v, bool) for v in value):
-            _call("ifcopenshell_pset_props_set_double_list", props, key, [float(v) for v in value])
+        if all(isinstance(v, bool) for v in value):
+            _call("ifcopenshell_pset_props_set_bool_list", props, key, list(value))
+        elif all(isinstance(v, int) and not isinstance(v, bool) for v in value):
+            _call(
+                "ifcopenshell_pset_props_set_int_list",
+                props,
+                key,
+                [int(v) for v in value],
+            )
+        elif all(
+            isinstance(v, (int, float)) and not isinstance(v, bool) for v in value
+        ):
+            _call(
+                "ifcopenshell_pset_props_set_double_list",
+                props,
+                key,
+                [float(v) for v in value],
+            )
         else:
             _call(
                 "ifcopenshell_pset_props_set_string_list",
@@ -89,7 +110,9 @@ def _add_entry(props, key, value):
                 key,
                 [
                     str(v.wrappedValue)
-                    if isinstance(v, ifcopenshell.entity_instance) and v.id() == 0 and v._is_wrapped_value_instance()
+                    if isinstance(v, ifcopenshell.entity_instance)
+                    and v.id() == 0
+                    and v._is_wrapped_value_instance()
                     else str(v)
                     for v in value
                 ],

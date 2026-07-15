@@ -44,6 +44,12 @@ typedef struct ifcopenshell_double_list_list_t {
     void* owner;
 } ifcopenshell_double_list_list_t;
 
+typedef struct ifcopenshell_bool_list_t {
+    bool* items;
+    size_t size;
+    void* owner;
+} ifcopenshell_bool_list_t;
+
 typedef struct ifcopenshell_int64_list_t {
     int64_t* items;
     size_t size;
@@ -67,12 +73,6 @@ typedef struct ifcopenshell_int32_list_list_list_t {
     size_t size;
     void* owner;
 } ifcopenshell_int32_list_list_list_t;
-
-typedef struct ifcopenshell_bool_list_t {
-    bool* items;
-    size_t size;
-    void* owner;
-} ifcopenshell_bool_list_t;
 
 typedef struct ifcopenshell_uint32_list_t {
     uint32_t* items;
@@ -108,6 +108,8 @@ void ifcopenshell_string_list_destroy(ifcopenshell_string_list_t* value);
 
 void ifcopenshell_double_list_list_destroy(ifcopenshell_double_list_list_t* value);
 
+void ifcopenshell_bool_list_destroy(ifcopenshell_bool_list_t* value);
+
 void ifcopenshell_int64_list_destroy(ifcopenshell_int64_list_t* value);
 
 void ifcopenshell_int32_list_destroy(ifcopenshell_int32_list_t* value);
@@ -115,8 +117,6 @@ void ifcopenshell_int32_list_destroy(ifcopenshell_int32_list_t* value);
 void ifcopenshell_int32_list_list_destroy(ifcopenshell_int32_list_list_t* value);
 
 void ifcopenshell_int32_list_list_list_destroy(ifcopenshell_int32_list_list_list_t* value);
-
-void ifcopenshell_bool_list_destroy(ifcopenshell_bool_list_t* value);
 
 void ifcopenshell_uint32_list_destroy(ifcopenshell_uint32_list_t* value);
 
@@ -1360,6 +1360,11 @@ typedef struct ifcopenshell_pset_edit_qto_options_t {
     bool has_qto_template;
 } ifcopenshell_pset_edit_qto_options_t;
 
+typedef struct ifcopenshell_pset_template_edit_prop_template_options_t {
+    ifcopenshell_instance_t* prop_template;
+    void* attributes;
+} ifcopenshell_pset_template_edit_prop_template_options_t;
+
 typedef struct ifcopenshell_pset_unshare_pset_options_t {
     ifcopenshell_parse_instance_list_t* products;
     ifcopenshell_instance_t* pset;
@@ -2426,6 +2431,14 @@ bool ifcopenshell_cogo_add_survey_point(ifcopenshell_file_t* file, const ifcopen
  * @param survey_point IfcPoint to assign as the new geometry.
  */
 bool ifcopenshell_cogo_assign_survey_point(ifcopenshell_instance_t* annotation, ifcopenshell_instance_t* survey_point);
+/**
+ * Convert a quadrant bearing to decimal degrees.
+ *
+ * Accepts N/S, degrees, optional minutes and decimal seconds, and E/W,
+ * separated by arbitrary whitespace. Invalid input reports
+ * "Invalid bearing string".
+ */
+bool ifcopenshell_cogo_bearing2dd(const char* bearing, double* out_result);
 /**
  * Update the coordinates of the survey point inside an existing annotation.
  *
@@ -3776,6 +3789,13 @@ bool ifcopenshell_library_add_reference(ifcopenshell_file_t* file, ifcopenshell_
  */
 bool ifcopenshell_library_assign_reference(ifcopenshell_file_t* file, const ifcopenshell_library_assign_reference_options_t* options, ifcopenshell_instance_t** out_result);
 /**
+ * Set an IfcLibraryInformation VersionDate from an ISO-8601 date-time.
+ *
+ * IFC4 and later store the string directly. IFC2X3 creates and assigns an
+ * IfcCalendarDate containing the date components.
+ */
+bool ifcopenshell_library_edit_version_date(ifcopenshell_file_t* file, ifcopenshell_instance_t* library, const char* iso_date_time);
+/**
  * Remove an IfcLibraryInformation and all its references.
  *
  * Deletes all child IfcLibraryReference entities, the library entity itself,
@@ -4348,6 +4368,8 @@ bool ifcopenshell_pset_props_free(void* props);
 bool ifcopenshell_pset_props_new(void** out_result);
 /** Set a boolean property value. */
 bool ifcopenshell_pset_props_set_bool(void* props, const char* key, bool value);
+/** Set a list-of-booleans property value. */
+bool ifcopenshell_pset_props_set_bool_list(void* props, const char* key, const ifcopenshell_bool_list_t* values);
 /** Set a date property value (IfcCalendarDate / IfcDate). */
 bool ifcopenshell_pset_props_set_date(void* props, const char* key, int32_t year, int32_t month, int32_t day);
 /** Set a date-time property value (IfcLocalTime / IfcDateTime). */
@@ -4433,6 +4455,15 @@ bool ifcopenshell_pset_template_add_pset_template(ifcopenshell_file_t* file, con
  * released with pset_template_free.
  */
 bool ifcopenshell_pset_template_create_from_files(const char* schema_identifier, const ifcopenshell_file_list_t* template_files, ifcopenshell_pset_template_handle_t** out_result);
+/**
+ * Edit a simple property template and its property enumeration.
+ *
+ * A populated Enumerators sequence is converted to wrapped IFC values using
+ * the incoming PrimaryMeasureType, the existing type, or IfcLabel. Existing
+ * IfcPropertyEnumeration entities are reused. An omitted, blank, or empty
+ * Enumerators value leaves the current enumeration unchanged.
+ */
+bool ifcopenshell_pset_template_edit_prop_template(ifcopenshell_file_t* file, const ifcopenshell_pset_template_edit_prop_template_options_t* options);
 /**
  * Return property set templates applicable to an IFC class and predefined type.
  *
@@ -5073,10 +5104,13 @@ bool ifcopenshell_sequence_duplicate_task(ifcopenshell_file_t* file, ifcopenshel
 /**
  * Edit attributes of an IfcLagTime entity.
  *
+ * Cascades schedule changes to each IfcRelSequence that references the lag.
+ *
+ * @param file File containing the lag and task network.
  * @param lag_time IfcLagTime entity to edit.
  * @param attributes Property bag of attribute name/value pairs.
  */
-bool ifcopenshell_sequence_edit_lag_time(ifcopenshell_instance_t* lag_time, void* attributes);
+bool ifcopenshell_sequence_edit_lag_time(ifcopenshell_file_t* file, ifcopenshell_instance_t* lag_time, void* attributes);
 /**
  * Edit attributes of an IfcRecurrencePattern entity.
  *
@@ -5087,10 +5121,13 @@ bool ifcopenshell_sequence_edit_recurrence_pattern(ifcopenshell_instance_t* recu
 /**
  * Edit attributes of an IfcRelSequence entity.
  *
+ * Cascades the related task when SequenceType is supplied.
+ *
+ * @param file File containing the relationship and task network.
  * @param rel_sequence IfcRelSequence entity to edit.
  * @param attributes Property bag of attribute name/value pairs.
  */
-bool ifcopenshell_sequence_edit_sequence(ifcopenshell_instance_t* rel_sequence, void* attributes);
+bool ifcopenshell_sequence_edit_sequence(ifcopenshell_file_t* file, ifcopenshell_instance_t* rel_sequence, void* attributes);
 /**
  * Edit attributes of an IfcTask entity.
  *

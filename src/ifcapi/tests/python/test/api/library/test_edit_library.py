@@ -20,6 +20,7 @@ import datetime
 
 import ifcopenshell.api.library
 import ifcopenshell.util.date
+
 import test.bootstrap
 
 
@@ -44,7 +45,9 @@ class TestEditLibrary(test.bootstrap.IFC4):
         assert library.Name == "Name"
         assert library.Version == "Version"
         if self.file.schema != "IFC2X3":
-            assert library.VersionDate == ifcopenshell.util.date.datetime2ifc(dt, "IfcDateTime")
+            assert library.VersionDate == ifcopenshell.util.date.datetime2ifc(
+                dt, "IfcDateTime"
+            )
             assert library.Location == "Location"
             assert library.Description == "Description"
         else:
@@ -52,6 +55,47 @@ class TestEditLibrary(test.bootstrap.IFC4):
             del info["id"], info["type"]
             assert info == ifcopenshell.util.date.datetime2ifc(dt, "IfcCalendarDate")
 
+    def test_preserving_microseconds_timezone_and_input_mapping(self):
+        library = self.file.createIfcLibraryInformation()
+        dt = datetime.datetime(
+            2024,
+            2,
+            29,
+            1,
+            2,
+            3,
+            456789,
+            tzinfo=datetime.timezone(datetime.timedelta(hours=5, minutes=30)),
+        )
+        attributes = {"Name": "Library", "VersionDate": dt}
+
+        ifcopenshell.api.library.edit_library(
+            self.file, library=library, attributes=attributes
+        )
+
+        assert attributes == {"Name": "Library", "VersionDate": dt}
+        if self.file.schema != "IFC2X3":
+            assert library.VersionDate == "2024-02-29T01:02:03.456789+05:30"
+        else:
+            assert library.VersionDate.DayComponent == 29
+            assert library.VersionDate.MonthComponent == 2
+            assert library.VersionDate.YearComponent == 2024
+
+    def test_leaving_schema_compatible_values_on_the_generic_attribute_path(self):
+        library = self.file.createIfcLibraryInformation()
+        if self.file.schema == "IFC2X3":
+            value = self.file.createIfcCalendarDate(29, 2, 2024)
+        else:
+            value = "2024-02-29T01:02:03"
+        ifcopenshell.api.library.edit_library(
+            self.file, library=library, attributes={"VersionDate": value}
+        )
+        assert library.VersionDate == value
+
 
 class TestEditLibraryIFC2X3(test.bootstrap.IFC2X3, TestEditLibrary):
+    pass
+
+
+class TestEditLibraryIFC4X3(test.bootstrap.IFC4X3, TestEditLibrary):
     pass

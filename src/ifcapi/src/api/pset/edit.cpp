@@ -121,6 +121,9 @@ express::Base create_typed_value(ifcopenshell::file* file, const std::string& ty
 
     if (from_list) {
         switch (src.kind) {
+            case Kind::BOOL_LIST:
+                if (list_idx < src.bool_list.size()) write_bool(static_cast<bool>(src.bool_list[list_idx]));
+                break;
             case Kind::STRING_LIST:
                 if (list_idx < src.str_list.size()) write_string(src.str_list[list_idx]);
                 break;
@@ -375,11 +378,13 @@ bool process_existing_enumerated(ifcopenshell::file* file, express::Base prop,
         return true;
     }
 
-    if (entry.kind != Kind::STRING_LIST && entry.kind != Kind::DOUBLE_LIST && entry.kind != Kind::INT_LIST) {
+    if (entry.kind != Kind::BOOL_LIST && entry.kind != Kind::STRING_LIST && entry.kind != Kind::DOUBLE_LIST
+        && entry.kind != Kind::INT_LIST) {
         throw value_error(
             "Value is not a valid value for enum property " + read_string_attr(prop, "Name"));
     }
-    bool empty_list = (entry.kind == Kind::STRING_LIST && entry.str_list.empty())
+    bool empty_list = (entry.kind == Kind::BOOL_LIST && entry.bool_list.empty())
+        || (entry.kind == Kind::STRING_LIST && entry.str_list.empty())
         || (entry.kind == Kind::DOUBLE_LIST && entry.dbl_list.empty())
         || (entry.kind == Kind::INT_LIST && entry.int_list.empty());
     if (empty_list && should_purge) {
@@ -401,7 +406,8 @@ bool process_existing_enumerated(ifcopenshell::file* file, express::Base prop,
     if (pmt.empty()) pmt = "IfcLabel";
 
     std::vector<express::Base> sel_vals;
-    size_t n = (entry.kind == Kind::STRING_LIST) ? entry.str_list.size()
+    size_t n = (entry.kind == Kind::BOOL_LIST) ? entry.bool_list.size()
+        : (entry.kind == Kind::STRING_LIST) ? entry.str_list.size()
         : (entry.kind == Kind::DOUBLE_LIST) ? entry.dbl_list.size() : entry.int_list.size();
     for (size_t i = 0; i < n; ++i) {
         auto tv = create_typed_value(file, pmt, entry, true, i);
@@ -439,8 +445,10 @@ express::Base build_new_property(ifcopenshell::file* file, express::Base pset_te
         return sv;
     }
 
-    if (entry.kind == Kind::STRING_LIST || entry.kind == Kind::DOUBLE_LIST || entry.kind == Kind::INT_LIST) {
-        size_t n = (entry.kind == Kind::STRING_LIST) ? entry.str_list.size()
+    if (entry.kind == Kind::BOOL_LIST || entry.kind == Kind::STRING_LIST || entry.kind == Kind::DOUBLE_LIST
+        || entry.kind == Kind::INT_LIST) {
+        size_t n = (entry.kind == Kind::BOOL_LIST) ? entry.bool_list.size()
+            : (entry.kind == Kind::STRING_LIST) ? entry.str_list.size()
             : (entry.kind == Kind::DOUBLE_LIST) ? entry.dbl_list.size() : entry.int_list.size();
         if (n == 0) return {};
         if (!pset_template) {
@@ -560,6 +568,14 @@ void pset_props_set_bool(ifcopenshell_pset_props_t* p, const std::string& key, b
     auto& e = append_entry(p, key);
     e.kind = Kind::BOOL;
     e.b_val = v;
+}
+
+void pset_props_set_bool_list(
+    ifcopenshell_pset_props_t* p, const std::string& key, const std::vector<bool>& vals) {
+    if (!p) return;
+    auto& e = append_entry(p, key);
+    e.kind = Kind::BOOL_LIST;
+    e.bool_list = vals;
 }
 
 void pset_props_set_int(ifcopenshell_pset_props_t* p, const std::string& key, int64_t v) {

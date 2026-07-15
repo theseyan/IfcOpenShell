@@ -147,6 +147,12 @@ IFCAPI_BINDING void pset_props_set_null(ifcopenshell_pset_props_t* props, const 
 IFCAPI_BINDING void pset_props_set_bool(ifcopenshell_pset_props_t* props, const std::string& key, bool value);
 
 /**
+ * Set a list-of-booleans property value.
+ */
+IFCAPI_BINDING void pset_props_set_bool_list(
+    ifcopenshell_pset_props_t* props, const std::string& key, const std::vector<bool>& values);
+
+/**
  * Set an integer property value.
  */
 IFCAPI_BINDING void pset_props_set_int(ifcopenshell_pset_props_t* props, const std::string& key, int64_t value);

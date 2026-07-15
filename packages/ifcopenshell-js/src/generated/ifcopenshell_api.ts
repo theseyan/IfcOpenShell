@@ -91,6 +91,7 @@ type RawApi = {
   cogo: {
     addSurveyPoint: (file: RawValue, options: RawValue) => RawValue;
     assignSurveyPoint: (annotation: RawValue, survey_point: RawValue) => void;
+    bearing2dd: (bearing: string) => number;
     editSurveyPoint: (annotation: RawValue, x: number, y: number, z: number) => void;
   };
   compute: {
@@ -258,6 +259,7 @@ type RawApi = {
     addLibrary: (file: RawValue, name: string) => RawValue;
     addReference: (file: RawValue, library: RawValue) => RawValue;
     assignReference: (file: RawValue, options: RawValue) => RawValue;
+    editVersionDate: (file: RawValue, library: RawValue, iso_date_time: string) => void;
     removeLibrary: (file: RawValue, library: RawValue) => void;
     removeReference: (file: RawValue, reference: RawValue) => void;
     unassignReference: (file: RawValue, options: RawValue) => void;
@@ -340,10 +342,12 @@ type RawApi = {
     assignPset: (file: RawValue, options: RawValue) => RawValue;
     editPset: (file: RawValue, options: RawValue) => boolean;
     editQto: (file: RawValue, options: RawValue) => boolean;
+    propsSetBoolList: (props: RawValue, key: string, values: RawValue) => void;
     removePset: (file: RawValue, product: RawValue, pset: RawValue) => void;
     templateAddPropTemplate: (file: RawValue, pset_template: RawValue, name: string, description: string | null, template_type: string | null, primary_measure_type: string | null) => RawValue;
     templateAddPsetTemplate: (file: RawValue, name: string, template_type: string, applicable_entity: string) => RawValue;
     templateCreateFromFiles: (schema_identifier: string, template_files: RawValue) => RawValue;
+    templateEditPropTemplate: (file: RawValue, options: RawValue) => void;
     templateGetApplicable: (pqt: RawValue, ifc_class: string | null, predefined_type: string | null, pset_only: boolean, qto_only: boolean, schema_name: string | null) => RawValue;
     templateGetApplicableNames: (pqt: RawValue, ifc_class: string | null, predefined_type: string | null, pset_only: boolean, qto_only: boolean, schema_name: string | null) => RawValue;
     templateGetByName: (pqt: RawValue, name: string) => RawValue;
@@ -414,9 +418,9 @@ type RawApi = {
     copyWorkSchedule: (file: RawValue, work_schedule: RawValue, options: RawValue) => RawValue;
     createBaseline: (file: RawValue, work_schedule: RawValue, options: RawValue) => void;
     duplicateTask: (file: RawValue, task: RawValue, options: RawValue) => RawValue;
-    editLagTime: (lag_time: RawValue, attributes: RawValue) => void;
+    editLagTime: (file: RawValue, lag_time: RawValue, attributes: RawValue) => void;
     editRecurrencePattern: (recurrence_pattern: RawValue, attributes: RawValue) => void;
-    editSequence: (rel_sequence: RawValue, attributes: RawValue) => void;
+    editSequence: (file: RawValue, rel_sequence: RawValue, attributes: RawValue) => void;
     editTask: (task: RawValue, attributes: RawValue) => void;
     editTaskTime: (file: RawValue, task_time: RawValue, attributes: RawValue) => void;
     editWorkCalendar: (work_calendar: RawValue, attributes: RawValue) => void;
@@ -1922,6 +1926,13 @@ export interface IfcOpenShellPsetEditQtoOptions {
   qtoTemplate?: Entity;
 }
 
+export interface IfcOpenShellPsetTemplateEditPropTemplateOptions {
+  /** Property template to edit. */
+  propTemplate: Entity;
+  /** Attributes to apply, including an optional Enumerators primitive sequence. */
+  attributes: PsetProperties | PsetInput;
+}
+
 export interface IfcOpenShellPsetUnsharePsetOptions {
   /**
    * Products that should receive their own copy of the property set.
@@ -2844,6 +2855,14 @@ export interface CogoApi {
      * @param survey_point IfcPoint to assign as the new geometry.
      */
     assignSurveyPoint(annotation: Entity, survey_point: Entity): void;
+    /**
+     * Convert a quadrant bearing to decimal degrees.
+     *
+     * Accepts N/S, degrees, optional minutes and decimal seconds, and E/W,
+     * separated by arbitrary whitespace. Invalid input reports
+     * "Invalid bearing string".
+     */
+    bearing2dd(bearing: string): number;
     /**
      * Update the coordinates of the survey point inside an existing annotation.
      *
@@ -4228,6 +4247,13 @@ export interface LibraryApi {
      */
     assignReference(file: IfcFile, options: IfcOpenShellLibraryAssignReferenceOptions): Entity;
     /**
+     * Set an IfcLibraryInformation VersionDate from an ISO-8601 date-time.
+     *
+     * IFC4 and later store the string directly. IFC2X3 creates and assigns an
+     * IfcCalendarDate containing the date components.
+     */
+    editVersionDate(file: IfcFile, library: Entity, iso_date_time: string): void;
+    /**
      * Remove an IfcLibraryInformation and all its references.
      *
      * Deletes all child IfcLibraryReference entities, the library entity itself,
@@ -4806,6 +4832,8 @@ export interface PsetApi {
      * false on error.
      */
     editQto(file: IfcFile, options: IfcOpenShellPsetEditQtoOptions): boolean;
+    /** Set a list-of-booleans property value. */
+    propsSetBoolList(props: PsetProperties | PsetInput, key: string, values: boolean[]): void;
     /**
      * Remove a property set from a specific product.
      *
@@ -4840,6 +4868,15 @@ export interface PsetApi {
      * released with pset_template_free.
      */
     templateCreateFromFiles(schema_identifier: string, template_files: IfcFile[]): PsetTemplate | null;
+    /**
+     * Edit a simple property template and its property enumeration.
+     *
+     * A populated Enumerators sequence is converted to wrapped IFC values using
+     * the incoming PrimaryMeasureType, the existing type, or IfcLabel. Existing
+     * IfcPropertyEnumeration entities are reused. An omitted, blank, or empty
+     * Enumerators value leaves the current enumeration unchanged.
+     */
+    templateEditPropTemplate(file: IfcFile, options: IfcOpenShellPsetTemplateEditPropTemplateOptions): void;
     /**
      * Return property set templates applicable to an IFC class and predefined type.
      *
@@ -5379,10 +5416,13 @@ export interface SequenceApi {
     /**
      * Edit attributes of an IfcLagTime entity.
      *
+     * Cascades schedule changes to each IfcRelSequence that references the lag.
+     *
+     * @param file File containing the lag and task network.
      * @param lag_time IfcLagTime entity to edit.
      * @param attributes Property bag of attribute name/value pairs.
      */
-    editLagTime(lag_time: Entity, attributes: PsetProperties | PsetInput): void;
+    editLagTime(file: IfcFile, lag_time: Entity, attributes: PsetProperties | PsetInput): void;
     /**
      * Edit attributes of an IfcRecurrencePattern entity.
      *
@@ -5393,10 +5433,13 @@ export interface SequenceApi {
     /**
      * Edit attributes of an IfcRelSequence entity.
      *
+     * Cascades the related task when SequenceType is supplied.
+     *
+     * @param file File containing the relationship and task network.
      * @param rel_sequence IfcRelSequence entity to edit.
      * @param attributes Property bag of attribute name/value pairs.
      */
-    editSequence(rel_sequence: Entity, attributes: PsetProperties | PsetInput): void;
+    editSequence(file: IfcFile, rel_sequence: Entity, attributes: PsetProperties | PsetInput): void;
     /**
      * Edit attributes of an IfcTask entity.
      *
@@ -7452,6 +7495,22 @@ export function createApi(shell: IfcOpenShell): Api {
       const temps: Disposable[] = [];
       try {
         raw.cogo.assignSurveyPoint(annotation.raw, survey_point.raw);
+      } finally {
+        disposeAll(temps);
+      }
+    },
+    /**
+     * Convert a quadrant bearing to decimal degrees.
+     *
+     * Accepts N/S, degrees, optional minutes and decimal seconds, and E/W,
+     * separated by arbitrary whitespace. Invalid input reports
+     * "Invalid bearing string".
+     */
+    bearing2dd(bearing: string): number {
+      const temps: Disposable[] = [];
+      try {
+        const result = raw.cogo.bearing2dd(bearing);
+        return wrap(shell, result) as number;
       } finally {
         disposeAll(temps);
       }
@@ -9857,6 +9916,20 @@ export function createApi(shell: IfcOpenShell): Api {
       }
     },
     /**
+     * Set an IfcLibraryInformation VersionDate from an ISO-8601 date-time.
+     *
+     * IFC4 and later store the string directly. IFC2X3 creates and assigns an
+     * IfcCalendarDate containing the date components.
+     */
+    editVersionDate(file: IfcFile, library: Entity, iso_date_time: string): void {
+      const temps: Disposable[] = [];
+      try {
+        raw.library.editVersionDate(file.raw, library.raw, iso_date_time);
+      } finally {
+        disposeAll(temps);
+      }
+    },
+    /**
      * Remove an IfcLibraryInformation and all its references.
      *
      * Deletes all child IfcLibraryReference entities, the library entity itself,
@@ -10950,6 +11023,15 @@ export function createApi(shell: IfcOpenShell): Api {
         disposeAll(temps);
       }
     },
+    /** Set a list-of-booleans property value. */
+    propsSetBoolList(props: PsetProperties | PsetInput, key: string, values: boolean[]): void {
+      const temps: Disposable[] = [];
+      try {
+        raw.pset.propsSetBoolList(toRawPsetProperties(shell, props as PsetProperties | PsetInput, temps), key, toRawSequence(values, shell, temps));
+      } finally {
+        disposeAll(temps);
+      }
+    },
     /**
      * Remove a property set from a specific product.
      *
@@ -11011,6 +11093,22 @@ export function createApi(shell: IfcOpenShell): Api {
       try {
         const result = raw.pset.templateCreateFromFiles(schema_identifier, toRawSequence(template_files, shell, temps));
         return result as PsetTemplate | null;
+      } finally {
+        disposeAll(temps);
+      }
+    },
+    /**
+     * Edit a simple property template and its property enumeration.
+     *
+     * A populated Enumerators sequence is converted to wrapped IFC values using
+     * the incoming PrimaryMeasureType, the existing type, or IfcLabel. Existing
+     * IfcPropertyEnumeration entities are reused. An omitted, blank, or empty
+     * Enumerators value leaves the current enumeration unchanged.
+     */
+    templateEditPropTemplate(file: IfcFile, options: IfcOpenShellPsetTemplateEditPropTemplateOptions): void {
+      const temps: Disposable[] = [];
+      try {
+        raw.pset.templateEditPropTemplate(file.raw, encodeOptions(options, {"attributes": "attributes", "propTemplate": "prop_template"}, shell, temps, ["attributes"]));
       } finally {
         disposeAll(temps);
       }
@@ -11988,13 +12086,16 @@ export function createApi(shell: IfcOpenShell): Api {
     /**
      * Edit attributes of an IfcLagTime entity.
      *
+     * Cascades schedule changes to each IfcRelSequence that references the lag.
+     *
+     * @param file File containing the lag and task network.
      * @param lag_time IfcLagTime entity to edit.
      * @param attributes Property bag of attribute name/value pairs.
      */
-    editLagTime(lag_time: Entity, attributes: PsetProperties | PsetInput): void {
+    editLagTime(file: IfcFile, lag_time: Entity, attributes: PsetProperties | PsetInput): void {
       const temps: Disposable[] = [];
       try {
-        raw.sequence.editLagTime(lag_time.raw, toRawPsetProperties(shell, attributes as PsetProperties | PsetInput, temps));
+        raw.sequence.editLagTime(file.raw, lag_time.raw, toRawPsetProperties(shell, attributes as PsetProperties | PsetInput, temps));
       } finally {
         disposeAll(temps);
       }
@@ -12016,13 +12117,16 @@ export function createApi(shell: IfcOpenShell): Api {
     /**
      * Edit attributes of an IfcRelSequence entity.
      *
+     * Cascades the related task when SequenceType is supplied.
+     *
+     * @param file File containing the relationship and task network.
      * @param rel_sequence IfcRelSequence entity to edit.
      * @param attributes Property bag of attribute name/value pairs.
      */
-    editSequence(rel_sequence: Entity, attributes: PsetProperties | PsetInput): void {
+    editSequence(file: IfcFile, rel_sequence: Entity, attributes: PsetProperties | PsetInput): void {
       const temps: Disposable[] = [];
       try {
-        raw.sequence.editSequence(rel_sequence.raw, toRawPsetProperties(shell, attributes as PsetProperties | PsetInput, temps));
+        raw.sequence.editSequence(file.raw, rel_sequence.raw, toRawPsetProperties(shell, attributes as PsetProperties | PsetInput, temps));
       } finally {
         disposeAll(temps);
       }

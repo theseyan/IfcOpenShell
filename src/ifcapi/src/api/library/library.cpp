@@ -10,6 +10,9 @@
 #include "ifcparse/schema.h"
 
 #include <algorithm>
+#include <regex>
+#include <stdexcept>
+#include <string>
 #include <unordered_set>
 #include <vector>
 
@@ -17,6 +20,47 @@ namespace {
 
 bool is_ifc2x3(ifcopenshell::file* file) {
     return file && file->schema() && file->schema()->name() == "IFC2X3";
+}
+
+struct IsoDate {
+    int year;
+    int month;
+    int day;
+};
+
+bool leap_year(int year) {
+    return year % 4 == 0 && (year % 100 != 0 || year % 400 == 0);
+}
+
+IsoDate parse_iso_date_time(const std::string& value) {
+    static const std::regex pattern(
+        R"(^([0-9]{4})-([0-9]{2})-([0-9]{2})T([0-9]{2}):([0-9]{2}):([0-9]{2})(\.[0-9]{1,6})?(Z|([+-])([0-9]{2}):([0-9]{2})(:([0-9]{2})(\.[0-9]{1,6})?)?)?$)");
+    std::smatch match;
+    if (!std::regex_match(value, match, pattern)) {
+        throw std::invalid_argument("Invalid ISO date-time");
+    }
+    const int year = std::stoi(match[1].str());
+    const int month = std::stoi(match[2].str());
+    const int day = std::stoi(match[3].str());
+    const int hour = std::stoi(match[4].str());
+    const int minute = std::stoi(match[5].str());
+    const int second = std::stoi(match[6].str());
+    static const int month_days[] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
+    const int max_day = month >= 1 && month <= 12
+        ? month_days[month - 1] + (month == 2 && leap_year(year) ? 1 : 0)
+        : 0;
+    if (year == 0 || day < 1 || day > max_day || hour >= 24 || minute >= 60 || second >= 60) {
+        throw std::invalid_argument("Invalid ISO date-time");
+    }
+    if (match[9].matched) {
+        const int offset_hour = std::stoi(match[10].str());
+        const int offset_minute = std::stoi(match[11].str());
+        const int offset_second = match[13].matched ? std::stoi(match[13].str()) : 0;
+        if (offset_hour >= 24 || offset_minute >= 60 || offset_second >= 60) {
+            throw std::invalid_argument("Invalid ISO date-time");
+        }
+    }
+    return {year, month, day};
 }
 
 std::vector<express::Base> mutable_entities(
@@ -125,6 +169,31 @@ express::Base library_add_library(
     auto library = file->create(declaration);
     detail::write_string_attr(library, "Name", name);
     return library;
+}
+
+void library_edit_version_date(
+    ifcopenshell::file* file,
+    express::Base* library_ptr,
+    const std::string& iso_date_time)
+{
+    auto library = detail::deref_or_empty(library_ptr);
+    if (!file || !library || !library.declaration().is("IfcLibraryInformation")
+        || !detail::exists_in_file(file, library)) {
+        throw std::invalid_argument("Invalid IfcLibraryInformation");
+    }
+    const auto date = parse_iso_date_time(iso_date_time);
+    if (!is_ifc2x3(file)) {
+        detail::write_string_attr(library, "VersionDate", iso_date_time);
+        return;
+    }
+
+    const auto* declaration = detail::declaration_by_name(file, "IfcCalendarDate");
+    if (!declaration) throw std::invalid_argument("IfcCalendarDate is not supported by this schema");
+    auto calendar_date = file->create(declaration);
+    detail::write_int_attr(calendar_date, "DayComponent", date.day);
+    detail::write_int_attr(calendar_date, "MonthComponent", date.month);
+    detail::write_int_attr(calendar_date, "YearComponent", date.year);
+    detail::write_ref_attr(library, "VersionDate", calendar_date);
 }
 
 express::Base library_add_reference(

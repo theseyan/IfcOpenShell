@@ -25,7 +25,9 @@ from ifcopenshell.api.sequence import _capi
 
 
 def edit_sequence(
-    file: ifcopenshell.file, rel_sequence: ifcopenshell.entity_instance, attributes: dict[str, Any]
+    file: ifcopenshell.file,
+    rel_sequence: ifcopenshell.entity_instance,
+    attributes: dict[str, Any],
 ) -> None:
     """Edits the attributes of an IfcRelSequence
 
@@ -66,10 +68,9 @@ def edit_sequence(
     try:
         _capi.call_status(
             "sequence_edit_sequence",
+            _capi.file_handle(file),
             _capi.instance_handle(rel_sequence),
             props,
         )
     finally:
         pset_capi.free_props(props)
-    if "SequenceType" in attributes.keys():
-        ifcopenshell.api.sequence.cascade_schedule(file, task=rel_sequence.RelatedProcess)

@@ -23,6 +23,7 @@
 #include <map>
 #include <optional>
 #include <set>
+#include <stdexcept>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -2408,19 +2409,48 @@ void sequence_recalculate_schedule(ifcopenshell::file* file, express::Base* work
     }
 }
 
-void sequence_edit_lag_time(express::Base* lag_time, ifcopenshell_pset_props_t* attributes) {
+void sequence_edit_lag_time(
+    ifcopenshell::file* file,
+    express::Base* lag_time,
+    ifcopenshell_pset_props_t* attributes) {
     ifcopenshell_clear_error();
     try {
-        ifcapi::detail::apply_attribute_props(ifcapi::detail::deref_or_empty(lag_time), attributes);
+        auto lag_time_value = ifcapi::detail::deref_or_empty(lag_time);
+        if (!file || !lag_time_value || !lag_time_value.declaration().is("IfcLagTime")
+            || !ifcapi::detail::exists_in_file(file, lag_time_value)) {
+            throw std::invalid_argument("Invalid IfcLagTime");
+        }
+        ifcapi::detail::apply_attribute_props(lag_time_value, attributes);
+        for (auto inverse : file->instances_by_reference(static_cast<int>(lag_time_value.id()))) {
+            if (inverse && inverse.declaration().is("IfcRelSequence")) {
+                CascadeSchedule(file).execute(ifcapi::detail::read_ref_attr(inverse, "RelatedProcess"));
+            }
+        }
     } catch (const std::exception& e) {
         ifcapi::detail::set_error(e.what());
     }
 }
 
-void sequence_edit_sequence(express::Base* rel_sequence, ifcopenshell_pset_props_t* attributes) {
+void sequence_edit_sequence(
+    ifcopenshell::file* file,
+    express::Base* rel_sequence,
+    ifcopenshell_pset_props_t* attributes) {
     ifcopenshell_clear_error();
     try {
-        ifcapi::detail::apply_attribute_props(ifcapi::detail::deref_or_empty(rel_sequence), attributes);
+        auto rel_sequence_value = ifcapi::detail::deref_or_empty(rel_sequence);
+        if (!file || !rel_sequence_value || !rel_sequence_value.declaration().is("IfcRelSequence")
+            || !ifcapi::detail::exists_in_file(file, rel_sequence_value)) {
+            throw std::invalid_argument("Invalid IfcRelSequence");
+        }
+        bool cascade = false;
+        if (attributes) {
+            cascade = std::any_of(attributes->entries.begin(), attributes->entries.end(),
+                [](const ifcapi_pset::Entry& entry) { return entry.key == "SequenceType"; });
+        }
+        ifcapi::detail::apply_attribute_props(rel_sequence_value, attributes);
+        if (cascade) {
+            CascadeSchedule(file).execute(ifcapi::detail::read_ref_attr(rel_sequence_value, "RelatedProcess"));
+        }
     } catch (const std::exception& e) {
         ifcapi::detail::set_error(e.what());
     }

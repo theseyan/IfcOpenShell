@@ -19,11 +19,15 @@ import datetime
 from typing import Any
 
 import ifcopenshell
-import ifcopenshell.util.date
+from ifcopenshell import _ifcopenshell_capi as _capi
 from ifcopenshell.api.attribute.edit_attributes import _edit_attributes
 
 
-def edit_library(file: ifcopenshell.file, library: ifcopenshell.entity_instance, attributes: dict[str, Any]) -> None:
+def edit_library(
+    file: ifcopenshell.file,
+    library: ifcopenshell.entity_instance,
+    attributes: dict[str, Any],
+) -> None:
     """Edits the attributes of an IfcLibraryInformation
 
     For more information about the attributes and data types of an
@@ -45,12 +49,10 @@ def edit_library(file: ifcopenshell.file, library: ifcopenshell.entity_instance,
     if "VersionDate" in attributes:
         dt = attributes["VersionDate"]
         if isinstance(dt, datetime.datetime):
-            if file.schema != "IFC2X3":
-                dt = ifcopenshell.util.date.datetime2ifc(dt, "IfcDateTime")
-            else:
-                calendar_date = ifcopenshell.util.date.datetime2ifc(dt, "IfcCalendarDate")
-                dt = file.create_entity("IfcCalendarDate", **calendar_date)
+            _capi.library_edit_version_date(
+                file._handle, library._handle, dt.isoformat()
+            )
             attributes = attributes.copy()
-            attributes["VersionDate"] = dt
+            del attributes["VersionDate"]
 
     _edit_attributes(file, library, attributes)

@@ -540,20 +540,28 @@ IFCAPI_BINDING express::Base sequence_assign_recurrence_pattern(
 /**
  * Edit attributes of an IfcLagTime entity.
  *
+ * Cascades schedule changes to each IfcRelSequence that references the lag.
+ *
+ * @param file File containing the lag and task network.
  * @param lag_time IfcLagTime entity to edit.
  * @param attributes Property bag of attribute name/value pairs.
  */
 IFCAPI_BINDING void sequence_edit_lag_time(
+    ifcopenshell::file* file,
     express::Base* lag_time,
     ifcopenshell_pset_props_t* attributes);
 
 /**
  * Edit attributes of an IfcRelSequence entity.
  *
+ * Cascades the related task when SequenceType is supplied.
+ *
+ * @param file File containing the relationship and task network.
  * @param rel_sequence IfcRelSequence entity to edit.
  * @param attributes Property bag of attribute name/value pairs.
  */
 IFCAPI_BINDING void sequence_edit_sequence(
+    ifcopenshell::file* file,
     express::Base* rel_sequence,
     ifcopenshell_pset_props_t* attributes);
 
