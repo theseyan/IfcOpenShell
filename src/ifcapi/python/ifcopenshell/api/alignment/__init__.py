@@ -47,6 +47,7 @@ Future versions of this API may support:
     5. Adding a segment at any location along a curve
 """
 
+import ifcopenshell.api.aggregate  # noqa: F401
 import ifcopenshell.api.spatial  # noqa: F401
 
 from ._get_segment_start_point_label import register_referent_name_callback
@@ -123,6 +124,7 @@ __all__ = [
     "get_layout",
     "get_layout_curve",
     "get_layout_segments",
+    "get_mapped_segments",
     "get_parent_alignment",
     "get_referent_nest",
     "get_vertical_layout",
@@ -133,5 +135,4 @@ __all__ = [
     "register_referent_name_callback",
     "update_end_point",
     "update_fallback_position",
-    "get_mapped_segments",
 ]

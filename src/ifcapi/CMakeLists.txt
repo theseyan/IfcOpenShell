@@ -45,6 +45,15 @@ set(IFCAPI_SOURCES
     src/file.cpp
     src/entity.cpp
     src/api/aggregate/relationship.cpp
+    src/api/alignment/common.cpp
+    src/api/alignment/query.cpp
+    src/api/alignment/mapping_horizontal.cpp
+    src/api/alignment/mapping_vertical.cpp
+    src/api/alignment/mapping_cant.cpp
+    src/api/alignment/geometry.cpp
+    src/api/alignment/authoring.cpp
+    src/api/alignment/representation.cpp
+    src/api/alignment/stationing.cpp
     src/api/boundary/boundary.cpp
     src/api/constraint/constraint.cpp
     src/api/control/control.cpp
@@ -137,6 +146,7 @@ if(BUILD_TESTING AND NOT WASM_BUILD)
         tests/test_resource.c
         tests/test_nest.c
         tests/test_geometry.c
+        tests/test_alignment.c
     )
     target_link_libraries(ifcapi_c_smoke_test PRIVATE ifcopenshell_capi)
     target_include_directories(ifcapi_c_smoke_test PRIVATE

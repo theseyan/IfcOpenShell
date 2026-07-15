@@ -3205,6 +3205,17 @@ void ifcopenshell_geom_element_list_list_destroy(ifcopenshell_geom_element_list_
     value->items = nullptr;
     value->size = 0;
 }
+void ifcopenshell_alignment_create_layout_segment_result_destroy(ifcopenshell_alignment_create_layout_segment_result_t* value) {
+    if (value == nullptr) {
+        return;
+    }
+    if (value->segment != nullptr) {
+        ifcopenshell_instance_destroy(value->segment);
+        value->segment = nullptr;
+    }
+    ifcopenshell_double_list_destroy(&value->endpoint);
+}
+
 void ifcopenshell_geometry_railing_support_destroy(ifcopenshell_geometry_railing_support_t* value) {
     if (value == nullptr) {
         return;
@@ -4275,6 +4286,1099 @@ bool ifcopenshell_aggregate_unassign_object(ifcopenshell_file_t* file, const ifc
         options_cpp.application = options->application->value;
     }
         ifcapi::bindings::aggregate_unassign_object(file_cpp, options_cpp);
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_alignment_add_segment_to_layout(ifcopenshell_file_t* file, ifcopenshell_instance_t* layout, ifcopenshell_instance_t* segment, ifcopenshell_alignment_create_layout_segment_result_t* out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    if (layout == nullptr) { throw std::runtime_error("Handle parameter \"layout\" must not be null"); }
+    auto layout_cpp = layout->value;
+    if (segment == nullptr) { throw std::runtime_error("Handle parameter \"segment\" must not be null"); }
+    auto segment_cpp = segment->value;
+        auto result_value = ifcapi::bindings::alignment_add_segment_to_layout(file_cpp, layout_cpp, segment_cpp);
+        ifcopenshell_alignment_create_layout_segment_result_t result_value_c{};
+        try {
+            result_value_c.segment = new ifcopenshell_instance_t{result_value.segment};
+            result_value_c.endpoint = make_double_list(std::move(result_value.endpoint));
+            result_value_c.has_endpoint = static_cast<bool>(result_value.has_endpoint);
+            *out_result = result_value_c;
+            result_value_c = {};
+        } catch (...) {
+            ifcopenshell_alignment_create_layout_segment_result_destroy(&result_value_c);
+            throw;
+        }
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_alignment_add_stationing_referent(ifcopenshell_file_t* file, const ifcopenshell_alignment_add_stationing_referent_options_t* options, ifcopenshell_instance_t** out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::AlignmentAddStationingReferentOptions options_cpp{};
+    if (options->alignment == nullptr) { throw std::runtime_error("Options field \"alignment\" must not be null"); }
+    options_cpp.alignment = options->alignment->value;
+    options_cpp.distance_along = static_cast<double>(options->distance_along);
+    options_cpp.station = static_cast<double>(options->station);
+    if (options->name == nullptr) { throw std::runtime_error("Options field \"name\" must not be null"); }
+    options_cpp.name = std::string(options->name);
+    if (options->positioned_product == nullptr) { throw std::runtime_error("Options field \"positioned_product\" must not be null"); }
+    options_cpp.positioned_product = options->positioned_product->value;
+    if (options->has_owner_history) {
+        if (options->owner_history == nullptr) { throw std::runtime_error("Options field \"owner_history\" must not be null"); }
+        options_cpp.owner_history = options->owner_history->value;
+    }
+    if (options->has_user) {
+        if (options->user == nullptr) { throw std::runtime_error("Options field \"user\" must not be null"); }
+        options_cpp.user = options->user->value;
+    }
+    if (options->has_application) {
+        if (options->application == nullptr) { throw std::runtime_error("Options field \"application\" must not be null"); }
+        options_cpp.application = options->application->value;
+    }
+        auto result_value = ifcapi::bindings::alignment_add_stationing_referent(file_cpp, options_cpp);
+        if (!static_cast<bool>(result_value)) {
+            *out_result = nullptr;
+        } else {
+            *out_result = new ifcopenshell_instance_t{std::move(result_value)};
+        }
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_alignment_add_vertical_layout(ifcopenshell_file_t* file, ifcopenshell_instance_t* parent_alignment, ifcopenshell_instance_t** out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    if (parent_alignment == nullptr) { throw std::runtime_error("Handle parameter \"parent_alignment\" must not be null"); }
+    auto parent_alignment_cpp = parent_alignment->value;
+        auto result_value = ifcapi::bindings::alignment_add_vertical_layout(file_cpp, parent_alignment_cpp);
+        if (!static_cast<bool>(result_value)) {
+            *out_result = nullptr;
+        } else {
+            *out_result = new ifcopenshell_instance_t{std::move(result_value)};
+        }
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_alignment_add_zero_length_segment(ifcopenshell_file_t* file, ifcopenshell_instance_t* layout, bool* out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    if (layout == nullptr) { throw std::runtime_error("Handle parameter \"layout\" must not be null"); }
+    auto layout_cpp = layout->value;
+        *out_result = ifcapi::bindings::alignment_add_zero_length_segment(file_cpp, layout_cpp);
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_alignment_create(ifcopenshell_file_t* file, const ifcopenshell_alignment_create_options_t* options, ifcopenshell_instance_t** out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::AlignmentCreateOptions options_cpp{};
+    if (options->name == nullptr) { throw std::runtime_error("Options field \"name\" must not be null"); }
+    options_cpp.name = std::string(options->name);
+    options_cpp.include_vertical = static_cast<bool>(options->include_vertical);
+    options_cpp.include_cant = static_cast<bool>(options->include_cant);
+    options_cpp.include_geometry = static_cast<bool>(options->include_geometry);
+    options_cpp.start_station = static_cast<double>(options->start_station);
+    if (options->has_owner_history) {
+        if (options->owner_history == nullptr) { throw std::runtime_error("Options field \"owner_history\" must not be null"); }
+        options_cpp.owner_history = options->owner_history->value;
+    }
+    if (options->has_user) {
+        if (options->user == nullptr) { throw std::runtime_error("Options field \"user\" must not be null"); }
+        options_cpp.user = options->user->value;
+    }
+    if (options->has_application) {
+        if (options->application == nullptr) { throw std::runtime_error("Options field \"application\" must not be null"); }
+        options_cpp.application = options->application->value;
+    }
+        auto result_value = ifcapi::bindings::alignment_create(file_cpp, options_cpp);
+        if (!static_cast<bool>(result_value)) {
+            *out_result = nullptr;
+        } else {
+            *out_result = new ifcopenshell_instance_t{std::move(result_value)};
+        }
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_alignment_create_as_offset_curve(ifcopenshell_file_t* file, const ifcopenshell_alignment_create_offset_curve_options_t* options, ifcopenshell_instance_t** out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::AlignmentCreateOffsetCurveOptions options_cpp{};
+    if (options->name == nullptr) { throw std::runtime_error("Options field \"name\" must not be null"); }
+    options_cpp.name = std::string(options->name);
+    if (options->offsets == nullptr) { throw std::runtime_error("Options field \"offsets\" must not be null"); }
+    options_cpp.offsets = options->offsets->value;
+    options_cpp.start_station = static_cast<double>(options->start_station);
+    if (options->has_owner_history) {
+        if (options->owner_history == nullptr) { throw std::runtime_error("Options field \"owner_history\" must not be null"); }
+        options_cpp.owner_history = options->owner_history->value;
+    }
+    if (options->has_user) {
+        if (options->user == nullptr) { throw std::runtime_error("Options field \"user\" must not be null"); }
+        options_cpp.user = options->user->value;
+    }
+    if (options->has_application) {
+        if (options->application == nullptr) { throw std::runtime_error("Options field \"application\" must not be null"); }
+        options_cpp.application = options->application->value;
+    }
+        auto result_value = ifcapi::bindings::alignment_create_as_offset_curve(file_cpp, options_cpp);
+        if (!static_cast<bool>(result_value)) {
+            *out_result = nullptr;
+        } else {
+            *out_result = new ifcopenshell_instance_t{std::move(result_value)};
+        }
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_alignment_create_as_polyline(ifcopenshell_file_t* file, const ifcopenshell_alignment_create_polyline_options_t* options, ifcopenshell_instance_t** out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::AlignmentCreatePolylineOptions options_cpp{};
+    if (options->name == nullptr) { throw std::runtime_error("Options field \"name\" must not be null"); }
+    options_cpp.name = std::string(options->name);
+    if (options->points == nullptr) { throw std::runtime_error("Options field \"points\" must not be null"); }
+    options_cpp.points = options->points->value;
+    options_cpp.start_station = static_cast<double>(options->start_station);
+    if (options->has_owner_history) {
+        if (options->owner_history == nullptr) { throw std::runtime_error("Options field \"owner_history\" must not be null"); }
+        options_cpp.owner_history = options->owner_history->value;
+    }
+    if (options->has_user) {
+        if (options->user == nullptr) { throw std::runtime_error("Options field \"user\" must not be null"); }
+        options_cpp.user = options->user->value;
+    }
+    if (options->has_application) {
+        if (options->application == nullptr) { throw std::runtime_error("Options field \"application\" must not be null"); }
+        options_cpp.application = options->application->value;
+    }
+        auto result_value = ifcapi::bindings::alignment_create_as_polyline(file_cpp, options_cpp);
+        if (!static_cast<bool>(result_value)) {
+            *out_result = nullptr;
+        } else {
+            *out_result = new ifcopenshell_instance_t{std::move(result_value)};
+        }
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_alignment_create_by_pi_method(ifcopenshell_file_t* file, const ifcopenshell_alignment_create_by_pi_method_options_t* options, ifcopenshell_instance_t** out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::AlignmentCreateByPiMethodOptions options_cpp{};
+    if (options->name == nullptr) { throw std::runtime_error("Options field \"name\" must not be null"); }
+    options_cpp.name = std::string(options->name);
+    if (options->horizontal_points == nullptr) { throw std::runtime_error("Options field \"horizontal_points\" must not be null"); }
+    options_cpp.horizontal_points = to_cpp_double_list_list(options->horizontal_points);
+    if (options->radii == nullptr) { throw std::runtime_error("Options field \"radii\" must not be null"); }
+    options_cpp.radii = to_cpp_double_list(options->radii);
+    if (options->vertical_points == nullptr) { throw std::runtime_error("Options field \"vertical_points\" must not be null"); }
+    options_cpp.vertical_points = to_cpp_double_list_list(options->vertical_points);
+    if (options->vertical_lengths == nullptr) { throw std::runtime_error("Options field \"vertical_lengths\" must not be null"); }
+    options_cpp.vertical_lengths = to_cpp_double_list(options->vertical_lengths);
+    options_cpp.start_station = static_cast<double>(options->start_station);
+    if (options->has_owner_history) {
+        if (options->owner_history == nullptr) { throw std::runtime_error("Options field \"owner_history\" must not be null"); }
+        options_cpp.owner_history = options->owner_history->value;
+    }
+    if (options->has_user) {
+        if (options->user == nullptr) { throw std::runtime_error("Options field \"user\" must not be null"); }
+        options_cpp.user = options->user->value;
+    }
+    if (options->has_application) {
+        if (options->application == nullptr) { throw std::runtime_error("Options field \"application\" must not be null"); }
+        options_cpp.application = options->application->value;
+    }
+        auto result_value = ifcapi::bindings::alignment_create_by_pi_method(file_cpp, options_cpp);
+        if (!static_cast<bool>(result_value)) {
+            *out_result = nullptr;
+        } else {
+            *out_result = new ifcopenshell_instance_t{std::move(result_value)};
+        }
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_alignment_create_from_csv_text(ifcopenshell_file_t* file, const ifcopenshell_alignment_create_from_csv_text_options_t* options, ifcopenshell_instance_t** out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::AlignmentCreateFromCsvTextOptions options_cpp{};
+    if (options->csv_text == nullptr) { throw std::runtime_error("Options field \"csv_text\" must not be null"); }
+    options_cpp.csv_text = std::string(options->csv_text);
+    if (options->has_owner_history) {
+        if (options->owner_history == nullptr) { throw std::runtime_error("Options field \"owner_history\" must not be null"); }
+        options_cpp.owner_history = options->owner_history->value;
+    }
+    if (options->has_user) {
+        if (options->user == nullptr) { throw std::runtime_error("Options field \"user\" must not be null"); }
+        options_cpp.user = options->user->value;
+    }
+    if (options->has_application) {
+        if (options->application == nullptr) { throw std::runtime_error("Options field \"application\" must not be null"); }
+        options_cpp.application = options->application->value;
+    }
+        auto result_value = ifcapi::bindings::alignment_create_from_csv_text(file_cpp, options_cpp);
+        if (!static_cast<bool>(result_value)) {
+            *out_result = nullptr;
+        } else {
+            *out_result = new ifcopenshell_instance_t{std::move(result_value)};
+        }
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_alignment_create_layout_segment(ifcopenshell_file_t* file, ifcopenshell_instance_t* layout, ifcopenshell_instance_t* design_parameters, ifcopenshell_alignment_create_layout_segment_result_t* out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    if (layout == nullptr) { throw std::runtime_error("Handle parameter \"layout\" must not be null"); }
+    auto layout_cpp = layout->value;
+    if (design_parameters == nullptr) { throw std::runtime_error("Handle parameter \"design_parameters\" must not be null"); }
+    auto design_parameters_cpp = design_parameters->value;
+        auto result_value = ifcapi::bindings::alignment_create_layout_segment(file_cpp, layout_cpp, design_parameters_cpp);
+        ifcopenshell_alignment_create_layout_segment_result_t result_value_c{};
+        try {
+            result_value_c.segment = new ifcopenshell_instance_t{result_value.segment};
+            result_value_c.endpoint = make_double_list(std::move(result_value.endpoint));
+            result_value_c.has_endpoint = static_cast<bool>(result_value.has_endpoint);
+            *out_result = result_value_c;
+            result_value_c = {};
+        } catch (...) {
+            ifcopenshell_alignment_create_layout_segment_result_destroy(&result_value_c);
+            throw;
+        }
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_alignment_create_representation(ifcopenshell_file_t* file, ifcopenshell_instance_t* alignment) {
+    try {
+        ifcopenshell_clear_error();
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    if (alignment == nullptr) { throw std::runtime_error("Handle parameter \"alignment\" must not be null"); }
+    auto alignment_cpp = alignment->value;
+        ifcapi::bindings::alignment_create_representation(file_cpp, alignment_cpp);
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_alignment_create_segment_representations(ifcopenshell_file_t* file, ifcopenshell_instance_t* alignment) {
+    try {
+        ifcopenshell_clear_error();
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    if (alignment == nullptr) { throw std::runtime_error("Handle parameter \"alignment\" must not be null"); }
+    auto alignment_cpp = alignment->value;
+        ifcapi::bindings::alignment_create_segment_representations(file_cpp, alignment_cpp);
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_alignment_default_referent_label(ifcopenshell_instance_t* previous_segment, ifcopenshell_instance_t* segment, ifcopenshell_string_t* out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    std::optional<express::Base> previous_segment_cpp;
+    if (previous_segment != nullptr) { previous_segment_cpp = previous_segment->value; }
+    std::optional<express::Base> segment_cpp;
+    if (segment != nullptr) { segment_cpp = segment->value; }
+        *out_result = make_string(ifcapi::bindings::alignment_default_referent_label(previous_segment_cpp, segment_cpp));
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_alignment_distance_along_from_station(ifcopenshell_file_t* file, ifcopenshell_instance_t* alignment, double station, double* out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    if (alignment == nullptr) { throw std::runtime_error("Handle parameter \"alignment\" must not be null"); }
+    auto alignment_cpp = alignment->value;
+    auto station_cpp = static_cast<double>(station);
+        *out_result = static_cast<double>(ifcapi::bindings::alignment_distance_along_from_station(file_cpp, alignment_cpp, station_cpp));
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_alignment_get_alignment(ifcopenshell_instance_t* layout, ifcopenshell_instance_t** out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (layout == nullptr) { throw std::runtime_error("Handle parameter \"layout\" must not be null"); }
+    auto layout_cpp = layout->value;
+        auto result_value = ifcapi::bindings::alignment_get_alignment(layout_cpp);
+        if (!result_value) {
+            *out_result = nullptr;
+        } else {
+            auto unwrapped_result = *result_value;
+            if (!static_cast<bool>(unwrapped_result)) {
+                *out_result = nullptr;
+            } else {
+                *out_result = new ifcopenshell_instance_t{unwrapped_result};
+            }
+        }
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_alignment_get_alignment_layout_nest(ifcopenshell_instance_t* alignment, ifcopenshell_instance_t** out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (alignment == nullptr) { throw std::runtime_error("Handle parameter \"alignment\" must not be null"); }
+    auto alignment_cpp = alignment->value;
+        auto result_value = ifcapi::bindings::alignment_get_alignment_layout_nest(alignment_cpp);
+        if (!result_value) {
+            *out_result = nullptr;
+        } else {
+            auto unwrapped_result = *result_value;
+            if (!static_cast<bool>(unwrapped_result)) {
+                *out_result = nullptr;
+            } else {
+                *out_result = new ifcopenshell_instance_t{unwrapped_result};
+            }
+        }
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_alignment_get_alignment_layouts(ifcopenshell_instance_t* alignment, ifcopenshell_parse_instance_list_t** out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (alignment == nullptr) { throw std::runtime_error("Handle parameter \"alignment\" must not be null"); }
+    auto alignment_cpp = alignment->value;
+        *out_result = new ifcopenshell_parse_instance_list_t{ifcapi::bindings::alignment_get_alignment_layouts(alignment_cpp)};
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_alignment_get_alignment_segment_nest(ifcopenshell_instance_t* layout, ifcopenshell_instance_t** out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (layout == nullptr) { throw std::runtime_error("Handle parameter \"layout\" must not be null"); }
+    auto layout_cpp = layout->value;
+        auto result_value = ifcapi::bindings::alignment_get_alignment_segment_nest(layout_cpp);
+        if (!result_value) {
+            *out_result = nullptr;
+        } else {
+            auto unwrapped_result = *result_value;
+            if (!static_cast<bool>(unwrapped_result)) {
+                *out_result = nullptr;
+            } else {
+                *out_result = new ifcopenshell_instance_t{unwrapped_result};
+            }
+        }
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_alignment_get_alignment_start_station(ifcopenshell_file_t* file, ifcopenshell_instance_t* alignment, double* out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    if (alignment == nullptr) { throw std::runtime_error("Handle parameter \"alignment\" must not be null"); }
+    auto alignment_cpp = alignment->value;
+        *out_result = static_cast<double>(ifcapi::bindings::alignment_get_alignment_start_station(file_cpp, alignment_cpp));
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_alignment_get_axis_subcontext(ifcopenshell_file_t* file, ifcopenshell_instance_t** out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+        auto result_value = ifcapi::bindings::alignment_get_axis_subcontext(file_cpp);
+        if (!static_cast<bool>(result_value)) {
+            *out_result = nullptr;
+        } else {
+            *out_result = new ifcopenshell_instance_t{std::move(result_value)};
+        }
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_alignment_get_basis_curve(ifcopenshell_instance_t* alignment, ifcopenshell_instance_t** out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (alignment == nullptr) { throw std::runtime_error("Handle parameter \"alignment\" must not be null"); }
+    auto alignment_cpp = alignment->value;
+        auto result_value = ifcapi::bindings::alignment_get_basis_curve(alignment_cpp);
+        if (!result_value) {
+            *out_result = nullptr;
+        } else {
+            auto unwrapped_result = *result_value;
+            if (!static_cast<bool>(unwrapped_result)) {
+                *out_result = nullptr;
+            } else {
+                *out_result = new ifcopenshell_instance_t{unwrapped_result};
+            }
+        }
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_alignment_get_cant_layout(ifcopenshell_instance_t* alignment, ifcopenshell_instance_t** out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (alignment == nullptr) { throw std::runtime_error("Handle parameter \"alignment\" must not be null"); }
+    auto alignment_cpp = alignment->value;
+        auto result_value = ifcapi::bindings::alignment_get_cant_layout(alignment_cpp);
+        if (!result_value) {
+            *out_result = nullptr;
+        } else {
+            auto unwrapped_result = *result_value;
+            if (!static_cast<bool>(unwrapped_result)) {
+                *out_result = nullptr;
+            } else {
+                *out_result = new ifcopenshell_instance_t{unwrapped_result};
+            }
+        }
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_alignment_get_child_alignments(ifcopenshell_instance_t* alignment, ifcopenshell_parse_instance_list_t** out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (alignment == nullptr) { throw std::runtime_error("Handle parameter \"alignment\" must not be null"); }
+    auto alignment_cpp = alignment->value;
+        *out_result = new ifcopenshell_parse_instance_list_t{ifcapi::bindings::alignment_get_child_alignments(alignment_cpp)};
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_alignment_get_curve(ifcopenshell_instance_t* alignment, ifcopenshell_instance_t** out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (alignment == nullptr) { throw std::runtime_error("Handle parameter \"alignment\" must not be null"); }
+    auto alignment_cpp = alignment->value;
+        auto result_value = ifcapi::bindings::alignment_get_curve(alignment_cpp);
+        if (!result_value) {
+            *out_result = nullptr;
+        } else {
+            auto unwrapped_result = *result_value;
+            if (!static_cast<bool>(unwrapped_result)) {
+                *out_result = nullptr;
+            } else {
+                *out_result = new ifcopenshell_instance_t{unwrapped_result};
+            }
+        }
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_alignment_get_curve_segment(ifcopenshell_instance_t* layout, ifcopenshell_instance_t* segment, ifcopenshell_instance_t** out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (layout == nullptr) { throw std::runtime_error("Handle parameter \"layout\" must not be null"); }
+    auto layout_cpp = layout->value;
+    if (segment == nullptr) { throw std::runtime_error("Handle parameter \"segment\" must not be null"); }
+    auto segment_cpp = segment->value;
+        auto result_value = ifcapi::bindings::alignment_get_curve_segment(layout_cpp, segment_cpp);
+        if (!result_value) {
+            *out_result = nullptr;
+        } else {
+            auto unwrapped_result = *result_value;
+            if (!static_cast<bool>(unwrapped_result)) {
+                *out_result = nullptr;
+            } else {
+                *out_result = new ifcopenshell_instance_t{unwrapped_result};
+            }
+        }
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_alignment_get_curve_segment_transition_code(ifcopenshell_instance_t* segment, ifcopenshell_instance_t* next_segment, double position_tolerance, ifcopenshell_string_t* out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (segment == nullptr) { throw std::runtime_error("Handle parameter \"segment\" must not be null"); }
+    auto segment_cpp = segment->value;
+    if (next_segment == nullptr) { throw std::runtime_error("Handle parameter \"next_segment\" must not be null"); }
+    auto next_segment_cpp = next_segment->value;
+    auto position_tolerance_cpp = static_cast<double>(position_tolerance);
+        *out_result = make_string(ifcapi::bindings::alignment_get_curve_segment_transition_code(segment_cpp, next_segment_cpp, position_tolerance_cpp));
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_alignment_get_horizontal_layout(ifcopenshell_instance_t* alignment, ifcopenshell_instance_t** out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (alignment == nullptr) { throw std::runtime_error("Handle parameter \"alignment\" must not be null"); }
+    auto alignment_cpp = alignment->value;
+        auto result_value = ifcapi::bindings::alignment_get_horizontal_layout(alignment_cpp);
+        if (!result_value) {
+            *out_result = nullptr;
+        } else {
+            auto unwrapped_result = *result_value;
+            if (!static_cast<bool>(unwrapped_result)) {
+                *out_result = nullptr;
+            } else {
+                *out_result = new ifcopenshell_instance_t{unwrapped_result};
+            }
+        }
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_alignment_get_layout(ifcopenshell_instance_t* segment, ifcopenshell_instance_t** out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (segment == nullptr) { throw std::runtime_error("Handle parameter \"segment\" must not be null"); }
+    auto segment_cpp = segment->value;
+        auto result_value = ifcapi::bindings::alignment_get_layout(segment_cpp);
+        if (!result_value) {
+            *out_result = nullptr;
+        } else {
+            auto unwrapped_result = *result_value;
+            if (!static_cast<bool>(unwrapped_result)) {
+                *out_result = nullptr;
+            } else {
+                *out_result = new ifcopenshell_instance_t{unwrapped_result};
+            }
+        }
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_alignment_get_layout_curve(ifcopenshell_instance_t* layout, ifcopenshell_instance_t** out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (layout == nullptr) { throw std::runtime_error("Handle parameter \"layout\" must not be null"); }
+    auto layout_cpp = layout->value;
+        auto result_value = ifcapi::bindings::alignment_get_layout_curve(layout_cpp);
+        if (!result_value) {
+            *out_result = nullptr;
+        } else {
+            auto unwrapped_result = *result_value;
+            if (!static_cast<bool>(unwrapped_result)) {
+                *out_result = nullptr;
+            } else {
+                *out_result = new ifcopenshell_instance_t{unwrapped_result};
+            }
+        }
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_alignment_get_layout_segments(ifcopenshell_instance_t* layout, ifcopenshell_parse_instance_list_t** out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (layout == nullptr) { throw std::runtime_error("Handle parameter \"layout\" must not be null"); }
+    auto layout_cpp = layout->value;
+        *out_result = new ifcopenshell_parse_instance_list_t{ifcapi::bindings::alignment_get_layout_segments(layout_cpp)};
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_alignment_get_mapped_segments(ifcopenshell_instance_t* layout_segment, ifcopenshell_parse_instance_list_t** out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (layout_segment == nullptr) { throw std::runtime_error("Handle parameter \"layout_segment\" must not be null"); }
+    auto layout_segment_cpp = layout_segment->value;
+        *out_result = new ifcopenshell_parse_instance_list_t{ifcapi::bindings::alignment_get_mapped_segments(layout_segment_cpp)};
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_alignment_get_parent_alignment(ifcopenshell_instance_t* alignment, ifcopenshell_instance_t** out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (alignment == nullptr) { throw std::runtime_error("Handle parameter \"alignment\" must not be null"); }
+    auto alignment_cpp = alignment->value;
+        auto result_value = ifcapi::bindings::alignment_get_parent_alignment(alignment_cpp);
+        if (!result_value) {
+            *out_result = nullptr;
+        } else {
+            auto unwrapped_result = *result_value;
+            if (!static_cast<bool>(unwrapped_result)) {
+                *out_result = nullptr;
+            } else {
+                *out_result = new ifcopenshell_instance_t{unwrapped_result};
+            }
+        }
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_alignment_get_referent_nest(ifcopenshell_instance_t* alignment, ifcopenshell_instance_t** out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (alignment == nullptr) { throw std::runtime_error("Handle parameter \"alignment\" must not be null"); }
+    auto alignment_cpp = alignment->value;
+        auto result_value = ifcapi::bindings::alignment_get_referent_nest(alignment_cpp);
+        if (!result_value) {
+            *out_result = nullptr;
+        } else {
+            auto unwrapped_result = *result_value;
+            if (!static_cast<bool>(unwrapped_result)) {
+                *out_result = nullptr;
+            } else {
+                *out_result = new ifcopenshell_instance_t{unwrapped_result};
+            }
+        }
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_alignment_get_vertical_layout(ifcopenshell_instance_t* alignment, ifcopenshell_instance_t** out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (alignment == nullptr) { throw std::runtime_error("Handle parameter \"alignment\" must not be null"); }
+    auto alignment_cpp = alignment->value;
+        auto result_value = ifcapi::bindings::alignment_get_vertical_layout(alignment_cpp);
+        if (!result_value) {
+            *out_result = nullptr;
+        } else {
+            auto unwrapped_result = *result_value;
+            if (!static_cast<bool>(unwrapped_result)) {
+                *out_result = nullptr;
+            } else {
+                *out_result = new ifcopenshell_instance_t{unwrapped_result};
+            }
+        }
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_alignment_has_zero_length_segment(ifcopenshell_instance_t* layout, bool* out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (layout == nullptr) { throw std::runtime_error("Handle parameter \"layout\" must not be null"); }
+    auto layout_cpp = layout->value;
+        *out_result = ifcapi::bindings::alignment_has_zero_length_segment(layout_cpp);
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_alignment_layout_horizontal_by_pi_method(ifcopenshell_file_t* file, ifcopenshell_instance_t* layout, const ifcopenshell_double_list_list_t* points, const ifcopenshell_double_list_t* radii) {
+    try {
+        ifcopenshell_clear_error();
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    if (layout == nullptr) { throw std::runtime_error("Handle parameter \"layout\" must not be null"); }
+    auto layout_cpp = layout->value;
+    if (points == nullptr) { throw std::runtime_error("Parameter \"points\" must not be null"); }
+    auto points_cpp = to_cpp_double_list_list(points);
+    if (radii == nullptr) { throw std::runtime_error("Parameter \"radii\" must not be null"); }
+    auto radii_cpp = to_cpp_double_list(radii);
+        ifcapi::bindings::alignment_layout_horizontal_by_pi_method(file_cpp, layout_cpp, points_cpp, radii_cpp);
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_alignment_layout_vertical_by_pi_method(ifcopenshell_file_t* file, ifcopenshell_instance_t* layout, const ifcopenshell_double_list_list_t* points, const ifcopenshell_double_list_t* lengths) {
+    try {
+        ifcopenshell_clear_error();
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    if (layout == nullptr) { throw std::runtime_error("Handle parameter \"layout\" must not be null"); }
+    auto layout_cpp = layout->value;
+    if (points == nullptr) { throw std::runtime_error("Parameter \"points\" must not be null"); }
+    auto points_cpp = to_cpp_double_list_list(points);
+    if (lengths == nullptr) { throw std::runtime_error("Parameter \"lengths\" must not be null"); }
+    auto lengths_cpp = to_cpp_double_list(lengths);
+        ifcapi::bindings::alignment_layout_vertical_by_pi_method(file_cpp, layout_cpp, points_cpp, lengths_cpp);
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_alignment_map_segment(ifcopenshell_file_t* file, const ifcopenshell_alignment_map_segment_options_t* options, ifcopenshell_parse_instance_list_t** out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::AlignmentMapSegmentOptions options_cpp{};
+    if (options->segment == nullptr) { throw std::runtime_error("Options field \"segment\" must not be null"); }
+    options_cpp.segment = options->segment->value;
+    if (options->has_rail_head_distance) {
+        options_cpp.rail_head_distance = options->rail_head_distance;
+    }
+        *out_result = new ifcopenshell_parse_instance_list_t{ifcapi::bindings::alignment_map_segment(file_cpp, options_cpp)};
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_alignment_name_segments(const char* prefix, ifcopenshell_instance_t* layout) {
+    try {
+        ifcopenshell_clear_error();
+    if (prefix == nullptr) { throw std::runtime_error("Parameter \"prefix\" must not be null"); }
+    std::string prefix_cpp(prefix);
+    if (layout == nullptr) { throw std::runtime_error("Handle parameter \"layout\" must not be null"); }
+    auto layout_cpp = layout->value;
+        ifcapi::bindings::alignment_name_segments(prefix_cpp, layout_cpp);
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_alignment_station_as_string(ifcopenshell_file_t* file, double station, ifcopenshell_string_t* out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    auto station_cpp = static_cast<double>(station);
+        *out_result = make_string(ifcapi::bindings::alignment_station_as_string(file_cpp, station_cpp));
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_alignment_update_curve_segment_transition_code(ifcopenshell_instance_t* segment, ifcopenshell_instance_t* next_segment, double position_tolerance) {
+    try {
+        ifcopenshell_clear_error();
+    if (segment == nullptr) { throw std::runtime_error("Handle parameter \"segment\" must not be null"); }
+    auto segment_cpp = segment->value;
+    if (next_segment == nullptr) { throw std::runtime_error("Handle parameter \"next_segment\" must not be null"); }
+    auto next_segment_cpp = next_segment->value;
+    auto position_tolerance_cpp = static_cast<double>(position_tolerance);
+        ifcapi::bindings::alignment_update_curve_segment_transition_code(segment_cpp, next_segment_cpp, position_tolerance_cpp);
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_alignment_update_end_point(ifcopenshell_file_t* file, ifcopenshell_instance_t* curve) {
+    try {
+        ifcopenshell_clear_error();
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    if (curve == nullptr) { throw std::runtime_error("Handle parameter \"curve\" must not be null"); }
+    auto curve_cpp = curve->value;
+        ifcapi::bindings::alignment_update_end_point(file_cpp, curve_cpp);
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
+bool ifcopenshell_alignment_update_fallback_position(ifcopenshell_file_t* file, ifcopenshell_instance_t* linear_placement) {
+    try {
+        ifcopenshell_clear_error();
+    if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
+    auto file_cpp = file->ptr;
+    if (linear_placement == nullptr) { throw std::runtime_error("Handle parameter \"linear_placement\" must not be null"); }
+    auto linear_placement_cpp = linear_placement->value;
+        ifcapi::bindings::alignment_update_fallback_position(file_cpp, linear_placement_cpp);
         return true;
     } catch (const std::exception& e) {
         set_last_error(e.what());

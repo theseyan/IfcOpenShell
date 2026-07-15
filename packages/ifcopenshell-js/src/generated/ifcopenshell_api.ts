@@ -27,6 +27,51 @@ type RawApi = {
     assignObject: (file: RawValue, options: RawValue) => RawValue;
     unassignObject: (file: RawValue, options: RawValue) => void;
   };
+  alignment: {
+    addSegmentToLayout: (file: RawValue, layout: RawValue, segment: RawValue) => RawValue;
+    addStationingReferent: (file: RawValue, options: RawValue) => RawValue;
+    addVerticalLayout: (file: RawValue, parent_alignment: RawValue) => RawValue;
+    addZeroLengthSegment: (file: RawValue, layout: RawValue) => boolean;
+    create: (file: RawValue, options: RawValue) => RawValue;
+    createAsOffsetCurve: (file: RawValue, options: RawValue) => RawValue;
+    createAsPolyline: (file: RawValue, options: RawValue) => RawValue;
+    createByPiMethod: (file: RawValue, options: RawValue) => RawValue;
+    createFromCsvText: (file: RawValue, options: RawValue) => RawValue;
+    createLayoutSegment: (file: RawValue, layout: RawValue, design_parameters: RawValue) => RawValue;
+    createRepresentation: (file: RawValue, alignment: RawValue) => void;
+    createSegmentRepresentations: (file: RawValue, alignment: RawValue) => void;
+    defaultReferentLabel: (previous_segment: RawValue, segment: RawValue) => string;
+    distanceAlongFromStation: (file: RawValue, alignment: RawValue, station: number) => number;
+    getAlignment: (layout: RawValue) => RawValue;
+    getAlignmentLayoutNest: (alignment: RawValue) => RawValue;
+    getAlignmentLayouts: (alignment: RawValue) => RawValue;
+    getAlignmentSegmentNest: (layout: RawValue) => RawValue;
+    getAlignmentStartStation: (file: RawValue, alignment: RawValue) => number;
+    getAxisSubcontext: (file: RawValue) => RawValue;
+    getBasisCurve: (alignment: RawValue) => RawValue;
+    getCantLayout: (alignment: RawValue) => RawValue;
+    getChildAlignments: (alignment: RawValue) => RawValue;
+    getCurve: (alignment: RawValue) => RawValue;
+    getCurveSegment: (layout: RawValue, segment: RawValue) => RawValue;
+    getCurveSegmentTransitionCode: (segment: RawValue, next_segment: RawValue, position_tolerance: number) => string;
+    getHorizontalLayout: (alignment: RawValue) => RawValue;
+    getLayout: (segment: RawValue) => RawValue;
+    getLayoutCurve: (layout: RawValue) => RawValue;
+    getLayoutSegments: (layout: RawValue) => RawValue;
+    getMappedSegments: (layout_segment: RawValue) => RawValue;
+    getParentAlignment: (alignment: RawValue) => RawValue;
+    getReferentNest: (alignment: RawValue) => RawValue;
+    getVerticalLayout: (alignment: RawValue) => RawValue;
+    hasZeroLengthSegment: (layout: RawValue) => boolean;
+    layoutHorizontalByPiMethod: (file: RawValue, layout: RawValue, points: RawValue, radii: RawValue) => void;
+    layoutVerticalByPiMethod: (file: RawValue, layout: RawValue, points: RawValue, lengths: RawValue) => void;
+    mapSegment: (file: RawValue, options: RawValue) => RawValue;
+    nameSegments: (prefix: string, layout: RawValue) => void;
+    stationAsString: (file: RawValue, station: number) => string;
+    updateCurveSegmentTransitionCode: (segment: RawValue, next_segment: RawValue, position_tolerance: number) => void;
+    updateEndPoint: (file: RawValue, curve: RawValue) => void;
+    updateFallbackPosition: (file: RawValue, linear_placement: RawValue) => void;
+  };
   attribute: {
     editAttributes: (file: RawValue, options: RawValue) => void;
   };
@@ -523,6 +568,12 @@ type RawApi = {
   };
 };
 
+export interface IfcOpenShellAlignmentCreateLayoutSegmentResult {
+  segment: Entity;
+  endpoint: number[];
+  hasEndpoint: boolean;
+}
+
 export interface IfcOpenShellGeometryRailingSupport {
   /** Ordered three-point support arc polyline. */
   arcPolyline: number[][];
@@ -631,6 +682,70 @@ export interface IfcOpenShellAggregateUnassignObjectOptions {
   user?: Entity;
   /** Optional application for owner history updates on modified relationships. */
   application?: Entity;
+}
+
+export interface IfcOpenShellAlignmentAddStationingReferentOptions {
+  alignment: Entity;
+  distanceAlong: number;
+  station: number;
+  name: string;
+  positionedProduct: Entity;
+  ownerHistory?: Entity;
+  user?: Entity;
+  application?: Entity;
+}
+
+export interface IfcOpenShellAlignmentCreateByPiMethodOptions {
+  name: string;
+  horizontalPoints: number[][];
+  radii: number[];
+  verticalPoints: number[][];
+  verticalLengths: number[];
+  startStation: number;
+  ownerHistory?: Entity;
+  user?: Entity;
+  application?: Entity;
+}
+
+export interface IfcOpenShellAlignmentCreateFromCsvTextOptions {
+  csvText: string;
+  ownerHistory?: Entity;
+  user?: Entity;
+  application?: Entity;
+}
+
+export interface IfcOpenShellAlignmentCreateOffsetCurveOptions {
+  name: string;
+  offsets: Entity[];
+  startStation: number;
+  ownerHistory?: Entity;
+  user?: Entity;
+  application?: Entity;
+}
+
+export interface IfcOpenShellAlignmentCreateOptions {
+  name: string;
+  includeVertical: boolean;
+  includeCant: boolean;
+  includeGeometry: boolean;
+  startStation: number;
+  ownerHistory?: Entity;
+  user?: Entity;
+  application?: Entity;
+}
+
+export interface IfcOpenShellAlignmentCreatePolylineOptions {
+  name: string;
+  points: Entity[];
+  startStation: number;
+  ownerHistory?: Entity;
+  user?: Entity;
+  application?: Entity;
+}
+
+export interface IfcOpenShellAlignmentMapSegmentOptions {
+  segment: Entity;
+  railHeadDistance?: number;
 }
 
 export interface IfcOpenShellAttributeEditAttributesOptions {
@@ -2555,6 +2670,64 @@ export interface AggregateApi {
      * relationship itself is deleted.
      */
     unassignObject(file: IfcFile, options: IfcOpenShellAggregateUnassignObjectOptions): void;
+}
+export interface AlignmentApi {
+    /** Append an existing IfcAlignmentSegment to its matching semantic layout. */
+    addSegmentToLayout(file: IfcFile, layout: Entity, segment: Entity): IfcOpenShellAlignmentCreateLayoutSegmentResult;
+    /** Add a station referent and keep the referent nest sorted by station. */
+    addStationingReferent(file: IfcFile, options: IfcOpenShellAlignmentAddStationingReferentOptions): Entity;
+    /** Add a further vertical layout, moving existing vertical geometry to child alignments when required. */
+    addVerticalLayout(file: IfcFile, parent_alignment: Entity): Entity;
+    /** Append the mandatory zero-length segment; returns false when already present or not applicable. */
+    addZeroLengthSegment(file: IfcFile, layout: Entity): boolean;
+    /** Create an IFC4X3 alignment, its requested layouts, stationing, zero segments, and optional geometry. */
+    create(file: IfcFile, options: IfcOpenShellAlignmentCreateOptions): Entity;
+    /** Create an alignment represented by an IfcOffsetCurveByDistances. */
+    createAsOffsetCurve(file: IfcFile, options: IfcOpenShellAlignmentCreateOffsetCurveOptions): Entity;
+    /** Create an alignment represented by an IfcPolyline. */
+    createAsPolyline(file: IfcFile, options: IfcOpenShellAlignmentCreatePolylineOptions): Entity;
+    /** Create an IFC4X3 horizontal and optional vertical alignment from PI records. */
+    createByPiMethod(file: IfcFile, options: IfcOpenShellAlignmentCreateByPiMethodOptions): Entity;
+    /** Create one or more alignments from the alignment CSV text contract. */
+    createFromCsvText(file: IfcFile, options: IfcOpenShellAlignmentCreateFromCsvTextOptions): Entity;
+    /** Create and append one semantic layout segment, returning its optional 4x4 endpoint matrix. */
+    createLayoutSegment(file: IfcFile, layout: Entity, design_parameters: Entity): IfcOpenShellAlignmentCreateLayoutSegmentResult;
+    /** Populate the geometric representation of a semantic alignment when absent. */
+    createRepresentation(file: IfcFile, alignment: Entity): void;
+    /** Create per-segment product representations; Helmert 1:2 mappings are rejected. */
+    createSegmentRepresentations(file: IfcFile, alignment: Entity): void;
+    defaultReferentLabel(previous_segment: Entity, segment: Entity): string;
+    distanceAlongFromStation(file: IfcFile, alignment: Entity, station: number): number;
+    getAlignment(layout: Entity): Entity | null;
+    getAlignmentLayoutNest(alignment: Entity): Entity | null;
+    getAlignmentLayouts(alignment: Entity): Entity[];
+    getAlignmentSegmentNest(layout: Entity): Entity | null;
+    getAlignmentStartStation(file: IfcFile, alignment: Entity): number;
+    getAxisSubcontext(file: IfcFile): Entity;
+    getBasisCurve(alignment: Entity): Entity | null;
+    getCantLayout(alignment: Entity): Entity | null;
+    getChildAlignments(alignment: Entity): Entity[];
+    getCurve(alignment: Entity): Entity | null;
+    getCurveSegment(layout: Entity, segment: Entity): Entity | null;
+    getCurveSegmentTransitionCode(segment: Entity, next_segment: Entity, position_tolerance: number): string;
+    getHorizontalLayout(alignment: Entity): Entity | null;
+    getLayout(segment: Entity): Entity | null;
+    getLayoutCurve(layout: Entity): Entity | null;
+    getLayoutSegments(layout: Entity): Entity[];
+    getMappedSegments(layout_segment: Entity): Entity[];
+    getParentAlignment(alignment: Entity): Entity | null;
+    getReferentNest(alignment: Entity): Entity | null;
+    getVerticalLayout(alignment: Entity): Entity | null;
+    hasZeroLengthSegment(layout: Entity): boolean;
+    layoutHorizontalByPiMethod(file: IfcFile, layout: Entity, points: number[][], radii: number[]): void;
+    layoutVerticalByPiMethod(file: IfcFile, layout: Entity, points: number[][], lengths: number[]): void;
+    /** Map one semantic segment. A Helmert segment returns both mapped halves. */
+    mapSegment(file: IfcFile, options: IfcOpenShellAlignmentMapSegmentOptions): Entity[];
+    nameSegments(prefix: string, layout: Entity): void;
+    stationAsString(file: IfcFile, station: number): string;
+    updateCurveSegmentTransitionCode(segment: Entity, next_segment: Entity, position_tolerance: number): void;
+    updateEndPoint(file: IfcFile, curve: Entity): void;
+    updateFallbackPosition(file: IfcFile, linear_placement: Entity): void;
 }
 export interface AttributeApi {
     /**
@@ -6599,6 +6772,7 @@ export interface UnitApi {
 
 export interface Api {
   aggregate: AggregateApi;
+  alignment: AlignmentApi;
   attribute: AttributeApi;
   boundary: BoundaryApi;
   classification: ClassificationApi;
@@ -6677,6 +6851,402 @@ export function createApi(shell: IfcOpenShell): Api {
       const temps: Disposable[] = [];
       try {
         raw.aggregate.unassignObject(file.raw, encodeOptions(options, {"application": "application", "products": "products", "user": "user"}, shell, temps, [], ["products"]));
+      } finally {
+        disposeAll(temps);
+      }
+    },
+    }),
+    alignment: Object.freeze({
+    /** Append an existing IfcAlignmentSegment to its matching semantic layout. */
+    addSegmentToLayout(file: IfcFile, layout: Entity, segment: Entity): IfcOpenShellAlignmentCreateLayoutSegmentResult {
+      const temps: Disposable[] = [];
+      try {
+        const result = raw.alignment.addSegmentToLayout(file.raw, layout.raw, segment.raw);
+        const data = result as { segment: RawValue; endpoint: RawValue; has_endpoint: boolean };
+        return { segment: wrapEntity(shell, data.segment), endpoint: wrap(shell, data.endpoint), hasEndpoint: data.has_endpoint as boolean } as IfcOpenShellAlignmentCreateLayoutSegmentResult;
+      } finally {
+        disposeAll(temps);
+      }
+    },
+    /** Add a station referent and keep the referent nest sorted by station. */
+    addStationingReferent(file: IfcFile, options: IfcOpenShellAlignmentAddStationingReferentOptions): Entity {
+      const temps: Disposable[] = [];
+      try {
+        const result = raw.alignment.addStationingReferent(file.raw, encodeOptions(options, {"alignment": "alignment", "application": "application", "distanceAlong": "distance_along", "name": "name", "ownerHistory": "owner_history", "positionedProduct": "positioned_product", "station": "station", "user": "user"}, shell, temps));
+        return wrapEntity(shell, result) as Entity;
+      } finally {
+        disposeAll(temps);
+      }
+    },
+    /** Add a further vertical layout, moving existing vertical geometry to child alignments when required. */
+    addVerticalLayout(file: IfcFile, parent_alignment: Entity): Entity {
+      const temps: Disposable[] = [];
+      try {
+        const result = raw.alignment.addVerticalLayout(file.raw, parent_alignment.raw);
+        return wrapEntity(shell, result) as Entity;
+      } finally {
+        disposeAll(temps);
+      }
+    },
+    /** Append the mandatory zero-length segment; returns false when already present or not applicable. */
+    addZeroLengthSegment(file: IfcFile, layout: Entity): boolean {
+      const temps: Disposable[] = [];
+      try {
+        const result = raw.alignment.addZeroLengthSegment(file.raw, layout.raw);
+        return wrap(shell, result) as boolean;
+      } finally {
+        disposeAll(temps);
+      }
+    },
+    /** Create an IFC4X3 alignment, its requested layouts, stationing, zero segments, and optional geometry. */
+    create(file: IfcFile, options: IfcOpenShellAlignmentCreateOptions): Entity {
+      const temps: Disposable[] = [];
+      try {
+        const result = raw.alignment.create(file.raw, encodeOptions(options, {"application": "application", "includeCant": "include_cant", "includeGeometry": "include_geometry", "includeVertical": "include_vertical", "name": "name", "ownerHistory": "owner_history", "startStation": "start_station", "user": "user"}, shell, temps));
+        return wrapEntity(shell, result) as Entity;
+      } finally {
+        disposeAll(temps);
+      }
+    },
+    /** Create an alignment represented by an IfcOffsetCurveByDistances. */
+    createAsOffsetCurve(file: IfcFile, options: IfcOpenShellAlignmentCreateOffsetCurveOptions): Entity {
+      const temps: Disposable[] = [];
+      try {
+        const result = raw.alignment.createAsOffsetCurve(file.raw, encodeOptions(options, {"application": "application", "name": "name", "offsets": "offsets", "ownerHistory": "owner_history", "startStation": "start_station", "user": "user"}, shell, temps, [], ["offsets"]));
+        return wrapEntity(shell, result) as Entity;
+      } finally {
+        disposeAll(temps);
+      }
+    },
+    /** Create an alignment represented by an IfcPolyline. */
+    createAsPolyline(file: IfcFile, options: IfcOpenShellAlignmentCreatePolylineOptions): Entity {
+      const temps: Disposable[] = [];
+      try {
+        const result = raw.alignment.createAsPolyline(file.raw, encodeOptions(options, {"application": "application", "name": "name", "ownerHistory": "owner_history", "points": "points", "startStation": "start_station", "user": "user"}, shell, temps, [], ["points"]));
+        return wrapEntity(shell, result) as Entity;
+      } finally {
+        disposeAll(temps);
+      }
+    },
+    /** Create an IFC4X3 horizontal and optional vertical alignment from PI records. */
+    createByPiMethod(file: IfcFile, options: IfcOpenShellAlignmentCreateByPiMethodOptions): Entity {
+      const temps: Disposable[] = [];
+      try {
+        const result = raw.alignment.createByPiMethod(file.raw, encodeOptions(options, {"application": "application", "horizontalPoints": "horizontal_points", "name": "name", "ownerHistory": "owner_history", "radii": "radii", "startStation": "start_station", "user": "user", "verticalLengths": "vertical_lengths", "verticalPoints": "vertical_points"}, shell, temps));
+        return wrapEntity(shell, result) as Entity;
+      } finally {
+        disposeAll(temps);
+      }
+    },
+    /** Create one or more alignments from the alignment CSV text contract. */
+    createFromCsvText(file: IfcFile, options: IfcOpenShellAlignmentCreateFromCsvTextOptions): Entity {
+      const temps: Disposable[] = [];
+      try {
+        const result = raw.alignment.createFromCsvText(file.raw, encodeOptions(options, {"application": "application", "csvText": "csv_text", "ownerHistory": "owner_history", "user": "user"}, shell, temps));
+        return wrapEntity(shell, result) as Entity;
+      } finally {
+        disposeAll(temps);
+      }
+    },
+    /** Create and append one semantic layout segment, returning its optional 4x4 endpoint matrix. */
+    createLayoutSegment(file: IfcFile, layout: Entity, design_parameters: Entity): IfcOpenShellAlignmentCreateLayoutSegmentResult {
+      const temps: Disposable[] = [];
+      try {
+        const result = raw.alignment.createLayoutSegment(file.raw, layout.raw, design_parameters.raw);
+        const data = result as { segment: RawValue; endpoint: RawValue; has_endpoint: boolean };
+        return { segment: wrapEntity(shell, data.segment), endpoint: wrap(shell, data.endpoint), hasEndpoint: data.has_endpoint as boolean } as IfcOpenShellAlignmentCreateLayoutSegmentResult;
+      } finally {
+        disposeAll(temps);
+      }
+    },
+    /** Populate the geometric representation of a semantic alignment when absent. */
+    createRepresentation(file: IfcFile, alignment: Entity): void {
+      const temps: Disposable[] = [];
+      try {
+        raw.alignment.createRepresentation(file.raw, alignment.raw);
+      } finally {
+        disposeAll(temps);
+      }
+    },
+    /** Create per-segment product representations; Helmert 1:2 mappings are rejected. */
+    createSegmentRepresentations(file: IfcFile, alignment: Entity): void {
+      const temps: Disposable[] = [];
+      try {
+        raw.alignment.createSegmentRepresentations(file.raw, alignment.raw);
+      } finally {
+        disposeAll(temps);
+      }
+    },
+    defaultReferentLabel(previous_segment: Entity, segment: Entity): string {
+      const temps: Disposable[] = [];
+      try {
+        const result = raw.alignment.defaultReferentLabel(previous_segment.raw, segment.raw);
+        return wrap(shell, result) as string;
+      } finally {
+        disposeAll(temps);
+      }
+    },
+    distanceAlongFromStation(file: IfcFile, alignment: Entity, station: number): number {
+      const temps: Disposable[] = [];
+      try {
+        const result = raw.alignment.distanceAlongFromStation(file.raw, alignment.raw, station);
+        return wrap(shell, result) as number;
+      } finally {
+        disposeAll(temps);
+      }
+    },
+    getAlignment(layout: Entity): Entity | null {
+      const temps: Disposable[] = [];
+      try {
+        const result = raw.alignment.getAlignment(layout.raw);
+        return wrapEntity(shell, result) as Entity | null;
+      } finally {
+        disposeAll(temps);
+      }
+    },
+    getAlignmentLayoutNest(alignment: Entity): Entity | null {
+      const temps: Disposable[] = [];
+      try {
+        const result = raw.alignment.getAlignmentLayoutNest(alignment.raw);
+        return wrapEntity(shell, result) as Entity | null;
+      } finally {
+        disposeAll(temps);
+      }
+    },
+    getAlignmentLayouts(alignment: Entity): Entity[] {
+      const temps: Disposable[] = [];
+      try {
+        const result = raw.alignment.getAlignmentLayouts(alignment.raw);
+        return wrapEntities(shell, result as never) as Entity[];
+      } finally {
+        disposeAll(temps);
+      }
+    },
+    getAlignmentSegmentNest(layout: Entity): Entity | null {
+      const temps: Disposable[] = [];
+      try {
+        const result = raw.alignment.getAlignmentSegmentNest(layout.raw);
+        return wrapEntity(shell, result) as Entity | null;
+      } finally {
+        disposeAll(temps);
+      }
+    },
+    getAlignmentStartStation(file: IfcFile, alignment: Entity): number {
+      const temps: Disposable[] = [];
+      try {
+        const result = raw.alignment.getAlignmentStartStation(file.raw, alignment.raw);
+        return wrap(shell, result) as number;
+      } finally {
+        disposeAll(temps);
+      }
+    },
+    getAxisSubcontext(file: IfcFile): Entity {
+      const temps: Disposable[] = [];
+      try {
+        const result = raw.alignment.getAxisSubcontext(file.raw);
+        return wrapEntity(shell, result) as Entity;
+      } finally {
+        disposeAll(temps);
+      }
+    },
+    getBasisCurve(alignment: Entity): Entity | null {
+      const temps: Disposable[] = [];
+      try {
+        const result = raw.alignment.getBasisCurve(alignment.raw);
+        return wrapEntity(shell, result) as Entity | null;
+      } finally {
+        disposeAll(temps);
+      }
+    },
+    getCantLayout(alignment: Entity): Entity | null {
+      const temps: Disposable[] = [];
+      try {
+        const result = raw.alignment.getCantLayout(alignment.raw);
+        return wrapEntity(shell, result) as Entity | null;
+      } finally {
+        disposeAll(temps);
+      }
+    },
+    getChildAlignments(alignment: Entity): Entity[] {
+      const temps: Disposable[] = [];
+      try {
+        const result = raw.alignment.getChildAlignments(alignment.raw);
+        return wrapEntities(shell, result as never) as Entity[];
+      } finally {
+        disposeAll(temps);
+      }
+    },
+    getCurve(alignment: Entity): Entity | null {
+      const temps: Disposable[] = [];
+      try {
+        const result = raw.alignment.getCurve(alignment.raw);
+        return wrapEntity(shell, result) as Entity | null;
+      } finally {
+        disposeAll(temps);
+      }
+    },
+    getCurveSegment(layout: Entity, segment: Entity): Entity | null {
+      const temps: Disposable[] = [];
+      try {
+        const result = raw.alignment.getCurveSegment(layout.raw, segment.raw);
+        return wrapEntity(shell, result) as Entity | null;
+      } finally {
+        disposeAll(temps);
+      }
+    },
+    getCurveSegmentTransitionCode(segment: Entity, next_segment: Entity, position_tolerance: number): string {
+      const temps: Disposable[] = [];
+      try {
+        const result = raw.alignment.getCurveSegmentTransitionCode(segment.raw, next_segment.raw, position_tolerance);
+        return wrap(shell, result) as string;
+      } finally {
+        disposeAll(temps);
+      }
+    },
+    getHorizontalLayout(alignment: Entity): Entity | null {
+      const temps: Disposable[] = [];
+      try {
+        const result = raw.alignment.getHorizontalLayout(alignment.raw);
+        return wrapEntity(shell, result) as Entity | null;
+      } finally {
+        disposeAll(temps);
+      }
+    },
+    getLayout(segment: Entity): Entity | null {
+      const temps: Disposable[] = [];
+      try {
+        const result = raw.alignment.getLayout(segment.raw);
+        return wrapEntity(shell, result) as Entity | null;
+      } finally {
+        disposeAll(temps);
+      }
+    },
+    getLayoutCurve(layout: Entity): Entity | null {
+      const temps: Disposable[] = [];
+      try {
+        const result = raw.alignment.getLayoutCurve(layout.raw);
+        return wrapEntity(shell, result) as Entity | null;
+      } finally {
+        disposeAll(temps);
+      }
+    },
+    getLayoutSegments(layout: Entity): Entity[] {
+      const temps: Disposable[] = [];
+      try {
+        const result = raw.alignment.getLayoutSegments(layout.raw);
+        return wrapEntities(shell, result as never) as Entity[];
+      } finally {
+        disposeAll(temps);
+      }
+    },
+    getMappedSegments(layout_segment: Entity): Entity[] {
+      const temps: Disposable[] = [];
+      try {
+        const result = raw.alignment.getMappedSegments(layout_segment.raw);
+        return wrapEntities(shell, result as never) as Entity[];
+      } finally {
+        disposeAll(temps);
+      }
+    },
+    getParentAlignment(alignment: Entity): Entity | null {
+      const temps: Disposable[] = [];
+      try {
+        const result = raw.alignment.getParentAlignment(alignment.raw);
+        return wrapEntity(shell, result) as Entity | null;
+      } finally {
+        disposeAll(temps);
+      }
+    },
+    getReferentNest(alignment: Entity): Entity | null {
+      const temps: Disposable[] = [];
+      try {
+        const result = raw.alignment.getReferentNest(alignment.raw);
+        return wrapEntity(shell, result) as Entity | null;
+      } finally {
+        disposeAll(temps);
+      }
+    },
+    getVerticalLayout(alignment: Entity): Entity | null {
+      const temps: Disposable[] = [];
+      try {
+        const result = raw.alignment.getVerticalLayout(alignment.raw);
+        return wrapEntity(shell, result) as Entity | null;
+      } finally {
+        disposeAll(temps);
+      }
+    },
+    hasZeroLengthSegment(layout: Entity): boolean {
+      const temps: Disposable[] = [];
+      try {
+        const result = raw.alignment.hasZeroLengthSegment(layout.raw);
+        return wrap(shell, result) as boolean;
+      } finally {
+        disposeAll(temps);
+      }
+    },
+    layoutHorizontalByPiMethod(file: IfcFile, layout: Entity, points: number[][], radii: number[]): void {
+      const temps: Disposable[] = [];
+      try {
+        raw.alignment.layoutHorizontalByPiMethod(file.raw, layout.raw, toRawSequence(points, shell, temps), toRawSequence(radii, shell, temps));
+      } finally {
+        disposeAll(temps);
+      }
+    },
+    layoutVerticalByPiMethod(file: IfcFile, layout: Entity, points: number[][], lengths: number[]): void {
+      const temps: Disposable[] = [];
+      try {
+        raw.alignment.layoutVerticalByPiMethod(file.raw, layout.raw, toRawSequence(points, shell, temps), toRawSequence(lengths, shell, temps));
+      } finally {
+        disposeAll(temps);
+      }
+    },
+    /** Map one semantic segment. A Helmert segment returns both mapped halves. */
+    mapSegment(file: IfcFile, options: IfcOpenShellAlignmentMapSegmentOptions): Entity[] {
+      const temps: Disposable[] = [];
+      try {
+        const result = raw.alignment.mapSegment(file.raw, encodeOptions(options, {"railHeadDistance": "rail_head_distance", "segment": "segment"}, shell, temps));
+        return wrapEntities(shell, result as never) as Entity[];
+      } finally {
+        disposeAll(temps);
+      }
+    },
+    nameSegments(prefix: string, layout: Entity): void {
+      const temps: Disposable[] = [];
+      try {
+        raw.alignment.nameSegments(prefix, layout.raw);
+      } finally {
+        disposeAll(temps);
+      }
+    },
+    stationAsString(file: IfcFile, station: number): string {
+      const temps: Disposable[] = [];
+      try {
+        const result = raw.alignment.stationAsString(file.raw, station);
+        return wrap(shell, result) as string;
+      } finally {
+        disposeAll(temps);
+      }
+    },
+    updateCurveSegmentTransitionCode(segment: Entity, next_segment: Entity, position_tolerance: number): void {
+      const temps: Disposable[] = [];
+      try {
+        raw.alignment.updateCurveSegmentTransitionCode(segment.raw, next_segment.raw, position_tolerance);
+      } finally {
+        disposeAll(temps);
+      }
+    },
+    updateEndPoint(file: IfcFile, curve: Entity): void {
+      const temps: Disposable[] = [];
+      try {
+        raw.alignment.updateEndPoint(file.raw, curve.raw);
+      } finally {
+        disposeAll(temps);
+      }
+    },
+    updateFallbackPosition(file: IfcFile, linear_placement: Entity): void {
+      const temps: Disposable[] = [];
+      try {
+        raw.alignment.updateFallbackPosition(file.raw, linear_placement.raw);
       } finally {
         disposeAll(temps);
       }

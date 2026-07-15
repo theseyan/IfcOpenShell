@@ -336,6 +336,89 @@ typedef struct ifcopenshell_aggregate_unassign_object_options_t {
     bool has_application;
 } ifcopenshell_aggregate_unassign_object_options_t;
 
+typedef struct ifcopenshell_alignment_add_stationing_referent_options_t {
+    ifcopenshell_instance_t* alignment;
+    double distance_along;
+    double station;
+    const char* name;
+    ifcopenshell_instance_t* positioned_product;
+    ifcopenshell_instance_t* owner_history;
+    bool has_owner_history;
+    ifcopenshell_instance_t* user;
+    bool has_user;
+    ifcopenshell_instance_t* application;
+    bool has_application;
+} ifcopenshell_alignment_add_stationing_referent_options_t;
+
+typedef struct ifcopenshell_alignment_create_options_t {
+    const char* name;
+    bool include_vertical;
+    bool include_cant;
+    bool include_geometry;
+    double start_station;
+    ifcopenshell_instance_t* owner_history;
+    bool has_owner_history;
+    ifcopenshell_instance_t* user;
+    bool has_user;
+    ifcopenshell_instance_t* application;
+    bool has_application;
+} ifcopenshell_alignment_create_options_t;
+
+typedef struct ifcopenshell_alignment_create_offset_curve_options_t {
+    const char* name;
+    ifcopenshell_parse_instance_list_t* offsets;
+    double start_station;
+    ifcopenshell_instance_t* owner_history;
+    bool has_owner_history;
+    ifcopenshell_instance_t* user;
+    bool has_user;
+    ifcopenshell_instance_t* application;
+    bool has_application;
+} ifcopenshell_alignment_create_offset_curve_options_t;
+
+typedef struct ifcopenshell_alignment_create_polyline_options_t {
+    const char* name;
+    ifcopenshell_parse_instance_list_t* points;
+    double start_station;
+    ifcopenshell_instance_t* owner_history;
+    bool has_owner_history;
+    ifcopenshell_instance_t* user;
+    bool has_user;
+    ifcopenshell_instance_t* application;
+    bool has_application;
+} ifcopenshell_alignment_create_polyline_options_t;
+
+typedef struct ifcopenshell_alignment_create_by_pi_method_options_t {
+    const char* name;
+    const ifcopenshell_double_list_list_t* horizontal_points;
+    const ifcopenshell_double_list_t* radii;
+    const ifcopenshell_double_list_list_t* vertical_points;
+    const ifcopenshell_double_list_t* vertical_lengths;
+    double start_station;
+    ifcopenshell_instance_t* owner_history;
+    bool has_owner_history;
+    ifcopenshell_instance_t* user;
+    bool has_user;
+    ifcopenshell_instance_t* application;
+    bool has_application;
+} ifcopenshell_alignment_create_by_pi_method_options_t;
+
+typedef struct ifcopenshell_alignment_create_from_csv_text_options_t {
+    const char* csv_text;
+    ifcopenshell_instance_t* owner_history;
+    bool has_owner_history;
+    ifcopenshell_instance_t* user;
+    bool has_user;
+    ifcopenshell_instance_t* application;
+    bool has_application;
+} ifcopenshell_alignment_create_from_csv_text_options_t;
+
+typedef struct ifcopenshell_alignment_map_segment_options_t {
+    ifcopenshell_instance_t* segment;
+    double rail_head_distance;
+    bool has_rail_head_distance;
+} ifcopenshell_alignment_map_segment_options_t;
+
 typedef struct ifcopenshell_attribute_edit_attributes_options_t {
     ifcopenshell_instance_t* product;
     void* attributes;
@@ -1913,6 +1996,12 @@ typedef struct ifcopenshell_style_surface_texture_options_list_t {
     size_t size;
 } ifcopenshell_style_surface_texture_options_list_t;
 
+typedef struct ifcopenshell_alignment_create_layout_segment_result_t {
+    ifcopenshell_instance_t* segment;
+    ifcopenshell_double_list_t endpoint;
+    bool has_endpoint;
+} ifcopenshell_alignment_create_layout_segment_result_t;
+
 typedef struct ifcopenshell_geometry_railing_support_t {
     ifcopenshell_double_list_list_t arc_polyline;
     double arc_radius;
@@ -2095,6 +2184,7 @@ void ifcopenshell_inverse_attribute_list_list_destroy(ifcopenshell_inverse_attri
 void ifcopenshell_geom_taxonomy_style_list_list_destroy(ifcopenshell_geom_taxonomy_style_list_list_t* value);
 void ifcopenshell_geom_taxonomy_item_list_list_destroy(ifcopenshell_geom_taxonomy_item_list_list_t* value);
 void ifcopenshell_geom_element_list_list_destroy(ifcopenshell_geom_element_list_list_t* value);
+void ifcopenshell_alignment_create_layout_segment_result_destroy(ifcopenshell_alignment_create_layout_segment_result_t* value);
 void ifcopenshell_geometry_railing_support_destroy(ifcopenshell_geometry_railing_support_t* value);
 void ifcopenshell_geometry_wall_mounted_handrail_result_destroy(ifcopenshell_geometry_wall_mounted_handrail_result_t* value);
 void ifcopenshell_shape_builder_mep_transition_shape_result_destroy(ifcopenshell_shape_builder_mep_transition_shape_result_t* value);
@@ -2172,6 +2262,62 @@ bool ifcopenshell_aggregate_assign_object(ifcopenshell_file_t* file, const ifcop
  * relationship itself is deleted.
  */
 bool ifcopenshell_aggregate_unassign_object(ifcopenshell_file_t* file, const ifcopenshell_aggregate_unassign_object_options_t* options);
+/** Append an existing IfcAlignmentSegment to its matching semantic layout. */
+bool ifcopenshell_alignment_add_segment_to_layout(ifcopenshell_file_t* file, ifcopenshell_instance_t* layout, ifcopenshell_instance_t* segment, ifcopenshell_alignment_create_layout_segment_result_t* out_result);
+/** Add a station referent and keep the referent nest sorted by station. */
+bool ifcopenshell_alignment_add_stationing_referent(ifcopenshell_file_t* file, const ifcopenshell_alignment_add_stationing_referent_options_t* options, ifcopenshell_instance_t** out_result);
+/** Add a further vertical layout, moving existing vertical geometry to child alignments when required. */
+bool ifcopenshell_alignment_add_vertical_layout(ifcopenshell_file_t* file, ifcopenshell_instance_t* parent_alignment, ifcopenshell_instance_t** out_result);
+/** Append the mandatory zero-length segment; returns false when already present or not applicable. */
+bool ifcopenshell_alignment_add_zero_length_segment(ifcopenshell_file_t* file, ifcopenshell_instance_t* layout, bool* out_result);
+/** Create an IFC4X3 alignment, its requested layouts, stationing, zero segments, and optional geometry. */
+bool ifcopenshell_alignment_create(ifcopenshell_file_t* file, const ifcopenshell_alignment_create_options_t* options, ifcopenshell_instance_t** out_result);
+/** Create an alignment represented by an IfcOffsetCurveByDistances. */
+bool ifcopenshell_alignment_create_as_offset_curve(ifcopenshell_file_t* file, const ifcopenshell_alignment_create_offset_curve_options_t* options, ifcopenshell_instance_t** out_result);
+/** Create an alignment represented by an IfcPolyline. */
+bool ifcopenshell_alignment_create_as_polyline(ifcopenshell_file_t* file, const ifcopenshell_alignment_create_polyline_options_t* options, ifcopenshell_instance_t** out_result);
+/** Create an IFC4X3 horizontal and optional vertical alignment from PI records. */
+bool ifcopenshell_alignment_create_by_pi_method(ifcopenshell_file_t* file, const ifcopenshell_alignment_create_by_pi_method_options_t* options, ifcopenshell_instance_t** out_result);
+/** Create one or more alignments from the alignment CSV text contract. */
+bool ifcopenshell_alignment_create_from_csv_text(ifcopenshell_file_t* file, const ifcopenshell_alignment_create_from_csv_text_options_t* options, ifcopenshell_instance_t** out_result);
+/** Create and append one semantic layout segment, returning its optional 4x4 endpoint matrix. */
+bool ifcopenshell_alignment_create_layout_segment(ifcopenshell_file_t* file, ifcopenshell_instance_t* layout, ifcopenshell_instance_t* design_parameters, ifcopenshell_alignment_create_layout_segment_result_t* out_result);
+/** Populate the geometric representation of a semantic alignment when absent. */
+bool ifcopenshell_alignment_create_representation(ifcopenshell_file_t* file, ifcopenshell_instance_t* alignment);
+/** Create per-segment product representations; Helmert 1:2 mappings are rejected. */
+bool ifcopenshell_alignment_create_segment_representations(ifcopenshell_file_t* file, ifcopenshell_instance_t* alignment);
+bool ifcopenshell_alignment_default_referent_label(ifcopenshell_instance_t* previous_segment, ifcopenshell_instance_t* segment, ifcopenshell_string_t* out_result);
+bool ifcopenshell_alignment_distance_along_from_station(ifcopenshell_file_t* file, ifcopenshell_instance_t* alignment, double station, double* out_result);
+bool ifcopenshell_alignment_get_alignment(ifcopenshell_instance_t* layout, ifcopenshell_instance_t** out_result);
+bool ifcopenshell_alignment_get_alignment_layout_nest(ifcopenshell_instance_t* alignment, ifcopenshell_instance_t** out_result);
+bool ifcopenshell_alignment_get_alignment_layouts(ifcopenshell_instance_t* alignment, ifcopenshell_parse_instance_list_t** out_result);
+bool ifcopenshell_alignment_get_alignment_segment_nest(ifcopenshell_instance_t* layout, ifcopenshell_instance_t** out_result);
+bool ifcopenshell_alignment_get_alignment_start_station(ifcopenshell_file_t* file, ifcopenshell_instance_t* alignment, double* out_result);
+bool ifcopenshell_alignment_get_axis_subcontext(ifcopenshell_file_t* file, ifcopenshell_instance_t** out_result);
+bool ifcopenshell_alignment_get_basis_curve(ifcopenshell_instance_t* alignment, ifcopenshell_instance_t** out_result);
+bool ifcopenshell_alignment_get_cant_layout(ifcopenshell_instance_t* alignment, ifcopenshell_instance_t** out_result);
+bool ifcopenshell_alignment_get_child_alignments(ifcopenshell_instance_t* alignment, ifcopenshell_parse_instance_list_t** out_result);
+bool ifcopenshell_alignment_get_curve(ifcopenshell_instance_t* alignment, ifcopenshell_instance_t** out_result);
+bool ifcopenshell_alignment_get_curve_segment(ifcopenshell_instance_t* layout, ifcopenshell_instance_t* segment, ifcopenshell_instance_t** out_result);
+bool ifcopenshell_alignment_get_curve_segment_transition_code(ifcopenshell_instance_t* segment, ifcopenshell_instance_t* next_segment, double position_tolerance, ifcopenshell_string_t* out_result);
+bool ifcopenshell_alignment_get_horizontal_layout(ifcopenshell_instance_t* alignment, ifcopenshell_instance_t** out_result);
+bool ifcopenshell_alignment_get_layout(ifcopenshell_instance_t* segment, ifcopenshell_instance_t** out_result);
+bool ifcopenshell_alignment_get_layout_curve(ifcopenshell_instance_t* layout, ifcopenshell_instance_t** out_result);
+bool ifcopenshell_alignment_get_layout_segments(ifcopenshell_instance_t* layout, ifcopenshell_parse_instance_list_t** out_result);
+bool ifcopenshell_alignment_get_mapped_segments(ifcopenshell_instance_t* layout_segment, ifcopenshell_parse_instance_list_t** out_result);
+bool ifcopenshell_alignment_get_parent_alignment(ifcopenshell_instance_t* alignment, ifcopenshell_instance_t** out_result);
+bool ifcopenshell_alignment_get_referent_nest(ifcopenshell_instance_t* alignment, ifcopenshell_instance_t** out_result);
+bool ifcopenshell_alignment_get_vertical_layout(ifcopenshell_instance_t* alignment, ifcopenshell_instance_t** out_result);
+bool ifcopenshell_alignment_has_zero_length_segment(ifcopenshell_instance_t* layout, bool* out_result);
+bool ifcopenshell_alignment_layout_horizontal_by_pi_method(ifcopenshell_file_t* file, ifcopenshell_instance_t* layout, const ifcopenshell_double_list_list_t* points, const ifcopenshell_double_list_t* radii);
+bool ifcopenshell_alignment_layout_vertical_by_pi_method(ifcopenshell_file_t* file, ifcopenshell_instance_t* layout, const ifcopenshell_double_list_list_t* points, const ifcopenshell_double_list_t* lengths);
+/** Map one semantic segment. A Helmert segment returns both mapped halves. */
+bool ifcopenshell_alignment_map_segment(ifcopenshell_file_t* file, const ifcopenshell_alignment_map_segment_options_t* options, ifcopenshell_parse_instance_list_t** out_result);
+bool ifcopenshell_alignment_name_segments(const char* prefix, ifcopenshell_instance_t* layout);
+bool ifcopenshell_alignment_station_as_string(ifcopenshell_file_t* file, double station, ifcopenshell_string_t* out_result);
+bool ifcopenshell_alignment_update_curve_segment_transition_code(ifcopenshell_instance_t* segment, ifcopenshell_instance_t* next_segment, double position_tolerance);
+bool ifcopenshell_alignment_update_end_point(ifcopenshell_file_t* file, ifcopenshell_instance_t* curve);
+bool ifcopenshell_alignment_update_fallback_position(ifcopenshell_file_t* file, ifcopenshell_instance_t* linear_placement);
 /**
  * Edit arbitrary attributes on a product.
  *

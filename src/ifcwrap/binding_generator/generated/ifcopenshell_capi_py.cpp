@@ -5987,6 +5987,20 @@ static void free_input_aggregate_assign_object_options(ifcopenshell_aggregate_as
 static int fill_input_aggregate_assign_object_options(PyObject *obj, ifcopenshell_aggregate_assign_object_options_t *out, PyObject **refs);
 static void free_input_aggregate_unassign_object_options(ifcopenshell_aggregate_unassign_object_options_t *value);
 static int fill_input_aggregate_unassign_object_options(PyObject *obj, ifcopenshell_aggregate_unassign_object_options_t *out, PyObject **refs);
+static void free_input_alignment_add_stationing_referent_options(ifcopenshell_alignment_add_stationing_referent_options_t *value);
+static int fill_input_alignment_add_stationing_referent_options(PyObject *obj, ifcopenshell_alignment_add_stationing_referent_options_t *out, PyObject **refs);
+static void free_input_alignment_create_by_pi_method_options(ifcopenshell_alignment_create_by_pi_method_options_t *value);
+static int fill_input_alignment_create_by_pi_method_options(PyObject *obj, ifcopenshell_alignment_create_by_pi_method_options_t *out, PyObject **refs);
+static void free_input_alignment_create_from_csv_text_options(ifcopenshell_alignment_create_from_csv_text_options_t *value);
+static int fill_input_alignment_create_from_csv_text_options(PyObject *obj, ifcopenshell_alignment_create_from_csv_text_options_t *out, PyObject **refs);
+static void free_input_alignment_create_offset_curve_options(ifcopenshell_alignment_create_offset_curve_options_t *value);
+static int fill_input_alignment_create_offset_curve_options(PyObject *obj, ifcopenshell_alignment_create_offset_curve_options_t *out, PyObject **refs);
+static void free_input_alignment_create_options(ifcopenshell_alignment_create_options_t *value);
+static int fill_input_alignment_create_options(PyObject *obj, ifcopenshell_alignment_create_options_t *out, PyObject **refs);
+static void free_input_alignment_create_polyline_options(ifcopenshell_alignment_create_polyline_options_t *value);
+static int fill_input_alignment_create_polyline_options(PyObject *obj, ifcopenshell_alignment_create_polyline_options_t *out, PyObject **refs);
+static void free_input_alignment_map_segment_options(ifcopenshell_alignment_map_segment_options_t *value);
+static int fill_input_alignment_map_segment_options(PyObject *obj, ifcopenshell_alignment_map_segment_options_t *out, PyObject **refs);
 static void free_input_attribute_edit_attributes_options(ifcopenshell_attribute_edit_attributes_options_t *value);
 static int fill_input_attribute_edit_attributes_options(PyObject *obj, ifcopenshell_attribute_edit_attributes_options_t *out, PyObject **refs);
 static void free_input_boundary_assign_connection_geometry_options(ifcopenshell_boundary_assign_connection_geometry_options_t *value);
@@ -7788,6 +7802,571 @@ static int fill_input_aggregate_unassign_object_options(PyObject *obj, ifcopensh
                 return 0;
             }
         out->has_application = true;
+        }
+    }
+    return 1;
+}
+
+
+static void free_input_alignment_add_stationing_referent_options(ifcopenshell_alignment_add_stationing_referent_options_t *value) {
+    (void)value;
+}
+
+static int fill_input_alignment_add_stationing_referent_options(PyObject *obj, ifcopenshell_alignment_add_stationing_referent_options_t *out, PyObject **refs) {
+    if (!PyMapping_Check(obj)) {
+        PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
+        return 0;
+    }
+    PyObject *field_0 = get_option_field(obj, "alignment", 1);
+    if (!field_0) {
+        return 0;
+    }
+    refs[0] = field_0;
+    if (!extract_handle(field_0, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->alignment, 0)) {
+        return 0;
+    }
+    PyObject *field_1 = get_option_field(obj, "distance_along", 1);
+    if (!field_1) {
+        return 0;
+    }
+    refs[1] = field_1;
+    out->distance_along = PyFloat_AsDouble(field_1);
+    if (PyErr_Occurred()) return 0;
+    PyObject *field_2 = get_option_field(obj, "station", 1);
+    if (!field_2) {
+        return 0;
+    }
+    refs[2] = field_2;
+    out->station = PyFloat_AsDouble(field_2);
+    if (PyErr_Occurred()) return 0;
+    PyObject *field_3 = get_option_field(obj, "name", 1);
+    if (!field_3) {
+        return 0;
+    }
+    refs[3] = field_3;
+    out->name = PyUnicode_AsUTF8(field_3);
+    if (!out->name) return 0;
+    PyObject *field_4 = get_option_field(obj, "positioned_product", 1);
+    if (!field_4) {
+        return 0;
+    }
+    refs[4] = field_4;
+    if (!extract_handle(field_4, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->positioned_product, 0)) {
+        return 0;
+    }
+    PyObject *field_5 = get_option_field(obj, "owner_history", 0);
+    if (!field_5) {
+        if (PyErr_Occurred()) return 0;
+    } else {
+        refs[5] = field_5;
+        if (field_5 != Py_None) {
+            if (!extract_handle(field_5, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->owner_history, 0)) {
+                return 0;
+            }
+        out->has_owner_history = true;
+        }
+    }
+    PyObject *field_6 = get_option_field(obj, "user", 0);
+    if (!field_6) {
+        if (PyErr_Occurred()) return 0;
+    } else {
+        refs[6] = field_6;
+        if (field_6 != Py_None) {
+            if (!extract_handle(field_6, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->user, 0)) {
+                return 0;
+            }
+        out->has_user = true;
+        }
+    }
+    PyObject *field_7 = get_option_field(obj, "application", 0);
+    if (!field_7) {
+        if (PyErr_Occurred()) return 0;
+    } else {
+        refs[7] = field_7;
+        if (field_7 != Py_None) {
+            if (!extract_handle(field_7, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->application, 0)) {
+                return 0;
+            }
+        out->has_application = true;
+        }
+    }
+    return 1;
+}
+
+
+static void free_input_alignment_create_by_pi_method_options(ifcopenshell_alignment_create_by_pi_method_options_t *value) {
+    if (value->horizontal_points) {
+        free_input_double_list_list((ifcopenshell_double_list_list_t *)value->horizontal_points);
+        PyMem_Free((void *)value->horizontal_points);
+        value->horizontal_points = NULL;
+    }
+    if (value->radii) {
+        free_input_double_list((ifcopenshell_double_list_t *)value->radii);
+        PyMem_Free((void *)value->radii);
+        value->radii = NULL;
+    }
+    if (value->vertical_points) {
+        free_input_double_list_list((ifcopenshell_double_list_list_t *)value->vertical_points);
+        PyMem_Free((void *)value->vertical_points);
+        value->vertical_points = NULL;
+    }
+    if (value->vertical_lengths) {
+        free_input_double_list((ifcopenshell_double_list_t *)value->vertical_lengths);
+        PyMem_Free((void *)value->vertical_lengths);
+        value->vertical_lengths = NULL;
+    }
+}
+
+static int fill_input_alignment_create_by_pi_method_options(PyObject *obj, ifcopenshell_alignment_create_by_pi_method_options_t *out, PyObject **refs) {
+    if (!PyMapping_Check(obj)) {
+        PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
+        return 0;
+    }
+    PyObject *field_0 = get_option_field(obj, "name", 1);
+    if (!field_0) {
+        return 0;
+    }
+    refs[0] = field_0;
+    out->name = PyUnicode_AsUTF8(field_0);
+    if (!out->name) return 0;
+    PyObject *field_1 = get_option_field(obj, "horizontal_points", 1);
+    if (!field_1) {
+        return 0;
+    }
+    refs[1] = field_1;
+    ifcopenshell_double_list_list_t *sequence_1 = (ifcopenshell_double_list_list_t *)PyMem_Calloc(1, sizeof(ifcopenshell_double_list_list_t));
+    if (!sequence_1) {
+        PyErr_NoMemory();
+        return 0;
+    }
+    if (!make_input_double_list_list(field_1, sequence_1)) {
+        PyMem_Free(sequence_1);
+        return 0;
+    }
+    out->horizontal_points = sequence_1;
+    PyObject *field_2 = get_option_field(obj, "radii", 1);
+    if (!field_2) {
+        return 0;
+    }
+    refs[2] = field_2;
+    ifcopenshell_double_list_t *sequence_2 = (ifcopenshell_double_list_t *)PyMem_Calloc(1, sizeof(ifcopenshell_double_list_t));
+    if (!sequence_2) {
+        PyErr_NoMemory();
+        return 0;
+    }
+    if (!make_input_double_list(field_2, sequence_2)) {
+        PyMem_Free(sequence_2);
+        return 0;
+    }
+    out->radii = sequence_2;
+    PyObject *field_3 = get_option_field(obj, "vertical_points", 1);
+    if (!field_3) {
+        return 0;
+    }
+    refs[3] = field_3;
+    ifcopenshell_double_list_list_t *sequence_3 = (ifcopenshell_double_list_list_t *)PyMem_Calloc(1, sizeof(ifcopenshell_double_list_list_t));
+    if (!sequence_3) {
+        PyErr_NoMemory();
+        return 0;
+    }
+    if (!make_input_double_list_list(field_3, sequence_3)) {
+        PyMem_Free(sequence_3);
+        return 0;
+    }
+    out->vertical_points = sequence_3;
+    PyObject *field_4 = get_option_field(obj, "vertical_lengths", 1);
+    if (!field_4) {
+        return 0;
+    }
+    refs[4] = field_4;
+    ifcopenshell_double_list_t *sequence_4 = (ifcopenshell_double_list_t *)PyMem_Calloc(1, sizeof(ifcopenshell_double_list_t));
+    if (!sequence_4) {
+        PyErr_NoMemory();
+        return 0;
+    }
+    if (!make_input_double_list(field_4, sequence_4)) {
+        PyMem_Free(sequence_4);
+        return 0;
+    }
+    out->vertical_lengths = sequence_4;
+    PyObject *field_5 = get_option_field(obj, "start_station", 1);
+    if (!field_5) {
+        return 0;
+    }
+    refs[5] = field_5;
+    out->start_station = PyFloat_AsDouble(field_5);
+    if (PyErr_Occurred()) return 0;
+    PyObject *field_6 = get_option_field(obj, "owner_history", 0);
+    if (!field_6) {
+        if (PyErr_Occurred()) return 0;
+    } else {
+        refs[6] = field_6;
+        if (field_6 != Py_None) {
+            if (!extract_handle(field_6, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->owner_history, 0)) {
+                return 0;
+            }
+        out->has_owner_history = true;
+        }
+    }
+    PyObject *field_7 = get_option_field(obj, "user", 0);
+    if (!field_7) {
+        if (PyErr_Occurred()) return 0;
+    } else {
+        refs[7] = field_7;
+        if (field_7 != Py_None) {
+            if (!extract_handle(field_7, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->user, 0)) {
+                return 0;
+            }
+        out->has_user = true;
+        }
+    }
+    PyObject *field_8 = get_option_field(obj, "application", 0);
+    if (!field_8) {
+        if (PyErr_Occurred()) return 0;
+    } else {
+        refs[8] = field_8;
+        if (field_8 != Py_None) {
+            if (!extract_handle(field_8, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->application, 0)) {
+                return 0;
+            }
+        out->has_application = true;
+        }
+    }
+    return 1;
+}
+
+
+static void free_input_alignment_create_from_csv_text_options(ifcopenshell_alignment_create_from_csv_text_options_t *value) {
+    (void)value;
+}
+
+static int fill_input_alignment_create_from_csv_text_options(PyObject *obj, ifcopenshell_alignment_create_from_csv_text_options_t *out, PyObject **refs) {
+    if (!PyMapping_Check(obj)) {
+        PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
+        return 0;
+    }
+    PyObject *field_0 = get_option_field(obj, "csv_text", 1);
+    if (!field_0) {
+        return 0;
+    }
+    refs[0] = field_0;
+    out->csv_text = PyUnicode_AsUTF8(field_0);
+    if (!out->csv_text) return 0;
+    PyObject *field_1 = get_option_field(obj, "owner_history", 0);
+    if (!field_1) {
+        if (PyErr_Occurred()) return 0;
+    } else {
+        refs[1] = field_1;
+        if (field_1 != Py_None) {
+            if (!extract_handle(field_1, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->owner_history, 0)) {
+                return 0;
+            }
+        out->has_owner_history = true;
+        }
+    }
+    PyObject *field_2 = get_option_field(obj, "user", 0);
+    if (!field_2) {
+        if (PyErr_Occurred()) return 0;
+    } else {
+        refs[2] = field_2;
+        if (field_2 != Py_None) {
+            if (!extract_handle(field_2, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->user, 0)) {
+                return 0;
+            }
+        out->has_user = true;
+        }
+    }
+    PyObject *field_3 = get_option_field(obj, "application", 0);
+    if (!field_3) {
+        if (PyErr_Occurred()) return 0;
+    } else {
+        refs[3] = field_3;
+        if (field_3 != Py_None) {
+            if (!extract_handle(field_3, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->application, 0)) {
+                return 0;
+            }
+        out->has_application = true;
+        }
+    }
+    return 1;
+}
+
+
+static void free_input_alignment_create_offset_curve_options(ifcopenshell_alignment_create_offset_curve_options_t *value) {
+    if (value->offsets) {
+        ifcopenshell_parse_instance_list_destroy(value->offsets);
+        value->offsets = NULL;
+    }
+}
+
+static int fill_input_alignment_create_offset_curve_options(PyObject *obj, ifcopenshell_alignment_create_offset_curve_options_t *out, PyObject **refs) {
+    if (!PyMapping_Check(obj)) {
+        PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
+        return 0;
+    }
+    PyObject *field_0 = get_option_field(obj, "name", 1);
+    if (!field_0) {
+        return 0;
+    }
+    refs[0] = field_0;
+    out->name = PyUnicode_AsUTF8(field_0);
+    if (!out->name) return 0;
+    PyObject *field_1 = get_option_field(obj, "offsets", 1);
+    if (!field_1) {
+        return 0;
+    }
+    refs[1] = field_1;
+    ifcopenshell_instance_list_t offsets_items_1 = {0};
+    if (!make_input_instance_list(field_1, &offsets_items_1)) {
+        return 0;
+    }
+    if (!ifcopenshell_parse_instance_list_create_from_handles(&offsets_items_1, &out->offsets)) {
+        free_input_instance_list(&offsets_items_1);
+        raise_last_error("ifcopenshell_parse_instance_list_create_from_handles failed");
+        return 0;
+    }
+    free_input_instance_list(&offsets_items_1);
+    PyObject *field_2 = get_option_field(obj, "start_station", 1);
+    if (!field_2) {
+        return 0;
+    }
+    refs[2] = field_2;
+    out->start_station = PyFloat_AsDouble(field_2);
+    if (PyErr_Occurred()) return 0;
+    PyObject *field_3 = get_option_field(obj, "owner_history", 0);
+    if (!field_3) {
+        if (PyErr_Occurred()) return 0;
+    } else {
+        refs[3] = field_3;
+        if (field_3 != Py_None) {
+            if (!extract_handle(field_3, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->owner_history, 0)) {
+                return 0;
+            }
+        out->has_owner_history = true;
+        }
+    }
+    PyObject *field_4 = get_option_field(obj, "user", 0);
+    if (!field_4) {
+        if (PyErr_Occurred()) return 0;
+    } else {
+        refs[4] = field_4;
+        if (field_4 != Py_None) {
+            if (!extract_handle(field_4, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->user, 0)) {
+                return 0;
+            }
+        out->has_user = true;
+        }
+    }
+    PyObject *field_5 = get_option_field(obj, "application", 0);
+    if (!field_5) {
+        if (PyErr_Occurred()) return 0;
+    } else {
+        refs[5] = field_5;
+        if (field_5 != Py_None) {
+            if (!extract_handle(field_5, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->application, 0)) {
+                return 0;
+            }
+        out->has_application = true;
+        }
+    }
+    return 1;
+}
+
+
+static void free_input_alignment_create_options(ifcopenshell_alignment_create_options_t *value) {
+    (void)value;
+}
+
+static int fill_input_alignment_create_options(PyObject *obj, ifcopenshell_alignment_create_options_t *out, PyObject **refs) {
+    if (!PyMapping_Check(obj)) {
+        PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
+        return 0;
+    }
+    PyObject *field_0 = get_option_field(obj, "name", 1);
+    if (!field_0) {
+        return 0;
+    }
+    refs[0] = field_0;
+    out->name = PyUnicode_AsUTF8(field_0);
+    if (!out->name) return 0;
+    PyObject *field_1 = get_option_field(obj, "include_vertical", 1);
+    if (!field_1) {
+        return 0;
+    }
+    refs[1] = field_1;
+    int value_1 = PyObject_IsTrue(field_1);
+    if (value_1 < 0) return 0;
+    out->include_vertical = (bool)value_1;
+    PyObject *field_2 = get_option_field(obj, "include_cant", 1);
+    if (!field_2) {
+        return 0;
+    }
+    refs[2] = field_2;
+    int value_2 = PyObject_IsTrue(field_2);
+    if (value_2 < 0) return 0;
+    out->include_cant = (bool)value_2;
+    PyObject *field_3 = get_option_field(obj, "include_geometry", 1);
+    if (!field_3) {
+        return 0;
+    }
+    refs[3] = field_3;
+    int value_3 = PyObject_IsTrue(field_3);
+    if (value_3 < 0) return 0;
+    out->include_geometry = (bool)value_3;
+    PyObject *field_4 = get_option_field(obj, "start_station", 1);
+    if (!field_4) {
+        return 0;
+    }
+    refs[4] = field_4;
+    out->start_station = PyFloat_AsDouble(field_4);
+    if (PyErr_Occurred()) return 0;
+    PyObject *field_5 = get_option_field(obj, "owner_history", 0);
+    if (!field_5) {
+        if (PyErr_Occurred()) return 0;
+    } else {
+        refs[5] = field_5;
+        if (field_5 != Py_None) {
+            if (!extract_handle(field_5, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->owner_history, 0)) {
+                return 0;
+            }
+        out->has_owner_history = true;
+        }
+    }
+    PyObject *field_6 = get_option_field(obj, "user", 0);
+    if (!field_6) {
+        if (PyErr_Occurred()) return 0;
+    } else {
+        refs[6] = field_6;
+        if (field_6 != Py_None) {
+            if (!extract_handle(field_6, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->user, 0)) {
+                return 0;
+            }
+        out->has_user = true;
+        }
+    }
+    PyObject *field_7 = get_option_field(obj, "application", 0);
+    if (!field_7) {
+        if (PyErr_Occurred()) return 0;
+    } else {
+        refs[7] = field_7;
+        if (field_7 != Py_None) {
+            if (!extract_handle(field_7, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->application, 0)) {
+                return 0;
+            }
+        out->has_application = true;
+        }
+    }
+    return 1;
+}
+
+
+static void free_input_alignment_create_polyline_options(ifcopenshell_alignment_create_polyline_options_t *value) {
+    if (value->points) {
+        ifcopenshell_parse_instance_list_destroy(value->points);
+        value->points = NULL;
+    }
+}
+
+static int fill_input_alignment_create_polyline_options(PyObject *obj, ifcopenshell_alignment_create_polyline_options_t *out, PyObject **refs) {
+    if (!PyMapping_Check(obj)) {
+        PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
+        return 0;
+    }
+    PyObject *field_0 = get_option_field(obj, "name", 1);
+    if (!field_0) {
+        return 0;
+    }
+    refs[0] = field_0;
+    out->name = PyUnicode_AsUTF8(field_0);
+    if (!out->name) return 0;
+    PyObject *field_1 = get_option_field(obj, "points", 1);
+    if (!field_1) {
+        return 0;
+    }
+    refs[1] = field_1;
+    ifcopenshell_instance_list_t points_items_1 = {0};
+    if (!make_input_instance_list(field_1, &points_items_1)) {
+        return 0;
+    }
+    if (!ifcopenshell_parse_instance_list_create_from_handles(&points_items_1, &out->points)) {
+        free_input_instance_list(&points_items_1);
+        raise_last_error("ifcopenshell_parse_instance_list_create_from_handles failed");
+        return 0;
+    }
+    free_input_instance_list(&points_items_1);
+    PyObject *field_2 = get_option_field(obj, "start_station", 1);
+    if (!field_2) {
+        return 0;
+    }
+    refs[2] = field_2;
+    out->start_station = PyFloat_AsDouble(field_2);
+    if (PyErr_Occurred()) return 0;
+    PyObject *field_3 = get_option_field(obj, "owner_history", 0);
+    if (!field_3) {
+        if (PyErr_Occurred()) return 0;
+    } else {
+        refs[3] = field_3;
+        if (field_3 != Py_None) {
+            if (!extract_handle(field_3, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->owner_history, 0)) {
+                return 0;
+            }
+        out->has_owner_history = true;
+        }
+    }
+    PyObject *field_4 = get_option_field(obj, "user", 0);
+    if (!field_4) {
+        if (PyErr_Occurred()) return 0;
+    } else {
+        refs[4] = field_4;
+        if (field_4 != Py_None) {
+            if (!extract_handle(field_4, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->user, 0)) {
+                return 0;
+            }
+        out->has_user = true;
+        }
+    }
+    PyObject *field_5 = get_option_field(obj, "application", 0);
+    if (!field_5) {
+        if (PyErr_Occurred()) return 0;
+    } else {
+        refs[5] = field_5;
+        if (field_5 != Py_None) {
+            if (!extract_handle(field_5, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->application, 0)) {
+                return 0;
+            }
+        out->has_application = true;
+        }
+    }
+    return 1;
+}
+
+
+static void free_input_alignment_map_segment_options(ifcopenshell_alignment_map_segment_options_t *value) {
+    (void)value;
+}
+
+static int fill_input_alignment_map_segment_options(PyObject *obj, ifcopenshell_alignment_map_segment_options_t *out, PyObject **refs) {
+    if (!PyMapping_Check(obj)) {
+        PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
+        return 0;
+    }
+    PyObject *field_0 = get_option_field(obj, "segment", 1);
+    if (!field_0) {
+        return 0;
+    }
+    refs[0] = field_0;
+    if (!extract_handle(field_0, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->segment, 0)) {
+        return 0;
+    }
+    PyObject *field_1 = get_option_field(obj, "rail_head_distance", 0);
+    if (!field_1) {
+        if (PyErr_Occurred()) return 0;
+    } else {
+        refs[1] = field_1;
+        if (field_1 != Py_None) {
+            out->rail_head_distance = PyFloat_AsDouble(field_1);
+            if (PyErr_Occurred()) return 0;
+        out->has_rail_head_distance = true;
         }
     }
     return 1;
@@ -18122,6 +18701,7 @@ static PyObject *convert_geom_element_list_list(ifcopenshell_geom_element_list_l
 static PyObject *convert_int32_list_list_list(ifcopenshell_int32_list_list_list_t *value, int owned);
 static PyObject *convert_double_list_list_list(ifcopenshell_double_list_list_list_t *value, int owned);
 static PyObject *convert_int32_list_list_list_list(ifcopenshell_int32_list_list_list_list_t *value, int owned);
+static PyObject *convert_alignment_create_layout_segment_result(ifcopenshell_alignment_create_layout_segment_result_t *value, int owned);
 static PyObject *convert_geometry_railing_support(ifcopenshell_geometry_railing_support_t *value, int owned);
 static PyObject *convert_geometry_wall_mounted_handrail_result(ifcopenshell_geometry_wall_mounted_handrail_result_t *value, int owned);
 static PyObject *convert_shape_builder_mep_transition_shape_result(ifcopenshell_shape_builder_mep_transition_shape_result_t *value, int owned);
@@ -18866,6 +19446,32 @@ static PyObject *convert_int32_list_list_list_list(ifcopenshell_int32_list_list_
     return result;
 }
 
+static PyObject *convert_alignment_create_layout_segment_result(ifcopenshell_alignment_create_layout_segment_result_t *value, int owned) {
+    if (!SimpleNamespaceType) {
+        ifcopenshell_alignment_create_layout_segment_result_destroy(value);
+        PyErr_SetString(PyExc_RuntimeError, "types.SimpleNamespace is not available");
+        return NULL;
+    }
+    PyObject *result = PyObject_CallNoArgs(SimpleNamespaceType);
+    if (!result) { ifcopenshell_alignment_create_layout_segment_result_destroy(value); return NULL; }
+    PyObject *item = NULL;
+    item = wrap_instance(value->segment, 1);
+    value->segment = NULL;
+    if (!item) { Py_DECREF(result); ifcopenshell_alignment_create_layout_segment_result_destroy(value); return NULL; }
+    if (PyObject_SetAttrString(result, "segment", item) < 0) { Py_DECREF(item); Py_DECREF(result); ifcopenshell_alignment_create_layout_segment_result_destroy(value); return NULL; }
+    Py_DECREF(item);
+    item = convert_double_list(&value->endpoint, 1);
+    if (!item) { Py_DECREF(result); ifcopenshell_alignment_create_layout_segment_result_destroy(value); return NULL; }
+    if (PyObject_SetAttrString(result, "endpoint", item) < 0) { Py_DECREF(item); Py_DECREF(result); ifcopenshell_alignment_create_layout_segment_result_destroy(value); return NULL; }
+    Py_DECREF(item);
+    item = PyBool_FromLong(value->has_endpoint);
+    if (!item) { Py_DECREF(result); ifcopenshell_alignment_create_layout_segment_result_destroy(value); return NULL; }
+    if (PyObject_SetAttrString(result, "has_endpoint", item) < 0) { Py_DECREF(item); Py_DECREF(result); ifcopenshell_alignment_create_layout_segment_result_destroy(value); return NULL; }
+    Py_DECREF(item);
+    ifcopenshell_alignment_create_layout_segment_result_destroy(value);
+    return result;
+}
+
 static PyObject *convert_geometry_railing_support(ifcopenshell_geometry_railing_support_t *value, int owned) {
     if (!SimpleNamespaceType) {
         ifcopenshell_geometry_railing_support_destroy(value);
@@ -19343,6 +19949,1312 @@ static PyObject *py_ifcopenshell_aggregation_type_type_of_element(PyObject *self
         goto __cleanup;
     }
     __py_result = wrap_parameter_type(result, 1);
+__cleanup:
+    return __py_result;
+}
+
+static PyObject *py_ifcopenshell_alignment_add_segment_to_layout(PyObject *self, PyObject *args) {
+    PyObject *__py_result = NULL;
+    bool ok = false;
+    PyObject *arg_file_obj = NULL;
+    ifcopenshell_file_t *arg_file = NULL;
+    PyObject *arg_layout_obj = NULL;
+    ifcopenshell_instance_t *arg_layout = NULL;
+    PyObject *arg_segment_obj = NULL;
+    ifcopenshell_instance_t *arg_segment = NULL;
+    ifcopenshell_alignment_create_layout_segment_result_t result = {0};
+    if (!PyArg_ParseTuple(args, "OOO", &arg_file_obj, &arg_layout_obj, &arg_segment_obj)) return NULL;
+
+    if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
+        goto __cleanup;
+    }
+    if (!extract_handle(arg_layout_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_layout, 0)) {
+        goto __cleanup;
+    }
+    if (!extract_handle(arg_segment_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_segment, 0)) {
+        goto __cleanup;
+    }
+
+    ifcopenshell_clear_error();
+    ok = ifcopenshell_alignment_add_segment_to_layout(arg_file, arg_layout, arg_segment, &result);
+    if (!ok) {
+        raise_last_error("ifcopenshell_alignment_add_segment_to_layout failed");
+        goto __cleanup;
+    }
+    __py_result = convert_alignment_create_layout_segment_result(&result, 1);
+__cleanup:
+    return __py_result;
+}
+
+static PyObject *py_ifcopenshell_alignment_add_stationing_referent(PyObject *self, PyObject *args) {
+    PyObject *__py_result = NULL;
+    bool ok = false;
+    PyObject *arg_file_obj = NULL;
+    ifcopenshell_file_t *arg_file = NULL;
+    PyObject *arg_options_obj = NULL;
+    ifcopenshell_alignment_add_stationing_referent_options_t arg_options = {0};
+    PyObject *arg_options_refs[8] = {0};
+    ifcopenshell_instance_t *result = NULL;
+    if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_options_obj)) return NULL;
+
+    if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
+        goto __cleanup;
+    }
+    if (!fill_input_alignment_add_stationing_referent_options(arg_options_obj, &arg_options, arg_options_refs)) {
+        goto __cleanup;
+    }
+
+    ifcopenshell_clear_error();
+    ok = ifcopenshell_alignment_add_stationing_referent(arg_file, &arg_options, &result);
+    if (!ok) {
+        raise_last_error("ifcopenshell_alignment_add_stationing_referent failed");
+        goto __cleanup;
+    }
+    if (result == nullptr && ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_alignment_add_stationing_referent failed");
+        goto __cleanup;
+    }
+    __py_result = wrap_instance(result, 1);
+__cleanup:
+        release_option_refs(arg_options_refs, 8);
+        free_input_alignment_add_stationing_referent_options(&arg_options);
+    return __py_result;
+}
+
+static PyObject *py_ifcopenshell_alignment_add_vertical_layout(PyObject *self, PyObject *args) {
+    PyObject *__py_result = NULL;
+    bool ok = false;
+    PyObject *arg_file_obj = NULL;
+    ifcopenshell_file_t *arg_file = NULL;
+    PyObject *arg_parent_alignment_obj = NULL;
+    ifcopenshell_instance_t *arg_parent_alignment = NULL;
+    ifcopenshell_instance_t *result = NULL;
+    if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_parent_alignment_obj)) return NULL;
+
+    if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
+        goto __cleanup;
+    }
+    if (!extract_handle(arg_parent_alignment_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_parent_alignment, 0)) {
+        goto __cleanup;
+    }
+
+    ifcopenshell_clear_error();
+    ok = ifcopenshell_alignment_add_vertical_layout(arg_file, arg_parent_alignment, &result);
+    if (!ok) {
+        raise_last_error("ifcopenshell_alignment_add_vertical_layout failed");
+        goto __cleanup;
+    }
+    if (result == nullptr && ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_alignment_add_vertical_layout failed");
+        goto __cleanup;
+    }
+    __py_result = wrap_instance(result, 1);
+__cleanup:
+    return __py_result;
+}
+
+static PyObject *py_ifcopenshell_alignment_add_zero_length_segment(PyObject *self, PyObject *args) {
+    PyObject *__py_result = NULL;
+    bool ok = false;
+    PyObject *arg_file_obj = NULL;
+    ifcopenshell_file_t *arg_file = NULL;
+    PyObject *arg_layout_obj = NULL;
+    ifcopenshell_instance_t *arg_layout = NULL;
+    bool result = {0};
+    if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_layout_obj)) return NULL;
+
+    if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
+        goto __cleanup;
+    }
+    if (!extract_handle(arg_layout_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_layout, 0)) {
+        goto __cleanup;
+    }
+
+    ifcopenshell_clear_error();
+    ok = ifcopenshell_alignment_add_zero_length_segment(arg_file, arg_layout, &result);
+    if (!ok) {
+        raise_last_error("ifcopenshell_alignment_add_zero_length_segment failed");
+        goto __cleanup;
+    }
+    __py_result = PyBool_FromLong(result);
+__cleanup:
+    return __py_result;
+}
+
+static PyObject *py_ifcopenshell_alignment_create(PyObject *self, PyObject *args) {
+    PyObject *__py_result = NULL;
+    bool ok = false;
+    PyObject *arg_file_obj = NULL;
+    ifcopenshell_file_t *arg_file = NULL;
+    PyObject *arg_options_obj = NULL;
+    ifcopenshell_alignment_create_options_t arg_options = {0};
+    PyObject *arg_options_refs[8] = {0};
+    ifcopenshell_instance_t *result = NULL;
+    if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_options_obj)) return NULL;
+
+    if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
+        goto __cleanup;
+    }
+    if (!fill_input_alignment_create_options(arg_options_obj, &arg_options, arg_options_refs)) {
+        goto __cleanup;
+    }
+
+    ifcopenshell_clear_error();
+    ok = ifcopenshell_alignment_create(arg_file, &arg_options, &result);
+    if (!ok) {
+        raise_last_error("ifcopenshell_alignment_create failed");
+        goto __cleanup;
+    }
+    if (result == nullptr && ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_alignment_create failed");
+        goto __cleanup;
+    }
+    __py_result = wrap_instance(result, 1);
+__cleanup:
+        release_option_refs(arg_options_refs, 8);
+        free_input_alignment_create_options(&arg_options);
+    return __py_result;
+}
+
+static PyObject *py_ifcopenshell_alignment_create_as_offset_curve(PyObject *self, PyObject *args) {
+    PyObject *__py_result = NULL;
+    bool ok = false;
+    PyObject *arg_file_obj = NULL;
+    ifcopenshell_file_t *arg_file = NULL;
+    PyObject *arg_options_obj = NULL;
+    ifcopenshell_alignment_create_offset_curve_options_t arg_options = {0};
+    PyObject *arg_options_refs[6] = {0};
+    ifcopenshell_instance_t *result = NULL;
+    if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_options_obj)) return NULL;
+
+    if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
+        goto __cleanup;
+    }
+    if (!fill_input_alignment_create_offset_curve_options(arg_options_obj, &arg_options, arg_options_refs)) {
+        goto __cleanup;
+    }
+
+    ifcopenshell_clear_error();
+    ok = ifcopenshell_alignment_create_as_offset_curve(arg_file, &arg_options, &result);
+    if (!ok) {
+        raise_last_error("ifcopenshell_alignment_create_as_offset_curve failed");
+        goto __cleanup;
+    }
+    if (result == nullptr && ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_alignment_create_as_offset_curve failed");
+        goto __cleanup;
+    }
+    __py_result = wrap_instance(result, 1);
+__cleanup:
+        release_option_refs(arg_options_refs, 6);
+        free_input_alignment_create_offset_curve_options(&arg_options);
+    return __py_result;
+}
+
+static PyObject *py_ifcopenshell_alignment_create_as_polyline(PyObject *self, PyObject *args) {
+    PyObject *__py_result = NULL;
+    bool ok = false;
+    PyObject *arg_file_obj = NULL;
+    ifcopenshell_file_t *arg_file = NULL;
+    PyObject *arg_options_obj = NULL;
+    ifcopenshell_alignment_create_polyline_options_t arg_options = {0};
+    PyObject *arg_options_refs[6] = {0};
+    ifcopenshell_instance_t *result = NULL;
+    if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_options_obj)) return NULL;
+
+    if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
+        goto __cleanup;
+    }
+    if (!fill_input_alignment_create_polyline_options(arg_options_obj, &arg_options, arg_options_refs)) {
+        goto __cleanup;
+    }
+
+    ifcopenshell_clear_error();
+    ok = ifcopenshell_alignment_create_as_polyline(arg_file, &arg_options, &result);
+    if (!ok) {
+        raise_last_error("ifcopenshell_alignment_create_as_polyline failed");
+        goto __cleanup;
+    }
+    if (result == nullptr && ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_alignment_create_as_polyline failed");
+        goto __cleanup;
+    }
+    __py_result = wrap_instance(result, 1);
+__cleanup:
+        release_option_refs(arg_options_refs, 6);
+        free_input_alignment_create_polyline_options(&arg_options);
+    return __py_result;
+}
+
+static PyObject *py_ifcopenshell_alignment_create_by_pi_method(PyObject *self, PyObject *args) {
+    PyObject *__py_result = NULL;
+    bool ok = false;
+    PyObject *arg_file_obj = NULL;
+    ifcopenshell_file_t *arg_file = NULL;
+    PyObject *arg_options_obj = NULL;
+    ifcopenshell_alignment_create_by_pi_method_options_t arg_options = {0};
+    PyObject *arg_options_refs[9] = {0};
+    ifcopenshell_instance_t *result = NULL;
+    if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_options_obj)) return NULL;
+
+    if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
+        goto __cleanup;
+    }
+    if (!fill_input_alignment_create_by_pi_method_options(arg_options_obj, &arg_options, arg_options_refs)) {
+        goto __cleanup;
+    }
+
+    ifcopenshell_clear_error();
+    ok = ifcopenshell_alignment_create_by_pi_method(arg_file, &arg_options, &result);
+    if (!ok) {
+        raise_last_error("ifcopenshell_alignment_create_by_pi_method failed");
+        goto __cleanup;
+    }
+    if (result == nullptr && ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_alignment_create_by_pi_method failed");
+        goto __cleanup;
+    }
+    __py_result = wrap_instance(result, 1);
+__cleanup:
+        release_option_refs(arg_options_refs, 9);
+        free_input_alignment_create_by_pi_method_options(&arg_options);
+    return __py_result;
+}
+
+static PyObject *py_ifcopenshell_alignment_create_from_csv_text(PyObject *self, PyObject *args) {
+    PyObject *__py_result = NULL;
+    bool ok = false;
+    PyObject *arg_file_obj = NULL;
+    ifcopenshell_file_t *arg_file = NULL;
+    PyObject *arg_options_obj = NULL;
+    ifcopenshell_alignment_create_from_csv_text_options_t arg_options = {0};
+    PyObject *arg_options_refs[4] = {0};
+    ifcopenshell_instance_t *result = NULL;
+    if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_options_obj)) return NULL;
+
+    if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
+        goto __cleanup;
+    }
+    if (!fill_input_alignment_create_from_csv_text_options(arg_options_obj, &arg_options, arg_options_refs)) {
+        goto __cleanup;
+    }
+
+    ifcopenshell_clear_error();
+    ok = ifcopenshell_alignment_create_from_csv_text(arg_file, &arg_options, &result);
+    if (!ok) {
+        raise_last_error("ifcopenshell_alignment_create_from_csv_text failed");
+        goto __cleanup;
+    }
+    if (result == nullptr && ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_alignment_create_from_csv_text failed");
+        goto __cleanup;
+    }
+    __py_result = wrap_instance(result, 1);
+__cleanup:
+        release_option_refs(arg_options_refs, 4);
+        free_input_alignment_create_from_csv_text_options(&arg_options);
+    return __py_result;
+}
+
+static PyObject *py_ifcopenshell_alignment_create_layout_segment(PyObject *self, PyObject *args) {
+    PyObject *__py_result = NULL;
+    bool ok = false;
+    PyObject *arg_file_obj = NULL;
+    ifcopenshell_file_t *arg_file = NULL;
+    PyObject *arg_layout_obj = NULL;
+    ifcopenshell_instance_t *arg_layout = NULL;
+    PyObject *arg_design_parameters_obj = NULL;
+    ifcopenshell_instance_t *arg_design_parameters = NULL;
+    ifcopenshell_alignment_create_layout_segment_result_t result = {0};
+    if (!PyArg_ParseTuple(args, "OOO", &arg_file_obj, &arg_layout_obj, &arg_design_parameters_obj)) return NULL;
+
+    if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
+        goto __cleanup;
+    }
+    if (!extract_handle(arg_layout_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_layout, 0)) {
+        goto __cleanup;
+    }
+    if (!extract_handle(arg_design_parameters_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_design_parameters, 0)) {
+        goto __cleanup;
+    }
+
+    ifcopenshell_clear_error();
+    ok = ifcopenshell_alignment_create_layout_segment(arg_file, arg_layout, arg_design_parameters, &result);
+    if (!ok) {
+        raise_last_error("ifcopenshell_alignment_create_layout_segment failed");
+        goto __cleanup;
+    }
+    __py_result = convert_alignment_create_layout_segment_result(&result, 1);
+__cleanup:
+    return __py_result;
+}
+
+static PyObject *py_ifcopenshell_alignment_create_representation(PyObject *self, PyObject *args) {
+    PyObject *__py_result = NULL;
+    bool ok = false;
+    PyObject *arg_file_obj = NULL;
+    ifcopenshell_file_t *arg_file = NULL;
+    PyObject *arg_alignment_obj = NULL;
+    ifcopenshell_instance_t *arg_alignment = NULL;
+
+    if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_alignment_obj)) return NULL;
+
+    if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
+        goto __cleanup;
+    }
+    if (!extract_handle(arg_alignment_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_alignment, 0)) {
+        goto __cleanup;
+    }
+
+    ifcopenshell_clear_error();
+    ok = ifcopenshell_alignment_create_representation(arg_file, arg_alignment);
+    if (!ok) {
+        raise_last_error("ifcopenshell_alignment_create_representation failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_alignment_create_representation failed");
+        goto __cleanup;
+    }
+    Py_INCREF(Py_None);
+    __py_result = Py_None;
+__cleanup:
+    return __py_result;
+}
+
+static PyObject *py_ifcopenshell_alignment_create_segment_representations(PyObject *self, PyObject *args) {
+    PyObject *__py_result = NULL;
+    bool ok = false;
+    PyObject *arg_file_obj = NULL;
+    ifcopenshell_file_t *arg_file = NULL;
+    PyObject *arg_alignment_obj = NULL;
+    ifcopenshell_instance_t *arg_alignment = NULL;
+
+    if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_alignment_obj)) return NULL;
+
+    if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
+        goto __cleanup;
+    }
+    if (!extract_handle(arg_alignment_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_alignment, 0)) {
+        goto __cleanup;
+    }
+
+    ifcopenshell_clear_error();
+    ok = ifcopenshell_alignment_create_segment_representations(arg_file, arg_alignment);
+    if (!ok) {
+        raise_last_error("ifcopenshell_alignment_create_segment_representations failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_alignment_create_segment_representations failed");
+        goto __cleanup;
+    }
+    Py_INCREF(Py_None);
+    __py_result = Py_None;
+__cleanup:
+    return __py_result;
+}
+
+static PyObject *py_ifcopenshell_alignment_default_referent_label(PyObject *self, PyObject *args) {
+    PyObject *__py_result = NULL;
+    bool ok = false;
+    PyObject *arg_previous_segment_obj = NULL;
+    ifcopenshell_instance_t *arg_previous_segment = NULL;
+    PyObject *arg_segment_obj = NULL;
+    ifcopenshell_instance_t *arg_segment = NULL;
+    ifcopenshell_string_t result = {0};
+    if (!PyArg_ParseTuple(args, "|OO", &arg_previous_segment_obj, &arg_segment_obj)) return NULL;
+
+    if (!extract_handle(arg_previous_segment_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_previous_segment, 1)) {
+        goto __cleanup;
+    }
+    if (!extract_handle(arg_segment_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_segment, 1)) {
+        goto __cleanup;
+    }
+
+    ifcopenshell_clear_error();
+    ok = ifcopenshell_alignment_default_referent_label(arg_previous_segment, arg_segment, &result);
+    if (!ok) {
+        raise_last_error("ifcopenshell_alignment_default_referent_label failed");
+        goto __cleanup;
+    }
+    __py_result = convert_string(&result);
+__cleanup:
+    return __py_result;
+}
+
+static PyObject *py_ifcopenshell_alignment_distance_along_from_station(PyObject *self, PyObject *args) {
+    PyObject *__py_result = NULL;
+    bool ok = false;
+    PyObject *arg_file_obj = NULL;
+    ifcopenshell_file_t *arg_file = NULL;
+    PyObject *arg_alignment_obj = NULL;
+    ifcopenshell_instance_t *arg_alignment = NULL;
+    double arg_station = 0;
+    double result = {0};
+    if (!PyArg_ParseTuple(args, "OOd", &arg_file_obj, &arg_alignment_obj, &arg_station)) return NULL;
+
+    if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
+        goto __cleanup;
+    }
+    if (!extract_handle(arg_alignment_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_alignment, 0)) {
+        goto __cleanup;
+    }
+
+    ifcopenshell_clear_error();
+    ok = ifcopenshell_alignment_distance_along_from_station(arg_file, arg_alignment, arg_station, &result);
+    if (!ok) {
+        raise_last_error("ifcopenshell_alignment_distance_along_from_station failed");
+        goto __cleanup;
+    }
+    __py_result = PyFloat_FromDouble(result);
+__cleanup:
+    return __py_result;
+}
+
+static PyObject *py_ifcopenshell_alignment_get_alignment(PyObject *self, PyObject *args) {
+    PyObject *__py_result = NULL;
+    bool ok = false;
+    PyObject *arg_layout_obj = NULL;
+    ifcopenshell_instance_t *arg_layout = NULL;
+    ifcopenshell_instance_t *result = NULL;
+    if (!PyArg_ParseTuple(args, "O", &arg_layout_obj)) return NULL;
+
+    if (!extract_handle(arg_layout_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_layout, 0)) {
+        goto __cleanup;
+    }
+
+    ifcopenshell_clear_error();
+    ok = ifcopenshell_alignment_get_alignment(arg_layout, &result);
+    if (!ok) {
+        raise_last_error("ifcopenshell_alignment_get_alignment failed");
+        goto __cleanup;
+    }
+    if (result == nullptr && ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_alignment_get_alignment failed");
+        goto __cleanup;
+    }
+    __py_result = wrap_instance(result, 1);
+__cleanup:
+    return __py_result;
+}
+
+static PyObject *py_ifcopenshell_alignment_get_alignment_layout_nest(PyObject *self, PyObject *args) {
+    PyObject *__py_result = NULL;
+    bool ok = false;
+    PyObject *arg_alignment_obj = NULL;
+    ifcopenshell_instance_t *arg_alignment = NULL;
+    ifcopenshell_instance_t *result = NULL;
+    if (!PyArg_ParseTuple(args, "O", &arg_alignment_obj)) return NULL;
+
+    if (!extract_handle(arg_alignment_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_alignment, 0)) {
+        goto __cleanup;
+    }
+
+    ifcopenshell_clear_error();
+    ok = ifcopenshell_alignment_get_alignment_layout_nest(arg_alignment, &result);
+    if (!ok) {
+        raise_last_error("ifcopenshell_alignment_get_alignment_layout_nest failed");
+        goto __cleanup;
+    }
+    if (result == nullptr && ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_alignment_get_alignment_layout_nest failed");
+        goto __cleanup;
+    }
+    __py_result = wrap_instance(result, 1);
+__cleanup:
+    return __py_result;
+}
+
+static PyObject *py_ifcopenshell_alignment_get_alignment_layouts(PyObject *self, PyObject *args) {
+    PyObject *__py_result = NULL;
+    bool ok = false;
+    PyObject *arg_alignment_obj = NULL;
+    ifcopenshell_instance_t *arg_alignment = NULL;
+    ifcopenshell_parse_instance_list_t *result = NULL;
+    if (!PyArg_ParseTuple(args, "O", &arg_alignment_obj)) return NULL;
+
+    if (!extract_handle(arg_alignment_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_alignment, 0)) {
+        goto __cleanup;
+    }
+
+    ifcopenshell_clear_error();
+    ok = ifcopenshell_alignment_get_alignment_layouts(arg_alignment, &result);
+    if (!ok) {
+        raise_last_error("ifcopenshell_alignment_get_alignment_layouts failed");
+        goto __cleanup;
+    }
+    if (result == nullptr && ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_alignment_get_alignment_layouts failed");
+        goto __cleanup;
+    }
+    __py_result = wrap_parse_instance_list(result, 1);
+__cleanup:
+    return __py_result;
+}
+
+static PyObject *py_ifcopenshell_alignment_get_alignment_segment_nest(PyObject *self, PyObject *args) {
+    PyObject *__py_result = NULL;
+    bool ok = false;
+    PyObject *arg_layout_obj = NULL;
+    ifcopenshell_instance_t *arg_layout = NULL;
+    ifcopenshell_instance_t *result = NULL;
+    if (!PyArg_ParseTuple(args, "O", &arg_layout_obj)) return NULL;
+
+    if (!extract_handle(arg_layout_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_layout, 0)) {
+        goto __cleanup;
+    }
+
+    ifcopenshell_clear_error();
+    ok = ifcopenshell_alignment_get_alignment_segment_nest(arg_layout, &result);
+    if (!ok) {
+        raise_last_error("ifcopenshell_alignment_get_alignment_segment_nest failed");
+        goto __cleanup;
+    }
+    if (result == nullptr && ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_alignment_get_alignment_segment_nest failed");
+        goto __cleanup;
+    }
+    __py_result = wrap_instance(result, 1);
+__cleanup:
+    return __py_result;
+}
+
+static PyObject *py_ifcopenshell_alignment_get_alignment_start_station(PyObject *self, PyObject *args) {
+    PyObject *__py_result = NULL;
+    bool ok = false;
+    PyObject *arg_file_obj = NULL;
+    ifcopenshell_file_t *arg_file = NULL;
+    PyObject *arg_alignment_obj = NULL;
+    ifcopenshell_instance_t *arg_alignment = NULL;
+    double result = {0};
+    if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_alignment_obj)) return NULL;
+
+    if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
+        goto __cleanup;
+    }
+    if (!extract_handle(arg_alignment_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_alignment, 0)) {
+        goto __cleanup;
+    }
+
+    ifcopenshell_clear_error();
+    ok = ifcopenshell_alignment_get_alignment_start_station(arg_file, arg_alignment, &result);
+    if (!ok) {
+        raise_last_error("ifcopenshell_alignment_get_alignment_start_station failed");
+        goto __cleanup;
+    }
+    __py_result = PyFloat_FromDouble(result);
+__cleanup:
+    return __py_result;
+}
+
+static PyObject *py_ifcopenshell_alignment_get_axis_subcontext(PyObject *self, PyObject *args) {
+    PyObject *__py_result = NULL;
+    bool ok = false;
+    PyObject *arg_file_obj = NULL;
+    ifcopenshell_file_t *arg_file = NULL;
+    ifcopenshell_instance_t *result = NULL;
+    if (!PyArg_ParseTuple(args, "O", &arg_file_obj)) return NULL;
+
+    if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
+        goto __cleanup;
+    }
+
+    ifcopenshell_clear_error();
+    ok = ifcopenshell_alignment_get_axis_subcontext(arg_file, &result);
+    if (!ok) {
+        raise_last_error("ifcopenshell_alignment_get_axis_subcontext failed");
+        goto __cleanup;
+    }
+    if (result == nullptr && ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_alignment_get_axis_subcontext failed");
+        goto __cleanup;
+    }
+    __py_result = wrap_instance(result, 1);
+__cleanup:
+    return __py_result;
+}
+
+static PyObject *py_ifcopenshell_alignment_get_basis_curve(PyObject *self, PyObject *args) {
+    PyObject *__py_result = NULL;
+    bool ok = false;
+    PyObject *arg_alignment_obj = NULL;
+    ifcopenshell_instance_t *arg_alignment = NULL;
+    ifcopenshell_instance_t *result = NULL;
+    if (!PyArg_ParseTuple(args, "O", &arg_alignment_obj)) return NULL;
+
+    if (!extract_handle(arg_alignment_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_alignment, 0)) {
+        goto __cleanup;
+    }
+
+    ifcopenshell_clear_error();
+    ok = ifcopenshell_alignment_get_basis_curve(arg_alignment, &result);
+    if (!ok) {
+        raise_last_error("ifcopenshell_alignment_get_basis_curve failed");
+        goto __cleanup;
+    }
+    if (result == nullptr && ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_alignment_get_basis_curve failed");
+        goto __cleanup;
+    }
+    __py_result = wrap_instance(result, 1);
+__cleanup:
+    return __py_result;
+}
+
+static PyObject *py_ifcopenshell_alignment_get_cant_layout(PyObject *self, PyObject *args) {
+    PyObject *__py_result = NULL;
+    bool ok = false;
+    PyObject *arg_alignment_obj = NULL;
+    ifcopenshell_instance_t *arg_alignment = NULL;
+    ifcopenshell_instance_t *result = NULL;
+    if (!PyArg_ParseTuple(args, "O", &arg_alignment_obj)) return NULL;
+
+    if (!extract_handle(arg_alignment_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_alignment, 0)) {
+        goto __cleanup;
+    }
+
+    ifcopenshell_clear_error();
+    ok = ifcopenshell_alignment_get_cant_layout(arg_alignment, &result);
+    if (!ok) {
+        raise_last_error("ifcopenshell_alignment_get_cant_layout failed");
+        goto __cleanup;
+    }
+    if (result == nullptr && ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_alignment_get_cant_layout failed");
+        goto __cleanup;
+    }
+    __py_result = wrap_instance(result, 1);
+__cleanup:
+    return __py_result;
+}
+
+static PyObject *py_ifcopenshell_alignment_get_child_alignments(PyObject *self, PyObject *args) {
+    PyObject *__py_result = NULL;
+    bool ok = false;
+    PyObject *arg_alignment_obj = NULL;
+    ifcopenshell_instance_t *arg_alignment = NULL;
+    ifcopenshell_parse_instance_list_t *result = NULL;
+    if (!PyArg_ParseTuple(args, "O", &arg_alignment_obj)) return NULL;
+
+    if (!extract_handle(arg_alignment_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_alignment, 0)) {
+        goto __cleanup;
+    }
+
+    ifcopenshell_clear_error();
+    ok = ifcopenshell_alignment_get_child_alignments(arg_alignment, &result);
+    if (!ok) {
+        raise_last_error("ifcopenshell_alignment_get_child_alignments failed");
+        goto __cleanup;
+    }
+    if (result == nullptr && ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_alignment_get_child_alignments failed");
+        goto __cleanup;
+    }
+    __py_result = wrap_parse_instance_list(result, 1);
+__cleanup:
+    return __py_result;
+}
+
+static PyObject *py_ifcopenshell_alignment_get_curve(PyObject *self, PyObject *args) {
+    PyObject *__py_result = NULL;
+    bool ok = false;
+    PyObject *arg_alignment_obj = NULL;
+    ifcopenshell_instance_t *arg_alignment = NULL;
+    ifcopenshell_instance_t *result = NULL;
+    if (!PyArg_ParseTuple(args, "O", &arg_alignment_obj)) return NULL;
+
+    if (!extract_handle(arg_alignment_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_alignment, 0)) {
+        goto __cleanup;
+    }
+
+    ifcopenshell_clear_error();
+    ok = ifcopenshell_alignment_get_curve(arg_alignment, &result);
+    if (!ok) {
+        raise_last_error("ifcopenshell_alignment_get_curve failed");
+        goto __cleanup;
+    }
+    if (result == nullptr && ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_alignment_get_curve failed");
+        goto __cleanup;
+    }
+    __py_result = wrap_instance(result, 1);
+__cleanup:
+    return __py_result;
+}
+
+static PyObject *py_ifcopenshell_alignment_get_curve_segment(PyObject *self, PyObject *args) {
+    PyObject *__py_result = NULL;
+    bool ok = false;
+    PyObject *arg_layout_obj = NULL;
+    ifcopenshell_instance_t *arg_layout = NULL;
+    PyObject *arg_segment_obj = NULL;
+    ifcopenshell_instance_t *arg_segment = NULL;
+    ifcopenshell_instance_t *result = NULL;
+    if (!PyArg_ParseTuple(args, "OO", &arg_layout_obj, &arg_segment_obj)) return NULL;
+
+    if (!extract_handle(arg_layout_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_layout, 0)) {
+        goto __cleanup;
+    }
+    if (!extract_handle(arg_segment_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_segment, 0)) {
+        goto __cleanup;
+    }
+
+    ifcopenshell_clear_error();
+    ok = ifcopenshell_alignment_get_curve_segment(arg_layout, arg_segment, &result);
+    if (!ok) {
+        raise_last_error("ifcopenshell_alignment_get_curve_segment failed");
+        goto __cleanup;
+    }
+    if (result == nullptr && ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_alignment_get_curve_segment failed");
+        goto __cleanup;
+    }
+    __py_result = wrap_instance(result, 1);
+__cleanup:
+    return __py_result;
+}
+
+static PyObject *py_ifcopenshell_alignment_get_curve_segment_transition_code(PyObject *self, PyObject *args) {
+    PyObject *__py_result = NULL;
+    bool ok = false;
+    PyObject *arg_segment_obj = NULL;
+    ifcopenshell_instance_t *arg_segment = NULL;
+    PyObject *arg_next_segment_obj = NULL;
+    ifcopenshell_instance_t *arg_next_segment = NULL;
+    double arg_position_tolerance = 0;
+    ifcopenshell_string_t result = {0};
+    if (!PyArg_ParseTuple(args, "OOd", &arg_segment_obj, &arg_next_segment_obj, &arg_position_tolerance)) return NULL;
+
+    if (!extract_handle(arg_segment_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_segment, 0)) {
+        goto __cleanup;
+    }
+    if (!extract_handle(arg_next_segment_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_next_segment, 0)) {
+        goto __cleanup;
+    }
+
+    ifcopenshell_clear_error();
+    ok = ifcopenshell_alignment_get_curve_segment_transition_code(arg_segment, arg_next_segment, arg_position_tolerance, &result);
+    if (!ok) {
+        raise_last_error("ifcopenshell_alignment_get_curve_segment_transition_code failed");
+        goto __cleanup;
+    }
+    __py_result = convert_string(&result);
+__cleanup:
+    return __py_result;
+}
+
+static PyObject *py_ifcopenshell_alignment_get_horizontal_layout(PyObject *self, PyObject *args) {
+    PyObject *__py_result = NULL;
+    bool ok = false;
+    PyObject *arg_alignment_obj = NULL;
+    ifcopenshell_instance_t *arg_alignment = NULL;
+    ifcopenshell_instance_t *result = NULL;
+    if (!PyArg_ParseTuple(args, "O", &arg_alignment_obj)) return NULL;
+
+    if (!extract_handle(arg_alignment_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_alignment, 0)) {
+        goto __cleanup;
+    }
+
+    ifcopenshell_clear_error();
+    ok = ifcopenshell_alignment_get_horizontal_layout(arg_alignment, &result);
+    if (!ok) {
+        raise_last_error("ifcopenshell_alignment_get_horizontal_layout failed");
+        goto __cleanup;
+    }
+    if (result == nullptr && ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_alignment_get_horizontal_layout failed");
+        goto __cleanup;
+    }
+    __py_result = wrap_instance(result, 1);
+__cleanup:
+    return __py_result;
+}
+
+static PyObject *py_ifcopenshell_alignment_get_layout(PyObject *self, PyObject *args) {
+    PyObject *__py_result = NULL;
+    bool ok = false;
+    PyObject *arg_segment_obj = NULL;
+    ifcopenshell_instance_t *arg_segment = NULL;
+    ifcopenshell_instance_t *result = NULL;
+    if (!PyArg_ParseTuple(args, "O", &arg_segment_obj)) return NULL;
+
+    if (!extract_handle(arg_segment_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_segment, 0)) {
+        goto __cleanup;
+    }
+
+    ifcopenshell_clear_error();
+    ok = ifcopenshell_alignment_get_layout(arg_segment, &result);
+    if (!ok) {
+        raise_last_error("ifcopenshell_alignment_get_layout failed");
+        goto __cleanup;
+    }
+    if (result == nullptr && ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_alignment_get_layout failed");
+        goto __cleanup;
+    }
+    __py_result = wrap_instance(result, 1);
+__cleanup:
+    return __py_result;
+}
+
+static PyObject *py_ifcopenshell_alignment_get_layout_curve(PyObject *self, PyObject *args) {
+    PyObject *__py_result = NULL;
+    bool ok = false;
+    PyObject *arg_layout_obj = NULL;
+    ifcopenshell_instance_t *arg_layout = NULL;
+    ifcopenshell_instance_t *result = NULL;
+    if (!PyArg_ParseTuple(args, "O", &arg_layout_obj)) return NULL;
+
+    if (!extract_handle(arg_layout_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_layout, 0)) {
+        goto __cleanup;
+    }
+
+    ifcopenshell_clear_error();
+    ok = ifcopenshell_alignment_get_layout_curve(arg_layout, &result);
+    if (!ok) {
+        raise_last_error("ifcopenshell_alignment_get_layout_curve failed");
+        goto __cleanup;
+    }
+    if (result == nullptr && ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_alignment_get_layout_curve failed");
+        goto __cleanup;
+    }
+    __py_result = wrap_instance(result, 1);
+__cleanup:
+    return __py_result;
+}
+
+static PyObject *py_ifcopenshell_alignment_get_layout_segments(PyObject *self, PyObject *args) {
+    PyObject *__py_result = NULL;
+    bool ok = false;
+    PyObject *arg_layout_obj = NULL;
+    ifcopenshell_instance_t *arg_layout = NULL;
+    ifcopenshell_parse_instance_list_t *result = NULL;
+    if (!PyArg_ParseTuple(args, "O", &arg_layout_obj)) return NULL;
+
+    if (!extract_handle(arg_layout_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_layout, 0)) {
+        goto __cleanup;
+    }
+
+    ifcopenshell_clear_error();
+    ok = ifcopenshell_alignment_get_layout_segments(arg_layout, &result);
+    if (!ok) {
+        raise_last_error("ifcopenshell_alignment_get_layout_segments failed");
+        goto __cleanup;
+    }
+    if (result == nullptr && ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_alignment_get_layout_segments failed");
+        goto __cleanup;
+    }
+    __py_result = wrap_parse_instance_list(result, 1);
+__cleanup:
+    return __py_result;
+}
+
+static PyObject *py_ifcopenshell_alignment_get_mapped_segments(PyObject *self, PyObject *args) {
+    PyObject *__py_result = NULL;
+    bool ok = false;
+    PyObject *arg_layout_segment_obj = NULL;
+    ifcopenshell_instance_t *arg_layout_segment = NULL;
+    ifcopenshell_parse_instance_list_t *result = NULL;
+    if (!PyArg_ParseTuple(args, "O", &arg_layout_segment_obj)) return NULL;
+
+    if (!extract_handle(arg_layout_segment_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_layout_segment, 0)) {
+        goto __cleanup;
+    }
+
+    ifcopenshell_clear_error();
+    ok = ifcopenshell_alignment_get_mapped_segments(arg_layout_segment, &result);
+    if (!ok) {
+        raise_last_error("ifcopenshell_alignment_get_mapped_segments failed");
+        goto __cleanup;
+    }
+    if (result == nullptr && ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_alignment_get_mapped_segments failed");
+        goto __cleanup;
+    }
+    __py_result = wrap_parse_instance_list(result, 1);
+__cleanup:
+    return __py_result;
+}
+
+static PyObject *py_ifcopenshell_alignment_get_parent_alignment(PyObject *self, PyObject *args) {
+    PyObject *__py_result = NULL;
+    bool ok = false;
+    PyObject *arg_alignment_obj = NULL;
+    ifcopenshell_instance_t *arg_alignment = NULL;
+    ifcopenshell_instance_t *result = NULL;
+    if (!PyArg_ParseTuple(args, "O", &arg_alignment_obj)) return NULL;
+
+    if (!extract_handle(arg_alignment_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_alignment, 0)) {
+        goto __cleanup;
+    }
+
+    ifcopenshell_clear_error();
+    ok = ifcopenshell_alignment_get_parent_alignment(arg_alignment, &result);
+    if (!ok) {
+        raise_last_error("ifcopenshell_alignment_get_parent_alignment failed");
+        goto __cleanup;
+    }
+    if (result == nullptr && ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_alignment_get_parent_alignment failed");
+        goto __cleanup;
+    }
+    __py_result = wrap_instance(result, 1);
+__cleanup:
+    return __py_result;
+}
+
+static PyObject *py_ifcopenshell_alignment_get_referent_nest(PyObject *self, PyObject *args) {
+    PyObject *__py_result = NULL;
+    bool ok = false;
+    PyObject *arg_alignment_obj = NULL;
+    ifcopenshell_instance_t *arg_alignment = NULL;
+    ifcopenshell_instance_t *result = NULL;
+    if (!PyArg_ParseTuple(args, "O", &arg_alignment_obj)) return NULL;
+
+    if (!extract_handle(arg_alignment_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_alignment, 0)) {
+        goto __cleanup;
+    }
+
+    ifcopenshell_clear_error();
+    ok = ifcopenshell_alignment_get_referent_nest(arg_alignment, &result);
+    if (!ok) {
+        raise_last_error("ifcopenshell_alignment_get_referent_nest failed");
+        goto __cleanup;
+    }
+    if (result == nullptr && ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_alignment_get_referent_nest failed");
+        goto __cleanup;
+    }
+    __py_result = wrap_instance(result, 1);
+__cleanup:
+    return __py_result;
+}
+
+static PyObject *py_ifcopenshell_alignment_get_vertical_layout(PyObject *self, PyObject *args) {
+    PyObject *__py_result = NULL;
+    bool ok = false;
+    PyObject *arg_alignment_obj = NULL;
+    ifcopenshell_instance_t *arg_alignment = NULL;
+    ifcopenshell_instance_t *result = NULL;
+    if (!PyArg_ParseTuple(args, "O", &arg_alignment_obj)) return NULL;
+
+    if (!extract_handle(arg_alignment_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_alignment, 0)) {
+        goto __cleanup;
+    }
+
+    ifcopenshell_clear_error();
+    ok = ifcopenshell_alignment_get_vertical_layout(arg_alignment, &result);
+    if (!ok) {
+        raise_last_error("ifcopenshell_alignment_get_vertical_layout failed");
+        goto __cleanup;
+    }
+    if (result == nullptr && ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_alignment_get_vertical_layout failed");
+        goto __cleanup;
+    }
+    __py_result = wrap_instance(result, 1);
+__cleanup:
+    return __py_result;
+}
+
+static PyObject *py_ifcopenshell_alignment_has_zero_length_segment(PyObject *self, PyObject *args) {
+    PyObject *__py_result = NULL;
+    bool ok = false;
+    PyObject *arg_layout_obj = NULL;
+    ifcopenshell_instance_t *arg_layout = NULL;
+    bool result = {0};
+    if (!PyArg_ParseTuple(args, "O", &arg_layout_obj)) return NULL;
+
+    if (!extract_handle(arg_layout_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_layout, 0)) {
+        goto __cleanup;
+    }
+
+    ifcopenshell_clear_error();
+    ok = ifcopenshell_alignment_has_zero_length_segment(arg_layout, &result);
+    if (!ok) {
+        raise_last_error("ifcopenshell_alignment_has_zero_length_segment failed");
+        goto __cleanup;
+    }
+    __py_result = PyBool_FromLong(result);
+__cleanup:
+    return __py_result;
+}
+
+static PyObject *py_ifcopenshell_alignment_layout_horizontal_by_pi_method(PyObject *self, PyObject *args) {
+    PyObject *__py_result = NULL;
+    bool ok = false;
+    PyObject *arg_file_obj = NULL;
+    ifcopenshell_file_t *arg_file = NULL;
+    PyObject *arg_layout_obj = NULL;
+    ifcopenshell_instance_t *arg_layout = NULL;
+    PyObject *arg_points_obj = NULL;
+    ifcopenshell_double_list_list_t arg_points = {0};
+    PyObject *arg_radii_obj = NULL;
+    ifcopenshell_double_list_t arg_radii = {0};
+
+    if (!PyArg_ParseTuple(args, "OOOO", &arg_file_obj, &arg_layout_obj, &arg_points_obj, &arg_radii_obj)) return NULL;
+
+    if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
+        goto __cleanup;
+    }
+    if (!extract_handle(arg_layout_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_layout, 0)) {
+        goto __cleanup;
+    }
+    if (!make_input_double_list_list(arg_points_obj, &arg_points)) {
+        goto __cleanup;
+    }
+    if (!make_input_double_list(arg_radii_obj, &arg_radii)) {
+        goto __cleanup;
+    }
+    ifcopenshell_clear_error();
+    ok = ifcopenshell_alignment_layout_horizontal_by_pi_method(arg_file, arg_layout, &arg_points, &arg_radii);
+    if (!ok) {
+        raise_last_error("ifcopenshell_alignment_layout_horizontal_by_pi_method failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_alignment_layout_horizontal_by_pi_method failed");
+        goto __cleanup;
+    }
+    Py_INCREF(Py_None);
+    __py_result = Py_None;
+__cleanup:
+        free_input_double_list(&arg_radii);
+        free_input_double_list_list(&arg_points);
+    return __py_result;
+}
+
+static PyObject *py_ifcopenshell_alignment_layout_vertical_by_pi_method(PyObject *self, PyObject *args) {
+    PyObject *__py_result = NULL;
+    bool ok = false;
+    PyObject *arg_file_obj = NULL;
+    ifcopenshell_file_t *arg_file = NULL;
+    PyObject *arg_layout_obj = NULL;
+    ifcopenshell_instance_t *arg_layout = NULL;
+    PyObject *arg_points_obj = NULL;
+    ifcopenshell_double_list_list_t arg_points = {0};
+    PyObject *arg_lengths_obj = NULL;
+    ifcopenshell_double_list_t arg_lengths = {0};
+
+    if (!PyArg_ParseTuple(args, "OOOO", &arg_file_obj, &arg_layout_obj, &arg_points_obj, &arg_lengths_obj)) return NULL;
+
+    if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
+        goto __cleanup;
+    }
+    if (!extract_handle(arg_layout_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_layout, 0)) {
+        goto __cleanup;
+    }
+    if (!make_input_double_list_list(arg_points_obj, &arg_points)) {
+        goto __cleanup;
+    }
+    if (!make_input_double_list(arg_lengths_obj, &arg_lengths)) {
+        goto __cleanup;
+    }
+    ifcopenshell_clear_error();
+    ok = ifcopenshell_alignment_layout_vertical_by_pi_method(arg_file, arg_layout, &arg_points, &arg_lengths);
+    if (!ok) {
+        raise_last_error("ifcopenshell_alignment_layout_vertical_by_pi_method failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_alignment_layout_vertical_by_pi_method failed");
+        goto __cleanup;
+    }
+    Py_INCREF(Py_None);
+    __py_result = Py_None;
+__cleanup:
+        free_input_double_list(&arg_lengths);
+        free_input_double_list_list(&arg_points);
+    return __py_result;
+}
+
+static PyObject *py_ifcopenshell_alignment_map_segment(PyObject *self, PyObject *args) {
+    PyObject *__py_result = NULL;
+    bool ok = false;
+    PyObject *arg_file_obj = NULL;
+    ifcopenshell_file_t *arg_file = NULL;
+    PyObject *arg_options_obj = NULL;
+    ifcopenshell_alignment_map_segment_options_t arg_options = {0};
+    PyObject *arg_options_refs[2] = {0};
+    ifcopenshell_parse_instance_list_t *result = NULL;
+    if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_options_obj)) return NULL;
+
+    if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
+        goto __cleanup;
+    }
+    if (!fill_input_alignment_map_segment_options(arg_options_obj, &arg_options, arg_options_refs)) {
+        goto __cleanup;
+    }
+
+    ifcopenshell_clear_error();
+    ok = ifcopenshell_alignment_map_segment(arg_file, &arg_options, &result);
+    if (!ok) {
+        raise_last_error("ifcopenshell_alignment_map_segment failed");
+        goto __cleanup;
+    }
+    if (result == nullptr && ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_alignment_map_segment failed");
+        goto __cleanup;
+    }
+    __py_result = wrap_parse_instance_list(result, 1);
+__cleanup:
+        release_option_refs(arg_options_refs, 2);
+        free_input_alignment_map_segment_options(&arg_options);
+    return __py_result;
+}
+
+static PyObject *py_ifcopenshell_alignment_name_segments(PyObject *self, PyObject *args) {
+    PyObject *__py_result = NULL;
+    bool ok = false;
+    const char *arg_prefix = NULL;
+    PyObject *arg_layout_obj = NULL;
+    ifcopenshell_instance_t *arg_layout = NULL;
+
+    if (!PyArg_ParseTuple(args, "sO", &arg_prefix, &arg_layout_obj)) return NULL;
+
+    if (!extract_handle(arg_layout_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_layout, 0)) {
+        goto __cleanup;
+    }
+
+    ifcopenshell_clear_error();
+    ok = ifcopenshell_alignment_name_segments(arg_prefix, arg_layout);
+    if (!ok) {
+        raise_last_error("ifcopenshell_alignment_name_segments failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_alignment_name_segments failed");
+        goto __cleanup;
+    }
+    Py_INCREF(Py_None);
+    __py_result = Py_None;
+__cleanup:
+    return __py_result;
+}
+
+static PyObject *py_ifcopenshell_alignment_station_as_string(PyObject *self, PyObject *args) {
+    PyObject *__py_result = NULL;
+    bool ok = false;
+    PyObject *arg_file_obj = NULL;
+    ifcopenshell_file_t *arg_file = NULL;
+    double arg_station = 0;
+    ifcopenshell_string_t result = {0};
+    if (!PyArg_ParseTuple(args, "Od", &arg_file_obj, &arg_station)) return NULL;
+
+    if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
+        goto __cleanup;
+    }
+
+    ifcopenshell_clear_error();
+    ok = ifcopenshell_alignment_station_as_string(arg_file, arg_station, &result);
+    if (!ok) {
+        raise_last_error("ifcopenshell_alignment_station_as_string failed");
+        goto __cleanup;
+    }
+    __py_result = convert_string(&result);
+__cleanup:
+    return __py_result;
+}
+
+static PyObject *py_ifcopenshell_alignment_update_curve_segment_transition_code(PyObject *self, PyObject *args) {
+    PyObject *__py_result = NULL;
+    bool ok = false;
+    PyObject *arg_segment_obj = NULL;
+    ifcopenshell_instance_t *arg_segment = NULL;
+    PyObject *arg_next_segment_obj = NULL;
+    ifcopenshell_instance_t *arg_next_segment = NULL;
+    double arg_position_tolerance = 0;
+
+    if (!PyArg_ParseTuple(args, "OOd", &arg_segment_obj, &arg_next_segment_obj, &arg_position_tolerance)) return NULL;
+
+    if (!extract_handle(arg_segment_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_segment, 0)) {
+        goto __cleanup;
+    }
+    if (!extract_handle(arg_next_segment_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_next_segment, 0)) {
+        goto __cleanup;
+    }
+
+    ifcopenshell_clear_error();
+    ok = ifcopenshell_alignment_update_curve_segment_transition_code(arg_segment, arg_next_segment, arg_position_tolerance);
+    if (!ok) {
+        raise_last_error("ifcopenshell_alignment_update_curve_segment_transition_code failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_alignment_update_curve_segment_transition_code failed");
+        goto __cleanup;
+    }
+    Py_INCREF(Py_None);
+    __py_result = Py_None;
+__cleanup:
+    return __py_result;
+}
+
+static PyObject *py_ifcopenshell_alignment_update_end_point(PyObject *self, PyObject *args) {
+    PyObject *__py_result = NULL;
+    bool ok = false;
+    PyObject *arg_file_obj = NULL;
+    ifcopenshell_file_t *arg_file = NULL;
+    PyObject *arg_curve_obj = NULL;
+    ifcopenshell_instance_t *arg_curve = NULL;
+
+    if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_curve_obj)) return NULL;
+
+    if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
+        goto __cleanup;
+    }
+    if (!extract_handle(arg_curve_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_curve, 0)) {
+        goto __cleanup;
+    }
+
+    ifcopenshell_clear_error();
+    ok = ifcopenshell_alignment_update_end_point(arg_file, arg_curve);
+    if (!ok) {
+        raise_last_error("ifcopenshell_alignment_update_end_point failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_alignment_update_end_point failed");
+        goto __cleanup;
+    }
+    Py_INCREF(Py_None);
+    __py_result = Py_None;
+__cleanup:
+    return __py_result;
+}
+
+static PyObject *py_ifcopenshell_alignment_update_fallback_position(PyObject *self, PyObject *args) {
+    PyObject *__py_result = NULL;
+    bool ok = false;
+    PyObject *arg_file_obj = NULL;
+    ifcopenshell_file_t *arg_file = NULL;
+    PyObject *arg_linear_placement_obj = NULL;
+    ifcopenshell_instance_t *arg_linear_placement = NULL;
+
+    if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_linear_placement_obj)) return NULL;
+
+    if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
+        goto __cleanup;
+    }
+    if (!extract_handle(arg_linear_placement_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_linear_placement, 0)) {
+        goto __cleanup;
+    }
+
+    ifcopenshell_clear_error();
+    ok = ifcopenshell_alignment_update_fallback_position(arg_file, arg_linear_placement);
+    if (!ok) {
+        raise_last_error("ifcopenshell_alignment_update_fallback_position failed");
+        goto __cleanup;
+    }
+    if (ifcopenshell_last_error_kind() != 0) {
+        raise_last_error("ifcopenshell_alignment_update_fallback_position failed");
+        goto __cleanup;
+    }
+    Py_INCREF(Py_None);
+    __py_result = Py_None;
 __cleanup:
     return __py_result;
 }
@@ -51462,6 +53374,49 @@ static PyMethodDef module_methods[] = {
     {"aggregation_type_type_of_aggregation", py_ifcopenshell_aggregation_type_type_of_aggregation, METH_VARARGS, "Wrap ifcopenshell_aggregation_type_type_of_aggregation"},
     {"aggregation_type_type_of_aggregation_string", py_ifcopenshell_aggregation_type_type_of_aggregation_string, METH_VARARGS, "Wrap ifcopenshell_aggregation_type_type_of_aggregation_string"},
     {"aggregation_type_type_of_element", py_ifcopenshell_aggregation_type_type_of_element, METH_VARARGS, "Wrap ifcopenshell_aggregation_type_type_of_element"},
+    {"alignment_add_segment_to_layout", py_ifcopenshell_alignment_add_segment_to_layout, METH_VARARGS, "Wrap ifcopenshell_alignment_add_segment_to_layout"},
+    {"alignment_add_stationing_referent", py_ifcopenshell_alignment_add_stationing_referent, METH_VARARGS, "Wrap ifcopenshell_alignment_add_stationing_referent"},
+    {"alignment_add_vertical_layout", py_ifcopenshell_alignment_add_vertical_layout, METH_VARARGS, "Wrap ifcopenshell_alignment_add_vertical_layout"},
+    {"alignment_add_zero_length_segment", py_ifcopenshell_alignment_add_zero_length_segment, METH_VARARGS, "Wrap ifcopenshell_alignment_add_zero_length_segment"},
+    {"alignment_create", py_ifcopenshell_alignment_create, METH_VARARGS, "Wrap ifcopenshell_alignment_create"},
+    {"alignment_create_as_offset_curve", py_ifcopenshell_alignment_create_as_offset_curve, METH_VARARGS, "Wrap ifcopenshell_alignment_create_as_offset_curve"},
+    {"alignment_create_as_polyline", py_ifcopenshell_alignment_create_as_polyline, METH_VARARGS, "Wrap ifcopenshell_alignment_create_as_polyline"},
+    {"alignment_create_by_pi_method", py_ifcopenshell_alignment_create_by_pi_method, METH_VARARGS, "Wrap ifcopenshell_alignment_create_by_pi_method"},
+    {"alignment_create_from_csv_text", py_ifcopenshell_alignment_create_from_csv_text, METH_VARARGS, "Wrap ifcopenshell_alignment_create_from_csv_text"},
+    {"alignment_create_layout_segment", py_ifcopenshell_alignment_create_layout_segment, METH_VARARGS, "Wrap ifcopenshell_alignment_create_layout_segment"},
+    {"alignment_create_representation", py_ifcopenshell_alignment_create_representation, METH_VARARGS, "Wrap ifcopenshell_alignment_create_representation"},
+    {"alignment_create_segment_representations", py_ifcopenshell_alignment_create_segment_representations, METH_VARARGS, "Wrap ifcopenshell_alignment_create_segment_representations"},
+    {"alignment_default_referent_label", py_ifcopenshell_alignment_default_referent_label, METH_VARARGS, "Wrap ifcopenshell_alignment_default_referent_label"},
+    {"alignment_distance_along_from_station", py_ifcopenshell_alignment_distance_along_from_station, METH_VARARGS, "Wrap ifcopenshell_alignment_distance_along_from_station"},
+    {"alignment_get_alignment", py_ifcopenshell_alignment_get_alignment, METH_VARARGS, "Wrap ifcopenshell_alignment_get_alignment"},
+    {"alignment_get_alignment_layout_nest", py_ifcopenshell_alignment_get_alignment_layout_nest, METH_VARARGS, "Wrap ifcopenshell_alignment_get_alignment_layout_nest"},
+    {"alignment_get_alignment_layouts", py_ifcopenshell_alignment_get_alignment_layouts, METH_VARARGS, "Wrap ifcopenshell_alignment_get_alignment_layouts"},
+    {"alignment_get_alignment_segment_nest", py_ifcopenshell_alignment_get_alignment_segment_nest, METH_VARARGS, "Wrap ifcopenshell_alignment_get_alignment_segment_nest"},
+    {"alignment_get_alignment_start_station", py_ifcopenshell_alignment_get_alignment_start_station, METH_VARARGS, "Wrap ifcopenshell_alignment_get_alignment_start_station"},
+    {"alignment_get_axis_subcontext", py_ifcopenshell_alignment_get_axis_subcontext, METH_VARARGS, "Wrap ifcopenshell_alignment_get_axis_subcontext"},
+    {"alignment_get_basis_curve", py_ifcopenshell_alignment_get_basis_curve, METH_VARARGS, "Wrap ifcopenshell_alignment_get_basis_curve"},
+    {"alignment_get_cant_layout", py_ifcopenshell_alignment_get_cant_layout, METH_VARARGS, "Wrap ifcopenshell_alignment_get_cant_layout"},
+    {"alignment_get_child_alignments", py_ifcopenshell_alignment_get_child_alignments, METH_VARARGS, "Wrap ifcopenshell_alignment_get_child_alignments"},
+    {"alignment_get_curve", py_ifcopenshell_alignment_get_curve, METH_VARARGS, "Wrap ifcopenshell_alignment_get_curve"},
+    {"alignment_get_curve_segment", py_ifcopenshell_alignment_get_curve_segment, METH_VARARGS, "Wrap ifcopenshell_alignment_get_curve_segment"},
+    {"alignment_get_curve_segment_transition_code", py_ifcopenshell_alignment_get_curve_segment_transition_code, METH_VARARGS, "Wrap ifcopenshell_alignment_get_curve_segment_transition_code"},
+    {"alignment_get_horizontal_layout", py_ifcopenshell_alignment_get_horizontal_layout, METH_VARARGS, "Wrap ifcopenshell_alignment_get_horizontal_layout"},
+    {"alignment_get_layout", py_ifcopenshell_alignment_get_layout, METH_VARARGS, "Wrap ifcopenshell_alignment_get_layout"},
+    {"alignment_get_layout_curve", py_ifcopenshell_alignment_get_layout_curve, METH_VARARGS, "Wrap ifcopenshell_alignment_get_layout_curve"},
+    {"alignment_get_layout_segments", py_ifcopenshell_alignment_get_layout_segments, METH_VARARGS, "Wrap ifcopenshell_alignment_get_layout_segments"},
+    {"alignment_get_mapped_segments", py_ifcopenshell_alignment_get_mapped_segments, METH_VARARGS, "Wrap ifcopenshell_alignment_get_mapped_segments"},
+    {"alignment_get_parent_alignment", py_ifcopenshell_alignment_get_parent_alignment, METH_VARARGS, "Wrap ifcopenshell_alignment_get_parent_alignment"},
+    {"alignment_get_referent_nest", py_ifcopenshell_alignment_get_referent_nest, METH_VARARGS, "Wrap ifcopenshell_alignment_get_referent_nest"},
+    {"alignment_get_vertical_layout", py_ifcopenshell_alignment_get_vertical_layout, METH_VARARGS, "Wrap ifcopenshell_alignment_get_vertical_layout"},
+    {"alignment_has_zero_length_segment", py_ifcopenshell_alignment_has_zero_length_segment, METH_VARARGS, "Wrap ifcopenshell_alignment_has_zero_length_segment"},
+    {"alignment_layout_horizontal_by_pi_method", py_ifcopenshell_alignment_layout_horizontal_by_pi_method, METH_VARARGS, "Wrap ifcopenshell_alignment_layout_horizontal_by_pi_method"},
+    {"alignment_layout_vertical_by_pi_method", py_ifcopenshell_alignment_layout_vertical_by_pi_method, METH_VARARGS, "Wrap ifcopenshell_alignment_layout_vertical_by_pi_method"},
+    {"alignment_map_segment", py_ifcopenshell_alignment_map_segment, METH_VARARGS, "Wrap ifcopenshell_alignment_map_segment"},
+    {"alignment_name_segments", py_ifcopenshell_alignment_name_segments, METH_VARARGS, "Wrap ifcopenshell_alignment_name_segments"},
+    {"alignment_station_as_string", py_ifcopenshell_alignment_station_as_string, METH_VARARGS, "Wrap ifcopenshell_alignment_station_as_string"},
+    {"alignment_update_curve_segment_transition_code", py_ifcopenshell_alignment_update_curve_segment_transition_code, METH_VARARGS, "Wrap ifcopenshell_alignment_update_curve_segment_transition_code"},
+    {"alignment_update_end_point", py_ifcopenshell_alignment_update_end_point, METH_VARARGS, "Wrap ifcopenshell_alignment_update_end_point"},
+    {"alignment_update_fallback_position", py_ifcopenshell_alignment_update_fallback_position, METH_VARARGS, "Wrap ifcopenshell_alignment_update_fallback_position"},
     {"attribute_edit_attributes", py_ifcopenshell_attribute_edit_attributes, METH_VARARGS, "Wrap ifcopenshell_attribute_edit_attributes"},
     {"attribute_name", py_ifcopenshell_attribute_name, METH_VARARGS, "Wrap ifcopenshell_attribute_name"},
     {"attribute_optional", py_ifcopenshell_attribute_optional, METH_VARARGS, "Wrap ifcopenshell_attribute_optional"},
@@ -52558,6 +54513,49 @@ static PyMethodDef module_methods[] = {
     {"ifcopenshell_aggregation_type_type_of_aggregation", py_ifcopenshell_aggregation_type_type_of_aggregation, METH_VARARGS, "Wrap ifcopenshell_aggregation_type_type_of_aggregation"},
     {"ifcopenshell_aggregation_type_type_of_aggregation_string", py_ifcopenshell_aggregation_type_type_of_aggregation_string, METH_VARARGS, "Wrap ifcopenshell_aggregation_type_type_of_aggregation_string"},
     {"ifcopenshell_aggregation_type_type_of_element", py_ifcopenshell_aggregation_type_type_of_element, METH_VARARGS, "Wrap ifcopenshell_aggregation_type_type_of_element"},
+    {"ifcopenshell_alignment_add_segment_to_layout", py_ifcopenshell_alignment_add_segment_to_layout, METH_VARARGS, "Wrap ifcopenshell_alignment_add_segment_to_layout"},
+    {"ifcopenshell_alignment_add_stationing_referent", py_ifcopenshell_alignment_add_stationing_referent, METH_VARARGS, "Wrap ifcopenshell_alignment_add_stationing_referent"},
+    {"ifcopenshell_alignment_add_vertical_layout", py_ifcopenshell_alignment_add_vertical_layout, METH_VARARGS, "Wrap ifcopenshell_alignment_add_vertical_layout"},
+    {"ifcopenshell_alignment_add_zero_length_segment", py_ifcopenshell_alignment_add_zero_length_segment, METH_VARARGS, "Wrap ifcopenshell_alignment_add_zero_length_segment"},
+    {"ifcopenshell_alignment_create", py_ifcopenshell_alignment_create, METH_VARARGS, "Wrap ifcopenshell_alignment_create"},
+    {"ifcopenshell_alignment_create_as_offset_curve", py_ifcopenshell_alignment_create_as_offset_curve, METH_VARARGS, "Wrap ifcopenshell_alignment_create_as_offset_curve"},
+    {"ifcopenshell_alignment_create_as_polyline", py_ifcopenshell_alignment_create_as_polyline, METH_VARARGS, "Wrap ifcopenshell_alignment_create_as_polyline"},
+    {"ifcopenshell_alignment_create_by_pi_method", py_ifcopenshell_alignment_create_by_pi_method, METH_VARARGS, "Wrap ifcopenshell_alignment_create_by_pi_method"},
+    {"ifcopenshell_alignment_create_from_csv_text", py_ifcopenshell_alignment_create_from_csv_text, METH_VARARGS, "Wrap ifcopenshell_alignment_create_from_csv_text"},
+    {"ifcopenshell_alignment_create_layout_segment", py_ifcopenshell_alignment_create_layout_segment, METH_VARARGS, "Wrap ifcopenshell_alignment_create_layout_segment"},
+    {"ifcopenshell_alignment_create_representation", py_ifcopenshell_alignment_create_representation, METH_VARARGS, "Wrap ifcopenshell_alignment_create_representation"},
+    {"ifcopenshell_alignment_create_segment_representations", py_ifcopenshell_alignment_create_segment_representations, METH_VARARGS, "Wrap ifcopenshell_alignment_create_segment_representations"},
+    {"ifcopenshell_alignment_default_referent_label", py_ifcopenshell_alignment_default_referent_label, METH_VARARGS, "Wrap ifcopenshell_alignment_default_referent_label"},
+    {"ifcopenshell_alignment_distance_along_from_station", py_ifcopenshell_alignment_distance_along_from_station, METH_VARARGS, "Wrap ifcopenshell_alignment_distance_along_from_station"},
+    {"ifcopenshell_alignment_get_alignment", py_ifcopenshell_alignment_get_alignment, METH_VARARGS, "Wrap ifcopenshell_alignment_get_alignment"},
+    {"ifcopenshell_alignment_get_alignment_layout_nest", py_ifcopenshell_alignment_get_alignment_layout_nest, METH_VARARGS, "Wrap ifcopenshell_alignment_get_alignment_layout_nest"},
+    {"ifcopenshell_alignment_get_alignment_layouts", py_ifcopenshell_alignment_get_alignment_layouts, METH_VARARGS, "Wrap ifcopenshell_alignment_get_alignment_layouts"},
+    {"ifcopenshell_alignment_get_alignment_segment_nest", py_ifcopenshell_alignment_get_alignment_segment_nest, METH_VARARGS, "Wrap ifcopenshell_alignment_get_alignment_segment_nest"},
+    {"ifcopenshell_alignment_get_alignment_start_station", py_ifcopenshell_alignment_get_alignment_start_station, METH_VARARGS, "Wrap ifcopenshell_alignment_get_alignment_start_station"},
+    {"ifcopenshell_alignment_get_axis_subcontext", py_ifcopenshell_alignment_get_axis_subcontext, METH_VARARGS, "Wrap ifcopenshell_alignment_get_axis_subcontext"},
+    {"ifcopenshell_alignment_get_basis_curve", py_ifcopenshell_alignment_get_basis_curve, METH_VARARGS, "Wrap ifcopenshell_alignment_get_basis_curve"},
+    {"ifcopenshell_alignment_get_cant_layout", py_ifcopenshell_alignment_get_cant_layout, METH_VARARGS, "Wrap ifcopenshell_alignment_get_cant_layout"},
+    {"ifcopenshell_alignment_get_child_alignments", py_ifcopenshell_alignment_get_child_alignments, METH_VARARGS, "Wrap ifcopenshell_alignment_get_child_alignments"},
+    {"ifcopenshell_alignment_get_curve", py_ifcopenshell_alignment_get_curve, METH_VARARGS, "Wrap ifcopenshell_alignment_get_curve"},
+    {"ifcopenshell_alignment_get_curve_segment", py_ifcopenshell_alignment_get_curve_segment, METH_VARARGS, "Wrap ifcopenshell_alignment_get_curve_segment"},
+    {"ifcopenshell_alignment_get_curve_segment_transition_code", py_ifcopenshell_alignment_get_curve_segment_transition_code, METH_VARARGS, "Wrap ifcopenshell_alignment_get_curve_segment_transition_code"},
+    {"ifcopenshell_alignment_get_horizontal_layout", py_ifcopenshell_alignment_get_horizontal_layout, METH_VARARGS, "Wrap ifcopenshell_alignment_get_horizontal_layout"},
+    {"ifcopenshell_alignment_get_layout", py_ifcopenshell_alignment_get_layout, METH_VARARGS, "Wrap ifcopenshell_alignment_get_layout"},
+    {"ifcopenshell_alignment_get_layout_curve", py_ifcopenshell_alignment_get_layout_curve, METH_VARARGS, "Wrap ifcopenshell_alignment_get_layout_curve"},
+    {"ifcopenshell_alignment_get_layout_segments", py_ifcopenshell_alignment_get_layout_segments, METH_VARARGS, "Wrap ifcopenshell_alignment_get_layout_segments"},
+    {"ifcopenshell_alignment_get_mapped_segments", py_ifcopenshell_alignment_get_mapped_segments, METH_VARARGS, "Wrap ifcopenshell_alignment_get_mapped_segments"},
+    {"ifcopenshell_alignment_get_parent_alignment", py_ifcopenshell_alignment_get_parent_alignment, METH_VARARGS, "Wrap ifcopenshell_alignment_get_parent_alignment"},
+    {"ifcopenshell_alignment_get_referent_nest", py_ifcopenshell_alignment_get_referent_nest, METH_VARARGS, "Wrap ifcopenshell_alignment_get_referent_nest"},
+    {"ifcopenshell_alignment_get_vertical_layout", py_ifcopenshell_alignment_get_vertical_layout, METH_VARARGS, "Wrap ifcopenshell_alignment_get_vertical_layout"},
+    {"ifcopenshell_alignment_has_zero_length_segment", py_ifcopenshell_alignment_has_zero_length_segment, METH_VARARGS, "Wrap ifcopenshell_alignment_has_zero_length_segment"},
+    {"ifcopenshell_alignment_layout_horizontal_by_pi_method", py_ifcopenshell_alignment_layout_horizontal_by_pi_method, METH_VARARGS, "Wrap ifcopenshell_alignment_layout_horizontal_by_pi_method"},
+    {"ifcopenshell_alignment_layout_vertical_by_pi_method", py_ifcopenshell_alignment_layout_vertical_by_pi_method, METH_VARARGS, "Wrap ifcopenshell_alignment_layout_vertical_by_pi_method"},
+    {"ifcopenshell_alignment_map_segment", py_ifcopenshell_alignment_map_segment, METH_VARARGS, "Wrap ifcopenshell_alignment_map_segment"},
+    {"ifcopenshell_alignment_name_segments", py_ifcopenshell_alignment_name_segments, METH_VARARGS, "Wrap ifcopenshell_alignment_name_segments"},
+    {"ifcopenshell_alignment_station_as_string", py_ifcopenshell_alignment_station_as_string, METH_VARARGS, "Wrap ifcopenshell_alignment_station_as_string"},
+    {"ifcopenshell_alignment_update_curve_segment_transition_code", py_ifcopenshell_alignment_update_curve_segment_transition_code, METH_VARARGS, "Wrap ifcopenshell_alignment_update_curve_segment_transition_code"},
+    {"ifcopenshell_alignment_update_end_point", py_ifcopenshell_alignment_update_end_point, METH_VARARGS, "Wrap ifcopenshell_alignment_update_end_point"},
+    {"ifcopenshell_alignment_update_fallback_position", py_ifcopenshell_alignment_update_fallback_position, METH_VARARGS, "Wrap ifcopenshell_alignment_update_fallback_position"},
     {"ifcopenshell_attribute_edit_attributes", py_ifcopenshell_attribute_edit_attributes, METH_VARARGS, "Wrap ifcopenshell_attribute_edit_attributes"},
     {"ifcopenshell_attribute_name", py_ifcopenshell_attribute_name, METH_VARARGS, "Wrap ifcopenshell_attribute_name"},
     {"ifcopenshell_attribute_optional", py_ifcopenshell_attribute_optional, METH_VARARGS, "Wrap ifcopenshell_attribute_optional"},

@@ -8,6 +8,12 @@ declare module 'ifcopenshell-api' {
     new (arrayLike: ArrayLike<number>): T;
   }
 
+  export interface IfcOpenshellAlignmentCreateLayoutSegmentResult {
+    segment: IfcOpenshellInstance;
+    endpoint: number[];
+    has_endpoint: boolean;
+  }
+
   export interface IfcOpenshellGeometryRailingSupport {
     arc_polyline: number[][];
     arc_radius: number;
@@ -70,6 +76,70 @@ declare module 'ifcopenshell-api' {
     products: IfcOpenshellParseInstanceList;
     user?: IfcOpenshellInstance;
     application?: IfcOpenshellInstance;
+  }
+
+  export interface IfcOpenshellAlignmentAddStationingReferentOptions {
+    alignment: IfcOpenshellInstance;
+    distance_along: number;
+    station: number;
+    name: string;
+    positioned_product: IfcOpenshellInstance;
+    owner_history?: IfcOpenshellInstance;
+    user?: IfcOpenshellInstance;
+    application?: IfcOpenshellInstance;
+  }
+
+  export interface IfcOpenshellAlignmentCreateByPiMethodOptions {
+    name: string;
+    horizontal_points: number[][];
+    radii: number[];
+    vertical_points: number[][];
+    vertical_lengths: number[];
+    start_station: number;
+    owner_history?: IfcOpenshellInstance;
+    user?: IfcOpenshellInstance;
+    application?: IfcOpenshellInstance;
+  }
+
+  export interface IfcOpenshellAlignmentCreateFromCsvTextOptions {
+    csv_text: string;
+    owner_history?: IfcOpenshellInstance;
+    user?: IfcOpenshellInstance;
+    application?: IfcOpenshellInstance;
+  }
+
+  export interface IfcOpenshellAlignmentCreateOffsetCurveOptions {
+    name: string;
+    offsets: IfcOpenshellParseInstanceList;
+    start_station: number;
+    owner_history?: IfcOpenshellInstance;
+    user?: IfcOpenshellInstance;
+    application?: IfcOpenshellInstance;
+  }
+
+  export interface IfcOpenshellAlignmentCreateOptions {
+    name: string;
+    include_vertical: boolean;
+    include_cant: boolean;
+    include_geometry: boolean;
+    start_station: number;
+    owner_history?: IfcOpenshellInstance;
+    user?: IfcOpenshellInstance;
+    application?: IfcOpenshellInstance;
+  }
+
+  export interface IfcOpenshellAlignmentCreatePolylineOptions {
+    name: string;
+    points: IfcOpenshellParseInstanceList;
+    start_station: number;
+    owner_history?: IfcOpenshellInstance;
+    user?: IfcOpenshellInstance;
+    application?: IfcOpenshellInstance;
+  }
+
+  export interface IfcOpenshellAlignmentMapSegmentOptions {
+    segment: IfcOpenshellInstance;
+    rail_head_distance?: number;
   }
 
   export interface IfcOpenshellAttributeEditAttributesOptions {
@@ -2180,6 +2250,65 @@ declare module 'ifcopenshell-api' {
      * relationship itself is deleted.
      */
     unassignObject(file: IfcOpenshellFile, options: IfcOpenshellAggregateUnassignObjectOptions): void;
+  }
+
+  export interface IfcOpenshellAlignmentModule {
+    /** Append an existing IfcAlignmentSegment to its matching semantic layout. */
+    addSegmentToLayout(file: IfcOpenshellFile, layout: IfcOpenshellInstance, segment: IfcOpenshellInstance): IfcOpenshellAlignmentCreateLayoutSegmentResult;
+    /** Add a station referent and keep the referent nest sorted by station. */
+    addStationingReferent(file: IfcOpenshellFile, options: IfcOpenshellAlignmentAddStationingReferentOptions): IfcOpenshellInstance;
+    /** Add a further vertical layout, moving existing vertical geometry to child alignments when required. */
+    addVerticalLayout(file: IfcOpenshellFile, parent_alignment: IfcOpenshellInstance): IfcOpenshellInstance;
+    /** Append the mandatory zero-length segment; returns false when already present or not applicable. */
+    addZeroLengthSegment(file: IfcOpenshellFile, layout: IfcOpenshellInstance): boolean;
+    /** Create an IFC4X3 alignment, its requested layouts, stationing, zero segments, and optional geometry. */
+    create(file: IfcOpenshellFile, options: IfcOpenshellAlignmentCreateOptions): IfcOpenshellInstance;
+    /** Create an alignment represented by an IfcOffsetCurveByDistances. */
+    createAsOffsetCurve(file: IfcOpenshellFile, options: IfcOpenshellAlignmentCreateOffsetCurveOptions): IfcOpenshellInstance;
+    /** Create an alignment represented by an IfcPolyline. */
+    createAsPolyline(file: IfcOpenshellFile, options: IfcOpenshellAlignmentCreatePolylineOptions): IfcOpenshellInstance;
+    /** Create an IFC4X3 horizontal and optional vertical alignment from PI records. */
+    createByPiMethod(file: IfcOpenshellFile, options: IfcOpenshellAlignmentCreateByPiMethodOptions): IfcOpenshellInstance;
+    /** Create one or more alignments from the alignment CSV text contract. */
+    createFromCsvText(file: IfcOpenshellFile, options: IfcOpenshellAlignmentCreateFromCsvTextOptions): IfcOpenshellInstance;
+    /** Create and append one semantic layout segment, returning its optional 4x4 endpoint matrix. */
+    createLayoutSegment(file: IfcOpenshellFile, layout: IfcOpenshellInstance, design_parameters: IfcOpenshellInstance): IfcOpenshellAlignmentCreateLayoutSegmentResult;
+    /** Populate the geometric representation of a semantic alignment when absent. */
+    createRepresentation(file: IfcOpenshellFile, alignment: IfcOpenshellInstance): void;
+    /** Create per-segment product representations; Helmert 1:2 mappings are rejected. */
+    createSegmentRepresentations(file: IfcOpenshellFile, alignment: IfcOpenshellInstance): void;
+    defaultReferentLabel(previous_segment: IfcOpenshellInstance | null, segment: IfcOpenshellInstance | null): string;
+    distanceAlongFromStation(file: IfcOpenshellFile, alignment: IfcOpenshellInstance, station: number): number;
+    getAlignment(layout: IfcOpenshellInstance): IfcOpenshellInstance | null;
+    getAlignmentLayoutNest(alignment: IfcOpenshellInstance): IfcOpenshellInstance | null;
+    getAlignmentLayouts(alignment: IfcOpenshellInstance): IfcOpenshellParseInstanceList;
+    getAlignmentSegmentNest(layout: IfcOpenshellInstance): IfcOpenshellInstance | null;
+    getAlignmentStartStation(file: IfcOpenshellFile, alignment: IfcOpenshellInstance): number;
+    getAxisSubcontext(file: IfcOpenshellFile): IfcOpenshellInstance;
+    getBasisCurve(alignment: IfcOpenshellInstance): IfcOpenshellInstance | null;
+    getCantLayout(alignment: IfcOpenshellInstance): IfcOpenshellInstance | null;
+    getChildAlignments(alignment: IfcOpenshellInstance): IfcOpenshellParseInstanceList;
+    getCurve(alignment: IfcOpenshellInstance): IfcOpenshellInstance | null;
+    getCurveSegment(layout: IfcOpenshellInstance, segment: IfcOpenshellInstance): IfcOpenshellInstance | null;
+    getCurveSegmentTransitionCode(segment: IfcOpenshellInstance, next_segment: IfcOpenshellInstance, position_tolerance: number): string;
+    getHorizontalLayout(alignment: IfcOpenshellInstance): IfcOpenshellInstance | null;
+    getLayout(segment: IfcOpenshellInstance): IfcOpenshellInstance | null;
+    getLayoutCurve(layout: IfcOpenshellInstance): IfcOpenshellInstance | null;
+    getLayoutSegments(layout: IfcOpenshellInstance): IfcOpenshellParseInstanceList;
+    getMappedSegments(layout_segment: IfcOpenshellInstance): IfcOpenshellParseInstanceList;
+    getParentAlignment(alignment: IfcOpenshellInstance): IfcOpenshellInstance | null;
+    getReferentNest(alignment: IfcOpenshellInstance): IfcOpenshellInstance | null;
+    getVerticalLayout(alignment: IfcOpenshellInstance): IfcOpenshellInstance | null;
+    hasZeroLengthSegment(layout: IfcOpenshellInstance): boolean;
+    layoutHorizontalByPiMethod(file: IfcOpenshellFile, layout: IfcOpenshellInstance, points: number[][], radii: number[]): void;
+    layoutVerticalByPiMethod(file: IfcOpenshellFile, layout: IfcOpenshellInstance, points: number[][], lengths: number[]): void;
+    /** Map one semantic segment. A Helmert segment returns both mapped halves. */
+    mapSegment(file: IfcOpenshellFile, options: IfcOpenshellAlignmentMapSegmentOptions): IfcOpenshellParseInstanceList;
+    nameSegments(prefix: string, layout: IfcOpenshellInstance): void;
+    stationAsString(file: IfcOpenshellFile, station: number): string;
+    updateCurveSegmentTransitionCode(segment: IfcOpenshellInstance, next_segment: IfcOpenshellInstance, position_tolerance: number): void;
+    updateEndPoint(file: IfcOpenshellFile, curve: IfcOpenshellInstance): void;
+    updateFallbackPosition(file: IfcOpenshellFile, linear_placement: IfcOpenshellInstance): void;
   }
 
   export interface IfcOpenshellAttributeModule {
@@ -6764,6 +6893,7 @@ declare module 'ifcopenshell-api' {
     IfcOpenshellTypeDeclaration: typeof IfcOpenshellTypeDeclaration;
     IfcOpenshellValue: typeof IfcOpenshellValue;
     aggregate: IfcOpenshellAggregateModule;
+    alignment: IfcOpenshellAlignmentModule;
     attribute: IfcOpenshellAttributeModule;
     boundary: IfcOpenshellBoundaryModule;
     classification: IfcOpenshellClassificationModule;

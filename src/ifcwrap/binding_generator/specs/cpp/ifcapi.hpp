@@ -7,6 +7,7 @@
 #include "spec_macros.h"
 
 #include "ifcapi/bindings/aggregate.h"
+#include "ifcapi/bindings/alignment.h"
 #include "ifcapi/bindings/attribute.h"
 #include "ifcapi/bindings/boundary.h"
 #include "ifcapi/bindings/classification.h"
@@ -65,6 +66,13 @@ IFCAPI_HANDLE(project_append_asset_cache, ifcapi::bindings::ProjectAppendAssetCa
 struct ifcopenshell_project_append_asset_cache_t;
 
 namespace ifcapi::bindings {
+
+IFCAPI_RESULT_STRUCT(ifcapi::bindings::AlignmentCreateLayoutSegmentResult)
+struct ifcopenshell_alignment_create_layout_segment_result_t {
+    express::Base segment;
+    std::vector<double> endpoint;
+    bool has_endpoint;
+};
 
 IFCAPI_RESULT_STRUCT(ifcapi::bindings::GeometryRailingSupport)
 struct ifcopenshell_geometry_railing_support_t {
