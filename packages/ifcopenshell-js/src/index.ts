@@ -17,11 +17,14 @@ export type { FileInfo, HeaderInfo, OpenOptions } from './file.js';
 export { Entity } from './entity.js';
 export type { AttributeInput, EntityInfo } from './entity.js';
 export { AttributeValue } from './attribute.js';
-export type { IfcValue } from './attribute.js';
+export type { IfcLogical, IfcValue, NestedEntityIds } from './attribute.js';
 export {
   GeomIterator,
   GeomSettings,
   GeometryTree,
+  columnMajorToRowMajor4,
+  rowMajorToColumnMajor4,
+  transformPoint4,
 } from './geom/index.js';
 export type {
   Box3,
@@ -31,6 +34,9 @@ export type {
   IteratorMetadata,
   IteratorOptions,
   Mesh,
+  MeshFloatArray,
+  MeshPrecision,
+  MatrixPoint3,
   OperationProgress,
   Point3,
   Ray,

@@ -169,6 +169,7 @@ static void test_core(void) {
     ifcopenshell_instance_list_t instances_by_reference = {0};
     ifcopenshell_instance_t* created_integer = NULL;
     ifcopenshell_instance_t* created_boolean = NULL;
+    ifcopenshell_instance_t* created_logical = NULL;
     ifcopenshell_instance_t* created_real = NULL;
     ifcopenshell_instance_t* created_actor_role = NULL;
     ifcopenshell_instance_t* created_axis2_placement = NULL;
@@ -257,6 +258,7 @@ static void test_core(void) {
     bool reopened_attribute_is_null = false;
     bool wrapped_boolean_value = false;
     int32_t wrapped_integer_value = 0;
+    int32_t wrapped_logical_value = 0;
     double wrapped_real_value = -1.0;
     double coordinate_value = -1.0;
     char output_path[512] = {0};
@@ -800,6 +802,15 @@ static void test_core(void) {
     ifcopenshell_parse_attribute_value_destroy(mutated_argument);
     mutated_argument = NULL;
 
+    expect_true(ifcopenshell_schema_declaration_by_name(schema_lookup, "IfcLogical", &declaration_by_name), ifcopenshell_last_error_message());
+    expect_true(ifcopenshell_file_create(file, declaration_by_name, -1, &created_logical), ifcopenshell_last_error_message());
+    expect_true(ifcopenshell_instance_set_argument_logical(created_logical, 0u, -1), ifcopenshell_last_error_message());
+    expect_true(ifcopenshell_instance_get_argument(created_logical, 0u, &mutated_argument), ifcopenshell_last_error_message());
+    expect_true(ifcopenshell_parse_attribute_value_as_logical(mutated_argument, &wrapped_logical_value), ifcopenshell_last_error_message());
+    expect_true(wrapped_logical_value == -1, "Unexpected wrapped logical UNKNOWN value");
+    ifcopenshell_parse_attribute_value_destroy(mutated_argument);
+    mutated_argument = NULL;
+
     expect_true(ifcopenshell_schema_declaration_by_name(schema_lookup, "IfcBoolean", &declaration_by_name), ifcopenshell_last_error_message());
     expect_true(ifcopenshell_file_create(file, declaration_by_name, -1, &created_boolean), ifcopenshell_last_error_message());
     expect_true(ifcopenshell_instance_set_argument_bool(created_boolean, 0u, true), ifcopenshell_last_error_message());
@@ -990,6 +1001,7 @@ static void test_core(void) {
     ifcopenshell_instance_destroy(created_axis2_placement);
     ifcopenshell_instance_destroy(created_actor_role);
     ifcopenshell_instance_destroy(created_real);
+    ifcopenshell_instance_destroy(created_logical);
     ifcopenshell_instance_destroy(created_boolean);
     ifcopenshell_instance_destroy(created_integer);
     ifcopenshell_instance_destroy(person);

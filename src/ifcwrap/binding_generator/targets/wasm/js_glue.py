@@ -260,7 +260,7 @@ def _js_arg_expr(
     if (
         sequence is not None
         and sequence.kind in {"sequence", "handle_sequence", "input_record_sequence"}
-        and sequence.sequence_depth == 1
+        and sequence.sequence_depth >= 1
     ):
         ptr_name = f"_{name}Ptr"
         if sequence.element_type == "ifcopenshell_string_t":

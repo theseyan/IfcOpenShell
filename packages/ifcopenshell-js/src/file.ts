@@ -2,6 +2,7 @@
 import type { IfcOpenshellFile } from '@ifcopenshell-js/wasm/api';
 import { Entity } from './entity.js';
 import { GeomIterator, type IteratorOptions } from './geom/iterator.js';
+import type { MeshPrecision } from './geom/mesh.js';
 import { GeomSettings } from './geom/settings.js';
 import { GeometryTree } from './geom/tree.js';
 import { IfcOpenShellError, type IfcOpenShell } from './init.js';
@@ -262,9 +263,12 @@ export class IfcFile {
   }
 
   /** Create an asynchronous geometry iterator for this file. */
-  meshes(settings?: GeomSettings, options?: IteratorOptions): GeomIterator {
+  meshes(settings: GeomSettings | undefined, options: IteratorOptions<'float64'> & { precision: 'float64' }): GeomIterator<'float64'>;
+  meshes<P extends MeshPrecision>(settings: GeomSettings | undefined, options: IteratorOptions<P>): GeomIterator<P>;
+  meshes(settings?: GeomSettings, options?: IteratorOptions<'float32'>): GeomIterator<'float32'>;
+  meshes<P extends MeshPrecision = 'float32'>(settings?: GeomSettings, options?: IteratorOptions<P>): GeomIterator<P> {
     const ownedSettings = settings === undefined;
-    return new GeomIterator(this._shell, this, settings ?? new GeomSettings(this._shell), options, ownedSettings);
+    return new GeomIterator<P>(this._shell, this, settings ?? new GeomSettings(this._shell), options, ownedSettings);
   }
 
   /** Build a spatial query tree from this file's geometry. */

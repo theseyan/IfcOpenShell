@@ -934,6 +934,18 @@ class TestWasmJsGlue:
                     element_type="int32_t",
                     sequence_depth=1,
                 ),
+                "int32_list_list": CTypeIR(
+                    c_type="ifcopenshell_int32_list_list_t",
+                    kind="sequence",
+                    fields=(
+                        CFieldIR("items", "ifcopenshell_int32_list_t*"),
+                        CFieldIR("size", "size_t"),
+                        CFieldIR("owner", "void*"),
+                    ),
+                    destroy_function="ifcopenshell_int32_list_list_destroy",
+                    element_type="ifcopenshell_int32_list_t",
+                    sequence_depth=2,
+                ),
                 "string_list": CTypeIR(
                     c_type="ifcopenshell_string_list_t",
                     kind="sequence",
@@ -968,6 +980,17 @@ class TestWasmJsGlue:
                     c_name="ifcopenshell_demo_names",
                     returns=TypeSpec(kind="string", sequence_depth=1),
                 ),
+                "ifcopenshell_demo_set_rows": _make_function(
+                    c_name="ifcopenshell_demo_set_rows",
+                    params=(
+                        CParamIR(
+                            "rows",
+                            "const ifcopenshell_int32_list_list_t*",
+                            "param",
+                            "int32",
+                        ),
+                    ),
+                ),
             },
         )
         code = render_js_glue(metadata)
@@ -975,6 +998,14 @@ class TestWasmJsGlue:
         assert "const high = module.HEAP32[index + 1];" in code
         assert "_allocInputSequence(module, values" in code
         assert "_freeInputSequence(module, _valuesPtr" in code
+        assert (
+            '_allocInputSequence(module, rows, "ifcopenshell_int32_list_list_t")'
+            in code
+        )
+        assert (
+            '_freeInputSequence(module, _rowsPtr, "ifcopenshell_int32_list_list_t")'
+            in code
+        )
         assert "outResultPtr = module._malloc(8);" in code
         assert (
             '_readValueType(module, outResultPtr, _VALUE_TYPES["ifcopenshell_string_list_t"])'

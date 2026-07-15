@@ -43,7 +43,10 @@ export interface ExportOptions {
    * retains ownership and must dispose it after the export completes.
    */
   serializerSettings?: SerializerSettings;
-  /** Abort the export between geometry elements. */
+  /**
+   * Abort the export between geometry elements. Checked between synchronous
+   * native calls; it cannot interrupt one native call already in progress.
+   */
   signal?: AbortSignal;
   /** Receive plugin, write, and completion progress events. */
   onProgress?(progress: OperationProgress): void;

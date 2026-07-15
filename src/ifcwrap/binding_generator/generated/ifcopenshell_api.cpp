@@ -26477,6 +26477,23 @@ bool ifcopenshell_parse_attribute_value_as_int32_list_list(ifcopenshell_parse_at
     }
 }
 
+bool ifcopenshell_parse_attribute_value_as_logical(ifcopenshell_parse_attribute_value_t* self, int32_t* out_result) {
+    try {
+        ifcopenshell_clear_error();
+    if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
+    if (self == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
+    auto& self_cpp = self->value;
+        *out_result = static_cast<int32_t>(ifcparse::bindings::as_logical(self_cpp));
+        return true;
+    } catch (const std::exception& e) {
+        set_last_error(e.what());
+        return false;
+    } catch (...) {
+        set_last_error("Unknown C++ exception");
+        return false;
+    }
+}
+
 bool ifcopenshell_parse_attribute_value_as_string(ifcopenshell_parse_attribute_value_t* self, ifcopenshell_string_t* out_result) {
     try {
         ifcopenshell_clear_error();

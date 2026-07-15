@@ -7,7 +7,10 @@
  * handles used to build it are released as soon as the mesh is yielded, so
  * callers may keep and use the object freely for as long as they like.
  */
-export interface Mesh {
+export type MeshPrecision = 'float32' | 'float64';
+export type MeshFloatArray<P extends MeshPrecision> = P extends 'float64' ? Float64Array : Float32Array;
+
+export interface Mesh<P extends MeshPrecision = 'float32'> {
   /** IFC entity ID (e.g. `42` for `#42`). */
   id: number;
   /** IFC GlobalId string of the product. */
@@ -19,9 +22,10 @@ export interface Mesh {
   /**
    * Vertex positions as a flat `[x,y,z, x,y,z, ...]` array.
    *
-   * Stored as `Float32Array` for direct use with Three.js / WebGL buffers.
+   * Stored as `Float32Array` by default for direct use with WebGL buffers, or
+   * as a detached `Float64Array` when the iterator requests `float64` precision.
    */
-  vertices: Float32Array;
+  vertices: MeshFloatArray<P>;
   /**
    * Face indices as a flat `[i0,i1,i2, i0,i1,i2, ...]` array of vertex indices.
    *
@@ -32,13 +36,14 @@ export interface Mesh {
    * Vertex normals as a flat `[nx,ny,nz, ...]` array, or `null` if the
    * kernel did not produce normals.
    */
-  normals: Float32Array | null;
+  normals: MeshFloatArray<P> | null;
   /** Edge indices as a flat buffer, when emitted by the kernel. */
   edges: Uint32Array;
   /**
    * 4×4 column-major transformation matrix placing this element in world space.
    *
-   * Stored as `Float64Array` of length 16.
+   * This is a detached native column-major snapshot and can be passed directly
+   * to `THREE.Matrix4.fromArray()`.
    */
   transform: Float64Array;
   /**
@@ -51,13 +56,14 @@ export interface Mesh {
   /** Geometry item id per edge item. */
   edgeItemIds: Int32Array;
   /** Flat UV coordinate buffer. */
-  uvs: Float32Array;
+  uvs: MeshFloatArray<P>;
   /**
    * Flat RGBA material colour buffer.
    *
    * Each material contributes four consecutive floats (`[r, g, b, a]`).
    * Index `i` in {@link Mesh.materialIds} refers to the colour at
-   * bytes offset `i * 4` in this array.
+   * typed-array element offset `i * 4` in this array. For `Float32Array`, the
+   * corresponding byte offset is `i * 16`.
    */
-  colors: Float32Array;
+  colors: MeshFloatArray<P>;
 }

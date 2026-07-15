@@ -81,6 +81,32 @@ Meshes expose typed-array buffers for vertices, faces, normals, transforms,
 edges, UVs, material IDs, item IDs, and colors. `GeometryTree` provides point,
 box, entity, and ray intersection queries.
 
+Floating geometry buffers use detached `Float32Array` snapshots by default.
+CPU-side analytical workflows can opt into detached `Float64Array` snapshots;
+this does not increase GPU precision after a renderer uploads the data:
+
+```ts
+const precise = file.meshes(settings, { kernel: 'passthrough', precision: 'float64' });
+const mesh64 = await precise.nextMesh();
+```
+
+`Mesh.transform` is a column-major `Float64Array`, so Three.js can consume it
+directly with `object.matrix.fromArray(mesh.transform)`. Generated placement
+utilities such as `shell.api.placement.getLocalPlacement()` return documented
+row-major matrices. Convert those without a renderer dependency:
+
+```ts
+import { rowMajorToColumnMajor4 } from '@ifcopenshell-js/web/geom';
+
+const rowMajor = shell.api.placement.getLocalPlacement(placement);
+object.matrix.fromArray(rowMajorToColumnMajor4(rowMajor));
+```
+
+Progress ratios are normalized to `0..1`. Collection `current` counts native
+items processed, while `meshes` counts retained meshes after `skipEmpty`.
+`AbortSignal` is checked between synchronous native calls and cannot interrupt
+one long native call already in progress.
+
 ## Serializers and utilities
 
 The serializers subpath provides `exportToBuffer` and `SerializerSettings` for

@@ -37,6 +37,18 @@ export interface Ray {
 export interface RayHit {
   /** Intersected IFC entity. */
   entity: Entity;
+  /** World-space intersection position. */
+  position: Point3;
+  /** World-space surface normal at the intersection. */
+  normal: Point3;
+  /** Native intersection distance metric. */
+  distance: number;
+  /** Distance along the input ray. */
+  rayDistance: number;
+  /** Dot product between the ray direction and hit normal. */
+  dotProduct: number;
+  /** Native surface-style index, or the native sentinel when unstyled. */
+  styleIndex: number;
 }
 
 /** Asynchronous spatial query tree built from IFC geometry. */
@@ -51,6 +63,7 @@ export class GeometryTree {
     ready: Promise<IfcOpenshellGeomTree>,
   ) {
     this.ready = ready.then((raw) => {
+      validateTree(raw, 'create GeometryTree');
       if (this.disposed) {
         raw.destroy();
         return raw;
@@ -157,16 +170,22 @@ async function createTreeFromFile(
   await loadGeometry(shell, file.raw, 'opencascade');
   await shell.loadPlugin('tree', 'opencascade.brep');
   await shell.loadPlugin('tree', 'opencascade.trianglebvh');
-  return settings
+  const tree = settings
     ? shell.raw.geom.createTreeFromFileWithSettings(file.raw, settings.raw)
     : shell.raw.geom.createTreeFromFile(file.raw);
+  validateTree(tree, 'create GeometryTree from file');
+  return tree;
 }
 
 async function createTreeFromIterator(shell: IfcOpenShell, iterator: GeomIterator): Promise<IfcOpenshellGeomTree> {
   await shell.loadPlugin('tree', 'opencascade.brep');
   await shell.loadPlugin('tree', 'opencascade.trianglebvh');
-  await iterator.initialize();
-  return shell.raw.geom.createTreeFromIterator(iterator.raw);
+  if (!await iterator.initialize()) {
+    throw new IfcOpenShellError('Failed to initialize GeomIterator while creating GeometryTree');
+  }
+  const tree = shell.raw.geom.createTreeFromIterator(iterator.raw);
+  validateTree(tree, 'create GeometryTree from iterator');
+  return tree;
 }
 
 function wrapList(shell: IfcOpenShell, list: IfcOpenshellParseInstanceList | null): Entity[] {
@@ -191,18 +210,39 @@ function rayHits(
   if (!list || list.ptr === 0) return [];
   try {
     const out: RayHit[] = [];
-    const count = tree.rayIntersectionCount(list);
-    for (let i = 0; i < count; i++) {
-      const hit = tree.rayIntersectionAt(list, i);
-      try {
-        const entity = Entity.wrap(shell, hit.instance());
-        if (entity) out.push({ entity });
-      } finally {
-        hit.destroy();
+    try {
+      const count = tree.rayIntersectionCount(list);
+      for (let i = 0; i < count; i++) {
+        const hit = tree.rayIntersectionAt(list, i);
+        try {
+          if (!hit || hit.ptr === 0) throw new IfcOpenShellError(`GeometryTree returned an invalid ray hit at index ${i}`);
+          const position = point3(hit.position(), 'position');
+          const normal = point3(hit.normal(), 'normal');
+          const distance = hit.distance();
+          const rayDistance = hit.rayDistance();
+          const dotProduct = hit.dotProduct();
+          const styleIndex = hit.styleIndex();
+          const entity = Entity.wrap(shell, hit.instance());
+          if (entity) out.push({ entity, position, normal, distance, rayDistance, dotProduct, styleIndex });
+        } finally {
+          hit?.destroy();
+        }
       }
+      return out;
+    } catch (error) {
+      out.forEach((hit) => hit.entity.dispose());
+      throw error;
     }
-    return out;
   } finally {
     list.destroy();
   }
+}
+
+function validateTree(tree: IfcOpenshellGeomTree | null, operation: string): asserts tree is IfcOpenshellGeomTree {
+  if (!tree || tree.ptr === 0) throw new IfcOpenShellError(`Failed to ${operation}: native tree factory returned no handle`);
+}
+
+function point3(values: number[], field: string): Point3 {
+  if (values.length < 3) throw new IfcOpenShellError(`GeometryTree ray hit returned an invalid ${field}`);
+  return [values[0]!, values[1]!, values[2]!];
 }

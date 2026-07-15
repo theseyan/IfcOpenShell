@@ -1354,6 +1354,7 @@ declare module 'ifcopenshell-api' {
     asInt32(): number;
     asInt32List(): number[];
     asInt32ListList(): number[][];
+    asLogical(): number;
     asString(): string;
     asStringList(): string[];
     isNull(): boolean;

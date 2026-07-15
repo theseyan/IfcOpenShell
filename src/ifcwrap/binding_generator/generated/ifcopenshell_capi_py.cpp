@@ -43727,6 +43727,29 @@ __cleanup:
     return __py_result;
 }
 
+static PyObject *py_ifcopenshell_parse_attribute_value_as_logical(PyObject *self, PyObject *args) {
+    PyObject *__py_result = NULL;
+    bool ok = false;
+    PyObject *arg_self_obj = NULL;
+    ifcopenshell_parse_attribute_value_t *arg_self = NULL;
+    int32_t result = {0};
+    if (!PyArg_ParseTuple(args, "O", &arg_self_obj)) return NULL;
+
+    if (!extract_handle(arg_self_obj, &IfcOpenshellParseAttributeValueType, "IfcOpenshellParseAttributeValue", (void **)&arg_self, 0)) {
+        goto __cleanup;
+    }
+
+    ifcopenshell_clear_error();
+    ok = ifcopenshell_parse_attribute_value_as_logical(arg_self, &result);
+    if (!ok) {
+        raise_last_error("ifcopenshell_parse_attribute_value_as_logical failed");
+        goto __cleanup;
+    }
+    __py_result = PyLong_FromLong(result);
+__cleanup:
+    return __py_result;
+}
+
 static PyObject *py_ifcopenshell_parse_attribute_value_as_string(PyObject *self, PyObject *args) {
     PyObject *__py_result = NULL;
     bool ok = false;
@@ -55938,6 +55961,7 @@ static PyMethodDef module_methods[] = {
     {"attribute_value_as_int32", py_ifcopenshell_parse_attribute_value_as_int32, METH_VARARGS, "Wrap ifcopenshell_parse_attribute_value_as_int32"},
     {"attribute_value_as_int32_list", py_ifcopenshell_parse_attribute_value_as_int32_list, METH_VARARGS, "Wrap ifcopenshell_parse_attribute_value_as_int32_list"},
     {"attribute_value_as_int32_list_list", py_ifcopenshell_parse_attribute_value_as_int32_list_list, METH_VARARGS, "Wrap ifcopenshell_parse_attribute_value_as_int32_list_list"},
+    {"attribute_value_as_logical", py_ifcopenshell_parse_attribute_value_as_logical, METH_VARARGS, "Wrap ifcopenshell_parse_attribute_value_as_logical"},
     {"attribute_value_as_string", py_ifcopenshell_parse_attribute_value_as_string, METH_VARARGS, "Wrap ifcopenshell_parse_attribute_value_as_string"},
     {"attribute_value_as_string_list", py_ifcopenshell_parse_attribute_value_as_string_list, METH_VARARGS, "Wrap ifcopenshell_parse_attribute_value_as_string_list"},
     {"attribute_value_is_null", py_ifcopenshell_parse_attribute_value_is_null, METH_VARARGS, "Wrap ifcopenshell_parse_attribute_value_is_null"},
@@ -57114,6 +57138,7 @@ static PyMethodDef module_methods[] = {
     {"ifcopenshell_parse_attribute_value_as_int32", py_ifcopenshell_parse_attribute_value_as_int32, METH_VARARGS, "Wrap ifcopenshell_parse_attribute_value_as_int32"},
     {"ifcopenshell_parse_attribute_value_as_int32_list", py_ifcopenshell_parse_attribute_value_as_int32_list, METH_VARARGS, "Wrap ifcopenshell_parse_attribute_value_as_int32_list"},
     {"ifcopenshell_parse_attribute_value_as_int32_list_list", py_ifcopenshell_parse_attribute_value_as_int32_list_list, METH_VARARGS, "Wrap ifcopenshell_parse_attribute_value_as_int32_list_list"},
+    {"ifcopenshell_parse_attribute_value_as_logical", py_ifcopenshell_parse_attribute_value_as_logical, METH_VARARGS, "Wrap ifcopenshell_parse_attribute_value_as_logical"},
     {"ifcopenshell_parse_attribute_value_as_string", py_ifcopenshell_parse_attribute_value_as_string, METH_VARARGS, "Wrap ifcopenshell_parse_attribute_value_as_string"},
     {"ifcopenshell_parse_attribute_value_as_string_list", py_ifcopenshell_parse_attribute_value_as_string_list, METH_VARARGS, "Wrap ifcopenshell_parse_attribute_value_as_string_list"},
     {"ifcopenshell_parse_attribute_value_is_null", py_ifcopenshell_parse_attribute_value_is_null, METH_VARARGS, "Wrap ifcopenshell_parse_attribute_value_is_null"},

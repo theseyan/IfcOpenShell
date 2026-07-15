@@ -509,12 +509,14 @@ inline std::size_t file_pointer(const express::Base& self) {
 
 inline unsigned int get_argument_index(const express::Base& self, const std::string& name) {
     if (self.declaration().as_entity()) {
-        return static_cast<unsigned int>(self.declaration().as_entity()->attribute_index(name));
-    }
-    if (name == "wrappedValue") {
+        const auto index = self.declaration().as_entity()->attribute_index(name);
+        if (index >= 0) {
+            return static_cast<unsigned int>(index);
+        }
+    } else if (name == "wrappedValue") {
         return 0u;
     }
-    throw ifcopenshell::exception(name + " not found on " + self.declaration().name());
+    throw ifcopenshell::exception("Attribute '" + name + "' not found on entity named " + self.declaration().name());
 }
 
 inline std::string get_argument_name(const express::Base& self, unsigned int index) {
@@ -740,15 +742,7 @@ inline attribute_value get_argument_by_name(
     express::Base& self,
     const std::string& name
 ) {
-    auto* entity = self.declaration().as_entity();
-    if (!entity) {
-        throw std::runtime_error("Attribute '" + name + "' not found on entity named " + self.declaration().name());
-    }
-    auto index = entity->attribute_index(name);
-    if (index == -1) {
-        throw std::runtime_error("Attribute '" + name + "' not found on entity named " + self.declaration().name());
-    }
-    return self.get_attribute_value(static_cast<unsigned>(index));
+    return self.get_attribute_value(get_argument_index(self, name));
 }
 
 inline IFCAPI_STATIC const char* get_argument_type(express::Base& self, unsigned int index) {
@@ -828,6 +822,14 @@ inline int as_int32(attribute_value& self) {
 
 inline bool as_bool(attribute_value& self) {
     return static_cast<bool>(self);
+}
+
+inline int as_logical(attribute_value& self) {
+    const boost::logic::tribool value = self;
+    if (boost::logic::indeterminate(value)) {
+        return -1;
+    }
+    return value ? 1 : 0;
 }
 
 inline double as_double(attribute_value& self) {
