@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import math
+
 from ifcopenshell import (
     ATTR_AGGREGATE,
     ATTR_BOOL,
@@ -748,6 +750,7 @@ class entity_instance:
 
         value = self._coerce_to_declared_type(name, value)
         idx = self._attr_index(name)
+        primitive = self._declared_attribute_primitive(name)
 
         # Record the edit before mutation so the transaction captures the
         # pre-image. Only entities that belong to a file (id != 0) are tracked.
@@ -762,6 +765,8 @@ class entity_instance:
 
         if value is None:
             _capi.instance_unset_argument(h, idx)
+        elif primitive == "logical":
+            _capi.instance_set_argument_logical(h, idx, value)
         elif isinstance(value, bool):
             _capi.instance_set_argument_bool(h, idx, value)
         elif isinstance(value, int):
@@ -772,7 +777,12 @@ class entity_instance:
             _capi.instance_set_argument_instance(h, idx, value._handle)
         elif isinstance(value, str):
             if self._declared_attribute_primitive(name) == "enum":
-                _capi.instance_set_argument_enumeration_by_name(h, idx, value)
+                try:
+                    valid = _capi.instance_set_argument_enumeration_by_name(h, idx, value)
+                except RuntimeError as error:
+                    raise ValueError(f"Invalid enumeration value {value!r} for attribute '{name}'") from error
+                if not valid:
+                    raise ValueError(f"Invalid enumeration value {value!r} for attribute '{name}'")
             else:
                 _capi.instance_set_argument_string(h, idx, value)
         elif isinstance(value, (list, tuple)):
@@ -786,10 +796,10 @@ class entity_instance:
         Mirrors SWIG's implicit coercion: e.g. passing int 123 for an
         IfcLabel attribute yields the string "123".
         """
-        if value is None or isinstance(value, (list, tuple, entity_instance)):
+        if value is None:
             return value
         try:
-            from ifcopenshell.util.attribute import get_primitive_type
+            from ifcopenshell.util.attribute import get_enum_items, get_primitive_type
             decl = self.declaration()
             for a in decl.all_attributes():
                 if a.name() == name:
@@ -798,6 +808,8 @@ class entity_instance:
                         pt = self._declared_attribute_primitive(name)
                     try:
                         attr_type = str(a.type_of_attribute()).lower()
+                        if self._declared_attribute_primitive(name) == "logical":
+                            pt = "logical"
                     except Exception:
                         attr_type = ""
                     break
@@ -805,31 +817,51 @@ class entity_instance:
                 return value
         except Exception:
             return value
-        if isinstance(pt, tuple):  # aggregate
+        if isinstance(pt, tuple):
+            if pt and pt[0] == "select":
+                if not isinstance(value, entity_instance):
+                    raise TypeError(f"Attribute '{name}' requires a typed IFC select value")
+                return value
+            if not isinstance(value, (list, tuple)):
+                raise TypeError(f"Aggregate attribute '{name}' requires a list or tuple")
+            return value
+        if pt == "entity":
+            if not isinstance(value, entity_instance):
+                raise TypeError(f"Entity attribute '{name}' requires an IFC entity instance")
             return value
         if pt == "string":
             if isinstance(value, bool):
                 return "TRUE" if value else "FALSE"
             if isinstance(value, (int, float)):
                 return str(value)
-            return value
+            if isinstance(value, str):
+                return value
+            raise TypeError(f"String attribute '{name}' requires a scalar value")
         if pt == "integer":
             if isinstance(value, str):
                 try:
                     return int(value)
-                except ValueError:
-                    return value
+                except ValueError as error:
+                    raise ValueError(f"Integer attribute '{name}' requires an integer value") from error
             if isinstance(value, float):
+                if not math.isfinite(value):
+                    raise ValueError(f"Integer attribute '{name}' requires a finite value")
                 if "<number>" in attr_type:
                     return value
                 return int(value)
-            return value
+            if isinstance(value, (bool, int)):
+                return value
+            raise TypeError(f"Integer attribute '{name}' requires a numeric value")
         if pt == "float":
             if isinstance(value, (int, str)):
                 try:
-                    return float(value)
-                except (TypeError, ValueError):
-                    return value
+                    value = float(value)
+                except (TypeError, ValueError) as error:
+                    raise ValueError(f"Float attribute '{name}' requires a numeric value") from error
+            if not isinstance(value, float):
+                raise TypeError(f"Float attribute '{name}' requires a numeric value")
+            if not math.isfinite(value):
+                raise ValueError(f"Float attribute '{name}' requires a finite value")
             return value
         if pt == "boolean":
             if isinstance(value, str):
@@ -837,8 +869,31 @@ class entity_instance:
                     return True
                 if value.upper() in ("FALSE", "F", ".F."):
                     return False
+                raise ValueError(f"Boolean attribute '{name}' requires a boolean value")
             if isinstance(value, (int, float)):
                 return bool(value)
+            if isinstance(value, bool):
+                return value
+            raise TypeError(f"Boolean attribute '{name}' requires a boolean value")
+        if pt == "logical":
+            if isinstance(value, bool):
+                return 1 if value else 0
+            if isinstance(value, int) and value in (-1, 0, 1):
+                return value
+            if isinstance(value, str):
+                logical = value.upper()
+                if logical in ("TRUE", "T", ".T."):
+                    return 1
+                if logical in ("FALSE", "F", ".F."):
+                    return 0
+                if logical in ("UNKNOWN", "U", ".U."):
+                    return -1
+            raise ValueError(f"Logical attribute '{name}' requires TRUE, FALSE, or UNKNOWN")
+        if pt == "enum":
+            if not isinstance(value, str):
+                raise TypeError(f"Enumeration attribute '{name}' requires a string value")
+            if "<logical>" not in attr_type and value not in get_enum_items(a):
+                raise ValueError(f"Invalid enumeration value {value!r} for attribute '{name}'")
             return value
         return value
 
@@ -867,11 +922,13 @@ class entity_instance:
                         primitive = get_primitive_type(a)
                     except Exception:
                         primitive = None
-                    if primitive is not None:
-                        return primitive
                     pt = a.type_of_attribute()
                     pt_handle = getattr(pt, "_h", None) or pt
                     arg_type = _capi.argument_type_to_string(_capi.from_parameter_type(pt_handle))
+                    if arg_type == "LOGICAL":
+                        return "logical"
+                    if primitive is not None:
+                        return primitive
                     return _primitive_from_argument_type(arg_type)
         except Exception:
             return None

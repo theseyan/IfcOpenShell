@@ -29,6 +29,7 @@
 #include <array>
 #include <cmath>
 #include <cstring>
+#include <limits>
 #include <memory>
 #include <regex>
 #include <string>
@@ -133,6 +134,214 @@ bool vals_equal(const Val* a, const ifcopenshell_selector_value_t* b) {
             return true;
         }
         default: return false;
+    }
+}
+
+bool instance_matches_type(express::Base value, const ifcopenshell::parameter_type* type) {
+    if (!value || !type) return false;
+    if (auto named = type->as_named_type()) {
+        const auto* declaration = named->declared_type();
+        if (!declaration) return false;
+        if (auto type_declaration = declaration->as_type_declaration()) {
+            return instance_matches_type(value, type_declaration->declared_type());
+        }
+        if (auto select = declaration->as_select_type()) {
+            for (const auto* option : select->select_list()) {
+                if (!option) continue;
+                if (const auto* nested_select = option->as_select_type()) {
+                    for (const auto* nested_option : nested_select->select_list()) {
+                        if (nested_option && value.declaration().is(*nested_option)) return true;
+                    }
+                } else if (value.declaration().is(*option)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+        return value.declaration().is(*declaration);
+    }
+    return false;
+}
+
+const ifcopenshell::aggregation_type* aggregation_type_for(const ifcopenshell::parameter_type* type) {
+    while (type) {
+        if (const auto* aggregate = type->as_aggregation_type()) return aggregate;
+        const auto* named = type->as_named_type();
+        const auto* declaration = named ? named->declared_type() : nullptr;
+        const auto* type_declaration = declaration ? declaration->as_type_declaration() : nullptr;
+        if (!type_declaration) return nullptr;
+        type = type_declaration->declared_type();
+    }
+    return nullptr;
+}
+
+[[noreturn]] void invalid_aggregate_value(const std::string& key, const std::string& reason) {
+    throw std::runtime_error("Cannot set aggregate attribute '" + key + "': " + reason);
+}
+
+[[noreturn]] void invalid_scalar_value(const std::string& key, const std::string& reason) {
+    throw std::runtime_error("Cannot set attribute '" + key + "': " + reason);
+}
+
+double parse_double(const std::string& value, const std::string& key) {
+    size_t end = 0;
+    double result;
+    try {
+        result = std::stod(value, &end);
+    } catch (...) {
+        invalid_scalar_value(key, "expected a number");
+    }
+    while (end < value.size() && std::isspace(static_cast<unsigned char>(value[end]))) ++end;
+    if (end != value.size() || !std::isfinite(result)) invalid_scalar_value(key, "expected a finite number");
+    return result;
+}
+
+int parse_int(const std::string& value, const std::string& key) {
+    size_t end = 0;
+    long long result;
+    try {
+        result = std::stoll(value, &end);
+    } catch (...) {
+        invalid_scalar_value(key, "expected an integer");
+    }
+    while (end < value.size() && std::isspace(static_cast<unsigned char>(value[end]))) ++end;
+    if (end != value.size() || result < std::numeric_limits<int>::min() ||
+        result > std::numeric_limits<int>::max()) {
+        invalid_scalar_value(key, "expected an integer in the supported range");
+    }
+    return static_cast<int>(result);
+}
+
+void set_aggregate_attribute(express::Base entity,
+                             size_t index,
+                             const std::string& key,
+                             const ifcopenshell::aggregation_type* aggregate,
+                             const ifcopenshell_selector_value_t* value) {
+    if (!aggregate || !value || value->kind != IFCSEL_VALUE_LIST) {
+        invalid_aggregate_value(key, "expected a list value");
+    }
+
+    const auto require_kind = [&](const ifcopenshell_selector_value_t* item,
+                                  ifcopenshell_selector_value_kind_t kind,
+                                  const char* expected) {
+        if (!item || item->kind != kind) {
+            invalid_aggregate_value(key, std::string("expected ") + expected + " list items");
+        }
+    };
+    const auto argument_type = ifcopenshell::from_parameter_type(aggregate);
+    switch (argument_type) {
+        case ifcopenshell::Argument_AGGREGATE_OF_INT: {
+            std::vector<int> result;
+            result.reserve(value->list_val.size());
+            for (const auto* item : value->list_val) {
+                require_kind(item, IFCSEL_VALUE_INT, "integer");
+                result.push_back(static_cast<int>(item->i_val));
+            }
+            entity.set_attribute_value(index, result);
+            return;
+        }
+        case ifcopenshell::Argument_AGGREGATE_OF_DOUBLE: {
+            std::vector<double> result;
+            result.reserve(value->list_val.size());
+            for (const auto* item : value->list_val) {
+                if (!item || (item->kind != IFCSEL_VALUE_DOUBLE && item->kind != IFCSEL_VALUE_INT)) {
+                    invalid_aggregate_value(key, "expected numeric list items");
+                }
+                const double converted =
+                    item->kind == IFCSEL_VALUE_INT ? static_cast<double>(item->i_val) : item->d_val;
+                if (!std::isfinite(converted)) {
+                    invalid_aggregate_value(key, "expected finite numeric list items");
+                }
+                result.push_back(converted);
+            }
+            entity.set_attribute_value(index, result);
+            return;
+        }
+        case ifcopenshell::Argument_AGGREGATE_OF_STRING: {
+            std::vector<std::string> result;
+            result.reserve(value->list_val.size());
+            for (const auto* item : value->list_val) {
+                require_kind(item, IFCSEL_VALUE_STRING, "string");
+                result.push_back(item->s_val);
+            }
+            entity.set_attribute_value(index, result);
+            return;
+        }
+        case ifcopenshell::Argument_AGGREGATE_OF_ENTITY_INSTANCE: {
+            std::vector<express::Base> result;
+            result.reserve(value->list_val.size());
+            for (const auto* item : value->list_val) {
+                require_kind(item, IFCSEL_VALUE_INSTANCE, "entity");
+                if (!instance_matches_type(item->inst_val, aggregate->type_of_element())) {
+                    invalid_aggregate_value(key, "entity list item has an incompatible schema type");
+                }
+                result.push_back(item->inst_val);
+            }
+            entity.set_attribute_value(index, result);
+            return;
+        }
+        case ifcopenshell::Argument_AGGREGATE_OF_AGGREGATE_OF_INT: {
+            std::vector<std::vector<int>> result;
+            result.reserve(value->list_val.size());
+            for (const auto* row : value->list_val) {
+                require_kind(row, IFCSEL_VALUE_LIST, "list");
+                std::vector<int> converted;
+                converted.reserve(row->list_val.size());
+                for (const auto* item : row->list_val) {
+                    require_kind(item, IFCSEL_VALUE_INT, "integer");
+                    converted.push_back(static_cast<int>(item->i_val));
+                }
+                result.push_back(std::move(converted));
+            }
+            entity.set_attribute_value(index, result);
+            return;
+        }
+        case ifcopenshell::Argument_AGGREGATE_OF_AGGREGATE_OF_DOUBLE: {
+            std::vector<std::vector<double>> result;
+            result.reserve(value->list_val.size());
+            for (const auto* row : value->list_val) {
+                require_kind(row, IFCSEL_VALUE_LIST, "list");
+                std::vector<double> converted;
+                converted.reserve(row->list_val.size());
+                for (const auto* item : row->list_val) {
+                    if (!item || (item->kind != IFCSEL_VALUE_DOUBLE && item->kind != IFCSEL_VALUE_INT)) {
+                        invalid_aggregate_value(key, "expected numeric list items");
+                    }
+                    const double converted_item =
+                        item->kind == IFCSEL_VALUE_INT ? static_cast<double>(item->i_val) : item->d_val;
+                    if (!std::isfinite(converted_item)) {
+                        invalid_aggregate_value(key, "expected finite numeric list items");
+                    }
+                    converted.push_back(converted_item);
+                }
+                result.push_back(std::move(converted));
+            }
+            entity.set_attribute_value(index, result);
+            return;
+        }
+        case ifcopenshell::Argument_AGGREGATE_OF_AGGREGATE_OF_ENTITY_INSTANCE: {
+            const auto* inner_aggregate = aggregation_type_for(aggregate->type_of_element());
+            if (!inner_aggregate) invalid_aggregate_value(key, "invalid nested aggregate schema type");
+            std::vector<std::vector<express::Base>> result;
+            result.reserve(value->list_val.size());
+            for (const auto* row : value->list_val) {
+                require_kind(row, IFCSEL_VALUE_LIST, "list");
+                std::vector<express::Base> converted;
+                converted.reserve(row->list_val.size());
+                for (const auto* item : row->list_val) {
+                    require_kind(item, IFCSEL_VALUE_INSTANCE, "entity");
+                    if (!instance_matches_type(item->inst_val, inner_aggregate->type_of_element())) {
+                        invalid_aggregate_value(key, "entity list item has an incompatible schema type");
+                    }
+                    converted.push_back(item->inst_val);
+                }
+                result.push_back(std::move(converted));
+            }
+            entity.set_attribute_value(index, result);
+            return;
+        }
+        default:
+            invalid_aggregate_value(key, "unsupported aggregate element type");
     }
 }
 
@@ -339,11 +548,17 @@ void apply_set_predefined_type(ifcopenshell::file* /*file*/, express::Base eleme
     bool value_is_none = val_is_none(value);
     std::string value_str = val_to_string(value);
 
+    const auto set_predefined_type = [&](const std::string& item) {
+        if (!ifcopenshell::capi::set_instance_argument_enumeration_by_name(element, (size_t)idx, item)) {
+            throw std::runtime_error("PredefinedType enumeration metadata is unavailable");
+        }
+    };
+
     if (value_is_none || value_str == "NOTDEFINED" || value_str == "USERDEFINED") {
-        try { element.set_attribute_value((size_t)idx, std::string("NOTDEFINED")); } catch (...) {}
+        set_predefined_type("NOTDEFINED");
         int t_idx = ifcapi::find_attr_idx(element, type_attr_name);
         if (t_idx >= 0) {
-            try { element.set_attribute_value((size_t)t_idx, blank{}); } catch (...) {}
+            element.set_attribute_value((size_t)t_idx, blank{});
         }
         return;
     }
@@ -351,16 +566,16 @@ void apply_set_predefined_type(ifcopenshell::file* /*file*/, express::Base eleme
     bool in_enum = std::find(enum_items.begin(), enum_items.end(), value_str) != enum_items.end();
     if (in_enum) {
         if (current_pt == value_str) return;
-        try { element.set_attribute_value((size_t)idx, value_str); } catch (...) {}
+        set_predefined_type(value_str);
         return;
     }
 
     if (current_pt != "USERDEFINED") {
-        try { element.set_attribute_value((size_t)idx, std::string("USERDEFINED")); } catch (...) {}
+        set_predefined_type("USERDEFINED");
     }
     int t_idx = ifcapi::find_attr_idx(element, type_attr_name);
     if (t_idx >= 0) {
-        try { element.set_attribute_value((size_t)t_idx, value_str); } catch (...) {}
+        element.set_attribute_value((size_t)t_idx, value_str);
     }
 }
 
@@ -585,46 +800,65 @@ void setattr_with_cast(ifcopenshell::file* file, express::Base e,
     const char* dt = ifcapi::bindings::attribute_get_primitive_type(attr);
     std::string dts = dt ? dt : "";
 
-    auto try_set_none = [&]() {
-        try { e.set_attribute_value((size_t)idx, blank{}); } catch (...) {}
-    };
-
     if (val_is_none(value)) {
-        try_set_none();
+        e.set_attribute_value((size_t)idx, blank{});
         return;
     }
 
-    try {
-        if (dts == "string") {
+    if (const auto* aggregate = aggregation_type_for(attr->type_of_attribute())) {
+        set_aggregate_attribute(e, (size_t)idx, key, aggregate, value);
+        return;
+    }
+
+    const auto argument_type = ifcopenshell::from_parameter_type(attr->type_of_attribute());
+    switch (argument_type) {
+        case ifcopenshell::Argument_STRING: {
             std::string s;
             switch (value->kind) {
                 case IFCSEL_VALUE_STRING: s = value->s_val; break;
                 case IFCSEL_VALUE_INT:    s = std::to_string(value->i_val); break;
                 case IFCSEL_VALUE_DOUBLE: s = std::to_string(value->d_val); break;
                 case IFCSEL_VALUE_BOOL:   s = value->b_val ? "True" : "False"; break;
-                default: s = val_to_string(value); break;
+                default: invalid_scalar_value(key, "expected a scalar string-convertible value");
             }
             e.set_attribute_value((size_t)idx, s);
-        } else if (dts == "float") {
-            double d = 0.0;
-            if (value->kind == IFCSEL_VALUE_DOUBLE) d = value->d_val;
-            else if (value->kind == IFCSEL_VALUE_INT) d = (double)value->i_val;
+            return;
+        }
+        case ifcopenshell::Argument_DOUBLE: {
+            double d;
+            if (value->kind == IFCSEL_VALUE_DOUBLE) {
+                if (!std::isfinite(value->d_val)) invalid_scalar_value(key, "expected a finite number");
+                d = value->d_val;
+            }
+            else if (value->kind == IFCSEL_VALUE_INT) d = static_cast<double>(value->i_val);
             else if (value->kind == IFCSEL_VALUE_BOOL) d = value->b_val ? 1.0 : 0.0;
-            else if (value->kind == IFCSEL_VALUE_STRING) {
-                try { d = std::stod(value->s_val); } catch (...) { d = 0.0; }
-            }
+            else if (value->kind == IFCSEL_VALUE_STRING) d = parse_double(value->s_val, key);
+            else invalid_scalar_value(key, "expected a number");
             e.set_attribute_value((size_t)idx, d);
-        } else if (dts == "integer") {
-            int iv = 0;
-            if (value->kind == IFCSEL_VALUE_INT) iv = (int)value->i_val;
-            else if (value->kind == IFCSEL_VALUE_DOUBLE) iv = (int)value->d_val;
-            else if (value->kind == IFCSEL_VALUE_BOOL) iv = value->b_val ? 1 : 0;
-            else if (value->kind == IFCSEL_VALUE_STRING) {
-                try { iv = std::stoi(value->s_val); } catch (...) { iv = 0; }
-            }
+            return;
+        }
+        case ifcopenshell::Argument_INT: {
+            int iv;
+            if (value->kind == IFCSEL_VALUE_INT) {
+                if (value->i_val < std::numeric_limits<int>::min() ||
+                    value->i_val > std::numeric_limits<int>::max()) {
+                    invalid_scalar_value(key, "integer is outside the supported range");
+                }
+                iv = static_cast<int>(value->i_val);
+            } else if (value->kind == IFCSEL_VALUE_DOUBLE) {
+                if (!std::isfinite(value->d_val) || value->d_val < std::numeric_limits<int>::min() ||
+                    value->d_val > std::numeric_limits<int>::max()) {
+                    invalid_scalar_value(key, "number is outside the supported integer range");
+                }
+                iv = static_cast<int>(value->d_val);
+            } else if (value->kind == IFCSEL_VALUE_BOOL) iv = value->b_val ? 1 : 0;
+            else if (value->kind == IFCSEL_VALUE_STRING) iv = parse_int(value->s_val, key);
+            else invalid_scalar_value(key, "expected an integer");
             e.set_attribute_value((size_t)idx, iv);
-        } else if (dts == "boolean") {
-            bool b = false;
+            return;
+        }
+        case ifcopenshell::Argument_BOOL: {
+            bool b;
             if (value->kind == IFCSEL_VALUE_BOOL) b = value->b_val;
             else if (value->kind == IFCSEL_VALUE_INT) b = value->i_val != 0;
             else if (value->kind == IFCSEL_VALUE_DOUBLE) b = value->d_val != 0.0;
@@ -633,42 +867,53 @@ void setattr_with_cast(ifcopenshell::file* file, express::Base e,
                 if (s == "True" || s == "true" || s == "TRUE" || s == "Yes" || s == "1") b = true;
                 else if (s == "False" || s == "false" || s == "FALSE" || s == "No" || s == "0") b = false;
                 else b = !s.empty();
-            }
+            } else invalid_scalar_value(key, "expected a boolean");
             e.set_attribute_value((size_t)idx, b);
-        } else if (dts == "entity") {
-            express::Base ref = {};
+            return;
+        }
+        case ifcopenshell::Argument_LOGICAL: {
+            boost::logic::tribool logical(boost::logic::indeterminate);
+            if (value->kind == IFCSEL_VALUE_BOOL) logical = value->b_val;
+            else if (value->kind == IFCSEL_VALUE_INT) {
+                if (value->i_val == 0) logical = false;
+                else if (value->i_val == 1) logical = true;
+                else if (value->i_val != -1 && value->i_val != 2)
+                    invalid_scalar_value(key, "expected a logical value");
+            } else if (value->kind == IFCSEL_VALUE_STRING) {
+                const std::string s = lower(value->s_val);
+                if (s == "true" || s == "t" || s == ".t.") logical = true;
+                else if (s == "false" || s == "f" || s == ".f.") logical = false;
+                else if (s != "unknown" && s != "u" && s != ".u.")
+                    invalid_scalar_value(key, "expected a logical value");
+            } else invalid_scalar_value(key, "expected a logical value");
+            e.set_attribute_value((size_t)idx, logical);
+            return;
+        }
+        case ifcopenshell::Argument_ENTITY_INSTANCE: {
+            express::Base ref;
             if (value->kind == IFCSEL_VALUE_INSTANCE) ref = value->inst_val;
-            else if (value->kind == IFCSEL_VALUE_STRING) {
-                try { ref = file->instance_by_guid(value->s_val); }
-                catch (...) { ref = {}; }
+            else if (value->kind == IFCSEL_VALUE_STRING) ref = file->instance_by_guid(value->s_val);
+            else invalid_scalar_value(key, "expected an entity or GlobalId");
+            if (!instance_matches_type(ref, attr->type_of_attribute())) {
+                invalid_scalar_value(key, "entity has an incompatible schema type");
             }
             e.set_attribute_value((size_t)idx, ref);
-        } else if (dts == "enum") {
-            std::string s = (value->kind == IFCSEL_VALUE_STRING) ? value->s_val : val_to_string(value);
-            e.set_attribute_value((size_t)idx, s);
-        } else {
-            /* Unknown primitive — fall back to raw value of matching kind. */
-            switch (value->kind) {
-                case IFCSEL_VALUE_STRING: e.set_attribute_value((size_t)idx, value->s_val); break;
-                case IFCSEL_VALUE_INT:    e.set_attribute_value((size_t)idx, (int)value->i_val); break;
-                case IFCSEL_VALUE_DOUBLE: e.set_attribute_value((size_t)idx, value->d_val); break;
-                case IFCSEL_VALUE_BOOL:   e.set_attribute_value((size_t)idx, value->b_val); break;
-                case IFCSEL_VALUE_INSTANCE: e.set_attribute_value((size_t)idx, value->inst_val); break;
-                default: break;
-            }
+            return;
         }
-    } catch (...) {
-        /* Fallback: try the raw value type. */
-        try {
-            switch (value->kind) {
-                case IFCSEL_VALUE_STRING: e.set_attribute_value((size_t)idx, value->s_val); break;
-                case IFCSEL_VALUE_INT:    e.set_attribute_value((size_t)idx, (int)value->i_val); break;
-                case IFCSEL_VALUE_DOUBLE: e.set_attribute_value((size_t)idx, value->d_val); break;
-                case IFCSEL_VALUE_BOOL:   e.set_attribute_value((size_t)idx, value->b_val); break;
-                case IFCSEL_VALUE_INSTANCE: e.set_attribute_value((size_t)idx, value->inst_val); break;
-                default: break;
+        case ifcopenshell::Argument_ENUMERATION:
+            if (value->kind != IFCSEL_VALUE_STRING) invalid_scalar_value(key, "expected an enumeration name");
+            if (!ifcopenshell::capi::set_instance_argument_enumeration_by_name(e, (size_t)idx, value->s_val)) {
+                invalid_scalar_value(key, "attribute enumeration metadata is unavailable");
             }
-        } catch (...) {}
+            return;
+        case ifcopenshell::Argument_BINARY:
+            if (value->kind != IFCSEL_VALUE_STRING || !ifcopenshell::valid_binary_string(value->s_val)) {
+                invalid_scalar_value(key, "expected a valid binary string");
+            }
+            e.set_attribute_value((size_t)idx, boost::dynamic_bitset<>(value->s_val));
+            return;
+        default:
+            invalid_scalar_value(key, "unsupported schema attribute type '" + dts + "'");
     }
 }
 
@@ -771,11 +1016,14 @@ int do_set(ifcopenshell::file* file,
                     double prev = matrix[(size_t)ci * 4 + 3];
                     double newv = 0.0;
                     if (val_truthy(value)) {
-                        if (value->kind == IFCSEL_VALUE_DOUBLE) newv = value->d_val;
+                        if (value->kind == IFCSEL_VALUE_DOUBLE) {
+                            if (!std::isfinite(value->d_val)) invalid_scalar_value(k, "expected a finite number");
+                            newv = value->d_val;
+                        }
                         else if (value->kind == IFCSEL_VALUE_INT) newv = (double)value->i_val;
-                        else if (value->kind == IFCSEL_VALUE_STRING) {
-                            try { newv = std::stod(value->s_val); } catch (...) { newv = 0.0; }
-                        } else if (value->kind == IFCSEL_VALUE_BOOL) newv = value->b_val ? 1.0 : 0.0;
+                        else if (value->kind == IFCSEL_VALUE_STRING) newv = parse_double(value->s_val, k);
+                        else if (value->kind == IFCSEL_VALUE_BOOL) newv = value->b_val ? 1.0 : 0.0;
+                        else invalid_scalar_value(k, "expected a number");
                     }
                     if (ifcapi::bindings::shape_is_almost_equal(newv, prev, 0.0)) return 0;
 

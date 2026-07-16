@@ -218,6 +218,43 @@ describeGeneratedOrSkip('direct api modules', () => {
     expect(shell.api.selector.getElementValue(file, wall, 'Name')).toBe('Updated');
   });
 
+  it('sets aggregate selector values without corrupting entity storage', async () => {
+    await using file = await IfcFile.createEmpty(shell, 'IFC4');
+    const representation = file.create('IfcShapeRepresentation');
+    const definition = file.create('IfcProductDefinitionShape');
+    const wall = file.create('IfcWall');
+    wall.set('Representation', definition);
+
+    shell.api.selector.setElementValue(
+      file, definition, 'Representations', [representation], ', ',
+    );
+
+    expect(await definition.get('Representations')).toEqual([representation]);
+    expect(() => shell.api.selector.setElementValue(
+      file, definition, 'Representations', representation, ', ',
+    )).toThrow();
+    expect(await definition.get('Representations')).toEqual([representation]);
+    expect(() => shell.api.root.removeProduct(file, wall, {})).not.toThrow();
+  });
+
+  it('validates scalar selector values before mutation', async () => {
+    await using file = await IfcFile.createEmpty(shell, 'IFC4');
+    const layer = file.create('IfcMaterialLayer');
+    layer.set('LayerThickness', 2.5);
+    const wall = file.create('IfcWall');
+
+    expect(() => shell.api.selector.setElementValue(
+      file, layer, 'LayerThickness', 'not-a-number', ', ',
+    )).toThrow();
+    expect(await layer.get('LayerThickness')).toBe(2.5);
+
+    shell.api.selector.setElementValue(
+      file, wall, 'PredefinedType', 'USERDEFINED', ', ',
+    );
+    expect(await wall.get('PredefinedType')).toBe('USERDEFINED');
+    expect(wall.text()).toContain('.USERDEFINED.');
+  });
+
   it('encodes and decodes generated dynamic value data', async () => {
     await using file = await IfcFile.createEmpty(shell, 'IFC4');
     const project = await shell.api.root.createEntity(file, {

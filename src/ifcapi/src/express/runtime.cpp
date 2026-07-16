@@ -673,6 +673,19 @@ Value materialize_impl(const Value& v, ProxyMaterializationCache& cache) {
     }
 }
 
+const ifcopenshell::enumeration_type* enumeration_type_for(const ifcopenshell::parameter_type* type) {
+    while (type) {
+        const auto* named = type->as_named_type();
+        const auto* declaration = named ? named->declared_type() : nullptr;
+        if (!declaration) return nullptr;
+        if (const auto* enumeration = declaration->as_enumeration_type()) return enumeration;
+        const auto* type_declaration = declaration->as_type_declaration();
+        if (!type_declaration) return nullptr;
+        type = type_declaration->declared_type();
+    }
+    return nullptr;
+}
+
 // Set a single attribute on `e` from a Value, dispatching on the
 // declared parameter type. Returns true on success. Unsupported / type
 // mismatched assignments silently fail (return false) — a rule that
@@ -680,100 +693,158 @@ Value materialize_impl(const Value& v, ProxyMaterializationCache& cache) {
 bool set_attr_from_value(::express::Base* e, size_t idx, const Value& v) {
     if (v.is_indeterminate()) return false;
     if (!e || !*e) return false;
+    const auto* entity = e->declaration().as_entity();
+    if (!entity || idx >= entity->attribute_count()) return false;
+    const auto* attribute = entity->attribute_by_index(idx);
+    if (!attribute) return false;
+    const auto argument_type = ifcopenshell::from_parameter_type(attribute->type_of_attribute());
     try {
-        switch (v.tag()) {
-            case Value::Tag::Bool:   e->set_attribute_value(idx, v.as_bool()); return true;
-            case Value::Tag::Int:    e->set_attribute_value(idx, static_cast<int>(v.as_int())); return true;
-            case Value::Tag::Real:   e->set_attribute_value(idx, v.as_double()); return true;
-            case Value::Tag::Str:    e->set_attribute_value(idx, v.as_string()); return true;
-            case Value::Tag::Entity: {
+        switch (argument_type) {
+            case ifcopenshell::Argument_BOOL:
+                if (!v.is_bool()) return false;
+                e->set_attribute_value(idx, v.as_bool());
+                return true;
+            case ifcopenshell::Argument_LOGICAL: {
+                boost::logic::tribool value(boost::logic::indeterminate);
+                if (v.is_bool()) value = v.as_bool();
+                else if (!v.is_string() || v.as_string() != "UNKNOWN") return false;
+                e->set_attribute_value(idx, value);
+                return true;
+            }
+            case ifcopenshell::Argument_INT:
+                if (!v.is_int()) return false;
+                e->set_attribute_value(idx, static_cast<int>(v.as_int()));
+                return true;
+            case ifcopenshell::Argument_DOUBLE:
+                if (!v.is_number()) return false;
+                e->set_attribute_value(idx, v.as_double());
+                return true;
+            case ifcopenshell::Argument_STRING:
+                if (!v.is_string()) return false;
+                e->set_attribute_value(idx, v.as_string());
+                return true;
+            case ifcopenshell::Argument_BINARY:
+                if (!v.is_string() || !ifcopenshell::valid_binary_string(v.as_string())) return false;
+                e->set_attribute_value(idx, boost::dynamic_bitset<>(v.as_string()));
+                return true;
+            case ifcopenshell::Argument_ENUMERATION: {
+                if (!v.is_string()) return false;
+                const auto* enumeration = enumeration_type_for(attribute->type_of_attribute());
+                if (!enumeration) return false;
+                const auto& items = enumeration->enumeration_items();
+                const auto it = std::find(items.begin(), items.end(), v.as_string());
+                if (it == items.end()) return false;
+                e->set_attribute_value(
+                    idx, enumeration_reference(enumeration, static_cast<size_t>(std::distance(items.begin(), it))));
+                return true;
+            }
+            case ifcopenshell::Argument_ENTITY_INSTANCE: {
+                if (!v.is_entity()) return false;
                 auto* p = as_base_handle(v.as_entity());
                 if (p && *p) e->set_attribute_value(idx, *p);
                 return p && *p;
             }
-            case Value::Tag::List: {
-                const auto& l = v.as_list();
-                if (l.empty()) {
-                    // Empty aggregate type-agnostic; default to vector<double>.
-                    e->set_attribute_value(idx, std::vector<double>{});
-                    return true;
+            case ifcopenshell::Argument_AGGREGATE_OF_INT: {
+                if (!v.is_list()) return false;
+                std::vector<int> out;
+                out.reserve(v.as_list().size());
+                for (const auto& item : v.as_list()) {
+                    if (!item.is_int()) return false;
+                    out.push_back(static_cast<int>(item.as_int()));
                 }
-                // Dispatch on element type; assume homogeneous.
-                switch (l[0].tag()) {
-                    case Value::Tag::Real:
-                    case Value::Tag::Int: {
-                        std::vector<double> out;
-                        out.reserve(l.size());
-                        for (const auto& it : l) {
-                            if (it.is_indeterminate()) return false;
-                            out.push_back(it.is_int() ? static_cast<double>(it.as_int())
-                                                      : it.as_double());
-                        }
-                        e->set_attribute_value(idx, out);
-                        return true;
-                    }
-                    case Value::Tag::Str: {
-                        std::vector<std::string> out;
-                        out.reserve(l.size());
-                        for (const auto& it : l) out.push_back(it.as_string());
-                        e->set_attribute_value(idx, out);
-                        return true;
-                    }
-                    case Value::Tag::Entity: {
-                        std::vector<::express::Base> out;
-                        out.reserve(l.size());
-                        for (const auto& it : l) {
-                            if (!it.is_entity()) return false;
-                            auto* p = as_base_handle(it.as_entity());
-                            if (!p || !*p) return false;
-                            out.push_back(*p);
-                        }
-                        e->set_attribute_value(idx, out);
-                        return true;
-                    }
-                    case Value::Tag::List: {
-                        const auto& first = l[0].as_list();
-                        if (first.empty()) return false;
-                        if (first[0].is_number()) {
-                            std::vector<std::vector<double>> out;
-                            out.reserve(l.size());
-                            for (const auto& row_v : l) {
-                                if (!row_v.is_list()) return false;
-                                std::vector<double> row;
-                                row.reserve(row_v.as_list().size());
-                                for (const auto& item : row_v.as_list()) {
-                                    if (!item.is_number()) return false;
-                                    row.push_back(item.as_double());
-                                }
-                                out.push_back(std::move(row));
-                            }
-                            e->set_attribute_value(idx, out);
-                            return true;
-                        }
-                        if (first[0].is_entity()) {
-                            std::vector<std::vector<::express::Base>> out;
-                            out.reserve(l.size());
-                            for (const auto& row_v : l) {
-                                if (!row_v.is_list()) return false;
-                                std::vector<::express::Base> row;
-                                row.reserve(row_v.as_list().size());
-                                for (const auto& item : row_v.as_list()) {
-                                    if (!item.is_entity()) return false;
-                                    auto* p = as_base_handle(item.as_entity());
-                                    if (!p || !*p) return false;
-                                    row.push_back(*p);
-                                }
-                                out.push_back(std::move(row));
-                            }
-                            e->set_attribute_value(idx, out);
-                            return true;
-                        }
-                        return false;
-                    }
-                    default: return false;
-                }
+                e->set_attribute_value(idx, out);
+                return true;
             }
-            default: return false;
+            case ifcopenshell::Argument_AGGREGATE_OF_DOUBLE: {
+                if (!v.is_list()) return false;
+                std::vector<double> out;
+                out.reserve(v.as_list().size());
+                for (const auto& item : v.as_list()) {
+                    if (!item.is_number()) return false;
+                    out.push_back(item.as_double());
+                }
+                e->set_attribute_value(idx, out);
+                return true;
+            }
+            case ifcopenshell::Argument_AGGREGATE_OF_STRING: {
+                if (!v.is_list()) return false;
+                std::vector<std::string> out;
+                out.reserve(v.as_list().size());
+                for (const auto& item : v.as_list()) {
+                    if (!item.is_string()) return false;
+                    out.push_back(item.as_string());
+                }
+                e->set_attribute_value(idx, out);
+                return true;
+            }
+            case ifcopenshell::Argument_AGGREGATE_OF_ENTITY_INSTANCE: {
+                if (!v.is_list()) return false;
+                std::vector<::express::Base> out;
+                out.reserve(v.as_list().size());
+                for (const auto& item : v.as_list()) {
+                    if (!item.is_entity()) return false;
+                    auto* p = as_base_handle(item.as_entity());
+                    if (!p || !*p) return false;
+                    out.push_back(*p);
+                }
+                e->set_attribute_value(idx, out);
+                return true;
+            }
+            case ifcopenshell::Argument_AGGREGATE_OF_AGGREGATE_OF_INT: {
+                if (!v.is_list()) return false;
+                std::vector<std::vector<int>> out;
+                out.reserve(v.as_list().size());
+                for (const auto& row_value : v.as_list()) {
+                    if (!row_value.is_list()) return false;
+                    std::vector<int> row;
+                    row.reserve(row_value.as_list().size());
+                    for (const auto& item : row_value.as_list()) {
+                        if (!item.is_int()) return false;
+                        row.push_back(static_cast<int>(item.as_int()));
+                    }
+                    out.push_back(std::move(row));
+                }
+                e->set_attribute_value(idx, out);
+                return true;
+            }
+            case ifcopenshell::Argument_AGGREGATE_OF_AGGREGATE_OF_DOUBLE: {
+                if (!v.is_list()) return false;
+                std::vector<std::vector<double>> out;
+                out.reserve(v.as_list().size());
+                for (const auto& row_value : v.as_list()) {
+                    if (!row_value.is_list()) return false;
+                    std::vector<double> row;
+                    row.reserve(row_value.as_list().size());
+                    for (const auto& item : row_value.as_list()) {
+                        if (!item.is_number()) return false;
+                        row.push_back(item.as_double());
+                    }
+                    out.push_back(std::move(row));
+                }
+                e->set_attribute_value(idx, out);
+                return true;
+            }
+            case ifcopenshell::Argument_AGGREGATE_OF_AGGREGATE_OF_ENTITY_INSTANCE: {
+                if (!v.is_list()) return false;
+                std::vector<std::vector<::express::Base>> out;
+                out.reserve(v.as_list().size());
+                for (const auto& row_value : v.as_list()) {
+                    if (!row_value.is_list()) return false;
+                    std::vector<::express::Base> row;
+                    row.reserve(row_value.as_list().size());
+                    for (const auto& item : row_value.as_list()) {
+                        if (!item.is_entity()) return false;
+                        auto* p = as_base_handle(item.as_entity());
+                        if (!p || !*p) return false;
+                        row.push_back(*p);
+                    }
+                    out.push_back(std::move(row));
+                }
+                e->set_attribute_value(idx, out);
+                return true;
+            }
+            default:
+                return false;
         }
     } catch (...) {
         return false;

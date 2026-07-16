@@ -249,6 +249,30 @@ class TestEntityAttributes:
         wall.PredefinedType = "SOLIDWALL"
         assert wall.PredefinedType == "SOLIDWALL"
 
+        with pytest.raises(ValueError):
+            wall.PredefinedType = "INVALID"
+        assert wall.PredefinedType == "SOLIDWALL"
+
+    def test_reject_invalid_scalar_storage_without_mutation(self):
+        layer = self.file.create_entity("IfcMaterialLayer", LayerThickness=2.5)
+
+        with pytest.raises(ValueError):
+            layer.LayerThickness = "not-a-number"
+        with pytest.raises(ValueError):
+            layer.LayerThickness = float("nan")
+
+        assert layer.LayerThickness == 2.5
+        assert "'not-a-number'" not in str(layer)
+
+    def test_reject_untyped_select_storage_without_mutation(self):
+        label = self.file.create_entity("IfcLabel", "Original")
+        prop = self.file.create_entity("IfcPropertySingleValue", NominalValue=label)
+
+        with pytest.raises(TypeError):
+            prop.NominalValue = "Replacement"
+
+        assert prop.NominalValue == label
+
     def test_reference_attr(self):
         wall = self.file.create_entity("IfcWall")
         owner = self.file.create_entity("IfcOwnerHistory")

@@ -392,6 +392,10 @@ class TestSetElementValue(test.bootstrap.IFC4):
             ifcopenshell.util.placement.get_local_placement(element_without_placement.ObjectPlacement), matrix
         )
 
+        with pytest.raises(subject.SetElementValueException):
+            subject.set_element_value(self.file, element, "x", "not-a-number")
+        assert np.array_equal(ifcopenshell.util.placement.get_local_placement(element.ObjectPlacement), matrix)
+
     def test_set_attribute(self):
         element = self.file.createIfcWall()
         subject.set_element_value(self.file, element, "Name", "Foo")
@@ -406,6 +410,74 @@ class TestSetElementValue(test.bootstrap.IFC4):
         subject.set_element_value(self.file, layer, "Material.Name", "Foo")
         assert material.Name == "Foo"
 
+    def test_set_aggregate_attribute(self):
+        representation = self.file.create_entity("IfcShapeRepresentation")
+        definition = self.file.create_entity("IfcProductDefinitionShape")
+
+        subject.set_element_value(self.file, definition, "Representations", [representation])
+
+        assert definition.Representations == (representation,)
+        assert str(definition).endswith("($,$,(#1))")
+
+    def test_reject_scalar_for_aggregate_attribute_without_mutation(self):
+        representation = self.file.create_entity("IfcShapeRepresentation")
+        replacement = self.file.create_entity("IfcShapeRepresentation")
+        definition = self.file.create_entity("IfcProductDefinitionShape", Representations=[representation])
+
+        with pytest.raises(subject.SetElementValueException):
+            subject.set_element_value(self.file, definition, "Representations", replacement)
+
+        assert definition.Representations == (representation,)
+        assert str(definition).endswith("($,$,(#1))")
+
+    def test_reject_invalid_numeric_casts_without_mutation(self):
+        layer = self.file.create_entity("IfcMaterialLayer", LayerThickness=2.5)
+        curve = self.file.create_entity("IfcBSplineCurve", Degree=3)
+
+        with pytest.raises(subject.SetElementValueException):
+            subject.set_element_value(self.file, layer, "LayerThickness", "not-a-number")
+        with pytest.raises(subject.SetElementValueException):
+            subject.set_element_value(self.file, layer, "LayerThickness", float("nan"))
+        with pytest.raises(subject.SetElementValueException):
+            subject.set_element_value(self.file, curve, "Degree", "not-an-integer")
+
+        assert layer.LayerThickness == 2.5
+        assert curve.Degree == 3
+
+    def test_set_enumeration_with_typed_storage(self):
+        wall = self.file.create_entity("IfcWall", PredefinedType="STANDARD")
+
+        subject.set_element_value(self.file, wall, "PredefinedType", "USERDEFINED")
+
+        assert wall.PredefinedType == "USERDEFINED"
+        assert str(wall).endswith(".USERDEFINED.)")
+
+        with pytest.raises(subject.SetElementValueException):
+            subject.set_element_value(self.file, wall, "PredefinedType", "INVALID")
+        assert wall.PredefinedType == "USERDEFINED"
+
+    def test_reject_untyped_select_value_without_mutation(self):
+        label = self.file.create_entity("IfcLabel", "Original")
+        prop = self.file.create_entity("IfcPropertySingleValue", NominalValue=label)
+
+        with pytest.raises(subject.SetElementValueException):
+            subject.set_element_value(self.file, prop, "NominalValue", "Replacement")
+
+        assert prop.NominalValue.wrappedValue == "Original"
+        assert "IfcLabel('Original')" in str(prop)
+
+    def test_validate_entity_reference_before_mutation(self):
+        original = ifcopenshell.api.root.create_entity(self.file, ifc_class="IfcWallType")
+        replacement = ifcopenshell.api.root.create_entity(self.file, ifc_class="IfcWallType")
+        relation = self.file.create_entity("IfcRelDefinesByType", RelatedObjects=[], RelatingType=original)
+
+        subject.set_element_value(self.file, relation, "RelatingType", replacement.GlobalId)
+        assert relation.RelatingType == replacement
+
+        with pytest.raises(subject.SetElementValueException):
+            subject.set_element_value(self.file, relation, "RelatingType", "missing-guid")
+        assert relation.RelatingType == replacement
+
 
 class TestSetElementValuePredefinedType(test.bootstrap.IFC4):
     def test_setting_an_element_predefined_type(self):
@@ -413,6 +485,7 @@ class TestSetElementValuePredefinedType(test.bootstrap.IFC4):
         subject.set_element_value(self.file, element, "predefined_type", "LIGHTDOME")
         assert element.PredefinedType == "LIGHTDOME"
         assert element.ObjectType == None
+        assert ".LIGHTDOME." in str(element)
 
     def test_setting_an_element_predefined_type_to_none(self):
         element = ifcopenshell.api.root.create_entity(self.file, ifc_class="IfcWindow")
@@ -425,6 +498,7 @@ class TestSetElementValuePredefinedType(test.bootstrap.IFC4):
         subject.set_element_value(self.file, element, "predefined_type", "FOOBAR")
         assert element.PredefinedType == "USERDEFINED"
         assert element.ObjectType == "FOOBAR"
+        assert ".USERDEFINED." in str(element)
 
     def test_setting_an_element_inherited_predefined_type(self):
         element = ifcopenshell.api.root.create_entity(self.file, ifc_class="IfcWindow")
