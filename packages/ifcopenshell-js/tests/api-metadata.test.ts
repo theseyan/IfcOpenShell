@@ -330,15 +330,21 @@ describeGeneratedOrSkip('generated metadata and authoring API', () => {
       await using file = await IfcFile.createEmpty(shell, 'IFC4');
       const wall = await shell.api.root.createEntity(file, {
         ifcClass: 'IfcWall',
-        name: 'Wall A',
+        name: 'roof parapet',
+      });
+      const slab = await shell.api.root.createEntity(file, {
+        ifcClass: 'IfcSlab',
+        name: 'Roof',
+        predefinedType: 'ROOF',
       });
 
       const value = shell.api.selector.getElementValue(file, wall, 'Name');
-      expect(value).toBe('Wall A');
+      expect(value).toBe('roof parapet');
 
       const allResult = shell.api.selector.filterAll(file, 'IfcWall');
       expect(allResult).not.toBeNull();
-      expect(() => shell.api.selector.filterAll(file, 'IfcWall')).not.toThrow();
+      expect(selectorIds(shell.api.selector.filterAll(file, 'Name*=roof'))).toEqual([wall.id]);
+      expect(selectorIds(shell.api.selector.filterAll(file, 'IfcSlab, PredefinedType=ROOF'))).toEqual([slab.id]);
     });
   });
 
@@ -384,3 +390,18 @@ describeGeneratedOrSkip('generated metadata and authoring API', () => {
     });
   });
 });
+
+function selectorIds(value: unknown): number[] {
+  if (!Array.isArray(value)) throw new TypeError('Expected selector result to be an array');
+  return value.map((item) => {
+    if (!item || typeof item !== 'object' || !('id' in item) || !('dispose' in item)) {
+      throw new TypeError('Expected selector result item to be an entity');
+    }
+    const entity = item as { id: number; dispose(): void };
+    try {
+      return entity.id;
+    } finally {
+      entity.dispose();
+    }
+  });
+}

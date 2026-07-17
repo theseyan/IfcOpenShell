@@ -5094,8 +5094,20 @@ declare module 'ifcopenshell-api' {
      * Parses the query as a filter expression and returns all matching
      * elements as a list value.
      *
+     * Common selector forms are:
+     * - `IfcWall` to match an IFC class.
+     * - `Name*=roof` to match an attribute containing a value.
+     * - `IfcSlab, PredefinedType=ROOF` to combine class and attribute facets.
+     * - `IfcWall, Pset_WallCommon.FireRating=2HR` to match a property.
+     *
+     * Separate facets with commas and write comparisons directly, without square
+     * brackets. Supported comparison operators include `=`, `!=`, `*=`, `!*=`,
+     * `>`, `<`, `>=`, and `<=`. Values may be quoted; `/pattern/` denotes a
+     * regular expression and `NULL` matches an unset value.
+     *
      * @param file The IFC file to search.
-     * @param query The filter query string.
+     * @param query Selector expression using IFC classes, attributes, properties,
+     * comparison operators, and comma-separated facets.
      * @return List value of matching elements, or no result if the query cannot be evaluated. Release it with value_free.
      */
     filterAll(file: IfcOpenshellFile, query: string): IfcOpenshellValue | null;
@@ -5103,10 +5115,13 @@ declare module 'ifcopenshell-api' {
      * Filter a list of elements using a selector query.
      *
      * Parses the query as a filter expression and returns the subset
-     * of elements that match.
+     * of elements that match. The query uses the same syntax as
+     * selector_filter_all, such as `Name*=roof` or
+     * `IfcSlab, PredefinedType=ROOF`; comparisons do not use square brackets.
      *
      * @param file The IFC file context.
-     * @param query The filter query string.
+     * @param query Selector expression using IFC classes, attributes, properties,
+     * comparison operators, and comma-separated facets.
      * @param elements The elements to filter.
      * @return List value of matching elements, or no result if the query cannot be evaluated. Release it with value_free.
      */
