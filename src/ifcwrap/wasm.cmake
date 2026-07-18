@@ -71,7 +71,7 @@ function(ifcopenshell_configure_wasm_main TARGET ENVIRONMENT OUTPUT_NAME)
 endfunction()
 
 add_executable(ifcopenshell_wasm "${IFCOPENSHELL_WASM_ENTRYPOINT}")
-ifcopenshell_configure_wasm_main(ifcopenshell_wasm "web" "ifcopenshell_wasm")
+ifcopenshell_configure_wasm_main(ifcopenshell_wasm "web,worker" "ifcopenshell_wasm")
 
 add_executable(ifcopenshell_wasm_node "${IFCOPENSHELL_WASM_ENTRYPOINT}")
 ifcopenshell_configure_wasm_main(ifcopenshell_wasm_node "node" "ifcopenshell_wasm.node")

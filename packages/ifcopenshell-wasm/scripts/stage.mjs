@@ -10,8 +10,8 @@ const DEST = join(PACKAGE_ROOT, 'wasm');
 
 const DEFAULT_SOURCES = [
   process.env.IFCOPENSHELL_WASM_DIR,
-  resolve(REPO_ROOT, 'build', 'wasm-native', 'dist', 'full'),
   resolve(REPO_ROOT, 'build', 'wasm-native', 'ifcopenshell', 'full', 'ifcwrap', 'wasm'),
+  resolve(REPO_ROOT, 'build', 'wasm-native', 'dist', 'full'),
   resolve(REPO_ROOT, 'build-wasm', 'ifcwrap', 'wasm'),
 ].filter(Boolean);
 
