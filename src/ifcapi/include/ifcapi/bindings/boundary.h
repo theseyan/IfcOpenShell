@@ -16,6 +16,16 @@
 namespace ifcapi {
 namespace bindings {
 
+enum class BoundaryPhysicalOrVirtual { PHYSICAL, VIRTUAL, NOTDEFINED };
+enum class BoundaryInternalOrExternal {
+    INTERNAL,
+    EXTERNAL,
+    EXTERNAL_EARTH,
+    EXTERNAL_WATER,
+    EXTERNAL_FIRE,
+    NOTDEFINED,
+};
+
 /**
  * Create a copy of a space boundary relationship and its connection geometry.
  *
@@ -40,9 +50,10 @@ struct BoundaryAssignConnectionGeometryOptions {
     /// Local reference direction of the connection plane.
     std::array<double, 3> ref_direction;
     /// Inner boundaries representing openings in the connection plane, in SI metres and converted to project units using unit_scale.
-    std::vector<std::vector<std::array<double, 2>>> inner_boundaries;
-    /// Scale that converts model units to SI units.
-    double unit_scale = 1.0;
+    std::optional<std::vector<std::vector<std::array<double, 2>>>> inner_boundaries =
+        std::vector<std::vector<std::array<double, 2>>>{};
+    /// Scale that converts model units to SI units. Calculated from the file when omitted.
+    std::optional<double> unit_scale = std::nullopt;
 };
 
 /**
@@ -78,9 +89,9 @@ struct BoundaryEditAttributesOptions {
     /// Optional corresponding boundary on the other side of the element.
     std::optional<express::Base> corresponding_boundary;
     /// Physical or virtual enum value.
-    std::string physical_or_virtual;
+    BoundaryPhysicalOrVirtual physical_or_virtual;
     /// Internal or external enum value.
-    std::string internal_or_external;
+    BoundaryInternalOrExternal internal_or_external;
 };
 
 /**

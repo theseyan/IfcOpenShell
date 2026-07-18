@@ -63,6 +63,10 @@ from src.ifcwrap.binding_generator.cpp_spec_frontend import (
     lower_cpp_spec_result_structs_to_specs,
 )
 from src.ifcwrap.binding_generator.pipeline import generate_cpp_specs
+from src.ifcwrap.binding_generator.targets.wasm.api_bridge import render_api_direct
+from src.ifcwrap.binding_generator.targets.wasm.typescript import (
+    render_typescript_declarations,
+)
 
 
 def _environment(tmp_path: Path) -> DiscoveryEnvironment:
@@ -310,6 +314,11 @@ def test_cpp_spec_frontend_discovers_option_structs(tmp_path: Path) -> None:
             inline int root_create_entity(const CreateEntityOptions& options) {
                 return options.ifc_class.empty() ? 0 : 1;
             }
+
+            inline int root_create_entity_with_defaults(
+                std::optional<CreateEntityOptions> options = std::nullopt) {
+                return options ? 1 : 0;
+            }
             }
             """
         ),
@@ -348,6 +357,20 @@ def test_cpp_spec_frontend_discovers_option_structs(tmp_path: Path) -> None:
     assert fields["name"].doc is None
     assert fields["name"].has_default is False
 
+    calls = lower_cpp_spec_functions_to_calls(
+        functions,
+        {},
+        option_structs=option_structs,
+        c_prefix="ifcopenshell_demo",
+    )
+    call = next(
+        item for item in calls if item.expose_as == "root_create_entity_with_defaults"
+    )
+    assert call.params[0].type.kind == "option"
+    assert call.params[0].type.struct == "CreateEntityOptions"
+    assert call.params[0].type.nullable is True
+    assert call.params[0].has_default is True
+
 
 def test_cpp_spec_frontend_preserves_fixed_aliases_and_enum_literals(
     tmp_path: Path,
@@ -361,7 +384,10 @@ def test_cpp_spec_frontend_preserves_fixed_aliases_and_enum_literals(
 
             namespace demo {
             using Vec3 = std::array<double, 3>;
-            enum class Direction { Positive = 1, Negative = -1 };
+            enum class Direction {
+                Positive __attribute__((annotate("ifcapi.literal:FORWARD"))) = 1,
+                Negative = -1
+            };
 
             struct TransformOptions {
                 Vec3 origin;
@@ -369,7 +395,7 @@ def test_cpp_spec_frontend_preserves_fixed_aliases_and_enum_literals(
                 std::optional<Direction> optional_direction = std::nullopt;
             };
 
-            inline void transform(const TransformOptions& options) { (void)options; }
+            inline Vec3 transform(const TransformOptions& options) { (void)options; return {}; }
             }
             """
         ),
@@ -378,13 +404,14 @@ def test_cpp_spec_frontend_preserves_fixed_aliases_and_enum_literals(
     environment = _environment(tmp_path)
     functions = discover_cpp_spec_functions(environment, spec_path, "demo")
 
-    options = discover_cpp_spec_option_structs(
+    option_structs = discover_cpp_spec_option_structs(
         environment,
         spec_path,
         functions,
         {},
         c_prefix="ifcopenshell_demo",
-    )["TransformOptions"]
+    )
+    options = option_structs["TransformOptions"]
     fields = {field.name: field.type for field in options.fields}
 
     assert fields["origin"].kind == "double"
@@ -393,11 +420,18 @@ def test_cpp_spec_frontend_preserves_fixed_aliases_and_enum_literals(
     assert fields["origin"].alias == "Vec3"
     assert fields["direction"].kind == "int32"
     assert fields["direction"].alias == "Direction"
-    assert fields["direction"].enum_values == ("Positive", "Negative")
+    assert fields["direction"].enum_values == ("FORWARD", "Negative")
     assert fields["direction"].enum_numeric_values == (1, -1)
     assert fields["optional_direction"].kind == "int32"
     assert fields["optional_direction"].nullable is True
-    assert fields["optional_direction"].enum_values == ("Positive", "Negative")
+    assert fields["optional_direction"].enum_values == ("FORWARD", "Negative")
+
+    transform = lower_cpp_spec_functions_to_calls(
+        functions, {}, option_structs=option_structs
+    )[0]
+    assert transform.returns.kind == "double"
+    assert transform.returns.fixed_lengths == (3,)
+    assert transform.returns.alias == "Vec3"
 
     header_out = tmp_path / "demo_api.h"
     cpp_out = tmp_path / "demo_api.cpp"
@@ -428,11 +462,20 @@ def test_cpp_spec_frontend_discovers_input_variant_records(tmp_path: Path) -> No
 
             namespace demo {
             using Vec3 = std::array<double, 3>;
+            enum class Mode {
+                Fast __attribute__((annotate("ifcapi.literal:FAST-MODE"))),
+                Exact
+            };
             struct PlaneClipping { Vec3 location; Vec3 normal; };
             struct EntityClipping { int entity_id; };
             using Clipping = std::variant<PlaneClipping, EntityClipping>;
             using Clippings = std::vector<Clipping>;
-            struct ApplyOptions { std::optional<Clippings> clippings; };
+            struct ApplyOptions {
+                std::optional<Clippings> clippings;
+                Mode mode;
+                std::optional<bool> enabled = false;
+                double required_zero;
+            };
             inline void apply(const ApplyOptions& options) { (void)options; }
             }
             """
@@ -451,7 +494,8 @@ def test_cpp_spec_frontend_discovers_input_variant_records(tmp_path: Path) -> No
     )
 
     assert set(records) == {"ApplyOptions", "PlaneClipping", "EntityClipping"}
-    clipping = records["ApplyOptions"].fields[0].type
+    apply_fields = {field.name: field for field in records["ApplyOptions"].fields}
+    clipping = apply_fields["clippings"].type
     assert clipping.kind == "variant"
     assert clipping.nullable is True
     assert clipping.sequence_depth == 1
@@ -462,6 +506,9 @@ def test_cpp_spec_frontend_discovers_input_variant_records(tmp_path: Path) -> No
     plane_fields = {field.name: field.type for field in records["PlaneClipping"].fields}
     assert plane_fields["location"].alias == "Vec3"
     assert plane_fields["normal"].fixed_lengths == (3,)
+    assert apply_fields["mode"].type.enum_values == ("FAST-MODE", "Exact")
+    assert apply_fields["enabled"].has_default is True
+    assert apply_fields["required_zero"].has_default is False
 
     header_out = tmp_path / "demo_api.h"
     cpp_out = tmp_path / "demo_api.cpp"
@@ -485,6 +532,51 @@ def test_cpp_spec_frontend_discovers_input_variant_records(tmp_path: Path) -> No
         "nested_values_options_cpp_clippings.reserve(options->clippings->size)"
         in generated_cpp
     )
+
+    calls = lower_cpp_spec_functions_to_calls(
+        functions,
+        {},
+        option_structs=records,
+        c_prefix="ifcopenshell_demo",
+    )
+    contract = finalize_binding_ir(
+        BindingIR(
+            module="demo",
+            c_prefix="ifcopenshell_demo",
+            public_headers=(),
+            handles={},
+            result_structs={},
+            option_structs=records,
+            calls=tuple(
+                CallIR(
+                    expose_as=call.expose_as,
+                    c_name=call.c_name,
+                    receiver=call.receiver,
+                    returns=call.returns,
+                    params=call.params,
+                    operation=DirectCallOp(cpp_name="demo::apply"),
+                    doc=call.doc,
+                    public_module="demo",
+                )
+                for call in calls
+            ),
+        )
+    )
+    metadata = finalize_abi(contract)
+    declarations = render_typescript_declarations(metadata)
+    direct = render_api_direct(metadata)
+
+    for generated in (declarations, direct):
+        assert "type Vec3 = [number, number, number];" in generated
+        assert "type Mode = 'FAST-MODE' | 'Exact';" in generated
+        assert "clippings?: (" in generated
+        assert "location: Vec3;" in generated
+        assert "mode: Mode;" in generated
+        assert "enabled?: boolean;" in generated
+    assert "entity_id: number;" in declarations
+    assert "required_zero: number;" in declarations
+    assert "entityId: number;" in direct
+    assert "requiredZero: number;" in direct
 
 
 def test_cpp_spec_frontend_discovers_nested_mesh_items(tmp_path: Path) -> None:

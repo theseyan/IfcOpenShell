@@ -511,7 +511,9 @@ typedef struct ifcopenshell_system_unassign_system_options_t ifcopenshell_system
 typedef struct ifcopenshell_type_assign_type_options_t ifcopenshell_type_assign_type_options_t;
 typedef struct ifcopenshell_type_unassign_type_options_t ifcopenshell_type_unassign_type_options_t;
 typedef struct ifcopenshell_unit_add_conversion_based_unit_options_t ifcopenshell_unit_add_conversion_based_unit_options_t;
+typedef struct ifcopenshell_unit_add_derived_unit_options_t ifcopenshell_unit_add_derived_unit_options_t;
 typedef struct ifcopenshell_unit_assign_unit_options_t ifcopenshell_unit_assign_unit_options_t;
+typedef struct ifcopenshell_unit_derived_unit_element_t ifcopenshell_unit_derived_unit_element_t;
 typedef struct ifcopenshell_unit_edit_named_unit_options_t ifcopenshell_unit_edit_named_unit_options_t;
 typedef struct ifcopenshell_alignment_horizontal_pi_list_t ifcopenshell_alignment_horizontal_pi_list_t;
 typedef struct ifcopenshell_alignment_vertical_pi_list_t ifcopenshell_alignment_vertical_pi_list_t;
@@ -520,6 +522,7 @@ typedef struct ifcopenshell_geometry_mesh_item_list_t ifcopenshell_geometry_mesh
 typedef struct ifcopenshell_geometry_window_panel_properties_list_t ifcopenshell_geometry_window_panel_properties_list_t;
 typedef struct ifcopenshell_material_constituent_entry_options_list_t ifcopenshell_material_constituent_entry_options_list_t;
 typedef struct ifcopenshell_style_surface_texture_options_list_t ifcopenshell_style_surface_texture_options_list_t;
+typedef struct ifcopenshell_unit_derived_unit_element_list_t ifcopenshell_unit_derived_unit_element_list_t;
 
 typedef struct ifcopenshell_double_list_list_any_2_double_list_list_any_3_variant_t {
     int32_t kind;
@@ -619,9 +622,13 @@ typedef struct ifcopenshell_alignment_add_stationing_referent_options_t {
 typedef struct ifcopenshell_alignment_create_options_t {
     const char* name;
     bool include_vertical;
+    bool has_include_vertical;
     bool include_cant;
+    bool has_include_cant;
     bool include_geometry;
+    bool has_include_geometry;
     double start_station;
+    bool has_start_station;
     ifcopenshell_instance_t* owner_history;
     bool has_owner_history;
     ifcopenshell_instance_t* user;
@@ -634,6 +641,7 @@ typedef struct ifcopenshell_alignment_create_offset_curve_options_t {
     const char* name;
     ifcopenshell_parse_instance_list_t* offsets;
     double start_station;
+    bool has_start_station;
     ifcopenshell_instance_t* owner_history;
     bool has_owner_history;
     ifcopenshell_instance_t* user;
@@ -646,6 +654,7 @@ typedef struct ifcopenshell_alignment_create_polyline_options_t {
     const char* name;
     ifcopenshell_parse_instance_list_t* points;
     double start_station;
+    bool has_start_station;
     ifcopenshell_instance_t* owner_history;
     bool has_owner_history;
     ifcopenshell_instance_t* user;
@@ -710,7 +719,9 @@ typedef struct ifcopenshell_boundary_assign_connection_geometry_options_t {
     const ifcopenshell_double_list_t* axis;
     const ifcopenshell_double_list_t* ref_direction;
     const ifcopenshell_double_list_list_list_t* inner_boundaries;
+    bool has_inner_boundaries;
     double unit_scale;
+    bool has_unit_scale;
 } ifcopenshell_boundary_assign_connection_geometry_options_t;
 
 typedef struct ifcopenshell_boundary_edit_attributes_options_t {
@@ -720,8 +731,8 @@ typedef struct ifcopenshell_boundary_edit_attributes_options_t {
     bool has_parent_boundary;
     ifcopenshell_instance_t* corresponding_boundary;
     bool has_corresponding_boundary;
-    const char* physical_or_virtual;
-    const char* internal_or_external;
+    int32_t physical_or_virtual;
+    int32_t internal_or_external;
 } ifcopenshell_boundary_edit_attributes_options_t;
 
 typedef struct ifcopenshell_classification_add_reference_options_t {
@@ -846,8 +857,11 @@ typedef struct ifcopenshell_cost_copy_cost_schedule_options_t {
 
 typedef struct ifcopenshell_cost_edit_cost_value_options_t {
     bool edit_unit_basis;
+    bool has_edit_unit_basis;
     bool clear_unit_basis;
+    bool has_clear_unit_basis;
     double value_component;
+    bool has_value_component;
     ifcopenshell_instance_t* unit_component;
     bool has_unit_component;
 } ifcopenshell_cost_edit_cost_value_options_t;
@@ -1020,7 +1034,7 @@ typedef struct ifcopenshell_geometry_add_railing_representation_options_t {
     bool has_railing_diameter;
     double clear_width;
     bool has_clear_width;
-    const char* terminal_type;
+    int32_t terminal_type;
     bool has_terminal_type;
     double height;
     bool has_height;
@@ -1043,7 +1057,7 @@ typedef struct ifcopenshell_geometry_add_slab_representation_options_t {
     ifcopenshell_instance_t* context;
     double depth;
     bool has_depth;
-    const char* direction_sense;
+    int32_t direction_sense;
     bool has_direction_sense;
     double offset;
     bool has_offset;
@@ -1070,7 +1084,7 @@ typedef struct ifcopenshell_geometry_add_wall_representation_options_t {
     bool has_length;
     double height;
     bool has_height;
-    const char* direction_sense;
+    int32_t direction_sense;
     bool has_direction_sense;
     double offset;
     bool has_offset;
@@ -1140,7 +1154,7 @@ typedef struct ifcopenshell_geometry_compute_wall_mounted_handrail_options_t {
     double height;
     bool use_manual_supports;
     bool has_use_manual_supports;
-    const char* terminal_type;
+    int32_t terminal_type;
     bool has_terminal_type;
     bool looped_path;
     bool has_looped_path;
@@ -1164,8 +1178,8 @@ typedef struct ifcopenshell_geometry_connect_element_options_t {
 typedef struct ifcopenshell_geometry_connect_path_options_t {
     ifcopenshell_instance_t* relating_element;
     ifcopenshell_instance_t* related_element;
-    const char* relating_connection;
-    const char* related_connection;
+    int32_t relating_connection;
+    int32_t related_connection;
     const char* description;
     bool has_description;
     ifcopenshell_instance_t* connection_geometry;
@@ -1182,6 +1196,7 @@ typedef struct ifcopenshell_geometry_connect_wall_options_t {
     ifcopenshell_instance_t* first_wall;
     ifcopenshell_instance_t* second_wall;
     bool is_atpath;
+    bool has_is_atpath;
     ifcopenshell_instance_t* owner_history;
     bool has_owner_history;
     ifcopenshell_instance_t* user;
@@ -1206,12 +1221,13 @@ typedef struct ifcopenshell_geometry_create2_pt_wall_options_t {
     double height;
     double thickness;
     bool is_si;
+    bool has_is_si;
 } ifcopenshell_geometry_create2_pt_wall_options_t;
 
 typedef struct ifcopenshell_geometry_disconnect_path_options_t {
     ifcopenshell_instance_t* element;
     bool has_element;
-    const char* connection_type;
+    int32_t connection_type;
     bool has_connection_type;
     ifcopenshell_instance_t* relating_element;
     bool has_relating_element;
@@ -1224,7 +1240,9 @@ typedef struct ifcopenshell_geometry_edit_object_placement_options_t {
     const ifcopenshell_double_list_t* matrix;
     bool has_matrix;
     bool is_si;
+    bool has_is_si;
     bool should_transform_children;
+    bool has_should_transform_children;
 } ifcopenshell_geometry_edit_object_placement_options_t;
 
 typedef struct ifcopenshell_geometry_regenerate_wall_representation_options_t {
@@ -1645,6 +1663,7 @@ typedef struct ifcopenshell_pset_edit_pset_options_t {
     ifcopenshell_instance_t* pset_template;
     bool has_pset_template;
     bool should_purge;
+    bool has_should_purge;
 } ifcopenshell_pset_edit_pset_options_t;
 
 typedef struct ifcopenshell_pset_edit_qto_options_t {
@@ -2167,7 +2186,7 @@ typedef struct ifcopenshell_style_surface_texture_options_t {
     bool has_texture_transform;
     const ifcopenshell_string_list_t* parameter;
     bool has_parameter;
-    const char* uv_mode;
+    int32_t uv_mode;
     bool has_uv_mode;
 } ifcopenshell_style_surface_texture_options_t;
 
@@ -2176,6 +2195,7 @@ typedef struct ifcopenshell_style_assign_item_style_options_t {
     ifcopenshell_instance_t* style;
     bool has_style;
     bool should_use_presentation_style_assignment;
+    bool has_should_use_presentation_style_assignment;
 } ifcopenshell_style_assign_item_style_options_t;
 
 typedef struct ifcopenshell_system_add_port_options_t {
@@ -2231,7 +2251,7 @@ typedef struct ifcopenshell_system_assign_system_options_t {
 typedef struct ifcopenshell_system_connect_port_options_t {
     ifcopenshell_instance_t* port1;
     ifcopenshell_instance_t* port2;
-    const char* direction;
+    int32_t direction;
     ifcopenshell_instance_t* element;
     bool has_element;
     ifcopenshell_instance_t* owner_history;
@@ -2296,6 +2316,13 @@ typedef struct ifcopenshell_unit_add_conversion_based_unit_options_t {
     double conversion_offset;
     bool has_conversion_offset;
 } ifcopenshell_unit_add_conversion_based_unit_options_t;
+
+typedef struct ifcopenshell_unit_add_derived_unit_options_t {
+    const char* unit_type;
+    const char* userdefinedtype;
+    bool has_userdefinedtype;
+    const ifcopenshell_unit_derived_unit_element_list_t* elements;
+} ifcopenshell_unit_add_derived_unit_options_t;
 
 typedef struct ifcopenshell_unit_assign_unit_options_t {
     ifcopenshell_parse_instance_list_t* units;
@@ -2451,6 +2478,11 @@ typedef struct ifcopenshell_shape_builder_mep_transition_from_angle_t {
     double angle;
 } ifcopenshell_shape_builder_mep_transition_from_angle_t;
 
+typedef struct ifcopenshell_unit_derived_unit_element_t {
+    ifcopenshell_instance_t* unit;
+    int64_t exponent;
+} ifcopenshell_unit_derived_unit_element_t;
+
 typedef struct ifcopenshell_alignment_horizontal_pi_t {
     const ifcopenshell_double_list_t* point;
     double radius;
@@ -2494,6 +2526,11 @@ typedef struct ifcopenshell_geometry_window_panel_properties_list_t {
     ifcopenshell_geometry_window_panel_properties_t* items;
     size_t size;
 } ifcopenshell_geometry_window_panel_properties_list_t;
+
+typedef struct ifcopenshell_unit_derived_unit_element_list_t {
+    ifcopenshell_unit_derived_unit_element_t* items;
+    size_t size;
+} ifcopenshell_unit_derived_unit_element_list_t;
 
 typedef struct ifcopenshell_alignment_horizontal_pi_list_t {
     ifcopenshell_alignment_horizontal_pi_t* items;
@@ -3816,7 +3853,7 @@ bool ifcopenshell_geometry_add_axis_representation(ifcopenshell_file_t* file, if
  * @param operator_type Boolean operator: "DIFFERENCE", "UNION", or "INTERSECTION".
  * @return Created boolean result entities, or an empty list if creation fails.
  */
-bool ifcopenshell_geometry_add_boolean(ifcopenshell_file_t* file, ifcopenshell_instance_t* first_item, const ifcopenshell_instance_list_t* second_items, const char* operator_type, ifcopenshell_parse_instance_list_t** out_result);
+bool ifcopenshell_geometry_add_boolean(ifcopenshell_file_t* file, ifcopenshell_instance_t* first_item, const ifcopenshell_instance_list_t* second_items, int32_t operator_type, ifcopenshell_parse_instance_list_t** out_result);
 /**
  * Create a door representation with lining and panel geometry.
  *
@@ -4812,10 +4849,10 @@ bool ifcopenshell_placement_matrix_from_axes(const ifcopenshell_double_list_t* o
  * Build a 4x4 row-major rotation matrix about a principal axis.
  *
  * @param angle_rad Rotation angle in radians.
- * @param axis Rotation axis: "X", "Y", or "Z" (case-insensitive).
+ * @param axis Rotation axis: "X", "Y", or "Z".
  * @return 16-element row-major 4x4 rotation matrix.
  */
-bool ifcopenshell_placement_rotation(double angle_rad, const char* axis, ifcopenshell_double_list_t* out_result);
+bool ifcopenshell_placement_rotation(double angle_rad, int32_t axis, ifcopenshell_double_list_t* out_result);
 /**
  * Create an IfcArbitraryClosedProfileDef from an ordered polyline.
  *
@@ -6294,13 +6331,13 @@ bool ifcopenshell_spatial_unassign_container(ifcopenshell_file_t* file, const if
  * @param file File that receives the new entities.
  * @param applied_load IfcStructuralLoad to apply.
  * @param structural_member Structural member to connect the activity to.
- * @param ifc_class IFC class name (e.g. "IfcStructuralPlanarAction").
- * @param predefined_type Predefined type enum value.
+ * @param ifc_class Schema-dynamic IFC class name (e.g. "IfcStructuralPlanarAction"); intentionally not narrowed.
+ * @param predefined_type Schema-dynamic predefined type value; intentionally not narrowed.
  * @param global_or_local "GLOBAL_COORDS" or "LOCAL_COORDS".
  * @param options Ownership options for the activity and relationship.
  * @return Newly created IfcStructuralActivity.
  */
-bool ifcopenshell_structural_add_structural_activity(ifcopenshell_file_t* file, ifcopenshell_instance_t* applied_load, ifcopenshell_instance_t* structural_member, const char* ifc_class, const char* predefined_type, const char* global_or_local, const ifcopenshell_structural_add_structural_activity_options_t* options, ifcopenshell_instance_t** out_result);
+bool ifcopenshell_structural_add_structural_activity(ifcopenshell_file_t* file, ifcopenshell_instance_t* applied_load, ifcopenshell_instance_t* structural_member, const char* ifc_class, const char* predefined_type, int32_t global_or_local, const ifcopenshell_structural_add_structural_activity_options_t* options, ifcopenshell_instance_t** out_result);
 /**
  * Create an IfcStructuralAnalysisModel with PredefinedType LOADING_3D.
  *
@@ -6545,11 +6582,11 @@ bool ifcopenshell_style_add_surface_style(ifcopenshell_file_t* file, ifcopenshel
 /**
  * Create image textures and their coordinate mappings in descriptor order.
  *
- * IFC2X3 returns an empty list without mutation. Unknown or omitted mapping
- * modes create no mapping. UV mappings append each texture once to every
- * supplied coordinate map while preserving existing order.
+ * IFC2X3 returns an empty list without mutation. Omitted mapping modes create
+ * no mapping; invalid modes are rejected before mutation. UV mappings append
+ * each texture once to every supplied coordinate map while preserving order.
  */
-bool ifcopenshell_style_add_surface_textures(ifcopenshell_file_t* file, const ifcopenshell_style_surface_texture_options_list_t* textures, const ifcopenshell_instance_list_t* uv_maps, ifcopenshell_parse_instance_list_t** out_result);
+bool ifcopenshell_style_add_surface_textures(ifcopenshell_file_t* file, const ifcopenshell_style_surface_texture_options_list_t* textures, ifcopenshell_parse_instance_list_t* uv_maps, ifcopenshell_parse_instance_list_t** out_result);
 /**
  * Assign or replace a style on a single representation item.
  *
@@ -6771,10 +6808,12 @@ bool ifcopenshell_type_unassign_type(ifcopenshell_file_t* file, const ifcopenshe
  * @param file File that receives the new entity.
  * @param unit_type IFC unit type enum value (e.g. "LENGTHUNIT").
  * @param name Display name for the unit (e.g. "bag", "each").
- * @param dimensions 7-element sequence of dimensional exponents.
+ * @param dimensions Dimensional exponents ordered as length, mass, time,
+ * electric current, thermodynamic temperature, amount of substance, and
+ * luminous intensity.
  * @return Newly created IfcContextDependentUnit.
  */
-bool ifcopenshell_unit_add_context_dependent_unit(ifcopenshell_file_t* file, const char* unit_type, const char* name, const ifcopenshell_int64_list_t* dimensions, ifcopenshell_instance_t** out_result);
+bool ifcopenshell_unit_add_context_dependent_unit(ifcopenshell_file_t* file, const char* unit_type, const char* name, const ifcopenshell_int32_list_t* dimensions, ifcopenshell_instance_t** out_result);
 /**
  * Create a conversion-based named unit from the native unit table.
  *
@@ -6786,17 +6825,14 @@ bool ifcopenshell_unit_add_conversion_based_unit(ifcopenshell_file_t* file, cons
 /**
  * Create an IfcDerivedUnit entity.
  *
- * Constructs a derived unit from a list of component units and their
- * exponents (e.g. m/s from ["METRE", "SECOND"] with exponents [1, -1]).
+ * Constructs a derived unit from semantic unit/exponent components (e.g.
+ * m/s from [{metre, 1}, {second, -1}]).
  *
  * @param file File that receives the new entity.
- * @param unit_type IFC unit type enum value (e.g. "VELOCITYUNIT").
- * @param userdefinedtype UserDefinedType string. When omitted, it is left blank.
- * @param units Component IfcUnit entities.
- * @param exponents Exponent for each component unit (must match units in length).
+ * @param options Unit type, optional user-defined type, and semantic components.
  * @return Newly created IfcDerivedUnit.
  */
-bool ifcopenshell_unit_add_derived_unit(ifcopenshell_file_t* file, const char* unit_type, const char* userdefinedtype, const ifcopenshell_instance_list_t* units, const ifcopenshell_int64_list_t* exponents, ifcopenshell_instance_t** out_result);
+bool ifcopenshell_unit_add_derived_unit(ifcopenshell_file_t* file, const ifcopenshell_unit_add_derived_unit_options_t* options, ifcopenshell_instance_t** out_result);
 /**
  * Create an IfcMonetaryUnit entity.
  *
@@ -6965,7 +7001,7 @@ bool ifcopenshell_unit_get_prefix_multiplier(const char* text, double* out_resul
  */
 bool ifcopenshell_unit_get_project_unit(ifcopenshell_file_t* file, const char* unit_type, ifcopenshell_instance_t** out_result);
 /**
- * Return the SI dimensional exponents for a given unit type name.
+ * Return the dimensional exponents for a given SI unit name.
  *
  * Returns a 7-element sequence of integers corresponding to the
  * IfcDimensionalExponents attributes: Length, Mass, Time,
@@ -6973,7 +7009,7 @@ bool ifcopenshell_unit_get_project_unit(ifcopenshell_file_t* file, const char* u
  * LuminousIntensity. Falls back to the "OTHERWISE" entry for
  * unknown types.
  *
- * @param name Unit type name (e.g. "LENGTHUNIT", "MASSUNIT").
+ * @param name SI unit name (e.g. "METRE", "GRAM").
  * @return 7-element sequence of dimensional exponents.
  */
 bool ifcopenshell_unit_get_si_dimensions(const char* name, ifcopenshell_int32_list_t* out_result);

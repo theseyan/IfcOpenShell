@@ -166,10 +166,10 @@ def _out_allocation(function: CFunctionIR, metadata: BindingABI) -> str | None:
         return None
     if returns.kind == "handle" or returns.kind == "opaque_ptr":
         return "POINTER_SIZE"
-    if returns.kind in _SCALAR_LAYOUTS:
-        return str(_SCALAR_LAYOUTS[returns.kind][0])
     if returns.sequence_depth > 0:
         return str(_struct_layout(_sequence_value_type(returns, metadata), metadata)[0])
+    if returns.kind in _SCALAR_LAYOUTS:
+        return str(_SCALAR_LAYOUTS[returns.kind][0])
     if returns.kind == "string":
         return str(_struct_layout(metadata.value_types["string"], metadata)[0])
     if returns.kind == "struct" and returns.struct is not None:
@@ -475,6 +475,10 @@ def _render_handle_method(
 
 
 def _render_handle_wrapper_switch(metadata: BindingABI) -> str:
+    handle_types = sorted(handle.c_type for handle in metadata.handles.values())
+    handle_type_set = (
+        "const _HANDLE_C_TYPES = new Set(" + json.dumps(handle_types) + ");\n\n"
+    )
     cases = []
     for handle in sorted(metadata.handles.values(), key=lambda item: item.c_type):
         type_name = _type_name(handle.c_type)
@@ -484,7 +488,7 @@ def _render_handle_wrapper_switch(metadata: BindingABI) -> str:
     body = "\n".join(cases) or "        default: return ptr || null;"
     if cases:
         body += "\n        default: return ptr || null;"
-    return (
+    return handle_type_set + (
         "function _wrapHandleByType(module, handleCType, ptr, owned) {\n"
         "    switch (handleCType) {\n"
         f"{body}\n"
@@ -1114,7 +1118,7 @@ def render_js_glue(
             "            result.push(_readValueType(module, elementPtr, elementInfo.valueType));",
             "        } else if (elementType in _VALUE_TYPES) {",
             "            result.push(_readValueType(module, elementPtr, _VALUE_TYPES[elementType]));",
-            "        } else if (_normalizeCType(elementType).endsWith('_t')) {",
+            "        } else if (_HANDLE_C_TYPES.has(_normalizeCType(elementType))) {",
             "            const handle = _wrapHandleByType(module, elementType, module.getValue(elementPtr, '*'), true);",
             "            module.setValue(elementPtr, 0, '*');",
             "            result.push(handle);",
@@ -1133,8 +1137,8 @@ def render_js_glue(
             "        const fieldPtr = ptr + field.offset;",
             "        if (field.info.getter === 'struct') {",
             "            result[field.name] = _readValueType(module, fieldPtr, field.info.valueType);",
-            "        } else if (_normalizeCType(field.cType).endsWith('_t*')) {",
-            "            result[field.name] = _wrapHandleByType(module, _normalizeCType(field.cType).slice(0, -1), module.getValue(fieldPtr, '*'), true);",
+            "        } else if (_HANDLE_C_TYPES.has(_pointedCType(field.cType))) {",
+            "            result[field.name] = _wrapHandleByType(module, _pointedCType(field.cType), module.getValue(fieldPtr, '*'), true);",
             "            module.setValue(fieldPtr, 0, '*');",
             "        } else {",
             "            const value = _getValue(module, fieldPtr, field.cType);",
@@ -1160,9 +1164,9 @@ def render_js_glue(
             "    const valueField = layout.fields.find((field) => field.name === `value_${kind}`);",
             "    if (!valueField) throw new Error(`Unsupported variant alternative ${kind} for ${metadata.cType}`);",
             "    const fieldPtr = ptr + valueField.offset;",
-            "    if (_normalizeCType(valueField.cType).endsWith('_t*')) {",
+            "    if (_HANDLE_C_TYPES.has(_pointedCType(valueField.cType))) {",
             "        const handlePtr = module.getValue(fieldPtr, '*');",
-            "        const result = _wrapHandleByType(module, _normalizeCType(valueField.cType).slice(0, -1), handlePtr, true);",
+            "        const result = _wrapHandleByType(module, _pointedCType(valueField.cType), handlePtr, true);",
             "        module.setValue(fieldPtr, 0, '*');",
             "        return result;",
             "    }",

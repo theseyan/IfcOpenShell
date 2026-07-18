@@ -73,10 +73,6 @@ class Usecase:
     settings: dict[str, Any]
 
     def execute(self):
-        if self.file.schema == "IFC2X3":
-            # TODO: research how compatible IFC2X3 and IFC4 textures are
-            return []
-
         # We optimistically assume the user has specified one of these valid combinations
         # https://docs.blender.org/manual/en/dev/addons/import_export/scene_gltf2.html
         # glTF, X3D, and IFC are compatible. As long as they have something that
@@ -84,6 +80,10 @@ class Usecase:
         self.textures = [
             self.normalize_texture(texture) for texture in self.settings["textures"]
         ]
+
+        if self.file.schema == "IFC2X3":
+            # TODO: research how compatible IFC2X3 and IFC4 textures are
+            return self.create_textures()
 
         if self.settings["material"] is None:
             return self.create_textures()

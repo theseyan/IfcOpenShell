@@ -79,6 +79,13 @@ class CppSpecResultStruct:
 
 
 def _option_struct_name(cpp_type: object) -> tuple[str, str] | None:
+    semantic = analyze_cpp_type(cpp_type)
+    if isinstance(semantic, OptionalSemanticType) and isinstance(
+        semantic.element, RecordSemanticType
+    ):
+        qualified = semantic.element.base_name
+        simple = qualified.rsplit("::", 1)[-1]
+        return (simple, qualified) if simple.endswith("Options") else None
     spelling = (
         getattr(cpp_type, "normalized_spelling", None)
         or getattr(cpp_type, "spelling", None)
@@ -731,9 +738,13 @@ def lower_cpp_spec_functions_to_calls(
             option_name = _option_struct_name(param.cpp_type_ref)
             if option_name is not None and option_name[0] in option_structs:
                 option = option_structs[option_name[0]]
+                nullable = isinstance(
+                    analyze_cpp_type(param.cpp_type_ref), OptionalSemanticType
+                )
                 param_type = TypeSpec(
                     kind="option",
                     struct=option.name,
+                    nullable=nullable,
                     cpp_type=param.cpp_type_ref.normalized_spelling
                     or param.cpp_type_ref.spelling,
                 )

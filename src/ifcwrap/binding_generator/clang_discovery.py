@@ -650,6 +650,29 @@ def _default_access(record: dict) -> str:
     return "public" if record.get("tagUsed") == "struct" else "private"
 
 
+def _return_type_discovery_input(
+    declaration: dict,
+    fallback: str,
+    *,
+    index: TranslationUnitIndex,
+    current_scope: str,
+) -> dict | str:
+    type_info = declaration.get("returnType")
+    if not isinstance(type_info, dict) or not type_info.get("desugaredQualType"):
+        return fallback
+    parsed = _parse_discovered_cpp_type(
+        type_info,
+        index=index,
+        current_scope=current_scope,
+    )
+    return (
+        type_info
+        if parsed.template_name
+        in {"std::array", "std::optional", "std::set", "std::variant", "std::vector"}
+        else fallback
+    )
+
+
 def _extract_public_methods(
     record: dict,
     index: TranslationUnitIndex,
@@ -688,13 +711,19 @@ def _extract_public_methods(
         return_cpp_type = (
             child.get("type", {}).get("qualType", "").rsplit("(", 1)[0].strip()
         )
+        return_type_info = _return_type_discovery_input(
+            child,
+            return_cpp_type,
+            index=index,
+            current_scope=current_scope,
+        )
         methods[child["name"]].append(
             DiscoveredMethod(
                 class_name=record.get("name", ""),
                 cpp_name=child["name"],
                 return_cpp_type=return_cpp_type,
                 return_type_ref=_parse_discovered_cpp_type(
-                    return_cpp_type, index=index, current_scope=current_scope
+                    return_type_info, index=index, current_scope=current_scope
                 ),
                 params=params,
                 is_const=child.get("type", {}).get("qualType", "").endswith(" const"),
@@ -1006,13 +1035,19 @@ def _extract_namespace_functions(
         return_cpp_type = (
             node.get("type", {}).get("qualType", "").rsplit("(", 1)[0].strip()
         )
+        return_type_info = _return_type_discovery_input(
+            node,
+            return_cpp_type,
+            index=index,
+            current_scope=declaration_namespace,
+        )
         functions[name].append(
             DiscoveredFunction(
                 namespace=declaration_namespace,
                 cpp_name=name,
                 return_cpp_type=return_cpp_type,
                 return_type_ref=_parse_discovered_cpp_type(
-                    return_cpp_type,
+                    return_type_info,
                     index=index,
                     current_scope=declaration_namespace,
                 ),
@@ -1478,7 +1513,10 @@ def _parse_discovered_cpp_type(
     is_enum = resolved_enum is not None
     enum_values = (
         tuple(
-            (child.get("name", ""), int(child.get("value", 0)))
+            (
+                child.get("literal") or child.get("name", ""),
+                int(child.get("value", 0)),
+            )
             for child in resolved_enum.node.get("inner", ())
             if child.get("kind") == "EnumConstantDecl" and child.get("name")
         )

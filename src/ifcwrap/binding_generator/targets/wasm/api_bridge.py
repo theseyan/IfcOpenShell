@@ -492,9 +492,7 @@ def _param_ts_type(
     if _is_property_map_param(param):
         base = "PsetProperties | PsetInput"
         return f"{base} | null" if param.nullable else base
-    if param.type is not None and (
-        param.type.sequence_depth > 0 or param.type.kind == "variant"
-    ):
+    if param.type is not None:
         return _direct_ts_type(param.type, metadata)
     normalized_base = (
         " ".join(param.c_type.replace(" *", "*").split())
@@ -545,7 +543,9 @@ def _param_ts_type(
     return "ApiData"
 
 
-def _raw_param_type(param: CParamIR) -> str:
+def _raw_param_type(param: CParamIR, metadata: BindingABI) -> str:
+    if param.type is not None and param.type.enum_values:
+        return _direct_ts_type(param.type, metadata)
     normalized = " ".join(param.c_type.replace(" *", "*").split())
     if param.nullable and normalized in {
         "const bool*",
@@ -570,10 +570,12 @@ def _raw_param_type(param: CParamIR) -> str:
     return f"{result} | null" if param.nullable else result
 
 
-def _raw_return_type(function: CFunctionIR) -> str:
+def _raw_return_type(function: CFunctionIR, metadata: BindingABI) -> str:
     returns = function.returns
     if returns.kind == "void":
         return "void"
+    if returns.enum_values:
+        return _direct_ts_type(returns, metadata)
     if returns.sequence_depth > 0:
         return "RawValue"
     result = _RAW_RETURN_SCALAR_TS.get(returns.kind)
@@ -582,12 +584,14 @@ def _raw_return_type(function: CFunctionIR) -> str:
     return f"{result} | null" if returns.nullable else result
 
 
-def _render_raw_method_signature(name: str, function: CFunctionIR) -> str:
+def _render_raw_method_signature(
+    name: str, function: CFunctionIR, metadata: BindingABI
+) -> str:
     params = ", ".join(
-        f"{param.name}{'?' if param.has_default else ''}: {_raw_param_type(param)}"
+        f"{param.name}{'?' if param.has_default else ''}: {_raw_param_type(param, metadata)}"
         for param in _public_params(function)
     )
-    return f"    {_member_name(name)}: ({params}) => {_raw_return_type(function)};"
+    return f"    {_member_name(name)}: ({params}) => {_raw_return_type(function, metadata)};"
 
 
 def _render_interface_field(declaration: str, doc: str | None) -> str:
@@ -645,16 +649,18 @@ def _param_expr(
     metadata: BindingABI,
     module_name: str | None = None,
 ) -> str:
-    if _is_property_map_param(param):
+    def preserve_omission(expression: str) -> str:
         if param.nullable:
-            return (
-                f"{param.name} == null ? null : "
-                f"toRawPsetProperties(shell, {param.name} as PsetProperties | PsetInput, temps)"
-            )
-        return f"toRawPsetProperties(shell, {param.name} as PsetProperties | PsetInput, temps)"
+            return f"{param.name} == null ? null : {expression}"
+        return expression
+
+    if _is_property_map_param(param):
+        return preserve_omission(
+            f"toRawPsetProperties(shell, {param.name} as PsetProperties | PsetInput, temps)"
+        )
     if param.type is not None and param.type.kind == "variant":
         descriptor = _variant_descriptor_for_type(param.type, metadata)
-        return (
+        return preserve_omission(
             f"encodeOptionValue({json.dumps(param.name)}, {param.name}, shell, temps, "
             f"undefined, undefined, undefined, {json.dumps(descriptor, sort_keys=True)})"
         )
@@ -683,7 +689,7 @@ def _param_expr(
         if param.type is not None and any(
             length is not None for length in param.type.fixed_lengths
         ):
-            return (
+            return preserve_omission(
                 f"encodeOptionValue({json.dumps(param.name)}, {param.name}, shell, temps, "
                 f"undefined, undefined, {json.dumps(param.type.fixed_lengths)})"
             )
@@ -693,14 +699,14 @@ def _param_expr(
                 return param.name
             fields = {_camel_name(field.name): field.name for field in option.fields}
             extra_args = _option_codec_args(option, metadata)
-            return (
+            return preserve_omission(
                 f"{param.name}.map((item) => encodeOptions(item, "
                 f"{json.dumps(fields, sort_keys=True)}, shell, temps{extra_args}))"
             )
-        return f"toRawSequence({param.name}, shell, temps)"
+        return preserve_omission(f"toRawSequence({param.name}, shell, temps)")
     handle = _handle_kind_from_c_type(param.c_type, metadata)
     if _is_instance_list_handle(handle):
-        return f"toRaw({param.name}, shell, temps)"
+        return preserve_omission(f"toRaw({param.name}, shell, temps)")
     if handle == "value" and module_name != "value":
         return f"{param.name} == null ? null : toRawValue(shell, {param.name}, temps)"
     if _uses_generated_handle(handle):
@@ -716,7 +722,11 @@ def _param_expr(
     if option is not None:
         fields = {_camel_name(field.name): field.name for field in option.fields}
         extra_args = _option_codec_args(option, metadata)
-        return f"encodeOptions({param.name}, {json.dumps(fields, sort_keys=True)}, shell, temps{extra_args})"
+        encoded = (
+            f"encodeOptions({param.name}, {json.dumps(fields, sort_keys=True)}, "
+            f"shell, temps{extra_args})"
+        )
+        return preserve_omission(encoded)
     return param.name
 
 
@@ -1003,11 +1013,13 @@ def _render_direct_interface(
 
 def _render_raw_api_type(
     modules: dict[str, list[tuple[str, CFunctionIR]]],
+    metadata: BindingABI,
 ) -> str:
     module_types = []
     for module_name, functions in sorted(modules.items()):
         methods = "\n".join(
-            _render_raw_method_signature(name, function) for name, function in functions
+            _render_raw_method_signature(name, function, metadata)
+            for name, function in functions
         )
         module_types.append(f"  {_member_name(module_name)}: {{\n{methods}\n  }};")
     return "type RawApi = {\n" + "\n".join(module_types) + "\n};"
@@ -1046,6 +1058,11 @@ def render_api_direct(metadata: BindingABI) -> str:
             module_values.append(
                 f"    {public_name}: Object.freeze({{\n{methods}\n    }}),"
             )
+    value_input_import = (
+        ["  type ValueInput,"]
+        if any("ValueInput" in definition for definition in module_interfaces)
+        else []
+    )
     return "\n".join(
         [
             "// This file was generated with the assistance of an AI coding tool.",
@@ -1064,7 +1081,7 @@ def render_api_direct(metadata: BindingABI) -> str:
             "  wrapValue,",
             "  type ApiData,",
             "  type ValueData,",
-            "  type ValueInput,",
+            *value_input_import,
             "} from '../api.js';",
             "import { PsetProperties, toRawPsetProperties, type PsetInput } from '../pset.js';",
             "import type { IfcOpenShell } from '../init.js';",
@@ -1073,7 +1090,7 @@ def render_api_direct(metadata: BindingABI) -> str:
             "type ApiInput = ApiData | PsetProperties | PsetInput;",
             "type Disposable = { destroy(): void };",
             "type FixedLength = null | number;",
-            _render_raw_api_type(modules),
+            _render_raw_api_type(modules, metadata),
             "",
             _render_result_interfaces(metadata),
             "",

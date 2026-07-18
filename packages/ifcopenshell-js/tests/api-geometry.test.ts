@@ -73,6 +73,22 @@ describeGeneratedOrSkip('generated geometry and presentation API', () => {
       shell.api.boundary.removeBoundary(file, copy);
       shell.api.boundary.removeBoundary(file, boundary);
     });
+
+    it('rejects unknown boundary classifications before mutation', async () => {
+      await using file = await IfcFile.createEmpty(shell, 'IFC4');
+      const space = file.create('IfcSpace');
+      const wall = file.create('IfcWall');
+      const boundary = file.create('IfcRelSpaceBoundary');
+      const entityCount = file.entityCount;
+
+      expect(() => shell.api.boundary.editAttributes(boundary, {
+        relatingSpace: space,
+        relatedBuildingElement: wall,
+        physicalOrVirtual: 'physical' as never,
+      })).toThrow(/Invalid literal for physical_or_virtual/);
+      expect(file.entityCount).toBe(entityCount);
+      expect(await boundary.get('RelatingSpace')).toBeNull();
+    });
   });
 
   describe('context', () => {
@@ -221,6 +237,11 @@ describeGeneratedOrSkip('generated geometry and presentation API', () => {
         ...required,
         railingPath: [[0, 0, 1]],
       })).toThrow(/at least two/i);
+      expect(() => shell.api.geometry.computeWallMountedHandrailGeometry({
+        ...required,
+        railingPath: [[0, 0, 1], [2, 0, 1]],
+        terminalType: 'none' as never,
+      })).toThrow(/Invalid literal for terminal_type/);
     });
 
     it('materializes a default railing with the handrail item last', async () => {
@@ -255,9 +276,6 @@ describeGeneratedOrSkip('generated geometry and presentation API', () => {
       expect(matrix).toHaveLength(16);
       const placement = shell.api.geometry.editObjectPlacement(file, {
         product: wall,
-        matrix,
-        isSi: false,
-        shouldTransformChildren: false,
       });
       expect(placement.type).toBe('IfcLocalPlacement');
 
@@ -305,8 +323,6 @@ describeGeneratedOrSkip('generated geometry and presentation API', () => {
         location: [0, 0, 0] as [number, number, number],
         axis: [0, 0, 1] as [number, number, number],
         refDirection: [1, 0, 0] as [number, number, number],
-        innerBoundaries: [],
-        unitScale: 1,
       };
 
       shell.api.boundary.assignConnectionGeometry(file, boundary, boundaryOptions);
@@ -480,6 +496,36 @@ describeGeneratedOrSkip('generated geometry and presentation API', () => {
         clippings: [clipping],
       });
       expect(await clippedSlab.get('RepresentationType')).toBe('Clipping');
+
+      const entityCount = file.entityCount;
+      expect(() => shell.api.geometry.addWallRepresentation(file, {
+        context,
+        directionSense: 'positive' as never,
+      })).toThrow(/Invalid literal for direction_sense/);
+      expect(() => shell.api.geometry.addSlabRepresentation(file, {
+        context,
+        directionSense: 'negative' as never,
+      })).toThrow(/Invalid literal for direction_sense/);
+      expect(file.entityCount).toBe(entityCount);
+    });
+
+    it('rejects unknown boolean and path connection domains before mutation', async () => {
+      await using file = await IfcFile.createEmpty(shell, 'IFC4');
+      const first = file.create('IfcBlock');
+      const second = file.create('IfcBlock');
+      const wall1 = file.create('IfcWall');
+      const wall2 = file.create('IfcWall');
+      const entityCount = file.entityCount;
+
+      expect(() => shell.api.geometry.addBoolean(
+        file, first, [second], 'difference' as never,
+      )).toThrow(/Invalid literal for operator_type/);
+      expect(() => shell.api.geometry.connectPath(file, {
+        relatingElement: wall1,
+        relatedElement: wall2,
+        relatingConnection: 'atstart' as never,
+      })).toThrow(/Invalid literal for relating_connection/);
+      expect(file.entityCount).toBe(entityCount);
     });
 
     it('adds profile representation through the generated semantic API', async () => {
@@ -925,7 +971,6 @@ describeGeneratedOrSkip('generated geometry and presentation API', () => {
       const rel = await shell.api.style.assignItemStyle(file, {
         item: wall,
         style,
-        shouldUsePresentationStyleAssignment: false,
       });
       expect(rel.type).toBeDefined();
 

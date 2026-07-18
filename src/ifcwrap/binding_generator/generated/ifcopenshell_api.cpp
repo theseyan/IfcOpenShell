@@ -4592,10 +4592,18 @@ bool ifcopenshell_alignment_create(ifcopenshell_file_t* file, const ifcopenshell
     ifcapi::bindings::AlignmentCreateOptions options_cpp{};
     if (options->name == nullptr) { throw std::runtime_error("Options field \"name\" must not be null"); }
     options_cpp.name = std::string(options->name);
-    options_cpp.include_vertical = static_cast<bool>(options->include_vertical);
-    options_cpp.include_cant = static_cast<bool>(options->include_cant);
-    options_cpp.include_geometry = static_cast<bool>(options->include_geometry);
-    options_cpp.start_station = static_cast<double>(options->start_station);
+    if (options->has_include_vertical) {
+        options_cpp.include_vertical = options->include_vertical;
+    }
+    if (options->has_include_cant) {
+        options_cpp.include_cant = options->include_cant;
+    }
+    if (options->has_include_geometry) {
+        options_cpp.include_geometry = options->include_geometry;
+    }
+    if (options->has_start_station) {
+        options_cpp.start_station = options->start_station;
+    }
     if (options->has_owner_history) {
         if (options->owner_history == nullptr) { throw std::runtime_error("Options field \"owner_history\" must not be null"); }
         options_cpp.owner_history = options->owner_history->value;
@@ -4636,7 +4644,9 @@ bool ifcopenshell_alignment_create_as_offset_curve(ifcopenshell_file_t* file, co
     options_cpp.name = std::string(options->name);
     if (options->offsets == nullptr) { throw std::runtime_error("Options field \"offsets\" must not be null"); }
     options_cpp.offsets = options->offsets->value;
-    options_cpp.start_station = static_cast<double>(options->start_station);
+    if (options->has_start_station) {
+        options_cpp.start_station = options->start_station;
+    }
     if (options->has_owner_history) {
         if (options->owner_history == nullptr) { throw std::runtime_error("Options field \"owner_history\" must not be null"); }
         options_cpp.owner_history = options->owner_history->value;
@@ -4677,7 +4687,9 @@ bool ifcopenshell_alignment_create_as_polyline(ifcopenshell_file_t* file, const 
     options_cpp.name = std::string(options->name);
     if (options->points == nullptr) { throw std::runtime_error("Options field \"points\" must not be null"); }
     options_cpp.points = options->points->value;
-    options_cpp.start_station = static_cast<double>(options->start_station);
+    if (options->has_start_station) {
+        options_cpp.start_station = options->start_station;
+    }
     if (options->has_owner_history) {
         if (options->owner_history == nullptr) { throw std::runtime_error("Options field \"owner_history\" must not be null"); }
         options_cpp.owner_history = options->owner_history->value;
@@ -5674,9 +5686,13 @@ bool ifcopenshell_boundary_assign_connection_geometry(ifcopenshell_file_t* file,
     options_cpp.axis = to_fixed_array<3>(to_cpp_double_list(options->axis));
     if (options->ref_direction == nullptr) { throw std::runtime_error("Options field \"ref_direction\" must not be null"); }
     options_cpp.ref_direction = to_fixed_array<3>(to_cpp_double_list(options->ref_direction));
-    if (options->inner_boundaries == nullptr) { throw std::runtime_error("Options field \"inner_boundaries\" must not be null"); }
-    options_cpp.inner_boundaries = transform_sequence(to_cpp_double_list_list_list(options->inner_boundaries), [](auto&& item) { return transform_sequence(std::move(item), [](auto&& item) { return to_fixed_array<2>(std::move(item)); }); });
-    options_cpp.unit_scale = static_cast<double>(options->unit_scale);
+    if (options->has_inner_boundaries) {
+        if (options->inner_boundaries == nullptr) { throw std::runtime_error("Options field \"inner_boundaries\" must not be null"); }
+        options_cpp.inner_boundaries = transform_sequence(to_cpp_double_list_list_list(options->inner_boundaries), [](auto&& item) { return transform_sequence(std::move(item), [](auto&& item) { return to_fixed_array<2>(std::move(item)); }); });
+    }
+    if (options->has_unit_scale) {
+        options_cpp.unit_scale = options->unit_scale;
+    }
         ifcapi::bindings::boundary_assign_connection_geometry(file_cpp, rel_space_boundary_cpp, options_cpp);
         if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
             return false;
@@ -5731,10 +5747,8 @@ bool ifcopenshell_boundary_edit_attributes(ifcopenshell_instance_t* entity, cons
         if (options->corresponding_boundary == nullptr) { throw std::runtime_error("Options field \"corresponding_boundary\" must not be null"); }
         options_cpp.corresponding_boundary = options->corresponding_boundary->value;
     }
-    if (options->physical_or_virtual == nullptr) { throw std::runtime_error("Options field \"physical_or_virtual\" must not be null"); }
-    options_cpp.physical_or_virtual = std::string(options->physical_or_virtual);
-    if (options->internal_or_external == nullptr) { throw std::runtime_error("Options field \"internal_or_external\" must not be null"); }
-    options_cpp.internal_or_external = std::string(options->internal_or_external);
+    options_cpp.physical_or_virtual = static_cast<ifcapi::bindings::BoundaryPhysicalOrVirtual>(options->physical_or_virtual);
+    options_cpp.internal_or_external = static_cast<ifcapi::bindings::BoundaryInternalOrExternal>(options->internal_or_external);
         ifcapi::bindings::boundary_edit_attributes(entity_cpp, options_cpp);
         if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
             return false;
@@ -6773,14 +6787,23 @@ bool ifcopenshell_cost_edit_cost_value(ifcopenshell_file_t* file, ifcopenshell_i
     auto cost_value_cpp = &cost_value->value;
     if (attributes == nullptr) { throw std::runtime_error("Parameter \"attributes\" must not be null"); }
     auto attributes_cpp = static_cast<ifcopenshell_pset_props_t*>(attributes);
-    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
-    ifcapi::bindings::CostEditCostValueOptions options_cpp{};
-    options_cpp.edit_unit_basis = static_cast<bool>(options->edit_unit_basis);
-    options_cpp.clear_unit_basis = static_cast<bool>(options->clear_unit_basis);
-    options_cpp.value_component = static_cast<double>(options->value_component);
-    if (options->has_unit_component) {
-        if (options->unit_component == nullptr) { throw std::runtime_error("Options field \"unit_component\" must not be null"); }
-        options_cpp.unit_component = options->unit_component->value;
+    std::optional<ifcapi::bindings::CostEditCostValueOptions> options_cpp;
+    if (options != nullptr) {
+        ifcapi::bindings::CostEditCostValueOptions options_value{};
+        if (options->has_edit_unit_basis) {
+            options_value.edit_unit_basis = options->edit_unit_basis;
+        }
+        if (options->has_clear_unit_basis) {
+            options_value.clear_unit_basis = options->clear_unit_basis;
+        }
+        if (options->has_value_component) {
+            options_value.value_component = options->value_component;
+        }
+        if (options->has_unit_component) {
+            if (options->unit_component == nullptr) { throw std::runtime_error("Options field \"unit_component\" must not be null"); }
+            options_value.unit_component = options->unit_component->value;
+        }
+        options_cpp = std::move(options_value);
     }
         ifcapi::bindings::cost_edit_cost_value(file_cpp, cost_value_cpp, attributes_cpp, options_cpp);
         if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
@@ -8029,7 +8052,7 @@ bool ifcopenshell_geometry_add_axis_representation(ifcopenshell_file_t* file, if
     }
 }
 
-bool ifcopenshell_geometry_add_boolean(ifcopenshell_file_t* file, ifcopenshell_instance_t* first_item, const ifcopenshell_instance_list_t* second_items, const char* operator_type, ifcopenshell_parse_instance_list_t** out_result) {
+bool ifcopenshell_geometry_add_boolean(ifcopenshell_file_t* file, ifcopenshell_instance_t* first_item, const ifcopenshell_instance_list_t* second_items, int32_t operator_type, ifcopenshell_parse_instance_list_t** out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
@@ -8039,8 +8062,7 @@ bool ifcopenshell_geometry_add_boolean(ifcopenshell_file_t* file, ifcopenshell_i
     auto first_item_cpp = &first_item->value;
     if (second_items == nullptr) { throw std::runtime_error("Parameter \"second_items\" must not be null"); }
     auto second_items_cpp = to_cpp_instance_list(second_items);
-    if (operator_type == nullptr) { throw std::runtime_error("Parameter \"operator_type\" must not be null"); }
-    std::string operator_type_cpp(operator_type);
+    auto operator_type_cpp = static_cast<ifcapi::bindings::GeometryBooleanOperator>(operator_type);
         *out_result = new ifcopenshell_parse_instance_list_t{ifcapi::bindings::geometry_add_boolean(file_cpp, first_item_cpp, second_items_cpp, operator_type_cpp)};
         if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
             return false;
@@ -8343,8 +8365,7 @@ bool ifcopenshell_geometry_add_railing_representation(ifcopenshell_file_t* file,
         options_cpp.clear_width = options->clear_width;
     }
     if (options->has_terminal_type) {
-        if (options->terminal_type == nullptr) { throw std::runtime_error("Options field \"terminal_type\" must not be null"); }
-        options_cpp.terminal_type = std::string(options->terminal_type);
+        options_cpp.terminal_type = static_cast<ifcapi::bindings::GeometryRailingTerminalType>(options->terminal_type);
     }
     if (options->has_height) {
         options_cpp.height = options->height;
@@ -8421,8 +8442,7 @@ bool ifcopenshell_geometry_add_slab_representation(ifcopenshell_file_t* file, co
         options_cpp.depth = options->depth;
     }
     if (options->has_direction_sense) {
-        if (options->direction_sense == nullptr) { throw std::runtime_error("Options field \"direction_sense\" must not be null"); }
-        options_cpp.direction_sense = std::string(options->direction_sense);
+        options_cpp.direction_sense = static_cast<ifcapi::bindings::GeometryDirectionSense>(options->direction_sense);
     }
     if (options->has_offset) {
         options_cpp.offset = options->offset;
@@ -8536,8 +8556,7 @@ bool ifcopenshell_geometry_add_wall_representation(ifcopenshell_file_t* file, co
         options_cpp.height = options->height;
     }
     if (options->has_direction_sense) {
-        if (options->direction_sense == nullptr) { throw std::runtime_error("Options field \"direction_sense\" must not be null"); }
-        options_cpp.direction_sense = std::string(options->direction_sense);
+        options_cpp.direction_sense = static_cast<ifcapi::bindings::GeometryDirectionSense>(options->direction_sense);
     }
     if (options->has_offset) {
         options_cpp.offset = options->offset;
@@ -8836,8 +8855,7 @@ bool ifcopenshell_geometry_compute_wall_mounted_handrail_geometry(const ifcopens
         options_cpp.use_manual_supports = options->use_manual_supports;
     }
     if (options->has_terminal_type) {
-        if (options->terminal_type == nullptr) { throw std::runtime_error("Options field \"terminal_type\" must not be null"); }
-        options_cpp.terminal_type = std::string(options->terminal_type);
+        options_cpp.terminal_type = static_cast<ifcapi::bindings::GeometryRailingTerminalType>(options->terminal_type);
     }
     if (options->has_looped_path) {
         options_cpp.looped_path = options->looped_path;
@@ -8924,10 +8942,8 @@ bool ifcopenshell_geometry_connect_path(ifcopenshell_file_t* file, const ifcopen
     options_cpp.relating_element = options->relating_element->value;
     if (options->related_element == nullptr) { throw std::runtime_error("Options field \"related_element\" must not be null"); }
     options_cpp.related_element = options->related_element->value;
-    if (options->relating_connection == nullptr) { throw std::runtime_error("Options field \"relating_connection\" must not be null"); }
-    options_cpp.relating_connection = std::string(options->relating_connection);
-    if (options->related_connection == nullptr) { throw std::runtime_error("Options field \"related_connection\" must not be null"); }
-    options_cpp.related_connection = std::string(options->related_connection);
+    options_cpp.relating_connection = static_cast<ifcapi::bindings::GeometryPathConnectionType>(options->relating_connection);
+    options_cpp.related_connection = static_cast<ifcapi::bindings::GeometryPathConnectionType>(options->related_connection);
     if (options->has_description) {
         if (options->description == nullptr) { throw std::runtime_error("Options field \"description\" must not be null"); }
         options_cpp.description = std::string(options->description);
@@ -8976,7 +8992,9 @@ bool ifcopenshell_geometry_connect_wall(ifcopenshell_file_t* file, const ifcopen
     options_cpp.first_wall = options->first_wall->value;
     if (options->second_wall == nullptr) { throw std::runtime_error("Options field \"second_wall\" must not be null"); }
     options_cpp.second_wall = options->second_wall->value;
-    options_cpp.is_atpath = static_cast<bool>(options->is_atpath);
+    if (options->has_is_atpath) {
+        options_cpp.is_atpath = options->is_atpath;
+    }
     if (options->has_owner_history) {
         if (options->owner_history == nullptr) { throw std::runtime_error("Options field \"owner_history\" must not be null"); }
         options_cpp.owner_history = options->owner_history->value;
@@ -9061,7 +9079,9 @@ bool ifcopenshell_geometry_create_2pt_wall(ifcopenshell_file_t* file, const ifco
     options_cpp.elevation = static_cast<double>(options->elevation);
     options_cpp.height = static_cast<double>(options->height);
     options_cpp.thickness = static_cast<double>(options->thickness);
-    options_cpp.is_si = static_cast<bool>(options->is_si);
+    if (options->has_is_si) {
+        options_cpp.is_si = options->is_si;
+    }
         auto result_value = ifcapi::bindings::geometry_create_2pt_wall(file_cpp, options_cpp);
         if (!static_cast<bool>(result_value)) {
             *out_result = nullptr;
@@ -9110,8 +9130,7 @@ bool ifcopenshell_geometry_disconnect_path(ifcopenshell_file_t* file, const ifco
         options_cpp.element = options->element->value;
     }
     if (options->has_connection_type) {
-        if (options->connection_type == nullptr) { throw std::runtime_error("Options field \"connection_type\" must not be null"); }
-        options_cpp.connection_type = std::string(options->connection_type);
+        options_cpp.connection_type = static_cast<ifcapi::bindings::GeometryPathConnectionType>(options->connection_type);
     }
     if (options->has_relating_element) {
         if (options->relating_element == nullptr) { throw std::runtime_error("Options field \"relating_element\" must not be null"); }
@@ -9146,8 +9165,12 @@ bool ifcopenshell_geometry_edit_object_placement(ifcopenshell_file_t* file, cons
         if (options->matrix == nullptr) { throw std::runtime_error("Options field \"matrix\" must not be null"); }
         options_cpp.matrix = to_fixed_array<16>(to_cpp_double_list(options->matrix));
     }
-    options_cpp.is_si = static_cast<bool>(options->is_si);
-    options_cpp.should_transform_children = static_cast<bool>(options->should_transform_children);
+    if (options->has_is_si) {
+        options_cpp.is_si = options->is_si;
+    }
+    if (options->has_should_transform_children) {
+        options_cpp.should_transform_children = options->should_transform_children;
+    }
         auto result_value = ifcapi::bindings::geometry_edit_object_placement(file_cpp, options_cpp);
         if (!static_cast<bool>(result_value)) {
             *out_result = nullptr;
@@ -11620,13 +11643,12 @@ bool ifcopenshell_placement_matrix_from_axes(const ifcopenshell_double_list_t* o
     }
 }
 
-bool ifcopenshell_placement_rotation(double angle_rad, const char* axis, ifcopenshell_double_list_t* out_result) {
+bool ifcopenshell_placement_rotation(double angle_rad, int32_t axis, ifcopenshell_double_list_t* out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
     auto angle_rad_cpp = static_cast<double>(angle_rad);
-    if (axis == nullptr) { throw std::runtime_error("Parameter \"axis\" must not be null"); }
-    std::string axis_cpp(axis);
+    auto axis_cpp = static_cast<ifcapi::bindings::PlacementRotationAxis>(axis);
         *out_result = make_double_list(transform_sequence(ifcapi::bindings::placement_rotation(angle_rad_cpp, axis_cpp), [](auto&& item) { return item; }));
         if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
             return false;
@@ -12159,7 +12181,9 @@ bool ifcopenshell_pset_edit_pset(ifcopenshell_file_t* file, const ifcopenshell_p
         if (options->pset_template == nullptr) { throw std::runtime_error("Options field \"pset_template\" must not be null"); }
         options_cpp.pset_template = options->pset_template->value;
     }
-    options_cpp.should_purge = static_cast<bool>(options->should_purge);
+    if (options->has_should_purge) {
+        options_cpp.should_purge = options->should_purge;
+    }
         *out_result = ifcapi::bindings::pset_edit_pset(file_cpp, options_cpp);
         if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
             return false;
@@ -16488,7 +16512,7 @@ bool ifcopenshell_spatial_unassign_container(ifcopenshell_file_t* file, const if
     }
 }
 
-bool ifcopenshell_structural_add_structural_activity(ifcopenshell_file_t* file, ifcopenshell_instance_t* applied_load, ifcopenshell_instance_t* structural_member, const char* ifc_class, const char* predefined_type, const char* global_or_local, const ifcopenshell_structural_add_structural_activity_options_t* options, ifcopenshell_instance_t** out_result) {
+bool ifcopenshell_structural_add_structural_activity(ifcopenshell_file_t* file, ifcopenshell_instance_t* applied_load, ifcopenshell_instance_t* structural_member, const char* ifc_class, const char* predefined_type, int32_t global_or_local, const ifcopenshell_structural_add_structural_activity_options_t* options, ifcopenshell_instance_t** out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
@@ -16502,8 +16526,7 @@ bool ifcopenshell_structural_add_structural_activity(ifcopenshell_file_t* file, 
     std::string ifc_class_cpp(ifc_class);
     if (predefined_type == nullptr) { throw std::runtime_error("Parameter \"predefined_type\" must not be null"); }
     std::string predefined_type_cpp(predefined_type);
-    if (global_or_local == nullptr) { throw std::runtime_error("Parameter \"global_or_local\" must not be null"); }
-    std::string global_or_local_cpp(global_or_local);
+    auto global_or_local_cpp = static_cast<ifcapi::bindings::StructuralGlobalOrLocal>(global_or_local);
     if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
     ifcapi::bindings::StructuralAddStructuralActivityOptions options_cpp{};
     if (options->has_activity_owner_history) {
@@ -17118,7 +17141,7 @@ bool ifcopenshell_style_add_surface_style(ifcopenshell_file_t* file, ifcopenshel
     }
 }
 
-bool ifcopenshell_style_add_surface_textures(ifcopenshell_file_t* file, const ifcopenshell_style_surface_texture_options_list_t* textures, const ifcopenshell_instance_list_t* uv_maps, ifcopenshell_parse_instance_list_t** out_result) {
+bool ifcopenshell_style_add_surface_textures(ifcopenshell_file_t* file, const ifcopenshell_style_surface_texture_options_list_t* textures, ifcopenshell_parse_instance_list_t* uv_maps, ifcopenshell_parse_instance_list_t** out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
@@ -17147,13 +17170,12 @@ bool ifcopenshell_style_add_surface_textures(ifcopenshell_file_t* file, const if
             value.parameter = to_cpp_string_list(item->parameter);
         }
         if (item->has_uv_mode) {
-            if (item->uv_mode == nullptr) { throw std::runtime_error("Options field \"uv_mode\" must not be null"); }
-            value.uv_mode = std::string(item->uv_mode);
+            value.uv_mode = static_cast<ifcapi::bindings::StyleUvMode>(item->uv_mode);
         }
         textures_cpp.push_back(std::move(value));
     }
-    if (uv_maps == nullptr) { throw std::runtime_error("Parameter \"uv_maps\" must not be null"); }
-    auto uv_maps_cpp = to_cpp_instance_list(uv_maps);
+    std::optional<std::vector<express::Base>> uv_maps_cpp;
+    if (uv_maps != nullptr) { uv_maps_cpp = uv_maps->value; }
         *out_result = new ifcopenshell_parse_instance_list_t{ifcapi::bindings::style_add_surface_textures(file_cpp, textures_cpp, uv_maps_cpp)};
         if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
             return false;
@@ -17179,7 +17201,9 @@ bool ifcopenshell_style_assign_item_style(ifcopenshell_file_t* file, const ifcop
         if (options->style == nullptr) { throw std::runtime_error("Options field \"style\" must not be null"); }
         options_cpp.style = options->style->value;
     }
-    options_cpp.should_use_presentation_style_assignment = static_cast<bool>(options->should_use_presentation_style_assignment);
+    if (options->has_should_use_presentation_style_assignment) {
+        options_cpp.should_use_presentation_style_assignment = options->should_use_presentation_style_assignment;
+    }
         auto result_value = ifcapi::bindings::style_assign_item_style(file_cpp, options_cpp);
         if (!static_cast<bool>(result_value)) {
             *out_result = nullptr;
@@ -17580,8 +17604,7 @@ bool ifcopenshell_system_connect_port(ifcopenshell_file_t* file, const ifcopensh
     options_cpp.port1 = options->port1->value;
     if (options->port2 == nullptr) { throw std::runtime_error("Options field \"port2\" must not be null"); }
     options_cpp.port2 = options->port2->value;
-    if (options->direction == nullptr) { throw std::runtime_error("Options field \"direction\" must not be null"); }
-    options_cpp.direction = std::string(options->direction);
+    options_cpp.direction = static_cast<ifcapi::bindings::SystemFlowDirection>(options->direction);
     if (options->has_element) {
         if (options->element == nullptr) { throw std::runtime_error("Options field \"element\" must not be null"); }
         options_cpp.element = options->element->value;
@@ -17847,7 +17870,7 @@ bool ifcopenshell_type_unassign_type(ifcopenshell_file_t* file, const ifcopenshe
     }
 }
 
-bool ifcopenshell_unit_add_context_dependent_unit(ifcopenshell_file_t* file, const char* unit_type, const char* name, const ifcopenshell_int64_list_t* dimensions, ifcopenshell_instance_t** out_result) {
+bool ifcopenshell_unit_add_context_dependent_unit(ifcopenshell_file_t* file, const char* unit_type, const char* name, const ifcopenshell_int32_list_t* dimensions, ifcopenshell_instance_t** out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
@@ -17858,7 +17881,7 @@ bool ifcopenshell_unit_add_context_dependent_unit(ifcopenshell_file_t* file, con
     if (name == nullptr) { throw std::runtime_error("Parameter \"name\" must not be null"); }
     std::string name_cpp(name);
     if (dimensions == nullptr) { throw std::runtime_error("Parameter \"dimensions\" must not be null"); }
-    auto dimensions_cpp = to_cpp_int64_list(dimensions);
+    auto dimensions_cpp = to_fixed_array<7>(to_cpp_int32_list(dimensions));
         auto result_value = ifcapi::bindings::unit_add_context_dependent_unit(file_cpp, unit_type_cpp, name_cpp, dimensions_cpp);
         if (!static_cast<bool>(result_value)) {
             *out_result = nullptr;
@@ -17906,20 +17929,33 @@ bool ifcopenshell_unit_add_conversion_based_unit(ifcopenshell_file_t* file, cons
     }
 }
 
-bool ifcopenshell_unit_add_derived_unit(ifcopenshell_file_t* file, const char* unit_type, const char* userdefinedtype, const ifcopenshell_instance_list_t* units, const ifcopenshell_int64_list_t* exponents, ifcopenshell_instance_t** out_result) {
+bool ifcopenshell_unit_add_derived_unit(ifcopenshell_file_t* file, const ifcopenshell_unit_add_derived_unit_options_t* options, ifcopenshell_instance_t** out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
     if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
     auto file_cpp = file->ptr;
-    if (unit_type == nullptr) { throw std::runtime_error("Parameter \"unit_type\" must not be null"); }
-    std::string unit_type_cpp(unit_type);
-    const char* userdefinedtype_str = userdefinedtype;
-    if (units == nullptr) { throw std::runtime_error("Parameter \"units\" must not be null"); }
-    auto units_cpp = to_cpp_instance_list(units);
-    if (exponents == nullptr) { throw std::runtime_error("Parameter \"exponents\" must not be null"); }
-    auto exponents_cpp = to_cpp_int64_list(exponents);
-        auto result_value = ifcapi::bindings::unit_add_derived_unit(file_cpp, unit_type_cpp, userdefinedtype, units_cpp, exponents_cpp);
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::UnitAddDerivedUnitOptions options_cpp{};
+    if (options->unit_type == nullptr) { throw std::runtime_error("Options field \"unit_type\" must not be null"); }
+    options_cpp.unit_type = std::string(options->unit_type);
+    if (options->has_userdefinedtype) {
+        if (options->userdefinedtype == nullptr) { throw std::runtime_error("Options field \"userdefinedtype\" must not be null"); }
+        options_cpp.userdefinedtype = std::string(options->userdefinedtype);
+    }
+    if (options->elements == nullptr) { throw std::runtime_error("Options field \"elements\" must not be null"); }
+    std::vector<ifcapi::bindings::UnitDerivedUnitElement> nested_values_options_cpp_elements;
+    nested_values_options_cpp_elements.reserve(options->elements->size);
+    for (size_t i_options_cpp_elements = 0; i_options_cpp_elements < options->elements->size; ++i_options_cpp_elements) {
+        const auto* item_options_cpp_elements = &options->elements->items[i_options_cpp_elements];
+        ifcapi::bindings::UnitDerivedUnitElement nested_value_options_cpp_elements{};
+        if (item_options_cpp_elements->unit == nullptr) { throw std::runtime_error("Options field \"unit\" must not be null"); }
+        nested_value_options_cpp_elements.unit = item_options_cpp_elements->unit->value;
+        nested_value_options_cpp_elements.exponent = static_cast<long long>(item_options_cpp_elements->exponent);
+        nested_values_options_cpp_elements.push_back(std::move(nested_value_options_cpp_elements));
+    }
+    options_cpp.elements = std::move(nested_values_options_cpp_elements);
+        auto result_value = ifcapi::bindings::unit_add_derived_unit(file_cpp, options_cpp);
         if (!static_cast<bool>(result_value)) {
             *out_result = nullptr;
         } else {
@@ -18239,7 +18275,7 @@ bool ifcopenshell_unit_get_named_dimensions(const char* name, ifcopenshell_int32
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
     if (name == nullptr) { throw std::runtime_error("Parameter \"name\" must not be null"); }
     std::string name_cpp(name);
-        *out_result = make_int32_list(ifcapi::bindings::unit_get_named_dimensions(name_cpp));
+        *out_result = make_int32_list(transform_sequence(ifcapi::bindings::unit_get_named_dimensions(name_cpp), [](auto&& item) { return item; }));
         if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
             return false;
         }
@@ -18314,7 +18350,7 @@ bool ifcopenshell_unit_get_si_dimensions(const char* name, ifcopenshell_int32_li
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
     if (name == nullptr) { throw std::runtime_error("Parameter \"name\" must not be null"); }
     std::string name_cpp(name);
-        *out_result = make_int32_list(ifcapi::bindings::unit_get_si_dimensions(name_cpp));
+        *out_result = make_int32_list(transform_sequence(ifcapi::bindings::unit_get_si_dimensions(name_cpp), [](auto&& item) { return item; }));
         if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
             return false;
         }

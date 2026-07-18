@@ -23,6 +23,17 @@
 
 namespace {
 
+const char* flow_direction_name(ifcapi::bindings::SystemFlowDirection value) {
+    using Direction = ifcapi::bindings::SystemFlowDirection;
+    switch (value) {
+    case Direction::SOURCE: return "SOURCE";
+    case Direction::SINK: return "SINK";
+    case Direction::SOURCEANDSINK: return "SOURCEANDSINK";
+    case Direction::NOTDEFINED: return "NOTDEFINED";
+    }
+    throw std::invalid_argument("Unsupported system flow direction");
+}
+
 bool is_ifc2x3(ifcopenshell::file* file) {
     return file && file->schema() && file->schema()->name() == "IFC2X3";
 }
@@ -317,6 +328,7 @@ void system_connect_port(
     ifcopenshell::file* file,
     const SystemConnectPortOptions& options)
 {
+    const std::string direction = flow_direction_name(options.direction);
     auto owner_history = options.owner_history.value_or(express::Base());
     auto user = options.user.value_or(express::Base());
     auto application = options.application.value_or(express::Base());
@@ -326,18 +338,18 @@ void system_connect_port(
 
     purge_existing_connections_to_other_ports(file, options.port1, options.port2);
 
-    if (options.direction == "SOURCE") {
+    if (direction == "SOURCE") {
         write_flow_direction(options.port1, "SOURCE");
         write_flow_direction(options.port2, "SINK");
-    } else if (options.direction == "SINK") {
+    } else if (direction == "SINK") {
         write_flow_direction(options.port1, "SINK");
         write_flow_direction(options.port2, "SOURCE");
     } else {
-        write_flow_direction(options.port1, options.direction);
-        write_flow_direction(options.port2, options.direction);
+        write_flow_direction(options.port1, direction);
+        write_flow_direction(options.port2, direction);
     }
 
-    if (options.direction == "SOURCE" || options.direction == "SOURCEANDSINK" || options.direction == "NOTDEFINED") {
+    if (direction == "SOURCE" || direction == "SOURCEANDSINK" || direction == "NOTDEFINED") {
         if (inverse_entities(options.port1, "ConnectedTo").empty()) {
             create_connects_ports(file, options.port1, options.port2, owner_history, user, application);
         }
@@ -345,7 +357,7 @@ void system_connect_port(
         purge_connected_to(file, options.port1);
     }
 
-    if (options.direction == "SINK" || options.direction == "SOURCEANDSINK" || options.direction == "NOTDEFINED") {
+    if (direction == "SINK" || direction == "SOURCEANDSINK" || direction == "NOTDEFINED") {
         if (inverse_entities(options.port1, "ConnectedFrom").empty()) {
             create_connects_ports(file, options.port2, options.port1, owner_history, user, application);
         }

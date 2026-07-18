@@ -17,6 +17,8 @@ struct ifcopenshell_pset_props_t;
 namespace ifcapi {
 namespace bindings {
 
+enum class StructuralGlobalOrLocal { GLOBAL_COORDS, LOCAL_COORDS };
+
 /// Options for assigning products to a structural analysis model.
 struct StructuralAssignStructuralAnalysisModelOptions {
     /// Owner history applied to the IfcRelAssignsToGroup relationship. When omitted, one is created from user/application.
@@ -125,8 +127,8 @@ IFCAPI_BINDING express::Base structural_assign_product(
  * @param file File that receives the new entities.
  * @param applied_load IfcStructuralLoad to apply.
  * @param structural_member Structural member to connect the activity to.
- * @param ifc_class IFC class name (e.g. "IfcStructuralPlanarAction").
- * @param predefined_type Predefined type enum value.
+ * @param ifc_class Schema-dynamic IFC class name (e.g. "IfcStructuralPlanarAction"); intentionally not narrowed.
+ * @param predefined_type Schema-dynamic predefined type value; intentionally not narrowed.
  * @param global_or_local "GLOBAL_COORDS" or "LOCAL_COORDS".
  * @param options Ownership options for the activity and relationship.
  * @return Newly created IfcStructuralActivity.
@@ -137,7 +139,7 @@ IFCAPI_BINDING express::Base structural_add_structural_activity(
     express::Base* structural_member,
     const std::string& ifc_class,
     const std::string& predefined_type,
-    const std::string& global_or_local,
+    StructuralGlobalOrLocal global_or_local,
     const StructuralAddStructuralActivityOptions& options);
 /**
  * Create an IfcStructuralLoad subclass entity.

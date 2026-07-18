@@ -327,6 +327,7 @@ def test_typescript_and_js_preserve_native_default_omission() -> None:
     signature = "update(tolerance?: number | null, label?: string | null): boolean;"
     assert signature in declarations
     assert signature in direct
+    assert "type ValueInput," not in direct
     assert (
         "update: (tolerance?: number | null, label?: string | null) => boolean;"
         in direct
@@ -335,6 +336,76 @@ def test_typescript_and_js_preserve_native_default_omission() -> None:
     assert "required_zero: number;" in declarations
     assert "tolerance == null ? 0 : module._malloc(8)" in glue
     assert 'module.setValue(_tolerancePtr, tolerance, "double")' in glue
+
+
+def test_direct_api_guards_omitted_nullable_option_records() -> None:
+    option = COptionIR(
+        "DefaultsOptions",
+        "ifcopenshell_demo_defaults_options_t",
+        (COptionFieldIR("enabled", TypeSpec(kind="bool"), "bool"),),
+    )
+    function = _make_function(
+        c_name="ifcopenshell_demo_update",
+        params=(
+            CParamIR(
+                name="options",
+                c_type="const ifcopenshell_demo_defaults_options_t*",
+                role="param",
+                type_kind="option",
+                nullable=True,
+                has_default=True,
+                type=TypeSpec(kind="option", struct="DefaultsOptions", nullable=True),
+            ),
+        ),
+        returns=TypeSpec(kind="bool"),
+        public_module="demo",
+    )
+    metadata = _make_metadata(
+        c_prefix="ifcopenshell",
+        option_structs={"DefaultsOptions": option},
+        functions={function.c_name: function},
+    )
+
+    direct = render_api_direct(metadata)
+
+    assert (
+        "update(options?: IfcOpenShellDemoDefaultsOptions | null): boolean;" in direct
+    )
+    assert "options == null ? null : encodeOptions(options," in direct
+
+
+def test_direct_api_guards_omitted_nullable_instance_lists() -> None:
+    function = _make_function(
+        c_name="ifcopenshell_demo_update",
+        params=(
+            CParamIR(
+                name="items",
+                c_type="ifcopenshell_parse_instance_list_t*",
+                role="param",
+                type_kind="handle",
+                nullable=True,
+                has_default=True,
+            ),
+        ),
+        public_module="demo",
+    )
+    metadata = _make_metadata(
+        c_prefix="ifcopenshell",
+        handles={
+            "parse_instance_list": CTypeIR(
+                c_type="ifcopenshell_parse_instance_list_t",
+                kind="handle",
+                fields=(),
+                destroy_function="ifcopenshell_parse_instance_list_destroy",
+            )
+        },
+        functions={function.c_name: function},
+    )
+
+    direct = render_api_direct(metadata)
+
+    assert "update(items?: Entity[] | null): void;" in direct
+    assert "items == null ? null : toRaw(items, shell, temps)" in direct
 
 
 def test_direct_api_preserves_fixed_sequence_variant_contracts() -> None:
@@ -531,6 +602,7 @@ def test_sequence_types_preserve_enum_and_literal_domains() -> None:
 def test_js_glue_marshals_enum_domains_at_the_native_boundary() -> None:
     mode = TypeSpec(
         kind="int32",
+        alias="Mode",
         enum_values=("WALL", "SLAB"),
         enum_numeric_values=(0, 1),
     )
@@ -539,6 +611,7 @@ def test_js_glue_marshals_enum_domains_at_the_native_boundary() -> None:
         c_name="ifcopenshell_demo_round_trip_mode",
         params=(CParamIR("mode", "int32_t", "param", "int32", type=mode),),
         returns=mode,
+        public_module="demo",
     )
     sequence_function = _make_function(
         c_name="ifcopenshell_demo_round_trip_modes",
@@ -552,6 +625,7 @@ def test_js_glue_marshals_enum_domains_at_the_native_boundary() -> None:
             ),
         ),
         returns=modes,
+        public_module="demo",
     )
     option = COptionIR(
         "ModeOptions",
@@ -569,8 +643,10 @@ def test_js_glue_marshals_enum_domains_at_the_native_boundary() -> None:
             ),
         ),
         returns=TypeSpec(kind="void"),
+        public_module="demo",
     )
     metadata = _make_metadata(
+        c_prefix="ifcopenshell",
         value_types={
             "int32_list": CTypeIR(
                 c_type="ifcopenshell_int32_list_t",
@@ -594,7 +670,10 @@ def test_js_glue_marshals_enum_domains_at_the_native_boundary() -> None:
     )
 
     glue = render_js_glue(metadata)
+    direct = render_api_direct(metadata)
 
+    assert "roundTripMode(mode: Mode): Mode;" in direct
+    assert "roundTripMode: (mode: Mode) => Mode;" in direct
     assert '_enumInputValue(mode, {"WALL": 0, "SLAB": 1}, "mode")' in glue
     assert '_mapEnumInput(modes, {"WALL": 0, "SLAB": 1}, 1, "modes")' in glue
     assert (
@@ -1687,6 +1766,10 @@ class TestWasmJsGlue:
                     c_name="ifcopenshell_demo_names",
                     returns=TypeSpec(kind="string", sequence_depth=1),
                 ),
+                "ifcopenshell_demo_values": _make_function(
+                    c_name="ifcopenshell_demo_values",
+                    returns=TypeSpec(kind="int32", sequence_depth=1),
+                ),
                 "ifcopenshell_demo_set_rows": _make_function(
                     c_name="ifcopenshell_demo_set_rows",
                     params=(
@@ -1714,6 +1797,12 @@ class TestWasmJsGlue:
             in code
         )
         assert "outResultPtr = module._malloc(8);" in code
+        values_wrapper = code[code.index("function invoke_ifcopenshell_demo_values") :]
+        assert (
+            "outResultPtr = module._malloc(12);" in values_wrapper.split("\n}\n", 1)[0]
+        )
+        assert "_HANDLE_C_TYPES.has(_normalizeCType(elementType))" in code
+        assert "_normalizeCType(elementType).endsWith('_t')" not in code
         assert (
             '_readValueType(module, outResultPtr, _VALUE_TYPES["ifcopenshell_string_list_t"])'
             in code
@@ -2837,6 +2926,7 @@ class TestWasmApiBridge:
         code = render_api_direct(metadata)
 
         assert "value: ValueInput" in code
+        assert "type ValueInput," in code
         assert "setElementValue(file: IfcFile" in code
 
     def test_direct_api_facade_maps_nullable_result_structs(self):

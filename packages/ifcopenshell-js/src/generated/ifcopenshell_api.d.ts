@@ -97,8 +97,19 @@ declare module 'ifcopenshell-api' {
     full_transition_length: number;
   }
 
+  export type BoundaryInternalOrExternal = 'INTERNAL' | 'EXTERNAL' | 'EXTERNAL_EARTH' | 'EXTERNAL_WATER' | 'EXTERNAL_FIRE' | 'NOTDEFINED';
+  export type BoundaryPhysicalOrVirtual = 'PHYSICAL' | 'VIRTUAL' | 'NOTDEFINED';
+  export type Dimensions7 = [number, number, number, number, number, number, number];
+  export type GeometryBooleanOperator = 'DIFFERENCE' | 'INTERSECTION' | 'UNION';
+  export type GeometryDirectionSense = 'POSITIVE' | 'NEGATIVE';
   export type GeometryDoorOperationType = 'SINGLE_SWING_LEFT' | 'SINGLE_SWING_RIGHT' | 'DOUBLE_SWING_RIGHT' | 'DOUBLE_SWING_LEFT' | 'DOUBLE_DOOR_SINGLE_SWING' | 'DOUBLE_DOOR_DOUBLE_SWING' | 'SLIDING_TO_LEFT' | 'SLIDING_TO_RIGHT' | 'DOUBLE_DOOR_SLIDING';
+  export type GeometryPathConnectionType = 'ATSTART' | 'ATEND' | 'ATPATH' | 'NOTDEFINED';
+  export type GeometryRailingTerminalType = '180' | 'TO_END_POST' | 'TO_WALL' | 'TO_FLOOR' | 'TO_END_POST_AND_FLOOR' | 'NONE';
   export type GeometryWindowPartitionType = 'SINGLE_PANEL' | 'DOUBLE_PANEL_HORIZONTAL' | 'DOUBLE_PANEL_VERTICAL' | 'TRIPLE_PANEL_BOTTOM' | 'TRIPLE_PANEL_HORIZONTAL' | 'TRIPLE_PANEL_LEFT' | 'TRIPLE_PANEL_RIGHT' | 'TRIPLE_PANEL_TOP' | 'TRIPLE_PANEL_VERTICAL';
+  export type PlacementRotationAxis = 'X' | 'Y' | 'Z';
+  export type StructuralGlobalOrLocal = 'GLOBAL_COORDS' | 'LOCAL_COORDS';
+  export type StyleUvMode = 'Generated' | 'Camera' | 'UV';
+  export type SystemFlowDirection = 'SOURCE' | 'SINK' | 'SOURCEANDSINK' | 'NOTDEFINED';
   export type filetype = 'FT_IFCSPF' | 'FT_IFCXML' | 'FT_IFCZIP' | 'FT_ROCKSDB' | 'FT_UNKNOWN' | 'FT_AUTODETECT';
   export type kinds = 'MATRIX4' | 'POINT3' | 'DIRECTION3' | 'LINE' | 'CIRCLE' | 'ELLIPSE' | 'BSPLINE_CURVE' | 'OFFSET_CURVE' | 'PLANE' | 'CYLINDER' | 'SPHERE' | 'TORUS' | 'BSPLINE_SURFACE' | 'EDGE' | 'LOOP' | 'FACE' | 'SHELL' | 'SOLID' | 'LOFT' | 'EXTRUSION' | 'REVOLVE' | 'SWEEP_ALONG_CURVE' | 'NODE' | 'COLLECTION' | 'BOOLEAN_RESULT' | 'FUNCTION_ITEM' | 'FUNCTOR_ITEM' | 'PIECEWISE_FUNCTION' | 'GRADIENT_FUNCTION' | 'CANT_FUNCTION' | 'OFFSET_FUNCTION' | 'COLOUR' | 'STYLE';
   export type operation_t = 'UNION' | 'SUBTRACTION' | 'INTERSECTION';
@@ -150,7 +161,7 @@ declare module 'ifcopenshell-api' {
   export interface IfcOpenshellAlignmentCreateOffsetCurveOptions {
     name: string;
     offsets: IfcOpenshellParseInstanceList;
-    start_station: number;
+    start_station?: number;
     owner_history?: IfcOpenshellInstance;
     user?: IfcOpenshellInstance;
     application?: IfcOpenshellInstance;
@@ -158,10 +169,10 @@ declare module 'ifcopenshell-api' {
 
   export interface IfcOpenshellAlignmentCreateOptions {
     name: string;
-    include_vertical: boolean;
-    include_cant: boolean;
-    include_geometry: boolean;
-    start_station: number;
+    include_vertical?: boolean;
+    include_cant?: boolean;
+    include_geometry?: boolean;
+    start_station?: number;
     owner_history?: IfcOpenshellInstance;
     user?: IfcOpenshellInstance;
     application?: IfcOpenshellInstance;
@@ -170,7 +181,7 @@ declare module 'ifcopenshell-api' {
   export interface IfcOpenshellAlignmentCreatePolylineOptions {
     name: string;
     points: IfcOpenshellParseInstanceList;
-    start_station: number;
+    start_station?: number;
     owner_history?: IfcOpenshellInstance;
     user?: IfcOpenshellInstance;
     application?: IfcOpenshellInstance;
@@ -225,8 +236,8 @@ declare module 'ifcopenshell-api' {
     location: [number, number, number];
     axis: [number, number, number];
     ref_direction: [number, number, number];
-    inner_boundaries: [number, number][][];
-    unit_scale: number;
+    inner_boundaries?: [number, number][][];
+    unit_scale?: number;
   }
 
   export interface IfcOpenshellBoundaryEditAttributesOptions {
@@ -234,8 +245,8 @@ declare module 'ifcopenshell-api' {
     related_building_element: IfcOpenshellInstance;
     parent_boundary?: IfcOpenshellInstance;
     corresponding_boundary?: IfcOpenshellInstance;
-    physical_or_virtual: string;
-    internal_or_external: string;
+    physical_or_virtual: BoundaryPhysicalOrVirtual;
+    internal_or_external: BoundaryInternalOrExternal;
   }
 
   export interface IfcOpenshellClassificationAddReferenceOptions {
@@ -323,9 +334,9 @@ declare module 'ifcopenshell-api' {
   }
 
   export interface IfcOpenshellCostEditCostValueOptions {
-    edit_unit_basis: boolean;
-    clear_unit_basis: boolean;
-    value_component: number;
+    edit_unit_basis?: boolean;
+    clear_unit_basis?: boolean;
+    value_component?: number;
     unit_component?: IfcOpenshellInstance;
   }
 
@@ -448,7 +459,7 @@ declare module 'ifcopenshell-api' {
     support_spacing?: number;
     railing_diameter?: number;
     clear_width?: number;
-    terminal_type?: string;
+    terminal_type?: GeometryRailingTerminalType;
     height?: number;
     looped_path?: boolean;
     unit_scale?: number;
@@ -465,7 +476,7 @@ declare module 'ifcopenshell-api' {
   export interface IfcOpenshellGeometryAddSlabRepresentationOptions {
     context: IfcOpenshellInstance;
     depth?: number;
-    direction_sense?: string;
+    direction_sense?: GeometryDirectionSense;
     offset?: number;
     x_angle?: number;
     clippings?: (IfcOpenshellGeometryPlaneClipping | IfcOpenshellGeometryEntityClipping)[];
@@ -483,7 +494,7 @@ declare module 'ifcopenshell-api' {
     context: IfcOpenshellInstance;
     length?: number;
     height?: number;
-    direction_sense?: string;
+    direction_sense?: GeometryDirectionSense;
     offset?: number;
     thickness?: number;
     x_angle?: number;
@@ -531,7 +542,7 @@ declare module 'ifcopenshell-api' {
     clear_width: number;
     height: number;
     use_manual_supports?: boolean;
-    terminal_type?: string;
+    terminal_type?: GeometryRailingTerminalType;
     looped_path?: boolean;
     unit_scale?: number;
   }
@@ -548,8 +559,8 @@ declare module 'ifcopenshell-api' {
   export interface IfcOpenshellGeometryConnectPathOptions {
     relating_element: IfcOpenshellInstance;
     related_element: IfcOpenshellInstance;
-    relating_connection: string;
-    related_connection: string;
+    relating_connection: GeometryPathConnectionType;
+    related_connection: GeometryPathConnectionType;
     description?: string;
     connection_geometry?: IfcOpenshellInstance;
     owner_history?: IfcOpenshellInstance;
@@ -560,7 +571,7 @@ declare module 'ifcopenshell-api' {
   export interface IfcOpenshellGeometryConnectWallOptions {
     first_wall: IfcOpenshellInstance;
     second_wall: IfcOpenshellInstance;
-    is_atpath: boolean;
+    is_atpath?: boolean;
     owner_history?: IfcOpenshellInstance;
     user?: IfcOpenshellInstance;
     application?: IfcOpenshellInstance;
@@ -580,12 +591,12 @@ declare module 'ifcopenshell-api' {
     elevation: number;
     height: number;
     thickness: number;
-    is_si: boolean;
+    is_si?: boolean;
   }
 
   export interface IfcOpenshellGeometryDisconnectPathOptions {
     element?: IfcOpenshellInstance;
-    connection_type?: string;
+    connection_type?: GeometryPathConnectionType;
     relating_element?: IfcOpenshellInstance;
     related_element?: IfcOpenshellInstance;
   }
@@ -615,8 +626,8 @@ declare module 'ifcopenshell-api' {
   export interface IfcOpenshellGeometryEditObjectPlacementOptions {
     product: IfcOpenshellInstance;
     matrix?: [number, number, number, number, number, number, number, number, number, number, number, number, number, number, number, number];
-    is_si: boolean;
-    should_transform_children: boolean;
+    is_si?: boolean;
+    should_transform_children?: boolean;
   }
 
   export interface IfcOpenshellGeometryEntityClipping {
@@ -962,7 +973,7 @@ declare module 'ifcopenshell-api' {
     name?: string;
     properties: number;
     pset_template?: IfcOpenshellInstance;
-    should_purge: boolean;
+    should_purge?: boolean;
   }
 
   export interface IfcOpenshellPsetEditQtoOptions {
@@ -1370,7 +1381,7 @@ declare module 'ifcopenshell-api' {
   export interface IfcOpenshellStyleAssignItemStyleOptions {
     item: IfcOpenshellInstance;
     style?: IfcOpenshellInstance;
-    should_use_presentation_style_assignment: boolean;
+    should_use_presentation_style_assignment?: boolean;
   }
 
   export interface IfcOpenshellStyleSurfaceTextureOptions {
@@ -1380,7 +1391,7 @@ declare module 'ifcopenshell-api' {
     url_reference: string;
     texture_transform?: IfcOpenshellInstance;
     parameter?: string[];
-    uv_mode?: string;
+    uv_mode?: StyleUvMode;
   }
 
   export interface IfcOpenshellSystemAddPortOptions {
@@ -1422,7 +1433,7 @@ declare module 'ifcopenshell-api' {
   export interface IfcOpenshellSystemConnectPortOptions {
     port1: IfcOpenshellInstance;
     port2: IfcOpenshellInstance;
-    direction: string;
+    direction: SystemFlowDirection;
     element?: IfcOpenshellInstance;
     owner_history?: IfcOpenshellInstance;
     user?: IfcOpenshellInstance;
@@ -1470,6 +1481,12 @@ declare module 'ifcopenshell-api' {
     conversion_offset?: number;
   }
 
+  export interface IfcOpenshellUnitAddDerivedUnitOptions {
+    unit_type: string;
+    userdefinedtype?: string;
+    elements: IfcOpenshellUnitDerivedUnitElement[];
+  }
+
   export interface IfcOpenshellUnitAssignUnitOptions {
     units?: IfcOpenshellParseInstanceList;
     length_is_metric?: boolean;
@@ -1478,6 +1495,11 @@ declare module 'ifcopenshell-api' {
     area_raw?: string;
     volume_is_metric?: boolean;
     volume_raw?: string;
+  }
+
+  export interface IfcOpenshellUnitDerivedUnitElement {
+    unit: IfcOpenshellInstance;
+    exponent: bigint;
   }
 
   export interface IfcOpenshellUnitEditNamedUnitOptions {
@@ -2919,7 +2941,7 @@ declare module 'ifcopenshell-api' {
      * @param attributes Property bag of attribute name/value pairs.
      * @param options Unit basis replacement options.
      */
-    editCostValue(file: IfcOpenshellFile, cost_value: IfcOpenshellInstance, attributes: number, options: IfcOpenshellCostEditCostValueOptions): void;
+    editCostValue(file: IfcOpenshellFile, cost_value: IfcOpenshellInstance, attributes: number, options?: IfcOpenshellCostEditCostValueOptions | null): void;
     /**
      * Set an IfcCostValue's attributes from a formula expression.
      *
@@ -3541,7 +3563,7 @@ declare module 'ifcopenshell-api' {
      * @param operator_type Boolean operator: "DIFFERENCE", "UNION", or "INTERSECTION".
      * @return Created boolean result entities, or an empty list if creation fails.
      */
-    addBoolean(file: IfcOpenshellFile, first_item: IfcOpenshellInstance, second_items: IfcOpenshellInstance[], operator_type: string): IfcOpenshellParseInstanceList;
+    addBoolean(file: IfcOpenshellFile, first_item: IfcOpenshellInstance, second_items: IfcOpenshellInstance[], operator_type: GeometryBooleanOperator): IfcOpenshellParseInstanceList;
     /**
      * Create a door representation with lining and panel geometry.
      *
@@ -4608,10 +4630,10 @@ declare module 'ifcopenshell-api' {
      * Build a 4x4 row-major rotation matrix about a principal axis.
      *
      * @param angle_rad Rotation angle in radians.
-     * @param axis Rotation axis: "X", "Y", or "Z" (case-insensitive).
+     * @param axis Rotation axis: "X", "Y", or "Z".
      * @return 16-element row-major 4x4 rotation matrix.
      */
-    rotation(angle_rad: number, axis: string): [number, number, number, number, number, number, number, number, number, number, number, number, number, number, number, number];
+    rotation(angle_rad: number, axis: PlacementRotationAxis): [number, number, number, number, number, number, number, number, number, number, number, number, number, number, number, number];
   }
 
   export interface IfcOpenshellProfileModule {
@@ -6532,13 +6554,13 @@ declare module 'ifcopenshell-api' {
      * @param file File that receives the new entities.
      * @param applied_load IfcStructuralLoad to apply.
      * @param structural_member Structural member to connect the activity to.
-     * @param ifc_class IFC class name (e.g. "IfcStructuralPlanarAction").
-     * @param predefined_type Predefined type enum value.
+     * @param ifc_class Schema-dynamic IFC class name (e.g. "IfcStructuralPlanarAction"); intentionally not narrowed.
+     * @param predefined_type Schema-dynamic predefined type value; intentionally not narrowed.
      * @param global_or_local "GLOBAL_COORDS" or "LOCAL_COORDS".
      * @param options Ownership options for the activity and relationship.
      * @return Newly created IfcStructuralActivity.
      */
-    addStructuralActivity(file: IfcOpenshellFile, applied_load: IfcOpenshellInstance, structural_member: IfcOpenshellInstance, ifc_class: string, predefined_type: string, global_or_local: string, options: IfcOpenshellStructuralAddStructuralActivityOptions): IfcOpenshellInstance;
+    addStructuralActivity(file: IfcOpenshellFile, applied_load: IfcOpenshellInstance, structural_member: IfcOpenshellInstance, ifc_class: string, predefined_type: string, global_or_local: StructuralGlobalOrLocal, options: IfcOpenshellStructuralAddStructuralActivityOptions): IfcOpenshellInstance;
     /**
      * Create an IfcStructuralAnalysisModel with PredefinedType LOADING_3D.
      *
@@ -6786,11 +6808,11 @@ declare module 'ifcopenshell-api' {
     /**
      * Create image textures and their coordinate mappings in descriptor order.
      *
-     * IFC2X3 returns an empty list without mutation. Unknown or omitted mapping
-     * modes create no mapping. UV mappings append each texture once to every
-     * supplied coordinate map while preserving existing order.
+     * IFC2X3 returns an empty list without mutation. Omitted mapping modes create
+     * no mapping; invalid modes are rejected before mutation. UV mappings append
+     * each texture once to every supplied coordinate map while preserving order.
      */
-    addSurfaceTextures(file: IfcOpenshellFile, textures: IfcOpenshellStyleSurfaceTextureOptions[], uv_maps: IfcOpenshellInstance[]): IfcOpenshellParseInstanceList;
+    addSurfaceTextures(file: IfcOpenshellFile, textures: IfcOpenshellStyleSurfaceTextureOptions[], uv_maps?: IfcOpenshellParseInstanceList | null): IfcOpenshellParseInstanceList;
     /**
      * Assign or replace a style on a single representation item.
      *
@@ -7021,10 +7043,12 @@ declare module 'ifcopenshell-api' {
      * @param file File that receives the new entity.
      * @param unit_type IFC unit type enum value (e.g. "LENGTHUNIT").
      * @param name Display name for the unit (e.g. "bag", "each").
-     * @param dimensions 7-element sequence of dimensional exponents.
+     * @param dimensions Dimensional exponents ordered as length, mass, time,
+     * electric current, thermodynamic temperature, amount of substance, and
+     * luminous intensity.
      * @return Newly created IfcContextDependentUnit.
      */
-    addContextDependentUnit(file: IfcOpenshellFile, unit_type: string, name: string, dimensions: bigint[]): IfcOpenshellInstance;
+    addContextDependentUnit(file: IfcOpenshellFile, unit_type: string, name: string, dimensions: Dimensions7): IfcOpenshellInstance;
     /**
      * Create a conversion-based named unit from the native unit table.
      *
@@ -7036,17 +7060,14 @@ declare module 'ifcopenshell-api' {
     /**
      * Create an IfcDerivedUnit entity.
      *
-     * Constructs a derived unit from a list of component units and their
-     * exponents (e.g. m/s from ["METRE", "SECOND"] with exponents [1, -1]).
+     * Constructs a derived unit from semantic unit/exponent components (e.g.
+     * m/s from [{metre, 1}, {second, -1}]).
      *
      * @param file File that receives the new entity.
-     * @param unit_type IFC unit type enum value (e.g. "VELOCITYUNIT").
-     * @param userdefinedtype UserDefinedType string. When omitted, it is left blank.
-     * @param units Component IfcUnit entities.
-     * @param exponents Exponent for each component unit (must match units in length).
+     * @param options Unit type, optional user-defined type, and semantic components.
      * @return Newly created IfcDerivedUnit.
      */
-    addDerivedUnit(file: IfcOpenshellFile, unit_type: string, userdefinedtype: string | null, units: IfcOpenshellInstance[], exponents: bigint[]): IfcOpenshellInstance;
+    addDerivedUnit(file: IfcOpenshellFile, options: IfcOpenshellUnitAddDerivedUnitOptions): IfcOpenshellInstance;
     /**
      * Create an IfcMonetaryUnit entity.
      *
@@ -7182,7 +7203,7 @@ declare module 'ifcopenshell-api' {
      * @param name Unit type name.
      * @return 7-element sequence of dimensional exponents.
      */
-    getNamedDimensions(name: string): number[];
+    getNamedDimensions(name: string): Dimensions7;
     /**
      * Extract the SI prefix from a combined unit text string.
      *
@@ -7215,7 +7236,7 @@ declare module 'ifcopenshell-api' {
      */
     getProjectUnit(file: IfcOpenshellFile, unit_type: string): IfcOpenshellInstance;
     /**
-     * Return the SI dimensional exponents for a given unit type name.
+     * Return the dimensional exponents for a given SI unit name.
      *
      * Returns a 7-element sequence of integers corresponding to the
      * IfcDimensionalExponents attributes: Length, Mass, Time,
@@ -7223,10 +7244,10 @@ declare module 'ifcopenshell-api' {
      * LuminousIntensity. Falls back to the "OTHERWISE" entry for
      * unknown types.
      *
-     * @param name Unit type name (e.g. "LENGTHUNIT", "MASSUNIT").
+     * @param name SI unit name (e.g. "METRE", "GRAM").
      * @return 7-element sequence of dimensional exponents.
      */
-    getSiDimensions(name: string): number[];
+    getSiDimensions(name: string): Dimensions7;
     /**
      * Infer the IFC measure class from a unit symbol string.
      *

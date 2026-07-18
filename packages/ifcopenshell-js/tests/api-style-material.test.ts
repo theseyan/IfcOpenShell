@@ -63,6 +63,31 @@ describeGeneratedOrSkip('generated style and material API', () => {
     expect(file.all('IfcTextureCoordinateGenerator')).toHaveLength(3);
   });
 
+  it('rejects unknown UV modes before mutation', async () => {
+    await using file = await IfcFile.createEmpty(shell, 'IFC4');
+    const entityCount = file.entityCount;
+    expect(() => shell.api.style.addSurfaceTextures(file, [{
+      repeatS: true,
+      repeatT: true,
+      urlReference: 'invalid.png',
+      uvMode: 'generated' as never,
+    }])).toThrow(/Invalid literal for uv_mode/);
+    expect(file.entityCount).toBe(entityCount);
+  });
+
+  it('creates surface textures when UV maps are omitted', async () => {
+    await using file = await IfcFile.createEmpty(shell, 'IFC4');
+    const textures = shell.api.style.addSurfaceTextures(file, [{
+      repeatS: true,
+      repeatT: false,
+      urlReference: 'unmapped.png',
+    }]);
+
+    expect(textures).toHaveLength(1);
+    expect(await textures[0].get('URLReference')).toBe('unmapped.png');
+    expect(file.all('IfcTextureCoordinate')).toHaveLength(0);
+  });
+
   it('copies material graphs while reusing referenced materials', async () => {
     await using file = await IfcFile.createEmpty(shell, 'IFC4');
     const material = file.create('IfcMaterial');

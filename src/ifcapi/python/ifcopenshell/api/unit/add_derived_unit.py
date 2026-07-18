@@ -21,7 +21,10 @@ from ifcopenshell import _ifcopenshell_capi as _capi
 
 
 def add_derived_unit(
-    file: ifcopenshell.file, unit_type: str, userdefinedtype: str, attributes: dict[ifcopenshell.entity_instance, int]
+    file: ifcopenshell.file,
+    unit_type: str,
+    userdefinedtype: str,
+    attributes: dict[ifcopenshell.entity_instance, int],
 ) -> ifcopenshell.entity_instance:
     """Add a new Derive unit
 
@@ -65,11 +68,17 @@ def add_derived_unit(
         #12=IfcDerivedUnit((#10,#11),.LINEARVELOCITY.,$)
 
     """
-    named_units = list(attributes)
-    units = [e._handle for e in named_units]
-    exponents = [attributes[named_unit] for named_unit in named_units]
+    elements = [
+        {"unit": unit._handle, "exponent": exponent}
+        for unit, exponent in attributes.items()
+    ]
     handle = _capi.unit_add_derived_unit(
-        file._handle, unit_type, userdefinedtype, units, exponents
+        file._handle,
+        {
+            "unit_type": unit_type,
+            "userdefinedtype": userdefinedtype,
+            "elements": elements,
+        },
     )
     if handle:
         return ifcopenshell.entity_instance(file, handle)

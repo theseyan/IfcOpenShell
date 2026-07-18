@@ -262,7 +262,12 @@ express::Base geometry_edit_object_placement(
         } else {
             identity4(m.data());
         }
-        return edit_placement_impl(file, product_value, m, options.is_si, options.should_transform_children);
+        return edit_placement_impl(
+            file,
+            product_value,
+            m,
+            options.is_si.value_or(true),
+            options.should_transform_children.value_or(false));
     } catch (const std::exception& ex) {
         ifcapi::detail::set_error(ex, "edit_object_placement: ");
         return {};

@@ -17,6 +17,8 @@
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
 import ifcopenshell.api.unit
+import pytest
+
 import test.bootstrap
 
 
@@ -39,6 +41,26 @@ class TestAddContextDependentUnit(test.bootstrap.IFC4):
         assert unit.UnitType == "LENGTHUNIT"
         assert unit.Name == "foobar"
 
+    @pytest.mark.parametrize(
+        "dimensions", [(1, 2, 3, 4, 5, 6), (1, 2, 3, 4, 5, 6, 7, 8)]
+    )
+    def test_rejects_dimensions_that_do_not_have_seven_entries_before_mutation(
+        self, dimensions
+    ):
+        entity_ids = [entity.id() for entity in self.file]
 
-class TestAddContextDependentUnitIFC2X3(test.bootstrap.IFC2X3, TestAddContextDependentUnit):
+        with pytest.raises((TypeError, ValueError), match="cardinality"):
+            ifcopenshell.api.unit.add_context_dependent_unit(
+                self.file,
+                unit_type="LENGTHUNIT",
+                name="invalid",
+                dimensions=dimensions,
+            )
+
+        assert [entity.id() for entity in self.file] == entity_ids
+
+
+class TestAddContextDependentUnitIFC2X3(
+    test.bootstrap.IFC2X3, TestAddContextDependentUnit
+):
     pass

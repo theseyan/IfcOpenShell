@@ -186,6 +186,36 @@ bool is_terminal_connection(const std::string& connection_type) {
     return connection_type == "ATSTART" || connection_type == "ATEND";
 }
 
+const char* direction_sense_name(ifcapi::bindings::GeometryDirectionSense value) {
+    using Direction = ifcapi::bindings::GeometryDirectionSense;
+    switch (value) {
+    case Direction::POSITIVE: return "POSITIVE";
+    case Direction::NEGATIVE: return "NEGATIVE";
+    }
+    throw std::invalid_argument("Unsupported geometry direction sense");
+}
+
+const char* boolean_operator_name(ifcapi::bindings::GeometryBooleanOperator value) {
+    using Operator = ifcapi::bindings::GeometryBooleanOperator;
+    switch (value) {
+    case Operator::DIFFERENCE: return "DIFFERENCE";
+    case Operator::INTERSECTION: return "INTERSECTION";
+    case Operator::UNION: return "UNION";
+    }
+    throw std::invalid_argument("Unsupported geometry boolean operator");
+}
+
+const char* path_connection_name(ifcapi::bindings::GeometryPathConnectionType value) {
+    using Connection = ifcapi::bindings::GeometryPathConnectionType;
+    switch (value) {
+    case Connection::ATSTART: return "ATSTART";
+    case Connection::ATEND: return "ATEND";
+    case Connection::ATPATH: return "ATPATH";
+    case Connection::NOTDEFINED: return "NOTDEFINED";
+    }
+    throw std::invalid_argument("Unsupported geometry path connection type");
+}
+
 std::vector<express::Base> inverse_refs(express::Base entity, const char* attr) {
     return ifcapi::detail::read_inverse_aggregate(entity, attr);
 }
@@ -1177,7 +1207,11 @@ struct WallRegenerator {
                 operands.push_back(extrude(polyline(atpath.second, true, has_offset), magnitude, atpath.first));
             }
             if (!operands.empty()) {
-                auto booleans = ifcapi::bindings::geometry_add_boolean(file, &item, operands, "DIFFERENCE");
+                auto booleans = ifcapi::bindings::geometry_add_boolean(
+                    file,
+                    &item,
+                    operands,
+                    ifcapi::bindings::GeometryBooleanOperator::DIFFERENCE);
                 if (!booleans.empty()) item = booleans.back();
             }
         } else {
@@ -2403,8 +2437,14 @@ express::Base geometry_connect_wall(
             return {};
         }
 
-        const std::string wall1_end = x > midx ? "ATEND" : "ATSTART";
-        const std::string wall2_end = is_atpath ? "ATPATH" : (std::fabs(y - starty) < std::fabs(y - endy) ? "ATSTART" : "ATEND");
+        const auto wall1_end = x > midx
+            ? GeometryPathConnectionType::ATEND
+            : GeometryPathConnectionType::ATSTART;
+        const auto wall2_end = is_atpath
+            ? GeometryPathConnectionType::ATPATH
+            : (std::fabs(y - starty) < std::fabs(y - endy)
+                  ? GeometryPathConnectionType::ATSTART
+                  : GeometryPathConnectionType::ATEND);
         return geometry_connect_path(
             file,
             GeometryConnectPathOptions{
@@ -2564,7 +2604,11 @@ bool geometry_validate_type(
         }
 
         if (!remaining_items.empty()) {
-            geometry_add_boolean(file, preferred_item, ifcapi::detail::to_const_refs(remaining_items), "UNION");
+            geometry_add_boolean(
+                file,
+                preferred_item,
+                ifcapi::detail::to_const_refs(remaining_items),
+                "UNION");
             items = read_ref_list(representation, "Items");
             items.erase(
                 std::remove_if(
@@ -3339,10 +3383,10 @@ std::vector<express::Base> geometry_add_boolean(
     ifcopenshell::file* file,
     express::Base* first_item,
     const std::vector<express::Base>& second_items,
-    const std::string& operator_type)
+    GeometryBooleanOperator operator_type)
 {
     auto first = ifcapi::detail::deref_or_empty(first_item);
-    return geometry_add_boolean(file, first, second_items, operator_type);
+    return geometry_add_boolean(file, first, second_items, boolean_operator_name(operator_type));
 }
 
 express::Base geometry_add_axis_representation(
@@ -3417,7 +3461,7 @@ express::Base geometry_add_wall_representation(
         options.context,
         options.length.value_or(1.0),
         options.height.value_or(3.0),
-        options.direction_sense.value_or("POSITIVE"),
+        direction_sense_name(options.direction_sense.value_or(GeometryDirectionSense::POSITIVE)),
         options.offset.value_or(0.0),
         options.thickness.value_or(0.2),
         options.x_angle.value_or(0.0),
@@ -3435,7 +3479,7 @@ express::Base geometry_add_slab_representation(
         file,
         options.context,
         options.depth.value_or(0.2),
-        options.direction_sense.value_or("POSITIVE"),
+        direction_sense_name(options.direction_sense.value_or(GeometryDirectionSense::POSITIVE)),
         options.offset.value_or(0.0),
         options.x_angle.value_or(0.0),
         options.clippings ? *options.clippings : empty_clippings,
@@ -3456,7 +3500,7 @@ express::Base geometry_create_2pt_wall(
         options.elevation,
         options.height,
         options.thickness,
-        options.is_si);
+        options.is_si.value_or(true));
 }
 
 express::Base geometry_connect_wall(
@@ -3467,7 +3511,7 @@ express::Base geometry_connect_wall(
         file,
         options.first_wall,
         options.second_wall,
-        options.is_atpath,
+        options.is_atpath.value_or(false),
         options.owner_history.value_or(express::Base{}),
         options.user.value_or(express::Base{}),
         options.application.value_or(express::Base{}));
@@ -3573,8 +3617,8 @@ express::Base geometry_connect_path(
         file,
         options.relating_element,
         options.related_element,
-        options.relating_connection,
-        options.related_connection,
+        path_connection_name(options.relating_connection),
+        path_connection_name(options.related_connection),
         options.description ? options.description->c_str() : nullptr,
         static_cast<bool>(options.description),
         options.connection_geometry.value_or(express::Base{}),
@@ -3590,7 +3634,7 @@ void geometry_disconnect_path(
     geometry_disconnect_path(
         file,
         options.element.value_or(express::Base{}),
-        options.connection_type ? options.connection_type->c_str() : nullptr,
+        options.connection_type ? path_connection_name(*options.connection_type) : nullptr,
         static_cast<bool>(options.connection_type),
         options.relating_element.value_or(express::Base{}),
         options.related_element.value_or(express::Base{}));

@@ -14,6 +14,7 @@ using Vec2 = std::array<double, 2>;
 using Vec3 = std::array<double, 3>;
 using Mat3 = std::array<double, 9>;
 using Mat4 = std::array<double, 16>;
+using Dimensions7 = std::array<int, 7>;
 using Vec2OrVec3 = std::variant<Vec2, Vec3>;
 using Vec2OrVec3List = std::variant<std::vector<Vec2>, std::vector<Vec3>>;
 using Mat3OrMat4 = std::variant<Mat3, Mat4>;

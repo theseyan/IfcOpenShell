@@ -22,11 +22,11 @@ namespace bindings {
  */
 struct CostEditCostValueOptions {
     /// When true, the UnitBasis (IfcMeasureWithUnit) is replaced using value_component and unit_component.
-    bool edit_unit_basis = false;
+    std::optional<bool> edit_unit_basis = false;
     /// When true (with edit_unit_basis), the existing UnitBasis is removed rather than replaced.
-    bool clear_unit_basis = false;
+    std::optional<bool> clear_unit_basis = false;
     /// Numeric value for the new UnitBasis measure. Used when edit_unit_basis is true and clear_unit_basis is false.
-    double value_component = 0.0;
+    std::optional<double> value_component = 0.0;
     /// IfcUnit for the new UnitBasis. Required when edit_unit_basis is true and clear_unit_basis is false.
     std::optional<express::Base> unit_component;
 };
@@ -89,7 +89,7 @@ IFCAPI_BINDING void cost_edit_cost_value(
     ifcopenshell::file* file,
     express::Base* cost_value,
     ifcopenshell_pset_props_t* attributes,
-    const CostEditCostValueOptions& options);
+    std::optional<CostEditCostValueOptions> options = std::nullopt);
 
 /**
  * Set an IfcCostValue's attributes from a formula expression.

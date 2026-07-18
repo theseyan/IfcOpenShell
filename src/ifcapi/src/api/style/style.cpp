@@ -17,6 +17,16 @@
 
 namespace {
 
+const char* uv_mode_name(ifcapi::bindings::StyleUvMode value) {
+    using Mode = ifcapi::bindings::StyleUvMode;
+    switch (value) {
+    case Mode::Generated: return "Generated";
+    case Mode::Camera: return "Camera";
+    case Mode::UV: return "UV";
+    }
+    throw std::invalid_argument("Unsupported texture UV mode");
+}
+
 bool is_ifc2x3(ifcopenshell::file* file) {
     return file && file->schema() && file->schema()->name() == "IFC2X3";
 }
@@ -511,13 +521,18 @@ express::Base style_add_surface_style(
 std::vector<express::Base> style_add_surface_textures(
     ifcopenshell::file* file,
     const std::vector<StyleSurfaceTextureOptions>& descriptors,
-    const std::vector<express::Base>& uv_maps) {
+    std::optional<std::vector<express::Base>> supplied_uv_maps) {
     if (!file) {
         throw std::runtime_error("style_add_surface_textures requires a file");
+    }
+    for (const auto& descriptor : descriptors) {
+        if (descriptor.uv_mode) (void)uv_mode_name(*descriptor.uv_mode);
     }
     if (is_ifc2x3(file)) {
         return {};
     }
+    static const std::vector<express::Base> empty_uv_maps;
+    const auto& uv_maps = supplied_uv_maps ? *supplied_uv_maps : empty_uv_maps;
     std::vector<express::Base> result;
     result.reserve(descriptors.size());
     for (const auto& descriptor : descriptors) {
@@ -535,11 +550,14 @@ std::vector<express::Base> style_add_surface_textures(
             ifcapi::detail::entity_view(texture).set("Parameter", *descriptor.parameter);
         }
 
-        const auto mapping = descriptor.uv_mode.value_or("");
+        const std::string mapping = descriptor.uv_mode ? uv_mode_name(*descriptor.uv_mode) : "";
         if (mapping == "Generated" || mapping == "Camera") {
             auto coordinates = create_entity(file, "IfcTextureCoordinateGenerator");
             ifcapi::detail::write_ref_aggregate(coordinates, "Maps", {texture});
-            ifcapi::detail::write_string_attr(coordinates, "Mode", mapping == "Generated" ? "COORD" : "COORD-EYE");
+            ifcapi::detail::write_string_attr(
+                coordinates,
+                "Mode",
+                mapping == "Generated" ? "COORD" : "COORD-EYE");
         } else if (mapping == "UV") {
             for (auto uv_map : uv_maps) {
                 auto maps = ifcapi::detail::read_ref_aggregate(uv_map, "Maps");
@@ -1101,7 +1119,7 @@ express::Base style_assign_item_style(
         file,
         options.item,
         options.style.value_or(express::Base()),
-        options.should_use_presentation_style_assignment);
+        options.should_use_presentation_style_assignment.value_or(false));
 }
 
 std::vector<express::Base> style_assign_representation_styles(

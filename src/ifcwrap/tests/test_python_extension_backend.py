@@ -533,6 +533,43 @@ class TestFunctionWrapperParams:
         assert "arg_scale_obj != NULL && arg_scale_obj != Py_None" in code
         assert "arg_scale = (const double *)&arg_scale_value;" in code
 
+    def test_defaulted_nullable_option_record_passes_null_when_omitted(self):
+        option = COptionIR(
+            "DemoOptions",
+            "ifcopenshell_demo_options_t",
+            (COptionFieldIR("enabled", TypeSpec(kind="bool"), "bool"),),
+        )
+        meta = _make_metadata(
+            option_structs={"DemoOptions": option},
+            functions={
+                "ifcopenshell_demo_update": _make_function(
+                    c_name="ifcopenshell_demo_update",
+                    params=(
+                        CParamIR(
+                            name="options",
+                            c_type="const ifcopenshell_demo_options_t*",
+                            role="param",
+                            type_kind="option",
+                            nullable=True,
+                            has_default=True,
+                            type=TypeSpec(
+                                kind="option",
+                                struct="DemoOptions",
+                                nullable=True,
+                            ),
+                        ),
+                    ),
+                ),
+            },
+        )
+
+        code = render_python_extension(meta)
+
+        assert 'PyArg_ParseTuple(args, "|O", &arg_options_obj)' in code
+        assert "ifcopenshell_demo_options_t *arg_options = NULL;" in code
+        assert "arg_options = &arg_options_value;" in code
+        assert "ifcopenshell_demo_update(arg_options)" in code
+
     def test_non_nullable_string_uses_s_format(self):
         meta = _make_metadata(
             handles={"file": _make_handle("file", "ifcopenshell_demo_file_t")},
@@ -718,6 +755,54 @@ class TestFunctionWrapperParams:
             in code
         )
         assert "ifcopenshell_parse_instance_list_destroy(value->products)" in code
+
+    def test_enum_inputs_accept_display_literals_and_reject_unknown_values(self):
+        enum_type = TypeSpec(
+            kind="int32",
+            alias="Direction",
+            enum_values=("FORWARD", "180"),
+            enum_numeric_values=(3, 7),
+        )
+        options = COptionIR(
+            name="DirectionOptions",
+            c_type="ifcopenshell_demo_direction_options_t",
+            fields=(COptionFieldIR("direction", enum_type, "int32_t"),),
+        )
+        metadata = _make_metadata(
+            option_structs={"DirectionOptions": options},
+            functions={
+                "ifcopenshell_demo_set_direction": _make_function(
+                    c_name="ifcopenshell_demo_set_direction",
+                    params=(
+                        CParamIR(
+                            "direction",
+                            "int32_t",
+                            "param",
+                            "enum",
+                            type=enum_type,
+                        ),
+                        CParamIR(
+                            "options",
+                            "const ifcopenshell_demo_direction_options_t*",
+                            "param",
+                            "option",
+                        ),
+                    ),
+                )
+            },
+        )
+
+        code = render_python_extension(metadata)
+
+        assert "if (PyLong_Check(arg_direction_obj))" in code
+        assert 'strcmp(arg_direction_enum_text, "FORWARD") == 0' in code
+        assert "arg_direction = (3);" in code
+        assert 'strcmp(arg_direction_enum_text, "180") == 0' in code
+        assert "arg_direction = (7);" in code
+        assert 'strcmp(enum_0_text, "FORWARD") == 0' in code
+        assert "if (PyLong_Check(field_0))" in code
+        assert "out->direction = (3);" in code
+        assert "Unsupported Direction value: %s" in code
 
     def test_nested_option_record_is_filled_and_freed_recursively(self):
         nested = COptionIR(
@@ -1874,6 +1959,43 @@ class TestValueConverters:
         assert "free_input_instance_list(&arg_instances_items)" in code
         assert "make_input_ifc_instance_list" not in code
         assert "free_input_ifc_instance_list" not in code
+
+    def test_defaulted_nullable_instance_list_preserves_omission(self):
+        meta = _make_metadata(
+            handles={
+                "instance": _make_handle("instance", "ifcopenshell_instance_t"),
+                "parse_instance_list": _make_handle(
+                    "parse_instance_list",
+                    "ifcopenshell_parse_instance_list_t",
+                    destroy_function="ifcopenshell_parse_instance_list_destroy",
+                ),
+            },
+            functions={
+                "ifcopenshell_demo_accept_instances": _make_function(
+                    c_name="ifcopenshell_demo_accept_instances",
+                    params=(
+                        CParamIR(
+                            name="instances",
+                            c_type="ifcopenshell_parse_instance_list_t*",
+                            role="param",
+                            type_kind="handle",
+                            nullable=True,
+                            has_default=True,
+                        ),
+                    ),
+                ),
+            },
+        )
+
+        code = render_python_extension(meta)
+
+        assert 'PyArg_ParseTuple(args, "|O", &arg_instances_obj)' in code
+        assert "arg_instances_obj != NULL && arg_instances_obj != Py_None" in code
+        assert (
+            "make_input_instance_list(arg_instances_obj, &arg_instances_items, &arg_instances_refs)"
+            in code
+        )
+        assert "ifcopenshell_demo_accept_instances(arg_instances)" in code
 
 
 # ---------------------------------------------------------------------------

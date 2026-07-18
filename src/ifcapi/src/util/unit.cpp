@@ -343,8 +343,8 @@ std::string unit_get_symbol_quantity_class(const std::string& symbol) {
     return "IfcQuantityCount";
 }
 
-std::vector<int> unit_get_si_dimensions(const std::string& name) {
-    std::vector<int> result(7);
+Dimensions7 unit_get_si_dimensions(const std::string& name) {
+    Dimensions7 result{};
     const auto& tbl = si_dimensions_table();
     auto it = tbl.find(name);
     if (it == tbl.end()) it = tbl.find("OTHERWISE");
@@ -352,8 +352,8 @@ std::vector<int> unit_get_si_dimensions(const std::string& name) {
     return result;
 }
 
-std::vector<int> unit_get_named_dimensions(const std::string& name) {
-    std::vector<int> result(7);
+Dimensions7 unit_get_named_dimensions(const std::string& name) {
+    Dimensions7 result{};
     const auto& tbl = ifcapi::detail::unit::named_dimensions();
     auto it = tbl.find(name);
     if (it == tbl.end()) return result;

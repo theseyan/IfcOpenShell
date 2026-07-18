@@ -16,9 +16,9 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
-import ifcopenshell.util.unit
 from typing import Optional
 
+import ifcopenshell
 from ifcopenshell.api.boundary import _capi
 from ifcopenshell.util.shape_builder import SequenceOfVectors
 
@@ -86,6 +86,6 @@ def assign_connection_geometry(
             "axis": _capi.double_list(axis),
             "ref_direction": _capi.double_list(ref_direction),
             "inner_boundaries": _capi.double_list_list_list(inner_boundaries or []),
-            "unit_scale": unit_scale if unit_scale is not None else ifcopenshell.util.unit.calculate_unit_scale(file),
+            "unit_scale": unit_scale,
         },
     )

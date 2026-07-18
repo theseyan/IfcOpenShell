@@ -129,7 +129,7 @@ describeGeneratedOrSkip('direct api modules', () => {
       expect(cached?.type).toBe('IfcWall');
 
       const entries = shell.api.project.appendAssetCacheEntries(cache!);
-      expect(entries.sourceIdentities).toContain(cachedWall.raw.identity());
+      expect(entries.sourceIdentities).toContain(BigInt(cachedWall.raw.identity()));
       expect(entries.targets.some((targetEntity) => targetEntity.type === 'IfcWall')).toBe(true);
     } finally {
       cache?.destroy();
@@ -364,6 +364,53 @@ describeGeneratedOrSkip('direct api modules', () => {
     expect(fahrenheit.get('ConversionOffset')).toBe(-459.67);
   });
 
+  it('authors units through fixed dimensions and paired derived elements', async () => {
+    await using file = await IfcFile.createEmpty(shell, 'IFC4');
+    const length = shell.api.unit.addSiUnit(file, 'LENGTHUNIT', null);
+    const time = shell.api.unit.addSiUnit(file, 'TIMEUNIT', null);
+
+    const contextUnit = shell.api.unit.addContextDependentUnit(
+      file,
+      'LENGTHUNIT',
+      'custom length',
+      [1, 0, 0, 0, 0, 0, 0],
+    );
+    expect(await contextUnit.get('Name')).toBe('custom length');
+
+    const velocity = shell.api.unit.addDerivedUnit(
+      file,
+      {
+        unitType: 'LINEARVELOCITYUNIT',
+        elements: [
+          { unit: length, exponent: 1n },
+          { unit: time, exponent: -1n },
+        ],
+      },
+    );
+    const elements = await velocity.get('Elements');
+    expect(elements).toHaveLength(2);
+    expect(await elements[0].get('Unit')).toEqual(length);
+    expect(await elements[0].get('Exponent')).toBe(1);
+    expect(await elements[1].get('Unit')).toEqual(time);
+    expect(await elements[1].get('Exponent')).toBe(-1);
+
+    expect(shell.api.unit.getSiDimensions('METRE')).toEqual([1, 0, 0, 0, 0, 0, 0]);
+    expect(shell.api.unit.getNamedDimensions('LENGTHUNIT')).toEqual([1, 0, 0, 0, 0, 0, 0]);
+
+    const entityCount = file.entityCount;
+    expect(() => shell.api.unit.addContextDependentUnit(
+      file,
+      'LENGTHUNIT',
+      'invalid',
+      [1, 0, 0, 0, 0, 0] as never,
+    )).toThrow(/(?:exactly|contain) 7 (?:array )?items/);
+    expect(() => shell.api.unit.addDerivedUnit(file, {
+      unitType: 'LINEARVELOCITYUNIT',
+      elements: [{ unit: length } as never],
+    })).toThrow(/exponent/);
+    expect(file.entityCount).toBe(entityCount);
+  });
+
   it('converts between unit prefixes', () => {
     expect(shell.api.unit.convert(1000, 'MILLI', 'METRE', '', 'METRE')).toBe(1);
   });
@@ -375,6 +422,7 @@ describeGeneratedOrSkip('direct api modules', () => {
     expect(Math.round(matrix[1])).toBe(-1);
     expect(Math.round(matrix[4])).toBe(1);
     expect(Math.round(matrix[5])).toBe(0);
+    expect(() => shell.api.placement.rotation(0, 'x' as never)).toThrow(/Invalid literal for axis/);
   });
 
   it('compares floating-point values with tolerance', () => {

@@ -260,21 +260,22 @@ double placement_get_storey_elevation(express::Base* instance) {
     return out;
 }
 
-Mat4 placement_rotation(double angle_rad, const std::string& axis) {
+Mat4 placement_rotation(double angle_rad, PlacementRotationAxis axis) {
     double out[16];
     identity4(out);
-    const char axis_char = !axis.empty() ? axis[0] : '\0';
     double c = std::cos(angle_rad);
     double s = std::sin(angle_rad);
-    if (axis_char == 'X' || axis_char == 'x') {
+    if (axis == PlacementRotationAxis::X) {
         out[5] = c;  out[6] = -s;
         out[9] = s;  out[10] = c;
-    } else if (axis_char == 'Y' || axis_char == 'y') {
+    } else if (axis == PlacementRotationAxis::Y) {
         out[0] = c;   out[2] = s;
         out[8] = -s;  out[10] = c;
-    } else if (axis_char == 'Z' || axis_char == 'z') {
+    } else if (axis == PlacementRotationAxis::Z) {
         out[0] = c;  out[1] = -s;
         out[4] = s;  out[5] = c;
+    } else {
+        throw std::invalid_argument("Unsupported placement rotation axis");
     }
     return matrix_to_array(out);
 }

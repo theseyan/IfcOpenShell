@@ -10,11 +10,35 @@
 #include "ifcapi/detail/relationship.h"
 #include "ifcopenshell_api_internal.hpp"
 
+#include <stdexcept>
 #include <string>
 #include <vector>
 
 namespace {
 inline void set_error(const std::string& msg) { ifcopenshell::capi::set_last_error(msg); }
+
+const char* physical_or_virtual_name(ifcapi::bindings::BoundaryPhysicalOrVirtual value) {
+    using Classification = ifcapi::bindings::BoundaryPhysicalOrVirtual;
+    switch (value) {
+    case Classification::PHYSICAL: return "PHYSICAL";
+    case Classification::VIRTUAL: return "VIRTUAL";
+    case Classification::NOTDEFINED: return "NOTDEFINED";
+    }
+    throw std::invalid_argument("Unsupported physical or virtual boundary classification");
+}
+
+const char* internal_or_external_name(ifcapi::bindings::BoundaryInternalOrExternal value) {
+    using Classification = ifcapi::bindings::BoundaryInternalOrExternal;
+    switch (value) {
+    case Classification::INTERNAL: return "INTERNAL";
+    case Classification::EXTERNAL: return "EXTERNAL";
+    case Classification::EXTERNAL_EARTH: return "EXTERNAL_EARTH";
+    case Classification::EXTERNAL_WATER: return "EXTERNAL_WATER";
+    case Classification::EXTERNAL_FIRE: return "EXTERNAL_FIRE";
+    case Classification::NOTDEFINED: return "NOTDEFINED";
+    }
+    throw std::invalid_argument("Unsupported internal or external boundary classification");
+}
 
 template <typename T, std::size_t N>
 std::vector<T> dynamic_array(const std::array<T, N>& values) {
@@ -59,17 +83,21 @@ void boundary_assign_connection_geometry(
         return;
     }
     try {
-        auto outer_curve = ifcapi::detail::create_closed_polyline(file, dynamic_arrays(options.outer_boundary), options.unit_scale);
+        const double unit_scale = options.unit_scale.value_or(unit_calculate_unit_scale(file, "LENGTHUNIT"));
+        static const std::vector<std::vector<std::array<double, 2>>> empty_inner_boundaries;
+        const auto& inner_boundaries =
+            options.inner_boundaries ? *options.inner_boundaries : empty_inner_boundaries;
+        auto outer_curve = ifcapi::detail::create_closed_polyline(file, dynamic_arrays(options.outer_boundary), unit_scale);
         std::vector<express::Base> inner_curves;
-        inner_curves.reserve(options.inner_boundaries.size());
-        for (const auto& boundary : options.inner_boundaries) {
-            inner_curves.push_back(ifcapi::detail::create_closed_polyline(file, dynamic_arrays(boundary), options.unit_scale));
+        inner_curves.reserve(inner_boundaries.size());
+        for (const auto& boundary : inner_boundaries) {
+            inner_curves.push_back(ifcapi::detail::create_closed_polyline(file, dynamic_arrays(boundary), unit_scale));
         }
 
         auto curve_bounded_plane = file->create(file->schema()->declaration_by_name("IfcCurveBoundedPlane"));
         auto placement = ifcapi::detail::create_axis2_placement_3d(
             file,
-            ifcapi::detail::scale_point_coordinates(dynamic_array(options.location), options.unit_scale),
+            ifcapi::detail::scale_point_coordinates(dynamic_array(options.location), unit_scale),
             dynamic_array(options.axis),
             dynamic_array(options.ref_direction));
         ifcapi::detail::write_ref_attr(
@@ -112,6 +140,8 @@ void boundary_edit_attributes(
         return;
     }
     try {
+        const char* physical_or_virtual = physical_or_virtual_name(options.physical_or_virtual);
+        const char* internal_or_external = internal_or_external_name(options.internal_or_external);
         ifcapi::detail::write_ref_attr(*entity, "RelatingSpace", options.relating_space);
         ifcapi::detail::write_ref_attr(*entity, "RelatedBuildingElement", options.related_building_element);
         if (ifcapi::detail::entity_has_attr(*entity, "ParentBoundary")) {
@@ -121,8 +151,8 @@ void boundary_edit_attributes(
             ifcapi::detail::write_ref_attr(
                 *entity, "CorrespondingBoundary", options.corresponding_boundary.value_or(express::Base()));
         }
-        ifcapi::detail::write_enum_attr(*entity, "PhysicalOrVirtualBoundary", options.physical_or_virtual);
-        ifcapi::detail::write_enum_attr(*entity, "InternalOrExternalBoundary", options.internal_or_external);
+        ifcapi::detail::write_enum_attr(*entity, "PhysicalOrVirtualBoundary", physical_or_virtual);
+        ifcapi::detail::write_enum_attr(*entity, "InternalOrExternalBoundary", internal_or_external);
     } catch (const std::exception& e) {
         ifcapi::detail::set_error(e);
     }

@@ -50,6 +50,19 @@ struct RailingDims {
 
 bool finite(double value) { return std::isfinite(value); }
 
+const char* terminal_type_name(ifcapi::bindings::GeometryRailingTerminalType value) {
+    using Terminal = ifcapi::bindings::GeometryRailingTerminalType;
+    switch (value) {
+    case Terminal::RETURN_180: return "180";
+    case Terminal::TO_END_POST: return "TO_END_POST";
+    case Terminal::TO_WALL: return "TO_WALL";
+    case Terminal::TO_FLOOR: return "TO_FLOOR";
+    case Terminal::TO_END_POST_AND_FLOOR: return "TO_END_POST_AND_FLOOR";
+    case Terminal::NONE: return "NONE";
+    }
+    throw std::invalid_argument("Unsupported railing terminal type");
+}
+
 template <typename T>
 bool finite_point(const T& point) {
     return point.size() == 3 && std::all_of(point.begin(), point.end(), [](double value) { return finite(value); });
@@ -471,7 +484,8 @@ GeometryWallMountedHandrailResult geometry_compute_wall_mounted_handrail_geometr
 {
     const bool manual_supports = options.use_manual_supports.value_or(false);
     const bool looped_path = options.looped_path.value_or(false);
-    const std::string terminal_type = options.terminal_type.value_or("180");
+    const std::string terminal_type = terminal_type_name(
+        options.terminal_type.value_or(GeometryRailingTerminalType::RETURN_180));
     const double unit_scale = options.unit_scale.value_or(1.0);
     validate_compute_options(options, manual_supports, terminal_type, unit_scale);
 

@@ -21,6 +21,14 @@ void set_error(const std::string& message) {
     ifcopenshell::capi::set_last_error(message);
 }
 
+const char* global_or_local_name(StructuralGlobalOrLocal value) {
+    switch (value) {
+    case StructuralGlobalOrLocal::GLOBAL_COORDS: return "GLOBAL_COORDS";
+    case StructuralGlobalOrLocal::LOCAL_COORDS: return "LOCAL_COORDS";
+    }
+    throw std::invalid_argument("Unsupported structural coordinate system");
+}
+
 express::Base create_root_entity(
     ifcopenshell::file* file,
     const std::string& ifc_class,
@@ -211,7 +219,7 @@ express::Base structural_add_structural_activity(
     express::Base* structural_member,
     const std::string& ifc_class,
     const std::string& predefined_type,
-    const std::string& global_or_local,
+    StructuralGlobalOrLocal global_or_local,
     const StructuralAddStructuralActivityOptions& options)
 {
     ifcopenshell_clear_error();
@@ -223,12 +231,13 @@ express::Base structural_add_structural_activity(
     }
 
     try {
+        const char* coordinate_system = global_or_local_name(global_or_local);
         auto activity = create_root_entity(file, ifc_class, predefined_type, {}, options.activity_owner_history);
         if (!activity) {
             return {};
         }
         ifcapi::detail::write_ref_attr(activity, "AppliedLoad", applied_load_ref);
-        ifcapi::detail::write_enum_attr(activity, "GlobalOrLocal", global_or_local);
+        ifcapi::detail::write_enum_attr(activity, "GlobalOrLocal", coordinate_system);
 
         auto rel = create_root_entity(file, "IfcRelConnectsStructuralActivity", {}, {}, options.relationship_owner_history);
         if (!rel) {

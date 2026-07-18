@@ -19,6 +19,8 @@
 
 import ifcopenshell.api.boundary
 import ifcopenshell.api.root
+import pytest
+
 import test.bootstrap
 
 
@@ -26,13 +28,18 @@ class TestEditAttributes(test.bootstrap.IFC4):
     def setup_boundary(self):
         space = ifcopenshell.api.root.create_entity(self.file, ifc_class="IfcSpace")
         wall = ifcopenshell.api.root.create_entity(self.file, ifc_class="IfcWall")
-        boundary = ifcopenshell.api.root.create_entity(self.file, ifc_class="IfcRelSpaceBoundary")
+        boundary = ifcopenshell.api.root.create_entity(
+            self.file, ifc_class="IfcRelSpaceBoundary"
+        )
         return boundary, space, wall
 
     def test_sets_relating_space_and_building_element(self):
         boundary, space, wall = self.setup_boundary()
         ifcopenshell.api.boundary.edit_attributes(
-            self.file, entity=boundary, relating_space=space, related_building_element=wall
+            self.file,
+            entity=boundary,
+            relating_space=space,
+            related_building_element=wall,
         )
         assert boundary.RelatingSpace == space
         assert boundary.RelatedBuildingElement == wall
@@ -40,7 +47,10 @@ class TestEditAttributes(test.bootstrap.IFC4):
     def test_defaults_enums_to_notdefined(self):
         boundary, space, wall = self.setup_boundary()
         ifcopenshell.api.boundary.edit_attributes(
-            self.file, entity=boundary, relating_space=space, related_building_element=wall
+            self.file,
+            entity=boundary,
+            relating_space=space,
+            related_building_element=wall,
         )
         assert boundary.PhysicalOrVirtualBoundary == "NOTDEFINED"
         assert boundary.InternalOrExternalBoundary == "NOTDEFINED"
@@ -79,7 +89,14 @@ class TestEditAttributes(test.bootstrap.IFC4):
             )
             assert boundary.PhysicalOrVirtualBoundary == value
 
-        for value in ("INTERNAL", "EXTERNAL", "EXTERNAL_EARTH", "EXTERNAL_WATER", "EXTERNAL_FIRE", "NOTDEFINED"):
+        for value in (
+            "INTERNAL",
+            "EXTERNAL",
+            "EXTERNAL_EARTH",
+            "EXTERNAL_WATER",
+            "EXTERNAL_FIRE",
+            "NOTDEFINED",
+        ):
             ifcopenshell.api.boundary.edit_attributes(
                 self.file,
                 entity=boundary,
@@ -88,6 +105,21 @@ class TestEditAttributes(test.bootstrap.IFC4):
                 internal_or_external=value,
             )
             assert boundary.InternalOrExternalBoundary == value
+
+    def test_rejects_unknown_classification_without_mutation(self):
+        boundary, space, wall = self.setup_boundary()
+        with pytest.raises(
+            ValueError, match="Unsupported BoundaryPhysicalOrVirtual value"
+        ):
+            ifcopenshell.api.boundary.edit_attributes(
+                self.file,
+                entity=boundary,
+                relating_space=space,
+                related_building_element=wall,
+                physical_or_virtual="physical",
+            )
+        assert boundary.RelatingSpace is None
+        assert boundary.RelatedBuildingElement is None
 
 
 class TestEditAttributesIFC2X3(test.bootstrap.IFC2X3, TestEditAttributes):

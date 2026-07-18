@@ -435,6 +435,51 @@ describeGeneratedOrSkip('generated relationship API', () => {
 
       shell.api.system.removeSystem(file, sys);
     });
+
+    it('rejects unknown port directions before mutation', async () => {
+      await using file = await IfcFile.createEmpty(shell, 'IFC4');
+      const port1 = await shell.api.system.addPort(file, {});
+      const port2 = await shell.api.system.addPort(file, {});
+      const entityCount = file.entityCount;
+      expect(() => shell.api.system.connectPort(file, {
+        port1,
+        port2,
+        direction: 'source' as never,
+      })).toThrow(/Invalid literal for direction/);
+      expect(file.entityCount).toBe(entityCount);
+      expect(file.all('IfcRelConnectsPorts')).toHaveLength(0);
+    });
+  });
+
+  describe('structural', () => {
+    it('keeps schema-dynamic activity strings while closing coordinate systems', async () => {
+      await using file = await IfcFile.createEmpty(shell, 'IFC4');
+      const load = file.create('IfcStructuralLoadLinearForce');
+      const member = file.create('IfcStructuralCurveMember');
+      const activity = shell.api.structural.addStructuralActivity(
+        file,
+        load,
+        member,
+        'IfcStructuralCurveAction',
+        'LINEAR',
+        'LOCAL_COORDS',
+        {},
+      );
+      expect(activity.type).toBe('IfcStructuralCurveAction');
+      expect(await activity.get('PredefinedType')).toBe('LINEAR');
+
+      const entityCount = file.entityCount;
+      expect(() => shell.api.structural.addStructuralActivity(
+        file,
+        load,
+        member,
+        'IfcStructuralCurveAction',
+        'LINEAR',
+        'local_coords' as never,
+        {},
+      )).toThrow(/Invalid literal for global_or_local/);
+      expect(file.entityCount).toBe(entityCount);
+    });
   });
 
   describe('type', () => {

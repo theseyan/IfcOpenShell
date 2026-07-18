@@ -21,12 +21,8 @@ namespace {
 
 express::Base create_dimensional_exponents(
     ifcopenshell::file* file,
-    const std::vector<int64_t>& dimensions)
+    const ifcapi::bindings::Dimensions7& dimensions)
 {
-    std::array<int, 7> values{{0, 0, 0, 0, 0, 0, 0}};
-    for (size_t i = 0; i < std::min(values.size(), dimensions.size()); ++i) {
-        values[i] = static_cast<int>(dimensions[i]);
-    }
     const auto* decl = file->schema()->declaration_by_name("IfcDimensionalExponents");
     auto result = file->create(decl);
     static const char* attrs[] = {
@@ -38,19 +34,11 @@ express::Base create_dimensional_exponents(
         "AmountOfSubstanceExponent",
         "LuminousIntensityExponent",
     };
-    for (size_t i = 0; i < values.size(); ++i) {
+    for (size_t i = 0; i < dimensions.size(); ++i) {
         int idx = ifcapi::detail::attr_index_of(result, attrs[i]);
-        if (idx >= 0) result.set_attribute_value(static_cast<size_t>(idx), values[i]);
+        if (idx >= 0) result.set_attribute_value(static_cast<size_t>(idx), dimensions[i]);
     }
     return result;
-}
-
-express::Base create_dimensional_exponents(
-    ifcopenshell::file* file,
-    const std::array<int, 7>& dimensions)
-{
-    return create_dimensional_exponents(
-        file, std::vector<int64_t>(dimensions.begin(), dimensions.end()));
 }
 
 express::Base create_supplied_dimensional_exponents(
@@ -101,7 +89,7 @@ express::Base create_conversion_based_unit(
     ifcopenshell::file* file,
     const std::string& name,
     const std::string& unit_type,
-    const std::array<int, 7>& dimensions,
+    const ifcapi::bindings::Dimensions7& dimensions,
     const std::string& si_name,
     double conversion,
     double offset = 0.0)
@@ -159,7 +147,7 @@ express::Base create_imperial_convenience_unit(
     if (conversion == ifcapi::detail::unit::si_conversions().end()) {
         throw std::runtime_error("Missing conversion factor for " + name);
     }
-    std::array<int, 7> dimensions{{exponent, 0, 0, 0, 0, 0, 0}};
+    ifcapi::bindings::Dimensions7 dimensions{{exponent, 0, 0, 0, 0, 0, 0}};
     const std::string si_name = exponent == 1 ? "METRE" : exponent == 2 ? "SQUARE_METRE" : "CUBIC_METRE";
     return create_conversion_based_unit(file, name, unit_type, dimensions, si_name, conversion->second);
 }
@@ -346,7 +334,7 @@ express::Base unit_add_context_dependent_unit(
     ifcopenshell::file* file,
     const std::string& unit_type,
     const std::string& name,
-    const std::vector<int64_t>& dimensions)
+    const Dimensions7& dimensions)
 {
     const auto* decl = file->schema()->declaration_by_name("IfcContextDependentUnit");
     auto result = file->create(decl);
@@ -358,31 +346,25 @@ express::Base unit_add_context_dependent_unit(
 
 express::Base unit_add_derived_unit(
     ifcopenshell::file* file,
-    const std::string& unit_type,
-    const char* userdefinedtype,
-    const std::vector<express::Base>& units,
-    const std::vector<int64_t>& exponents)
+    const UnitAddDerivedUnitOptions& options)
 {
-    if (units.size() != exponents.size()) {
-        throw std::runtime_error("Derived unit units and exponents must have the same length");
-    }
-    std::vector<express::Base> elements;
-    elements.reserve(units.size());
+    std::vector<express::Base> derived_elements;
+    derived_elements.reserve(options.elements.size());
     const auto* element_decl = file->schema()->declaration_by_name("IfcDerivedUnitElement");
-    for (size_t i = 0; i < units.size(); ++i) {
+    for (const auto& input : options.elements) {
         auto element = file->create(element_decl);
-        detail::write_ref_attr(element, "Unit", units[i]);
+        detail::write_ref_attr(element, "Unit", input.unit);
         int idx = detail::attr_index_of(element, "Exponent");
-        if (idx >= 0) element.set_attribute_value(static_cast<size_t>(idx), static_cast<int>(exponents[i]));
-        elements.push_back(element);
+        if (idx >= 0) element.set_attribute_value(static_cast<size_t>(idx), static_cast<int>(input.exponent));
+        derived_elements.push_back(element);
     }
 
     const auto* decl = file->schema()->declaration_by_name("IfcDerivedUnit");
     auto result = file->create(decl);
-    detail::write_ref_aggregate(result, "Elements", elements);
-    detail::write_string_attr(result, "UnitType", unit_type);
-    if (userdefinedtype) {
-        detail::write_string_attr(result, "UserDefinedType", userdefinedtype);
+    detail::write_ref_aggregate(result, "Elements", derived_elements);
+    detail::write_string_attr(result, "UnitType", options.unit_type);
+    if (options.userdefinedtype) {
+        detail::write_string_attr(result, "UserDefinedType", *options.userdefinedtype);
     } else {
         detail::write_blank_attr(result, "UserDefinedType");
     }

@@ -23,7 +23,9 @@ MatrixType = npt.NDArray[np.float64]
 """`npt.NDArray[np.float64]`"""
 
 
-def _matrix_from_values(values: Optional[Iterable[float]], *, fallback: str) -> MatrixType:
+def _matrix_from_values(
+    values: Optional[Iterable[float]], *, fallback: str
+) -> MatrixType:
     if values is None:
         raise RuntimeError(fallback)
     values = list(values)
@@ -35,14 +37,18 @@ def _matrix_from_values(values: Optional[Iterable[float]], *, fallback: str) -> 
 def a2p(o: Iterable[float], z: Iterable[float], x: Iterable[float]) -> MatrixType:
     """Build a 4x4 transformation matrix from origin, Z axis, and X axis."""
     values = _capi.placement_matrix_from_axes(list(o), list(z), list(x))
-    return _matrix_from_values(values, fallback="a2p failed to compute a 4x4 placement matrix")
+    return _matrix_from_values(
+        values, fallback="a2p failed to compute a 4x4 placement matrix"
+    )
 
 
 def get_axis2placement(placement: ifcopenshell.entity_instance) -> MatrixType:
     """Parse an IfcAxis2Placement (2D, 3D, Linear, or 1D) into a 4x4 matrix."""
     matrix_values = _capi.placement_get_axis2_placement(placement._handle)
     if matrix_values and len(matrix_values) == 16:
-        return _matrix_from_values(matrix_values, fallback="Failed to compute axis placement matrix")
+        return _matrix_from_values(
+            matrix_values, fallback="Failed to compute axis placement matrix"
+        )
     # Fallback for IfcAxis2PlacementLinear with IfcPointByDistanceExpression.
     if placement.is_a("IfcAxis2PlacementLinear"):
         import ifcopenshell.geom
@@ -53,23 +59,37 @@ def get_axis2placement(placement: ifcopenshell.entity_instance) -> MatrixType:
         basis_curve = getattr(location, "BasisCurve", None)
         distance = getattr(location, "DistanceAlong", None)
         if basis_curve is None or distance is None:
-            raise RuntimeError("IfcAxis2PlacementLinear is missing a basis curve or distance expression")
+            raise RuntimeError(
+                "IfcAxis2PlacementLinear is missing a basis curve or distance expression"
+            )
 
         unit_scale = ifcopenshell.util.unit.calculate_unit_scale(placement.file)
         distance_along = getattr(distance, "wrappedValue", distance)
-        offset_lateral = getattr(getattr(location, "OffsetLateral", 0.0), "wrappedValue", location.OffsetLateral or 0.0)
+        offset_lateral = getattr(
+            getattr(location, "OffsetLateral", 0.0),
+            "wrappedValue",
+            location.OffsetLateral or 0.0,
+        )
 
         settings = ifcopenshell.geom.settings()
         settings.set("convert-back-units", True)
         fn = ifcopenshell_wrapper.map_shape(settings, basis_curve.wrapped_data)
         evaluator = ifcopenshell_wrapper.function_item_evaluator(settings, fn)
-        matrix = np.array(evaluator.evaluate(float(distance_along) * unit_scale), dtype=np.float64)
-        matrix[0:3, 3] = matrix[0:3, 3] / unit_scale + matrix[0:3, 1] * float(offset_lateral)
+        matrix = np.array(
+            evaluator.evaluate(float(distance_along) * unit_scale), dtype=np.float64
+        )
+        matrix[0:3, 3] = matrix[0:3, 3] / unit_scale + matrix[0:3, 1] * float(
+            offset_lateral
+        )
         return matrix
-    raise RuntimeError(f"Failed to compute axis placement matrix for {placement.is_a()}")
+    raise RuntimeError(
+        f"Failed to compute axis placement matrix for {placement.is_a()}"
+    )
 
 
-def get_local_placement(placement: Optional[ifcopenshell.entity_instance] = None) -> MatrixType:
+def get_local_placement(
+    placement: Optional[ifcopenshell.entity_instance] = None,
+) -> MatrixType:
     """Parse an IfcLocalPlacement into a 4x4 transformation matrix."""
     if placement is None:
         return np.eye(4)
@@ -80,13 +100,20 @@ def get_local_placement(placement: Optional[ifcopenshell.entity_instance] = None
     return np.dot(parent, get_axis2placement(placement.RelativePlacement))
 
 
-def get_cartesiantransformationoperator3d(inst: ifcopenshell.entity_instance) -> MatrixType:
+def get_cartesiantransformationoperator3d(
+    inst: ifcopenshell.entity_instance,
+) -> MatrixType:
     """Parse an IfcCartesianTransformationOperator3D into a 4x4 matrix."""
     values = _capi.placement_get_cartesian_xform_3d(inst._handle)
-    return _matrix_from_values(values, fallback="get_cartesiantransformationoperator3d failed to compute a 4x4 matrix")
+    return _matrix_from_values(
+        values,
+        fallback="get_cartesiantransformationoperator3d failed to compute a 4x4 matrix",
+    )
 
 
-def get_mappeditem_transformation(item: ifcopenshell.entity_instance) -> Optional[MatrixType]:
+def get_mappeditem_transformation(
+    item: ifcopenshell.entity_instance,
+) -> Optional[MatrixType]:
     """Parse an IfcMappedItem into a 4x4 transformation matrix.
 
     Returns ``None`` if the mapping target is 2D (not yet supported natively).
@@ -94,7 +121,9 @@ def get_mappeditem_transformation(item: ifcopenshell.entity_instance) -> Optiona
     matrix_values = _capi.placement_get_mappeditem_xform(item._handle)
     if not matrix_values or len(matrix_values) != 16:
         return None
-    return _matrix_from_values(matrix_values, fallback="Failed to compute mapped item transformation matrix")
+    return _matrix_from_values(
+        matrix_values, fallback="Failed to compute mapped item transformation matrix"
+    )
 
 
 def get_storey_elevation(storey: ifcopenshell.entity_instance) -> float:
@@ -103,9 +132,12 @@ def get_storey_elevation(storey: ifcopenshell.entity_instance) -> float:
     return float(result if result is not None else 0.0)
 
 
-def rotation(angle: float, axis: Literal["X", "Y", "Z"], is_degrees: bool = True) -> MatrixType:
+def rotation(
+    angle: float, axis: Literal["X", "Y", "Z"], is_degrees: bool = True
+) -> MatrixType:
     """Build a 4x4 rotation matrix around a principal axis."""
     theta = float(np.radians(angle) if is_degrees else angle)
-    axis_byte = axis.encode("ascii")[:1] if isinstance(axis, str) else bytes([axis])[:1]
-    values = _capi.placement_rotation(theta, axis_byte)
-    return _matrix_from_values(values, fallback="rotation failed to compute a 4x4 placement matrix")
+    values = _capi.placement_rotation(theta, axis)
+    return _matrix_from_values(
+        values, fallback="rotation failed to compute a 4x4 placement matrix"
+    )

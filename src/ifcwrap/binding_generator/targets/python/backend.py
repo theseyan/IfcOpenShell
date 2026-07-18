@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import re
 from pathlib import Path
 
@@ -44,6 +45,51 @@ _BUFFER_FORMATS = {
     "int64_t": ("q", "sizeof(int64_t)"),
     "uint32_t": ("I", "sizeof(uint32_t)"),
 }
+
+
+def _render_enum_conversion(
+    type_spec: TypeSpec,
+    obj: str,
+    target: str,
+    variable_prefix: str,
+    indent: str,
+    failure: str,
+    declare_text: bool = True,
+) -> list[str]:
+    values = type_spec.enum_values
+    numeric_values = type_spec.enum_numeric_values or tuple(range(len(values)))
+    if not values or len(values) != len(numeric_values):
+        raise ValueError("Enum input is missing display or numeric values")
+    enum_name = type_spec.alias or type_spec.cpp_type or "enum"
+    nested = indent + "    "
+    lines = [
+        f"{indent}if (PyLong_Check({obj})) {{",
+        f"{nested}{target} = (int32_t)PyLong_AsLong({obj});",
+        f"{nested}if (PyErr_Occurred()) {failure}",
+        f"{indent}}} else {{",
+        f"{nested}if (!PyUnicode_Check({obj})) {{",
+        f'{nested}    PyErr_Format(PyExc_TypeError, "Expected {enum_name} string or integer");',
+        f"{nested}    {failure}",
+        f"{nested}}}",
+        f"{nested}{'const char *' if declare_text else ''}{variable_prefix}_text = PyUnicode_AsUTF8({obj});",
+        f"{nested}if (!{variable_prefix}_text) {failure}",
+    ]
+    for index, (value, numeric_value) in enumerate(zip(values, numeric_values)):
+        keyword = "if" if index == 0 else "else if"
+        lines.append(
+            f"{nested}{keyword} (strcmp({variable_prefix}_text, {json.dumps(value)}) == 0) "
+            f"{target} = ({numeric_value});"
+        )
+    lines.extend(
+        [
+            f"{nested}else {{",
+            f'{nested}    PyErr_Format(PyExc_ValueError, "Unsupported {enum_name} value: %s", {variable_prefix}_text);',
+            f"{nested}    {failure}",
+            f"{nested}}}",
+            f"{indent}}}",
+        ]
+    )
+    return lines
 
 
 def _render_owned_buffer_type() -> str:
@@ -1223,6 +1269,17 @@ def _render_option_field_assignment(
                     f"    {indent}}}",
                 ]
             )
+    elif field.type.enum_values:
+        lines.extend(
+            _render_enum_conversion(
+                field.type,
+                field_ref,
+                f"out->{field.name}",
+                f"enum_{field_index}",
+                f"    {indent}",
+                "return 0;",
+            )
+        )
     elif field.type.kind == "string":
         lines.extend(
             [
@@ -1438,18 +1495,49 @@ def _param_parse(
         and (option := _option_by_c_type(c_type, metadata)) is not None
     ):
         declarations.append(f"    PyObject *arg_{name}_obj = NULL;")
-        declarations.append(f"    {option.c_type} arg_{name} = {{0}};")
+        value_name = f"arg_{name}_value" if param.nullable else f"arg_{name}"
+        declarations.append(f"    {option.c_type} {value_name} = {{0}};")
+        if param.nullable:
+            declarations.append(f"    {option.c_type} *arg_{name} = NULL;")
         declarations.append(f"    option_ref_owner arg_{name}_refs = {{0}};")
         fmt = "O"
         parse_args.append(f"&arg_{name}_obj")
-        call_args.append(f"&arg_{name}")
-        setup.append(
-            f"    if (!fill_input_{_snake_name(option.c_type)}(arg_{name}_obj, &arg_{name}, &arg_{name}_refs)) {{\n"
-            f"        goto __cleanup;\n"
-            f"    }}"
+        call_args.append(f"arg_{name}" if param.nullable else f"&arg_{name}")
+        fill = (
+            f"if (!fill_input_{_snake_name(option.c_type)}(arg_{name}_obj, "
+            f"&{value_name}, &arg_{name}_refs)) {{\n"
+            f"            goto __cleanup;\n"
+            f"        }}"
         )
-        cleanup.append(f"    free_input_{_snake_name(option.c_type)}(&arg_{name});")
+        if param.nullable:
+            setup.append(
+                f"    if (arg_{name}_obj != NULL && arg_{name}_obj != Py_None) {{\n"
+                f"        {fill}\n"
+                f"        arg_{name} = &{value_name};\n"
+                f"    }}"
+            )
+        else:
+            setup.append(f"    {fill}")
+        cleanup.append(f"    free_input_{_snake_name(option.c_type)}(&{value_name});")
         cleanup.append(f"    release_option_refs(&arg_{name}_refs);")
+    elif param.type is not None and param.type.enum_values:
+        declarations.append(f"    PyObject *arg_{name}_obj = NULL;")
+        declarations.append(f"    int32_t arg_{name} = 0;")
+        declarations.append(f"    const char *arg_{name}_enum_text = NULL;")
+        fmt = "O"
+        parse_args.append(f"&arg_{name}_obj")
+        call_args.append(f"arg_{name}")
+        setup.extend(
+            _render_enum_conversion(
+                param.type,
+                f"arg_{name}_obj",
+                f"arg_{name}",
+                f"arg_{name}_enum",
+                "    ",
+                "goto __cleanup;",
+                declare_text=False,
+            )
+        )
     elif c_type in _SCALAR_DECLS:
         decl, fmt, _ = _SCALAR_DECLS[c_type]
         declarations.append(f"    {decl} arg_{name} = 0;")
@@ -1502,11 +1590,7 @@ def _param_parse(
     elif pointer_depth == 1 and base in {h.c_type for h in handles.values()}:
         py_name = _py_type_name(base)
         declarations.append(f"    PyObject *arg_{name}_obj = NULL;")
-        if (
-            base == "ifcopenshell_parse_instance_list_t"
-            and not param.nullable
-            and name != "self"
-        ):
+        if base == "ifcopenshell_parse_instance_list_t" and name != "self":
             declarations.append(
                 f"    ifcopenshell_instance_list_t arg_{name}_items = {{0}};"
             )
@@ -1730,7 +1814,7 @@ def _render_function_wrapper(
             f"    ifcopenshell_instance_list_t arg_{param.name}_items = {{0}};"
             in declarations
         ):
-            input_make.append(
+            conversion = (
                 f"    if (!make_input_instance_list(arg_{param.name}_obj, &arg_{param.name}_items, &arg_{param.name}_refs)) {{\n"
                 f"        goto __cleanup;\n"
                 f"    }}\n"
@@ -1739,6 +1823,13 @@ def _render_function_wrapper(
                 f"        goto __cleanup;\n"
                 f"    }}"
             )
+            if param.nullable:
+                conversion = (
+                    f"    if (arg_{param.name}_obj != NULL && arg_{param.name}_obj != Py_None) {{\n"
+                    + "\n".join(f"    {line}" for line in conversion.splitlines())
+                    + "\n    }"
+                )
+            input_make.append(conversion)
             continue
         if (
             pointer_depth == 1

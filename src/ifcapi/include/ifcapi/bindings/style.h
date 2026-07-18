@@ -16,6 +16,8 @@ struct ifcopenshell_pset_props_t;
 namespace ifcapi {
 namespace bindings {
 
+enum class StyleUvMode { Generated, Camera, UV };
+
 /**
  * Create a new presentation style entity.
  *
@@ -40,7 +42,7 @@ struct StyleAssignItemStyleOptions {
     /// Optional style to assign. When omitted, the existing style is removed.
     std::optional<express::Base> style;
     /// Whether to use IfcPresentationStyleAssignment (for IFC2X3 compat).
-    bool should_use_presentation_style_assignment;
+    std::optional<bool> should_use_presentation_style_assignment = false;
 };
 
 /** A schema-neutral description of one IfcImageTexture and its mapping. */
@@ -49,7 +51,7 @@ struct StyleSurfaceTextureOptions {
     bool repeat_s;
     /// Whether the image repeats in the second texture direction.
     bool repeat_t;
-    /// Optional texture usage mode, such as "DIFFUSE" or "NORMAL".
+    /// Optional schema-defined texture usage mode, such as "DIFFUSE" or "NORMAL"; intentionally not narrowed.
     std::optional<std::string> mode;
     /// Image location.
     std::string url_reference;
@@ -58,7 +60,7 @@ struct StyleSurfaceTextureOptions {
     /// Optional texture parameters, preserved in order.
     std::optional<std::vector<std::string>> parameter;
     /// Optional mapping mode: "Generated", "Camera", or "UV".
-    std::optional<std::string> uv_mode;
+    std::optional<StyleUvMode> uv_mode;
 };
 
 /**
@@ -78,14 +80,14 @@ IFCAPI_BINDING express::Base style_add_surface_style(
 /**
  * Create image textures and their coordinate mappings in descriptor order.
  *
- * IFC2X3 returns an empty list without mutation. Unknown or omitted mapping
- * modes create no mapping. UV mappings append each texture once to every
- * supplied coordinate map while preserving existing order.
+ * IFC2X3 returns an empty list without mutation. Omitted mapping modes create
+ * no mapping; invalid modes are rejected before mutation. UV mappings append
+ * each texture once to every supplied coordinate map while preserving order.
  */
 IFCAPI_BINDING std::vector<express::Base> style_add_surface_textures(
     ifcopenshell::file* file,
     const std::vector<StyleSurfaceTextureOptions>& textures,
-    const std::vector<express::Base>& uv_maps);
+    std::optional<std::vector<express::Base>> uv_maps = std::nullopt);
 
 /**
  * Assign or replace a style on a single representation item.

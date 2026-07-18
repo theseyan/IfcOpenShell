@@ -18,6 +18,8 @@
 
 import ifcopenshell.api.geometry
 import ifcopenshell.api.root
+import pytest
+
 import test.bootstrap
 
 
@@ -56,7 +58,9 @@ class TestConnectPath(test.bootstrap.IFC4):
     def test_updating_the_connection_type_if_already_connected(self):
         wall1 = ifcopenshell.api.root.create_entity(self.file, ifc_class="IfcWall")
         wall2 = ifcopenshell.api.root.create_entity(self.file, ifc_class="IfcWall")
-        ifcopenshell.api.geometry.connect_path(self.file, relating_element=wall1, related_element=wall2)
+        ifcopenshell.api.geometry.connect_path(
+            self.file, relating_element=wall1, related_element=wall2
+        )
         total_elements = len([e for e in self.file])
         rel = self.connect_path(wall1, wall2, "ATSTART")
         assert rel.RelatingConnectionType == "ATSTART"
@@ -65,9 +69,13 @@ class TestConnectPath(test.bootstrap.IFC4):
     def test_preventing_cyclical_connections(self):
         wall1 = ifcopenshell.api.root.create_entity(self.file, ifc_class="IfcWall")
         wall2 = ifcopenshell.api.root.create_entity(self.file, ifc_class="IfcWall")
-        ifcopenshell.api.geometry.connect_path(self.file, relating_element=wall1, related_element=wall2)
+        ifcopenshell.api.geometry.connect_path(
+            self.file, relating_element=wall1, related_element=wall2
+        )
         total_elements = len([e for e in self.file])
-        ifcopenshell.api.geometry.connect_path(self.file, relating_element=wall2, related_element=wall1)
+        ifcopenshell.api.geometry.connect_path(
+            self.file, relating_element=wall2, related_element=wall1
+        )
         assert len([e for e in self.file]) == total_elements
 
     def test_a_relating_element_can_have_multiple_path_connections(self):
@@ -141,6 +149,15 @@ class TestConnectPath(test.bootstrap.IFC4):
         rel1 = self.connect_path(wall2, wall1, "ATPATH", "ATEND")
         rel2 = self.connect_path(wall3, wall1, "ATPATH", "ATEND")
         assert len(self.file.by_type("IfcRelConnectsPathElements")) == 1
+
+    def test_rejects_unknown_connection_type_without_mutation(self):
+        wall1 = ifcopenshell.api.root.create_entity(self.file, ifc_class="IfcWall")
+        wall2 = ifcopenshell.api.root.create_entity(self.file, ifc_class="IfcWall")
+        with pytest.raises(
+            ValueError, match="Unsupported GeometryPathConnectionType value"
+        ):
+            self.connect_path(wall1, wall2, "atstart")
+        assert not self.file.by_type("IfcRelConnectsPathElements")
 
     def connect_path(
         self,

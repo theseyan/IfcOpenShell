@@ -358,26 +358,30 @@ void alignment_layout_vertical_by_pi_method(
 express::Base alignment_create(ifcopenshell::file* file, const AlignmentCreateOptions& options) {
     require_ifc4x3(file);
     project(file);
-    if (options.include_cant && !options.include_vertical) throw std::runtime_error("Cant layout requires a vertical layout");
+    const bool include_vertical = options.include_vertical.value_or(false);
+    const bool include_cant = options.include_cant.value_or(false);
+    const bool include_geometry = options.include_geometry.value_or(true);
+    const double start_station = options.start_station.value_or(0.0);
+    if (include_cant && !include_vertical) throw std::runtime_error("Cant layout requires a vertical layout");
     auto alignment = rooted(file, "IfcAlignment");
     write_string_attr(alignment, "Name", options.name);
     write_ref_attr(alignment, "ObjectPlacement", local_placement(file));
     assign_root_history(file, alignment, options.owner_history, options.user, options.application);
     std::vector<express::Base> layouts;
     layouts.push_back(rooted(file, "IfcAlignmentHorizontal"));
-    if (options.include_vertical) layouts.push_back(rooted(file, "IfcAlignmentVertical"));
-    if (options.include_cant) {
+    if (include_vertical) layouts.push_back(rooted(file, "IfcAlignmentVertical"));
+    if (include_cant) {
         auto cant = rooted(file, "IfcAlignmentCant");
         write_double_attr(cant, "RailHeadDistance", 1.0);
         layouts.push_back(cant);
     }
     nest(file, alignment, layouts);
-    if (options.include_geometry) create_geometric_representation(file, alignment);
+    if (include_geometry) create_geometric_representation(file, alignment);
     AlignmentAddStationingReferentOptions station;
     station.alignment = alignment;
     station.distance_along = 0.0;
-    station.station = options.start_station;
-    station.name = station_string(file, options.start_station);
+    station.station = start_station;
+    station.name = station_string(file, start_station);
     station.positioned_product = alignment;
     station.owner_history = options.owner_history;
     station.user = options.user;
@@ -486,8 +490,9 @@ express::Base alignment_create_as_polyline(
     geometry_assign_representation(file, &alignment, &representation);
     AlignmentAddStationingReferentOptions station;
     station.alignment = alignment;
-    station.station = options.start_station;
-    station.name = station_string(file, options.start_station);
+    const double start_station = options.start_station.value_or(0.0);
+    station.station = start_station;
+    station.name = station_string(file, start_station);
     station.positioned_product = alignment;
     station.owner_history = options.owner_history;
     station.user = options.user;

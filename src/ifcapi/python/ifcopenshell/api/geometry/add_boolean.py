@@ -55,5 +55,5 @@ def add_boolean(
         _capi.file_handle(file),
         _capi.instance_handle(first_item),
         second_item_list,
-        _capi.string(operator),
+        operator,
     )

@@ -17,6 +17,8 @@ struct ifcopenshell_pset_props_t;
 namespace ifcapi {
 namespace bindings {
 
+enum class SystemFlowDirection { SOURCE, SINK, SOURCEANDSINK, NOTDEFINED };
+
 /**
  * Options for adding a distribution port to an element.
  */
@@ -102,7 +104,7 @@ struct SystemConnectPortOptions {
     express::Base port2;
     /// Flow direction: "SOURCE" (port1 sources, port2 sinks), "SINK" (port1
     /// sinks, port2 sources), "SOURCEANDSINK", or "NOTDEFINED".
-    std::string direction;
+    SystemFlowDirection direction;
     /// Optional realizing element (e.g. a pipe or duct connecting the ports).
     std::optional<express::Base> element;
     /// Optional owner history. A new one is created from user/application if not provided.

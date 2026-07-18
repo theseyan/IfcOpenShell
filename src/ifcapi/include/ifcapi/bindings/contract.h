@@ -16,4 +16,10 @@
 #define IFCAPI_OWNED
 #define IFCAPI_COPY
 
+#if defined(__clang__)
+#define IFCAPI_LITERAL(value) __attribute__((annotate("ifcapi.literal:" value)))
+#else
+#define IFCAPI_LITERAL(value)
+#endif
+
 #endif /* IFCAPI_BINDINGS_CONTRACT_H */

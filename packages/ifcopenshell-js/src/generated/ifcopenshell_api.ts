@@ -14,7 +14,6 @@ import {
   wrapValue,
   type ApiData,
   type ValueData,
-  type ValueInput,
 } from '../api.js';
 import { PsetProperties, toRawPsetProperties, type PsetInput } from '../pset.js';
 import type { IfcOpenShell } from '../init.js';
@@ -134,7 +133,7 @@ type RawApi = {
     editCostItem: (file: RawValue, cost_item: RawValue, attributes: RawValue) => void;
     editCostItemQuantity: (file: RawValue, physical_quantity: RawValue, attributes: RawValue) => void;
     editCostSchedule: (file: RawValue, cost_schedule: RawValue, attributes: RawValue) => void;
-    editCostValue: (file: RawValue, cost_value: RawValue, attributes: RawValue, options: RawValue) => void;
+    editCostValue: (file: RawValue, cost_value: RawValue, attributes: RawValue, options?: RawValue) => void;
     editCostValueFormula: (file: RawValue, cost_value: RawValue, formula: string) => void;
     removeCostItem: (file: RawValue, cost_item: RawValue) => void;
     removeCostItemQuantity: (file: RawValue, cost_item: RawValue, physical_quantity: RawValue) => void;
@@ -201,7 +200,7 @@ type RawApi = {
   };
   geometry: {
     addAxisRepresentation: (file: RawValue, context: RawValue, axis: RawValue) => RawValue;
-    addBoolean: (file: RawValue, first_item: RawValue, second_items: RawValue, operator_type: string) => RawValue;
+    addBoolean: (file: RawValue, first_item: RawValue, second_items: RawValue, operator_type: GeometryBooleanOperator) => RawValue;
     addDoorRepresentation: (file: RawValue, options: RawValue) => RawValue;
     addFootprintRepresentation: (file: RawValue, context: RawValue, curves: RawValue) => RawValue;
     addMeshRepresentation: (file: RawValue, context: RawValue, options: RawValue) => RawValue;
@@ -342,7 +341,7 @@ type RawApi = {
     getMappeditemXform: (instance: RawValue) => RawValue;
     getStoreyElevation: (instance: RawValue) => number;
     matrixFromAxes: (origin: RawValue, z_axis: RawValue, x_axis: RawValue) => RawValue;
-    rotation: (angle_rad: number, axis: string) => RawValue;
+    rotation: (angle_rad: number, axis: PlacementRotationAxis) => RawValue;
   };
   profile: {
     addArbitraryProfile: (file: RawValue, options: RawValue) => RawValue;
@@ -559,7 +558,7 @@ type RawApi = {
     unassignContainer: (file: RawValue, options: RawValue) => void;
   };
   structural: {
-    addStructuralActivity: (file: RawValue, applied_load: RawValue, structural_member: RawValue, ifc_class: string, predefined_type: string, global_or_local: string, options: RawValue) => RawValue;
+    addStructuralActivity: (file: RawValue, applied_load: RawValue, structural_member: RawValue, ifc_class: string, predefined_type: string, global_or_local: StructuralGlobalOrLocal, options: RawValue) => RawValue;
     addStructuralAnalysisModel: (file: RawValue, owner_history: RawValue) => RawValue;
     addStructuralBoundaryCondition: (file: RawValue, ifc_class: string, options: RawValue) => RawValue;
     addStructuralLoad: (file: RawValue, ifc_class: string, name: string | null) => RawValue;
@@ -586,7 +585,7 @@ type RawApi = {
   style: {
     addStyle: (file: RawValue, name: string | null, ifc_class: string) => RawValue;
     addSurfaceStyle: (file: RawValue, style: RawValue, ifc_class: string | null, attributes: RawValue) => RawValue;
-    addSurfaceTextures: (file: RawValue, textures: RawValue, uv_maps: RawValue) => RawValue;
+    addSurfaceTextures: (file: RawValue, textures: RawValue, uv_maps?: RawValue) => RawValue;
     assignItemStyle: (file: RawValue, options: RawValue) => RawValue;
     assignMaterialStyle: (file: RawValue, material: RawValue, style: RawValue, context: RawValue, should_use_presentation_style_assignment: boolean) => void;
     assignRepresentationStyles: (file: RawValue, shape_representation: RawValue, styles: RawValue, should_use_presentation_style_assignment: boolean, replace_previous_same_type_style: boolean) => RawValue;
@@ -620,7 +619,7 @@ type RawApi = {
   unit: {
     addContextDependentUnit: (file: RawValue, unit_type: string, name: string, dimensions: RawValue) => RawValue;
     addConversionBasedUnit: (file: RawValue, options: RawValue) => RawValue;
-    addDerivedUnit: (file: RawValue, unit_type: string, userdefinedtype: string | null, units: RawValue, exponents: RawValue) => RawValue;
+    addDerivedUnit: (file: RawValue, options: RawValue) => RawValue;
     addMonetaryUnit: (file: RawValue, currency: string) => RawValue;
     addSiUnit: (file: RawValue, unit_type: string, prefix: string | null) => RawValue;
     assignUnit: (file: RawValue, options: RawValue) => RawValue;
@@ -750,8 +749,19 @@ export interface PsetTemplate {
   destroy(): void;
 }
 
+export type BoundaryInternalOrExternal = 'INTERNAL' | 'EXTERNAL' | 'EXTERNAL_EARTH' | 'EXTERNAL_WATER' | 'EXTERNAL_FIRE' | 'NOTDEFINED';
+export type BoundaryPhysicalOrVirtual = 'PHYSICAL' | 'VIRTUAL' | 'NOTDEFINED';
+export type Dimensions7 = [number, number, number, number, number, number, number];
+export type GeometryBooleanOperator = 'DIFFERENCE' | 'INTERSECTION' | 'UNION';
+export type GeometryDirectionSense = 'POSITIVE' | 'NEGATIVE';
 export type GeometryDoorOperationType = 'SINGLE_SWING_LEFT' | 'SINGLE_SWING_RIGHT' | 'DOUBLE_SWING_RIGHT' | 'DOUBLE_SWING_LEFT' | 'DOUBLE_DOOR_SINGLE_SWING' | 'DOUBLE_DOOR_DOUBLE_SWING' | 'SLIDING_TO_LEFT' | 'SLIDING_TO_RIGHT' | 'DOUBLE_DOOR_SLIDING';
+export type GeometryPathConnectionType = 'ATSTART' | 'ATEND' | 'ATPATH' | 'NOTDEFINED';
+export type GeometryRailingTerminalType = '180' | 'TO_END_POST' | 'TO_WALL' | 'TO_FLOOR' | 'TO_END_POST_AND_FLOOR' | 'NONE';
 export type GeometryWindowPartitionType = 'SINGLE_PANEL' | 'DOUBLE_PANEL_HORIZONTAL' | 'DOUBLE_PANEL_VERTICAL' | 'TRIPLE_PANEL_BOTTOM' | 'TRIPLE_PANEL_HORIZONTAL' | 'TRIPLE_PANEL_LEFT' | 'TRIPLE_PANEL_RIGHT' | 'TRIPLE_PANEL_TOP' | 'TRIPLE_PANEL_VERTICAL';
+export type PlacementRotationAxis = 'X' | 'Y' | 'Z';
+export type StructuralGlobalOrLocal = 'GLOBAL_COORDS' | 'LOCAL_COORDS';
+export type StyleUvMode = 'Generated' | 'Camera' | 'UV';
+export type SystemFlowDirection = 'SOURCE' | 'SINK' | 'SOURCEANDSINK' | 'NOTDEFINED';
 export type filetype = 'FT_IFCSPF' | 'FT_IFCXML' | 'FT_IFCZIP' | 'FT_ROCKSDB' | 'FT_UNKNOWN' | 'FT_AUTODETECT';
 export type kinds = 'MATRIX4' | 'POINT3' | 'DIRECTION3' | 'LINE' | 'CIRCLE' | 'ELLIPSE' | 'BSPLINE_CURVE' | 'OFFSET_CURVE' | 'PLANE' | 'CYLINDER' | 'SPHERE' | 'TORUS' | 'BSPLINE_SURFACE' | 'EDGE' | 'LOOP' | 'FACE' | 'SHELL' | 'SOLID' | 'LOFT' | 'EXTRUSION' | 'REVOLVE' | 'SWEEP_ALONG_CURVE' | 'NODE' | 'COLLECTION' | 'BOOLEAN_RESULT' | 'FUNCTION_ITEM' | 'FUNCTOR_ITEM' | 'PIECEWISE_FUNCTION' | 'GRADIENT_FUNCTION' | 'CANT_FUNCTION' | 'OFFSET_FUNCTION' | 'COLOUR' | 'STYLE';
 export type operation_t = 'UNION' | 'SUBTRACTION' | 'INTERSECTION';
@@ -814,7 +824,7 @@ export interface IfcOpenShellAlignmentCreateFromCsvTextOptions {
 export interface IfcOpenShellAlignmentCreateOffsetCurveOptions {
   name: string;
   offsets: Entity[];
-  startStation: number;
+  startStation?: number;
   ownerHistory?: Entity;
   user?: Entity;
   application?: Entity;
@@ -822,10 +832,10 @@ export interface IfcOpenShellAlignmentCreateOffsetCurveOptions {
 
 export interface IfcOpenShellAlignmentCreateOptions {
   name: string;
-  includeVertical: boolean;
-  includeCant: boolean;
-  includeGeometry: boolean;
-  startStation: number;
+  includeVertical?: boolean;
+  includeCant?: boolean;
+  includeGeometry?: boolean;
+  startStation?: number;
   ownerHistory?: Entity;
   user?: Entity;
   application?: Entity;
@@ -834,7 +844,7 @@ export interface IfcOpenShellAlignmentCreateOptions {
 export interface IfcOpenShellAlignmentCreatePolylineOptions {
   name: string;
   points: Entity[];
-  startStation: number;
+  startStation?: number;
   ownerHistory?: Entity;
   user?: Entity;
   application?: Entity;
@@ -910,9 +920,9 @@ export interface IfcOpenShellBoundaryAssignConnectionGeometryOptions {
   /** Local reference direction of the connection plane. */
   refDirection: [number, number, number];
   /** Inner boundaries representing openings in the connection plane, in SI metres and converted to project units using unit_scale. */
-  innerBoundaries: [number, number][][];
-  /** Scale that converts model units to SI units. */
-  unitScale: number;
+  innerBoundaries?: [number, number][][];
+  /** Scale that converts model units to SI units. Calculated from the file when omitted. */
+  unitScale?: number;
 }
 
 export interface IfcOpenShellBoundaryEditAttributesOptions {
@@ -925,9 +935,9 @@ export interface IfcOpenShellBoundaryEditAttributesOptions {
   /** Optional corresponding boundary on the other side of the element. */
   correspondingBoundary?: Entity;
   /** Physical or virtual enum value. */
-  physicalOrVirtual: string;
+  physicalOrVirtual: BoundaryPhysicalOrVirtual;
   /** Internal or external enum value. */
-  internalOrExternal: string;
+  internalOrExternal: BoundaryInternalOrExternal;
 }
 
 export interface IfcOpenShellClassificationAddReferenceOptions {
@@ -1070,11 +1080,11 @@ export interface IfcOpenShellCostCopyCostScheduleOptions {
 
 export interface IfcOpenShellCostEditCostValueOptions {
   /** When true, the UnitBasis (IfcMeasureWithUnit) is replaced using value_component and unit_component. */
-  editUnitBasis: boolean;
+  editUnitBasis?: boolean;
   /** When true (with edit_unit_basis), the existing UnitBasis is removed rather than replaced. */
-  clearUnitBasis: boolean;
+  clearUnitBasis?: boolean;
   /** Numeric value for the new UnitBasis measure. Used when edit_unit_basis is true and clear_unit_basis is false. */
-  valueComponent: number;
+  valueComponent?: number;
   /** IfcUnit for the new UnitBasis. Required when edit_unit_basis is true and clear_unit_basis is false. */
   unitComponent?: Entity;
 }
@@ -1269,7 +1279,7 @@ export interface IfcOpenShellGeometryAddRailingRepresentationOptions {
   /** Optional clear wall gap; defaults to 40 mm in project units. */
   clearWidth?: number;
   /** Optional terminal style; defaults to "180". */
-  terminalType?: string;
+  terminalType?: GeometryRailingTerminalType;
   /** Optional total height; defaults to 1000 mm in project units. */
   height?: number;
   /** Optional loop mode. Defaults to false. */
@@ -1297,7 +1307,7 @@ export interface IfcOpenShellGeometryAddSlabRepresentationOptions {
   /** Slab depth (thickness) in SI metres. */
   depth?: number;
   /** Extrusion direction sense: "POSITIVE" or "NEGATIVE". */
-  directionSense?: string;
+  directionSense?: GeometryDirectionSense;
   /** Offset from the reference plane along the extrusion direction, in SI metres. */
   offset?: number;
   /** Angle of the extrusion direction from vertical, in radians. */
@@ -1327,7 +1337,7 @@ export interface IfcOpenShellGeometryAddWallRepresentationOptions {
   /** Wall height in SI metres. */
   height?: number;
   /** Extrusion direction sense: "POSITIVE" or "NEGATIVE". */
-  directionSense?: string;
+  directionSense?: GeometryDirectionSense;
   /** Offset from the reference plane along the extrusion direction, in SI metres. */
   offset?: number;
   /** Wall thickness in SI metres. */
@@ -1411,7 +1421,7 @@ export interface IfcOpenShellGeometryComputeWallMountedHandrailOptions {
   /** When true, place supports only on collinear internal subdivision vertices. */
   useManualSupports?: boolean;
   /** Terminal style. When omitted, uses "180". */
-  terminalType?: string;
+  terminalType?: GeometryRailingTerminalType;
   /** When true, treat the input as an unclosed loop and omit terminal caps. */
   loopedPath?: boolean;
   /** Project-unit scale in SI metres, used only for fixed metric constants. Defaults to 1.0. */
@@ -1439,9 +1449,9 @@ export interface IfcOpenShellGeometryConnectPathOptions {
   /** The element being connected to. */
   relatedElement: Entity;
   /** Connection type on the relating side: "ATSTART", "ATEND", or "ATPATH". */
-  relatingConnection: string;
+  relatingConnection: GeometryPathConnectionType;
   /** Connection type on the related side: "ATSTART", "ATEND", or "ATPATH". */
-  relatedConnection: string;
+  relatedConnection: GeometryPathConnectionType;
   /** Optional description of the connection. */
   description?: string;
   /** Optional IfcConnectionGeometry for the relationship. */
@@ -1460,7 +1470,7 @@ export interface IfcOpenShellGeometryConnectWallOptions {
   /** Second wall in the connection. */
   secondWall: Entity;
   /** If true, connect along the path (ATPATH) instead of at a terminal end. */
-  isAtpath: boolean;
+  isAtpath?: boolean;
   /** Optional existing IfcOwnerHistory for the relationship. */
   ownerHistory?: Entity;
   /** Optional IfcPersonAndOrganization for OwnerHistory creation. */
@@ -1494,14 +1504,14 @@ export interface IfcOpenShellGeometryCreate2PtWallOptions {
   /** Wall thickness in SI metres (or model units when is_si is false). */
   thickness: number;
   /** If true, start/end/elevation/height/thickness are in SI metres. Defaults to true. */
-  isSi: boolean;
+  isSi?: boolean;
 }
 
 export interface IfcOpenShellGeometryDisconnectPathOptions {
   /** Element whose connections to remove (used with connection_type). */
   element?: Entity;
   /** Connection type to match (e.g. "ATSTART"). Used with element. */
-  connectionType?: string;
+  connectionType?: GeometryPathConnectionType;
   /** Relating element of the specific connection to remove. */
   relatingElement?: Entity;
   /** Related element of the specific connection to remove. */
@@ -1536,9 +1546,9 @@ export interface IfcOpenShellGeometryEditObjectPlacementOptions {
   /** 16-element row-major 4x4 transformation matrix. */
   matrix?: [number, number, number, number, number, number, number, number, number, number, number, number, number, number, number, number];
   /** If true, translation components are in SI metres. Defaults to true. */
-  isSi: boolean;
+  isSi?: boolean;
   /** If true, child local placements are left unchanged so children move with the parent. If false (default), child world positions are preserved. */
-  shouldTransformChildren: boolean;
+  shouldTransformChildren?: boolean;
 }
 
 export interface IfcOpenShellGeometryEntityClipping {
@@ -2089,7 +2099,7 @@ export interface IfcOpenShellPsetEditPsetOptions {
    * If true (default), blank-valued properties are removed from the set.
    * If false, blank-valued properties retain a blank NominalValue.
    */
-  shouldPurge: boolean;
+  shouldPurge?: boolean;
 }
 
 export interface IfcOpenShellPsetEditQtoOptions {
@@ -2702,7 +2712,7 @@ export interface IfcOpenShellStyleAssignItemStyleOptions {
   /** Optional style to assign. When omitted, the existing style is removed. */
   style?: Entity;
   /** Whether to use IfcPresentationStyleAssignment (for IFC2X3 compat). */
-  shouldUsePresentationStyleAssignment: boolean;
+  shouldUsePresentationStyleAssignment?: boolean;
 }
 
 export interface IfcOpenShellStyleSurfaceTextureOptions {
@@ -2710,7 +2720,7 @@ export interface IfcOpenShellStyleSurfaceTextureOptions {
   repeatS: boolean;
   /** Whether the image repeats in the second texture direction. */
   repeatT: boolean;
-  /** Optional texture usage mode, such as "DIFFUSE" or "NORMAL". */
+  /** Optional schema-defined texture usage mode, such as "DIFFUSE" or "NORMAL"; intentionally not narrowed. */
   mode?: string;
   /** Image location. */
   urlReference: string;
@@ -2719,7 +2729,7 @@ export interface IfcOpenShellStyleSurfaceTextureOptions {
   /** Optional texture parameters, preserved in order. */
   parameter?: string[];
   /** Optional mapping mode: "Generated", "Camera", or "UV". */
-  uvMode?: string;
+  uvMode?: StyleUvMode;
 }
 
 export interface IfcOpenShellSystemAddPortOptions {
@@ -2795,7 +2805,7 @@ export interface IfcOpenShellSystemConnectPortOptions {
    * Flow direction: "SOURCE" (port1 sources, port2 sinks), "SINK" (port1
    * sinks, port2 sources), "SOURCEANDSINK", or "NOTDEFINED".
    */
-  direction: string;
+  direction: SystemFlowDirection;
   /** Optional realizing element (e.g. a pipe or duct connecting the ports). */
   element?: Entity;
   /** Optional owner history. A new one is created from user/application if not provided. */
@@ -2874,6 +2884,15 @@ export interface IfcOpenShellUnitAddConversionBasedUnitOptions {
   conversionOffset?: number;
 }
 
+export interface IfcOpenShellUnitAddDerivedUnitOptions {
+  /** IFC derived-unit enum value. */
+  unitType: string;
+  /** Name used when unit_type is USERDEFINED. */
+  userdefinedtype?: string;
+  /** Component units paired with their exponents. */
+  elements: IfcOpenShellUnitDerivedUnitElement[];
+}
+
 export interface IfcOpenShellUnitAssignUnitOptions {
   /** Explicit units to assign. Omission and an empty sequence both select convenience-unit creation. */
   units?: Entity[];
@@ -2889,6 +2908,13 @@ export interface IfcOpenShellUnitAssignUnitOptions {
   volumeIsMetric?: boolean;
   /** Raw convenience volume text. Omission defaults to METERS. */
   volumeRaw?: string;
+}
+
+export interface IfcOpenShellUnitDerivedUnitElement {
+  /** Named unit used by the derived unit. */
+  unit: Entity;
+  /** Power to which the named unit is raised. */
+  exponent: bigint;
 }
 
 export interface IfcOpenShellUnitEditNamedUnitOptions {
@@ -3401,7 +3427,7 @@ export interface CostApi {
      * @param attributes Property bag of attribute name/value pairs.
      * @param options Unit basis replacement options.
      */
-    editCostValue(file: IfcFile, cost_value: Entity, attributes: PsetProperties | PsetInput, options: IfcOpenShellCostEditCostValueOptions): void;
+    editCostValue(file: IfcFile, cost_value: Entity, attributes: PsetProperties | PsetInput, options?: IfcOpenShellCostEditCostValueOptions | null): void;
     /**
      * Set an IfcCostValue's attributes from a formula expression.
      *
@@ -3962,7 +3988,7 @@ export interface GeometryApi {
      * @param operator_type Boolean operator: "DIFFERENCE", "UNION", or "INTERSECTION".
      * @return Created boolean result entities, or an empty list if creation fails.
      */
-    addBoolean(file: IfcFile, first_item: Entity, second_items: Entity[], operator_type: string): Entity[];
+    addBoolean(file: IfcFile, first_item: Entity, second_items: Entity[], operator_type: GeometryBooleanOperator): Entity[];
     /**
      * Create a door representation with lining and panel geometry.
      *
@@ -4978,10 +5004,10 @@ export interface PlacementApi {
      * Build a 4x4 row-major rotation matrix about a principal axis.
      *
      * @param angle_rad Rotation angle in radians.
-     * @param axis Rotation axis: "X", "Y", or "Z" (case-insensitive).
+     * @param axis Rotation axis: "X", "Y", or "Z".
      * @return 16-element row-major 4x4 rotation matrix.
      */
-    rotation(angle_rad: number, axis: string): [number, number, number, number, number, number, number, number, number, number, number, number, number, number, number, number];
+    rotation(angle_rad: number, axis: PlacementRotationAxis): [number, number, number, number, number, number, number, number, number, number, number, number, number, number, number, number];
 }
 export interface ProfileApi {
     /**
@@ -5607,7 +5633,7 @@ export interface SelectorApi {
      * @param value The value to set. When omitted, the target is unset.
      * @param concat When provided and non-empty, it is prepended to the value.
      */
-    setElementValue(file: IfcFile, element: Entity | null, query: string, value: ValueInput | null, concat: string | null): void;
+    setElementValue(file: IfcFile, element: Entity | null, query: string, value: Value | null, concat: string | null): void;
 }
 export interface SequenceApi {
     /**
@@ -6715,13 +6741,13 @@ export interface StructuralApi {
      * @param file File that receives the new entities.
      * @param applied_load IfcStructuralLoad to apply.
      * @param structural_member Structural member to connect the activity to.
-     * @param ifc_class IFC class name (e.g. "IfcStructuralPlanarAction").
-     * @param predefined_type Predefined type enum value.
+     * @param ifc_class Schema-dynamic IFC class name (e.g. "IfcStructuralPlanarAction"); intentionally not narrowed.
+     * @param predefined_type Schema-dynamic predefined type value; intentionally not narrowed.
      * @param global_or_local "GLOBAL_COORDS" or "LOCAL_COORDS".
      * @param options Ownership options for the activity and relationship.
      * @return Newly created IfcStructuralActivity.
      */
-    addStructuralActivity(file: IfcFile, applied_load: Entity, structural_member: Entity, ifc_class: string, predefined_type: string, global_or_local: string, options: IfcOpenShellStructuralAddStructuralActivityOptions): Entity;
+    addStructuralActivity(file: IfcFile, applied_load: Entity, structural_member: Entity, ifc_class: string, predefined_type: string, global_or_local: StructuralGlobalOrLocal, options: IfcOpenShellStructuralAddStructuralActivityOptions): Entity;
     /**
      * Create an IfcStructuralAnalysisModel with PredefinedType LOADING_3D.
      *
@@ -6968,11 +6994,11 @@ export interface StyleApi {
     /**
      * Create image textures and their coordinate mappings in descriptor order.
      *
-     * IFC2X3 returns an empty list without mutation. Unknown or omitted mapping
-     * modes create no mapping. UV mappings append each texture once to every
-     * supplied coordinate map while preserving existing order.
+     * IFC2X3 returns an empty list without mutation. Omitted mapping modes create
+     * no mapping; invalid modes are rejected before mutation. UV mappings append
+     * each texture once to every supplied coordinate map while preserving order.
      */
-    addSurfaceTextures(file: IfcFile, textures: IfcOpenShellStyleSurfaceTextureOptions[], uv_maps: Entity[]): Entity[];
+    addSurfaceTextures(file: IfcFile, textures: IfcOpenShellStyleSurfaceTextureOptions[], uv_maps?: Entity[] | null): Entity[];
     /**
      * Assign or replace a style on a single representation item.
      *
@@ -7200,10 +7226,12 @@ export interface UnitApi {
      * @param file File that receives the new entity.
      * @param unit_type IFC unit type enum value (e.g. "LENGTHUNIT").
      * @param name Display name for the unit (e.g. "bag", "each").
-     * @param dimensions 7-element sequence of dimensional exponents.
+     * @param dimensions Dimensional exponents ordered as length, mass, time,
+     * electric current, thermodynamic temperature, amount of substance, and
+     * luminous intensity.
      * @return Newly created IfcContextDependentUnit.
      */
-    addContextDependentUnit(file: IfcFile, unit_type: string, name: string, dimensions: bigint[]): Entity;
+    addContextDependentUnit(file: IfcFile, unit_type: string, name: string, dimensions: Dimensions7): Entity;
     /**
      * Create a conversion-based named unit from the native unit table.
      *
@@ -7215,17 +7243,14 @@ export interface UnitApi {
     /**
      * Create an IfcDerivedUnit entity.
      *
-     * Constructs a derived unit from a list of component units and their
-     * exponents (e.g. m/s from ["METRE", "SECOND"] with exponents [1, -1]).
+     * Constructs a derived unit from semantic unit/exponent components (e.g.
+     * m/s from [{metre, 1}, {second, -1}]).
      *
      * @param file File that receives the new entity.
-     * @param unit_type IFC unit type enum value (e.g. "VELOCITYUNIT").
-     * @param userdefinedtype UserDefinedType string. When omitted, it is left blank.
-     * @param units Component IfcUnit entities.
-     * @param exponents Exponent for each component unit (must match units in length).
+     * @param options Unit type, optional user-defined type, and semantic components.
      * @return Newly created IfcDerivedUnit.
      */
-    addDerivedUnit(file: IfcFile, unit_type: string, userdefinedtype: string | null, units: Entity[], exponents: bigint[]): Entity;
+    addDerivedUnit(file: IfcFile, options: IfcOpenShellUnitAddDerivedUnitOptions): Entity;
     /**
      * Create an IfcMonetaryUnit entity.
      *
@@ -7361,7 +7386,7 @@ export interface UnitApi {
      * @param name Unit type name.
      * @return 7-element sequence of dimensional exponents.
      */
-    getNamedDimensions(name: string): number[];
+    getNamedDimensions(name: string): Dimensions7;
     /**
      * Extract the SI prefix from a combined unit text string.
      *
@@ -7394,7 +7419,7 @@ export interface UnitApi {
      */
     getProjectUnit(file: IfcFile, unit_type: string): Entity;
     /**
-     * Return the SI dimensional exponents for a given unit type name.
+     * Return the dimensional exponents for a given SI unit name.
      *
      * Returns a 7-element sequence of integers corresponding to the
      * IfcDimensionalExponents attributes: Length, Mass, Time,
@@ -7402,10 +7427,10 @@ export interface UnitApi {
      * LuminousIntensity. Falls back to the "OTHERWISE" entry for
      * unknown types.
      *
-     * @param name Unit type name (e.g. "LENGTHUNIT", "MASSUNIT").
+     * @param name SI unit name (e.g. "METRE", "GRAM").
      * @return 7-element sequence of dimensional exponents.
      */
-    getSiDimensions(name: string): number[];
+    getSiDimensions(name: string): Dimensions7;
     /**
      * Infer the IFC measure class from a unit symbol string.
      *
@@ -9560,10 +9585,10 @@ export function createApi(shell: IfcOpenShell): Api {
      * @param attributes Property bag of attribute name/value pairs.
      * @param options Unit basis replacement options.
      */
-    editCostValue(file: IfcFile, cost_value: Entity, attributes: PsetProperties | PsetInput, options: IfcOpenShellCostEditCostValueOptions): void {
+    editCostValue(file: IfcFile, cost_value: Entity, attributes: PsetProperties | PsetInput, options?: IfcOpenShellCostEditCostValueOptions | null): void {
       const temps: Disposable[] = [];
       try {
-        raw.cost.editCostValue(file.raw, cost_value.raw, toRawPsetProperties(shell, attributes as PsetProperties | PsetInput, temps), encodeOptions(options, {"clearUnitBasis": "clear_unit_basis", "editUnitBasis": "edit_unit_basis", "unitComponent": "unit_component", "valueComponent": "value_component"}, shell, temps));
+        raw.cost.editCostValue(file.raw, cost_value.raw, toRawPsetProperties(shell, attributes as PsetProperties | PsetInput, temps), options == null ? null : encodeOptions(options, {"clearUnitBasis": "clear_unit_basis", "editUnitBasis": "edit_unit_basis", "unitComponent": "unit_component", "valueComponent": "value_component"}, shell, temps));
       } finally {
         disposeAll(temps);
       }
@@ -10541,7 +10566,7 @@ export function createApi(shell: IfcOpenShell): Api {
      * @param operator_type Boolean operator: "DIFFERENCE", "UNION", or "INTERSECTION".
      * @return Created boolean result entities, or an empty list if creation fails.
      */
-    addBoolean(file: IfcFile, first_item: Entity, second_items: Entity[], operator_type: string): Entity[] {
+    addBoolean(file: IfcFile, first_item: Entity, second_items: Entity[], operator_type: GeometryBooleanOperator): Entity[] {
       const temps: Disposable[] = [];
       try {
         const result = raw.geometry.addBoolean(file.raw, first_item.raw, toRawSequence(second_items, shell, temps), operator_type);
@@ -12466,10 +12491,10 @@ export function createApi(shell: IfcOpenShell): Api {
      * Build a 4x4 row-major rotation matrix about a principal axis.
      *
      * @param angle_rad Rotation angle in radians.
-     * @param axis Rotation axis: "X", "Y", or "Z" (case-insensitive).
+     * @param axis Rotation axis: "X", "Y", or "Z".
      * @return 16-element row-major 4x4 rotation matrix.
      */
-    rotation(angle_rad: number, axis: string): [number, number, number, number, number, number, number, number, number, number, number, number, number, number, number, number] {
+    rotation(angle_rad: number, axis: PlacementRotationAxis): [number, number, number, number, number, number, number, number, number, number, number, number, number, number, number, number] {
       const temps: Disposable[] = [];
       try {
         const result = raw.placement.rotation(angle_rad, axis);
@@ -13483,7 +13508,7 @@ export function createApi(shell: IfcOpenShell): Api {
      * @param value The value to set. When omitted, the target is unset.
      * @param concat When provided and non-empty, it is prepended to the value.
      */
-    setElementValue(file: IfcFile, element: Entity | null, query: string, value: ValueInput | null, concat: string | null): void {
+    setElementValue(file: IfcFile, element: Entity | null, query: string, value: Value | null, concat: string | null): void {
       const temps: Disposable[] = [];
       try {
         raw.selector.setElementValue(file.raw, element == null ? null : element.raw, query, value == null ? null : toRawValue(shell, value, temps), concat);
@@ -14891,13 +14916,13 @@ export function createApi(shell: IfcOpenShell): Api {
      * @param file File that receives the new entities.
      * @param applied_load IfcStructuralLoad to apply.
      * @param structural_member Structural member to connect the activity to.
-     * @param ifc_class IFC class name (e.g. "IfcStructuralPlanarAction").
-     * @param predefined_type Predefined type enum value.
+     * @param ifc_class Schema-dynamic IFC class name (e.g. "IfcStructuralPlanarAction"); intentionally not narrowed.
+     * @param predefined_type Schema-dynamic predefined type value; intentionally not narrowed.
      * @param global_or_local "GLOBAL_COORDS" or "LOCAL_COORDS".
      * @param options Ownership options for the activity and relationship.
      * @return Newly created IfcStructuralActivity.
      */
-    addStructuralActivity(file: IfcFile, applied_load: Entity, structural_member: Entity, ifc_class: string, predefined_type: string, global_or_local: string, options: IfcOpenShellStructuralAddStructuralActivityOptions): Entity {
+    addStructuralActivity(file: IfcFile, applied_load: Entity, structural_member: Entity, ifc_class: string, predefined_type: string, global_or_local: StructuralGlobalOrLocal, options: IfcOpenShellStructuralAddStructuralActivityOptions): Entity {
       const temps: Disposable[] = [];
       try {
         const result = raw.structural.addStructuralActivity(file.raw, applied_load.raw, structural_member.raw, ifc_class, predefined_type, global_or_local, encodeOptions(options, {"activityOwnerHistory": "activity_owner_history", "relationshipOwnerHistory": "relationship_owner_history"}, shell, temps));
@@ -15331,14 +15356,14 @@ export function createApi(shell: IfcOpenShell): Api {
     /**
      * Create image textures and their coordinate mappings in descriptor order.
      *
-     * IFC2X3 returns an empty list without mutation. Unknown or omitted mapping
-     * modes create no mapping. UV mappings append each texture once to every
-     * supplied coordinate map while preserving existing order.
+     * IFC2X3 returns an empty list without mutation. Omitted mapping modes create
+     * no mapping; invalid modes are rejected before mutation. UV mappings append
+     * each texture once to every supplied coordinate map while preserving order.
      */
-    addSurfaceTextures(file: IfcFile, textures: IfcOpenShellStyleSurfaceTextureOptions[], uv_maps: Entity[]): Entity[] {
+    addSurfaceTextures(file: IfcFile, textures: IfcOpenShellStyleSurfaceTextureOptions[], uv_maps?: Entity[] | null): Entity[] {
       const temps: Disposable[] = [];
       try {
-        const result = raw.style.addSurfaceTextures(file.raw, textures.map((item) => encodeOptions(item, {"mode": "mode", "parameter": "parameter", "repeatS": "repeat_s", "repeatT": "repeat_t", "textureTransform": "texture_transform", "urlReference": "url_reference", "uvMode": "uv_mode"}, shell, temps)), toRawSequence(uv_maps, shell, temps));
+        const result = raw.style.addSurfaceTextures(file.raw, textures.map((item) => encodeOptions(item, {"mode": "mode", "parameter": "parameter", "repeatS": "repeat_s", "repeatT": "repeat_t", "textureTransform": "texture_transform", "urlReference": "url_reference", "uvMode": "uv_mode"}, shell, temps)), uv_maps == null ? null : toRaw(uv_maps, shell, temps));
         return wrapEntities(shell, result as never) as Entity[];
       } finally {
         disposeAll(temps);
@@ -15755,13 +15780,15 @@ export function createApi(shell: IfcOpenShell): Api {
      * @param file File that receives the new entity.
      * @param unit_type IFC unit type enum value (e.g. "LENGTHUNIT").
      * @param name Display name for the unit (e.g. "bag", "each").
-     * @param dimensions 7-element sequence of dimensional exponents.
+     * @param dimensions Dimensional exponents ordered as length, mass, time,
+     * electric current, thermodynamic temperature, amount of substance, and
+     * luminous intensity.
      * @return Newly created IfcContextDependentUnit.
      */
-    addContextDependentUnit(file: IfcFile, unit_type: string, name: string, dimensions: bigint[]): Entity {
+    addContextDependentUnit(file: IfcFile, unit_type: string, name: string, dimensions: Dimensions7): Entity {
       const temps: Disposable[] = [];
       try {
-        const result = raw.unit.addContextDependentUnit(file.raw, unit_type, name, toRawSequence(dimensions, shell, temps));
+        const result = raw.unit.addContextDependentUnit(file.raw, unit_type, name, encodeOptionValue("dimensions", dimensions, shell, temps, undefined, undefined, [7]));
         return wrapEntity(shell, result) as Entity;
       } finally {
         disposeAll(temps);
@@ -15786,20 +15813,17 @@ export function createApi(shell: IfcOpenShell): Api {
     /**
      * Create an IfcDerivedUnit entity.
      *
-     * Constructs a derived unit from a list of component units and their
-     * exponents (e.g. m/s from ["METRE", "SECOND"] with exponents [1, -1]).
+     * Constructs a derived unit from semantic unit/exponent components (e.g.
+     * m/s from [{metre, 1}, {second, -1}]).
      *
      * @param file File that receives the new entity.
-     * @param unit_type IFC unit type enum value (e.g. "VELOCITYUNIT").
-     * @param userdefinedtype UserDefinedType string. When omitted, it is left blank.
-     * @param units Component IfcUnit entities.
-     * @param exponents Exponent for each component unit (must match units in length).
+     * @param options Unit type, optional user-defined type, and semantic components.
      * @return Newly created IfcDerivedUnit.
      */
-    addDerivedUnit(file: IfcFile, unit_type: string, userdefinedtype: string | null, units: Entity[], exponents: bigint[]): Entity {
+    addDerivedUnit(file: IfcFile, options: IfcOpenShellUnitAddDerivedUnitOptions): Entity {
       const temps: Disposable[] = [];
       try {
-        const result = raw.unit.addDerivedUnit(file.raw, unit_type, userdefinedtype, toRawSequence(units, shell, temps), toRawSequence(exponents, shell, temps));
+        const result = raw.unit.addDerivedUnit(file.raw, encodeOptions(options, {"elements": "elements", "unitType": "unit_type", "userdefinedtype": "userdefinedtype"}, shell, temps, [], [], {}, {}, {"elements": {"entities": [], "fields": {"exponent": "exponent", "unit": "unit"}, "fixed": {}, "pset": [], "records": {}, "sequenceDepth": 1, "variants": {}}}));
         return wrapEntity(shell, result) as Entity;
       } finally {
         disposeAll(temps);
@@ -16041,11 +16065,11 @@ export function createApi(shell: IfcOpenShell): Api {
      * @param name Unit type name.
      * @return 7-element sequence of dimensional exponents.
      */
-    getNamedDimensions(name: string): number[] {
+    getNamedDimensions(name: string): Dimensions7 {
       const temps: Disposable[] = [];
       try {
         const result = raw.unit.getNamedDimensions(name);
-        return wrap(shell, result) as number[];
+        return wrap(shell, result) as Dimensions7;
       } finally {
         disposeAll(temps);
       }
@@ -16106,7 +16130,7 @@ export function createApi(shell: IfcOpenShell): Api {
       }
     },
     /**
-     * Return the SI dimensional exponents for a given unit type name.
+     * Return the dimensional exponents for a given SI unit name.
      *
      * Returns a 7-element sequence of integers corresponding to the
      * IfcDimensionalExponents attributes: Length, Mass, Time,
@@ -16114,14 +16138,14 @@ export function createApi(shell: IfcOpenShell): Api {
      * LuminousIntensity. Falls back to the "OTHERWISE" entry for
      * unknown types.
      *
-     * @param name Unit type name (e.g. "LENGTHUNIT", "MASSUNIT").
+     * @param name SI unit name (e.g. "METRE", "GRAM").
      * @return 7-element sequence of dimensional exponents.
      */
-    getSiDimensions(name: string): number[] {
+    getSiDimensions(name: string): Dimensions7 {
       const temps: Disposable[] = [];
       try {
         const result = raw.unit.getSiDimensions(name);
-        return wrap(shell, result) as number[];
+        return wrap(shell, result) as Dimensions7;
       } finally {
         disposeAll(temps);
       }

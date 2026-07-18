@@ -18,6 +18,8 @@
 
 import ifcopenshell.api.root
 import ifcopenshell.api.system
+import pytest
+
 import test.bootstrap
 
 
@@ -51,7 +53,9 @@ class TestConnectPort(test.bootstrap.IFC4):
     def test_connecting_a_port_from_source_to_sink(self):
         port = ifcopenshell.api.system.add_port(self.file)
         port2 = ifcopenshell.api.system.add_port(self.file)
-        ifcopenshell.api.system.connect_port(self.file, port1=port, port2=port2, direction="SOURCE")
+        ifcopenshell.api.system.connect_port(
+            self.file, port1=port, port2=port2, direction="SOURCE"
+        )
         assert port.ConnectedTo[0].RelatedPort == port2
         assert port2.ConnectedFrom[0].RelatingPort == port
         assert port.FlowDirection == "SOURCE"
@@ -61,7 +65,9 @@ class TestConnectPort(test.bootstrap.IFC4):
     def test_connecting_a_port_from_sink_to_source(self):
         port = ifcopenshell.api.system.add_port(self.file)
         port2 = ifcopenshell.api.system.add_port(self.file)
-        ifcopenshell.api.system.connect_port(self.file, port1=port, port2=port2, direction="SINK")
+        ifcopenshell.api.system.connect_port(
+            self.file, port1=port, port2=port2, direction="SINK"
+        )
         assert port2.ConnectedTo[0].RelatedPort == port
         assert port.ConnectedFrom[0].RelatingPort == port2
         assert port.FlowDirection == "SINK"
@@ -71,7 +77,9 @@ class TestConnectPort(test.bootstrap.IFC4):
     def test_connecting_a_port_as_both_source_and_sink(self):
         port = ifcopenshell.api.system.add_port(self.file)
         port2 = ifcopenshell.api.system.add_port(self.file)
-        ifcopenshell.api.system.connect_port(self.file, port1=port, port2=port2, direction="SOURCEANDSINK")
+        ifcopenshell.api.system.connect_port(
+            self.file, port1=port, port2=port2, direction="SOURCEANDSINK"
+        )
         assert port.ConnectedTo[0].RelatedPort == port2
         assert port2.ConnectedFrom[0].RelatingPort == port
         assert port2.ConnectedTo[0].RelatedPort == port
@@ -84,8 +92,12 @@ class TestConnectPort(test.bootstrap.IFC4):
         port = ifcopenshell.api.system.add_port(self.file)
         port2 = ifcopenshell.api.system.add_port(self.file)
         port3 = ifcopenshell.api.system.add_port(self.file)
-        ifcopenshell.api.system.connect_port(self.file, port1=port, port2=port3, direction="SOURCEANDSINK")
-        ifcopenshell.api.system.connect_port(self.file, port1=port, port2=port2, direction="SOURCE")
+        ifcopenshell.api.system.connect_port(
+            self.file, port1=port, port2=port3, direction="SOURCEANDSINK"
+        )
+        ifcopenshell.api.system.connect_port(
+            self.file, port1=port, port2=port2, direction="SOURCE"
+        )
         assert port.ConnectedTo[0].RelatedPort == port2
         assert port2.ConnectedFrom[0].RelatingPort == port
         assert port.FlowDirection == "SOURCE"
@@ -97,8 +109,12 @@ class TestConnectPort(test.bootstrap.IFC4):
     def test_changing_a_port_from_source_and_sink_to_only_source(self):
         port = ifcopenshell.api.system.add_port(self.file)
         port2 = ifcopenshell.api.system.add_port(self.file)
-        ifcopenshell.api.system.connect_port(self.file, port1=port, port2=port2, direction="SOURCEANDSINK")
-        ifcopenshell.api.system.connect_port(self.file, port1=port, port2=port2, direction="SOURCE")
+        ifcopenshell.api.system.connect_port(
+            self.file, port1=port, port2=port2, direction="SOURCEANDSINK"
+        )
+        ifcopenshell.api.system.connect_port(
+            self.file, port1=port, port2=port2, direction="SOURCE"
+        )
         assert port.ConnectedTo[0].RelatedPort == port2
         assert port2.ConnectedFrom[0].RelatingPort == port
         assert port.FlowDirection == "SOURCE"
@@ -108,11 +124,26 @@ class TestConnectPort(test.bootstrap.IFC4):
     def test_connecting_ports_with_a_realising_element(self):
         port = ifcopenshell.api.system.add_port(self.file)
         port2 = ifcopenshell.api.system.add_port(self.file)
-        element = ifcopenshell.api.root.create_entity(self.file, ifc_class="IfcFlowFitting")
-        ifcopenshell.api.system.connect_port(self.file, port1=port, port2=port2, element=element)
+        element = ifcopenshell.api.root.create_entity(
+            self.file, ifc_class="IfcFlowFitting"
+        )
+        ifcopenshell.api.system.connect_port(
+            self.file, port1=port, port2=port2, element=element
+        )
         assert self.file.by_type("IfcRelConnectsPorts")[0].RealizingElement == element
         ifcopenshell.api.system.connect_port(self.file, port1=port, port2=port2)
         assert self.file.by_type("IfcRelConnectsPorts")[0].RealizingElement is None
+
+    def test_rejects_unknown_flow_direction_without_mutation(self):
+        port = ifcopenshell.api.system.add_port(self.file)
+        port2 = ifcopenshell.api.system.add_port(self.file)
+        with pytest.raises(ValueError, match="Unsupported SystemFlowDirection value"):
+            ifcopenshell.api.system.connect_port(
+                self.file, port1=port, port2=port2, direction="source"
+            )
+        assert not self.file.by_type("IfcRelConnectsPorts")
+        assert port.FlowDirection is None
+        assert port2.FlowDirection is None
 
 
 class TestConnectPortIFC2X3(test.bootstrap.IFC2X3, TestConnectPort):

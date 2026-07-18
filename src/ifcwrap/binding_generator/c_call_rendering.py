@@ -743,6 +743,25 @@ def _render_option_param_prelude(param: ParamSpec, spec: BindingIR) -> str:
             f'Option parameter "{param.name}" is missing option struct name'
         )
     option = spec.option_structs[param.type.struct]
+    if param.type.nullable:
+        value_name = f"{param.name}_value"
+        lines = [
+            f"    std::optional<{option.cpp_type}> {param.name}_cpp;",
+            f"    if ({param.name} != nullptr) {{",
+            f"        {option.cpp_type} {value_name}{{}};",
+        ]
+        lines.extend(
+            _render_option_value_assignments(
+                option, param.name, value_name, spec, "        "
+            )
+        )
+        lines.extend(
+            [
+                f"        {param.name}_cpp = std::move({value_name});",
+                "    }",
+            ]
+        )
+        return "\n".join(line for line in lines if line)
     lines = [
         _null_check(param.name, "Options parameter"),
         f"    {option.cpp_type} {param.name}_cpp{{}};",

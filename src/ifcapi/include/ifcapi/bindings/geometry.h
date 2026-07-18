@@ -19,6 +19,18 @@
 namespace ifcapi {
 namespace bindings {
 
+enum class GeometryDirectionSense { POSITIVE, NEGATIVE };
+enum class GeometryBooleanOperator { DIFFERENCE, INTERSECTION, UNION };
+enum class GeometryPathConnectionType { ATSTART, ATEND, ATPATH, NOTDEFINED };
+enum class GeometryRailingTerminalType {
+    RETURN_180 IFCAPI_LITERAL("180"),
+    TO_END_POST,
+    TO_WALL,
+    TO_FLOOR,
+    TO_END_POST_AND_FLOOR,
+    NONE,
+};
+
 /** A clipping half-space plane in SI metres. */
 struct GeometryPlaneClipping {
     /// Point on the clipping plane, in SI metres.
@@ -103,7 +115,7 @@ struct GeometryAddSlabRepresentationOptions {
     /// Slab depth (thickness) in SI metres.
     std::optional<double> depth;
     /// Extrusion direction sense: "POSITIVE" or "NEGATIVE".
-    std::optional<std::string> direction_sense;
+    std::optional<GeometryDirectionSense> direction_sense;
     /// Offset from the reference plane along the extrusion direction, in SI metres.
     std::optional<double> offset;
     /// Angle of the extrusion direction from vertical, in radians.
@@ -125,7 +137,7 @@ struct GeometryAddWallRepresentationOptions {
     /// Wall height in SI metres.
     std::optional<double> height;
     /// Extrusion direction sense: "POSITIVE" or "NEGATIVE".
-    std::optional<std::string> direction_sense;
+    std::optional<GeometryDirectionSense> direction_sense;
     /// Offset from the reference plane along the extrusion direction, in SI metres.
     std::optional<double> offset;
     /// Wall thickness in SI metres.
@@ -171,13 +183,13 @@ struct GeometryCreate2PtWallOptions {
     /// XY end point of the wall baseline.
     std::array<double, 2> end;
     /// Wall base elevation in SI metres (or model units when is_si is false).
-    double elevation = 0.0;
+    double elevation;
     /// Wall height in SI metres (or model units when is_si is false).
-    double height = 0.0;
+    double height;
     /// Wall thickness in SI metres (or model units when is_si is false).
-    double thickness = 0.0;
+    double thickness;
     /// If true, start/end/elevation/height/thickness are in SI metres. Defaults to true.
-    bool is_si = true;
+    std::optional<bool> is_si = true;
 };
 
 /**
@@ -189,7 +201,7 @@ struct GeometryConnectWallOptions {
     /// Second wall in the connection.
     express::Base second_wall;
     /// If true, connect along the path (ATPATH) instead of at a terminal end.
-    bool is_atpath = false;
+    std::optional<bool> is_atpath = false;
     /// Optional existing IfcOwnerHistory for the relationship.
     std::optional<express::Base> owner_history;
     /// Optional IfcPersonAndOrganization for OwnerHistory creation.
@@ -366,7 +378,7 @@ struct GeometryComputeWallMountedHandrailOptions {
     /// When true, place supports only on collinear internal subdivision vertices.
     std::optional<bool> use_manual_supports;
     /// Terminal style. When omitted, uses "180".
-    std::optional<std::string> terminal_type;
+    std::optional<GeometryRailingTerminalType> terminal_type;
     /// When true, treat the input as an unclosed loop and omit terminal caps.
     std::optional<bool> looped_path;
     /// Project-unit scale in SI metres, used only for fixed metric constants. Defaults to 1.0.
@@ -388,7 +400,7 @@ struct GeometryAddRailingRepresentationOptions {
     /// Optional clear wall gap; defaults to 40 mm in project units.
     std::optional<double> clear_width;
     /// Optional terminal style; defaults to "180".
-    std::optional<std::string> terminal_type;
+    std::optional<GeometryRailingTerminalType> terminal_type;
     /// Optional total height; defaults to 1000 mm in project units.
     std::optional<double> height;
     /// Optional loop mode. Defaults to false.
@@ -470,9 +482,9 @@ struct GeometryEditObjectPlacementOptions {
     /// 16-element row-major 4x4 transformation matrix.
     std::optional<std::array<double, 16>> matrix;
     /// If true, translation components are in SI metres. Defaults to true.
-    bool is_si = true;
+    std::optional<bool> is_si = true;
     /// If true, child local placements are left unchanged so children move with the parent. If false (default), child world positions are preserved.
-    bool should_transform_children = false;
+    std::optional<bool> should_transform_children = false;
 };
 
 /**
@@ -502,9 +514,9 @@ struct GeometryConnectPathOptions {
     /// The element being connected to.
     express::Base related_element;
     /// Connection type on the relating side: "ATSTART", "ATEND", or "ATPATH".
-    std::string relating_connection;
+    GeometryPathConnectionType relating_connection;
     /// Connection type on the related side: "ATSTART", "ATEND", or "ATPATH".
-    std::string related_connection;
+    GeometryPathConnectionType related_connection;
     /// Optional description of the connection.
     std::optional<std::string> description;
     /// Optional IfcConnectionGeometry for the relationship.
@@ -524,7 +536,7 @@ struct GeometryDisconnectPathOptions {
     /// Element whose connections to remove (used with connection_type).
     std::optional<express::Base> element;
     /// Connection type to match (e.g. "ATSTART"). Used with element.
-    std::optional<std::string> connection_type;
+    std::optional<GeometryPathConnectionType> connection_type;
     /// Relating element of the specific connection to remove.
     std::optional<express::Base> relating_element;
     /// Related element of the specific connection to remove.
@@ -556,7 +568,7 @@ IFCAPI_BINDING std::vector<express::Base> geometry_add_boolean(
     ifcopenshell::file* file,
     express::Base* first_item,
     const std::vector<express::Base>& second_items,
-    const std::string& operator_type);
+    GeometryBooleanOperator operator_type);
 
 /**
  * Create an axis representation (Curve2D or Curve3D) from a polyline.

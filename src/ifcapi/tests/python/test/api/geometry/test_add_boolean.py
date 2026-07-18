@@ -20,6 +20,8 @@ import ifcopenshell.api.context
 import ifcopenshell.api.geometry
 import ifcopenshell.api.root
 import ifcopenshell.util.shape_builder
+import pytest
+
 import test.bootstrap
 
 
@@ -28,7 +30,11 @@ class TestAddBoolean(test.bootstrap.IFC4):
         ifcopenshell.api.root.create_entity(self.file, ifc_class="IfcProject")
         model = ifcopenshell.api.context.add_context(self.file, context_type="Model")
         body = ifcopenshell.api.context.add_context(
-            self.file, context_type="Model", context_identifier="Body", target_view="MODEL_VIEW", parent=model
+            self.file,
+            context_type="Model",
+            context_identifier="Body",
+            target_view="MODEL_VIEW",
+            parent=model,
         )
         builder = ifcopenshell.util.shape_builder.ShapeBuilder(self.file)
         first = builder.sphere()
@@ -48,7 +54,11 @@ class TestAddBoolean(test.bootstrap.IFC4):
         ifcopenshell.api.root.create_entity(self.file, ifc_class="IfcProject")
         model = ifcopenshell.api.context.add_context(self.file, context_type="Model")
         body = ifcopenshell.api.context.add_context(
-            self.file, context_type="Model", context_identifier="Body", target_view="MODEL_VIEW", parent=model
+            self.file,
+            context_type="Model",
+            context_identifier="Body",
+            target_view="MODEL_VIEW",
+            parent=model,
         )
         builder = ifcopenshell.util.shape_builder.ShapeBuilder(self.file)
         first = builder.sphere()
@@ -56,7 +66,9 @@ class TestAddBoolean(test.bootstrap.IFC4):
         second2 = builder.block()
         rep = builder.get_representation(body, [first, second1, second2])
 
-        booleans = ifcopenshell.api.geometry.add_boolean(self.file, first, [second1, second2])
+        booleans = ifcopenshell.api.geometry.add_boolean(
+            self.file, first, [second1, second2]
+        )
         assert len(booleans) == 2
         final_boolean = booleans[-1]
         assert final_boolean.FirstOperand.is_a("IfcBooleanResult")
@@ -71,7 +83,11 @@ class TestAddBoolean(test.bootstrap.IFC4):
         ifcopenshell.api.root.create_entity(self.file, ifc_class="IfcProject")
         model = ifcopenshell.api.context.add_context(self.file, context_type="Model")
         body = ifcopenshell.api.context.add_context(
-            self.file, context_type="Model", context_identifier="Body", target_view="MODEL_VIEW", parent=model
+            self.file,
+            context_type="Model",
+            context_identifier="Body",
+            target_view="MODEL_VIEW",
+            parent=model,
         )
         builder = ifcopenshell.util.shape_builder.ShapeBuilder(self.file)
         first = builder.sphere()
@@ -94,7 +110,11 @@ class TestAddBoolean(test.bootstrap.IFC4):
         ifcopenshell.api.root.create_entity(self.file, ifc_class="IfcProject")
         model = ifcopenshell.api.context.add_context(self.file, context_type="Model")
         body = ifcopenshell.api.context.add_context(
-            self.file, context_type="Model", context_identifier="Body", target_view="MODEL_VIEW", parent=model
+            self.file,
+            context_type="Model",
+            context_identifier="Body",
+            target_view="MODEL_VIEW",
+            parent=model,
         )
         builder = ifcopenshell.util.shape_builder.ShapeBuilder(self.file)
         first1 = builder.sphere()
@@ -127,7 +147,11 @@ class TestAddBoolean(test.bootstrap.IFC4):
         ifcopenshell.api.root.create_entity(self.file, ifc_class="IfcProject")
         model = ifcopenshell.api.context.add_context(self.file, context_type="Model")
         body = ifcopenshell.api.context.add_context(
-            self.file, context_type="Model", context_identifier="Body", target_view="MODEL_VIEW", parent=model
+            self.file,
+            context_type="Model",
+            context_identifier="Body",
+            target_view="MODEL_VIEW",
+            parent=model,
         )
         builder = ifcopenshell.util.shape_builder.ShapeBuilder(self.file)
         first = builder.sphere()
@@ -145,6 +169,18 @@ class TestAddBoolean(test.bootstrap.IFC4):
         assert boolean.FirstOperand == first
         assert boolean.SecondOperand == second
         assert len(self.file.by_type("IfcBooleanResult")) == 1
+
+    def test_rejecting_an_unknown_operator_does_not_create_a_boolean(self):
+        builder = ifcopenshell.util.shape_builder.ShapeBuilder(self.file)
+        first = builder.sphere()
+        second = builder.block()
+        with pytest.raises(
+            ValueError, match="Unsupported GeometryBooleanOperator value"
+        ):
+            ifcopenshell.api.geometry.add_boolean(
+                self.file, first, [second], operator="difference"
+            )
+        assert not self.file.by_type("IfcBooleanResult")
 
 
 class TestAddBooleanIFC2X3(test.bootstrap.IFC2X3, TestAddBoolean):

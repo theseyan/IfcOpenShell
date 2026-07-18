@@ -4,7 +4,7 @@
 #define IFCAPI_BINDINGS_UNIT_H
 
 #include "ifcapi/bindings/contract.h"
-
+#include "ifcapi/bindings/types.h"
 #include "ifcparse/express.h"
 #include "ifcparse/file.h"
 
@@ -101,7 +101,7 @@ IFCAPI_BINDING std::string unit_get_symbol_measure_class(const std::string& symb
  */
 IFCAPI_BINDING std::string unit_get_symbol_quantity_class(const std::string& symbol);
 /**
- * Return the SI dimensional exponents for a given unit type name.
+ * Return the dimensional exponents for a given SI unit name.
  *
  * Returns a 7-element sequence of integers corresponding to the
  * IfcDimensionalExponents attributes: Length, Mass, Time,
@@ -109,10 +109,10 @@ IFCAPI_BINDING std::string unit_get_symbol_quantity_class(const std::string& sym
  * LuminousIntensity. Falls back to the "OTHERWISE" entry for
  * unknown types.
  *
- * @param name Unit type name (e.g. "LENGTHUNIT", "MASSUNIT").
+ * @param name SI unit name (e.g. "METRE", "GRAM").
  * @return 7-element sequence of dimensional exponents.
  */
-IFCAPI_BINDING std::vector<int> unit_get_si_dimensions(const std::string& name);
+IFCAPI_BINDING Dimensions7 unit_get_si_dimensions(const std::string& name);
 /**
  * Return the named dimensional exponents for a given unit type name.
  *
@@ -122,7 +122,7 @@ IFCAPI_BINDING std::vector<int> unit_get_si_dimensions(const std::string& name);
  * @param name Unit type name.
  * @return 7-element sequence of dimensional exponents.
  */
-IFCAPI_BINDING std::vector<int> unit_get_named_dimensions(const std::string& name);
+IFCAPI_BINDING Dimensions7 unit_get_named_dimensions(const std::string& name);
 /**
  * Convert a numeric value between units specified by prefix and name strings.
  *
@@ -359,6 +359,24 @@ struct UnitEditNamedUnitOptions {
     ifcopenshell_pset_props_t* attributes;
 };
 
+/** One component of an IfcDerivedUnit definition. */
+struct UnitDerivedUnitElement {
+    /** Named unit used by the derived unit. */
+    express::Base unit;
+    /** Power to which the named unit is raised. */
+    std::int64_t exponent;
+};
+
+/** Inputs for creating an IfcDerivedUnit. */
+struct UnitAddDerivedUnitOptions {
+    /** IFC derived-unit enum value. */
+    std::string unit_type;
+    /** Name used when unit_type is USERDEFINED. */
+    std::optional<std::string> userdefinedtype;
+    /** Component units paired with their exponents. */
+    std::vector<UnitDerivedUnitElement> elements;
+};
+
 /**
  * Edit a named unit without owner-history or predefined-type synchronization.
  *
@@ -402,33 +420,29 @@ IFCAPI_BINDING express::Base unit_add_monetary_unit(
  * @param file File that receives the new entity.
  * @param unit_type IFC unit type enum value (e.g. "LENGTHUNIT").
  * @param name Display name for the unit (e.g. "bag", "each").
- * @param dimensions 7-element sequence of dimensional exponents.
+ * @param dimensions Dimensional exponents ordered as length, mass, time,
+ * electric current, thermodynamic temperature, amount of substance, and
+ * luminous intensity.
  * @return Newly created IfcContextDependentUnit.
  */
 IFCAPI_BINDING express::Base unit_add_context_dependent_unit(
     ifcopenshell::file* file,
     const std::string& unit_type,
     const std::string& name,
-    const std::vector<int64_t>& dimensions);
+    const Dimensions7& dimensions);
 /**
  * Create an IfcDerivedUnit entity.
  *
- * Constructs a derived unit from a list of component units and their
- * exponents (e.g. m/s from ["METRE", "SECOND"] with exponents [1, -1]).
+ * Constructs a derived unit from semantic unit/exponent components (e.g.
+ * m/s from [{metre, 1}, {second, -1}]).
  *
  * @param file File that receives the new entity.
- * @param unit_type IFC unit type enum value (e.g. "VELOCITYUNIT").
- * @param userdefinedtype UserDefinedType string. When omitted, it is left blank.
- * @param units Component IfcUnit entities.
- * @param exponents Exponent for each component unit (must match units in length).
+ * @param options Unit type, optional user-defined type, and semantic components.
  * @return Newly created IfcDerivedUnit.
  */
 IFCAPI_BINDING express::Base unit_add_derived_unit(
     ifcopenshell::file* file,
-    const std::string& unit_type,
-    const char* userdefinedtype,
-    const std::vector<express::Base>& units,
-    const std::vector<int64_t>& exponents);
+    const UnitAddDerivedUnitOptions& options);
 /**
  * Remove units from the project's IfcUnitAssignment.
  *

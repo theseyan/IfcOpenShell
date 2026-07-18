@@ -71,7 +71,7 @@ struct PsetEditPsetOptions {
     std::optional<express::Base> pset_template;
     /// If true (default), blank-valued properties are removed from the set.
     /// If false, blank-valued properties retain a blank NominalValue.
-    bool should_purge = true;
+    std::optional<bool> should_purge = true;
 };
 
 /**

@@ -438,7 +438,7 @@ def test_discover_cpp_types_marks_enums(tmp_path: Path) -> None:
     header.write_text(
         """
 namespace Demo {
-enum class Mode { A, B };
+enum class Mode { A __attribute__((annotate("ifcapi.literal:ALPHA"))), B };
 
 struct Widget {
     Mode mode() const;
@@ -463,6 +463,7 @@ struct Widget {
 
     assert methods["mode"][0].return_type_ref.is_enum
     assert methods["mode"][0].return_type_ref.base_name == "Mode"
+    assert methods["mode"][0].return_type_ref.enum_values == (("ALPHA", 0), ("B", 1))
     assert methods["set_mode"][0].params[0].cpp_type_ref.is_enum
 
 

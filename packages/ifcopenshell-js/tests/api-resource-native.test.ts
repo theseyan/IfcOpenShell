@@ -93,7 +93,6 @@ describeGeneratedOrSkip('generated native resource API', () => {
         BaseQuantityProducedName: 'Count',
         BaseQuantityProducedValue: 2,
       },
-      shouldPurge: true,
     })).toBe(true);
 
     const task = shell.api.sequence.addTask(file, {});

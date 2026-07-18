@@ -17,10 +17,10 @@ namespace ifcapi::bindings {
 
 struct AlignmentCreateOptions {
     std::string name;
-    bool include_vertical = false;
-    bool include_cant = false;
-    bool include_geometry = true;
-    double start_station = 0.0;
+    std::optional<bool> include_vertical = false;
+    std::optional<bool> include_cant = false;
+    std::optional<bool> include_geometry = true;
+    std::optional<double> start_station = 0.0;
     std::optional<express::Base> owner_history;
     std::optional<express::Base> user;
     std::optional<express::Base> application;
@@ -89,7 +89,7 @@ struct AlignmentCreateFromCsvTextOptions {
 struct AlignmentCreatePolylineOptions {
     std::string name;
     std::vector<express::Base> points;
-    double start_station = 0.0;
+    std::optional<double> start_station = 0.0;
     std::optional<express::Base> owner_history;
     std::optional<express::Base> user;
     std::optional<express::Base> application;
@@ -98,7 +98,7 @@ struct AlignmentCreatePolylineOptions {
 struct AlignmentCreateOffsetCurveOptions {
     std::string name;
     std::vector<express::Base> offsets;
-    double start_station = 0.0;
+    std::optional<double> start_station = 0.0;
     std::optional<express::Base> owner_history;
     std::optional<express::Base> user;
     std::optional<express::Base> application;

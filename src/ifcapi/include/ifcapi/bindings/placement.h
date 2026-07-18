@@ -15,6 +15,8 @@
 namespace ifcapi {
 namespace bindings {
 
+enum class PlacementRotationAxis { X, Y, Z };
+
 /**
  * Compute a 4x4 row-major transformation matrix from origin and axes.
  *
@@ -90,10 +92,10 @@ IFCAPI_BINDING double placement_get_storey_elevation(express::Base* instance);
  * Build a 4x4 row-major rotation matrix about a principal axis.
  *
  * @param angle_rad Rotation angle in radians.
- * @param axis Rotation axis: "X", "Y", or "Z" (case-insensitive).
+ * @param axis Rotation axis: "X", "Y", or "Z".
  * @return 16-element row-major 4x4 rotation matrix.
  */
-IFCAPI_BINDING std::array<double, 16> placement_rotation(double angle_rad, const std::string& axis);
+IFCAPI_BINDING std::array<double, 16> placement_rotation(double angle_rad, PlacementRotationAxis axis);
 
 } // namespace bindings
 } // namespace ifcapi

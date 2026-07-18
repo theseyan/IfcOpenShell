@@ -46,6 +46,17 @@ describeGeneratedOrSkip('generated native alignment API', () => {
     expect(shell.api.alignment.getCurve(alignment)?.type).toBe('IfcSegmentedReferenceCurve');
   });
 
+  it('applies create defaults when optional fields are omitted', async () => {
+    await using file = await newFile();
+    const alignment = shell.api.alignment.create(file, { name: 'Defaults' });
+
+    expect(shell.api.alignment.getHorizontalLayout(alignment)?.type).toBe('IfcAlignmentHorizontal');
+    expect(shell.api.alignment.getVerticalLayout(alignment)).toBeNull();
+    expect(shell.api.alignment.getCantLayout(alignment)).toBeNull();
+    expect(shell.api.alignment.getCurve(alignment)?.type).toBe('IfcCompositeCurve');
+    expect(shell.api.alignment.getAlignmentStartStation(file, alignment)).toBe(0);
+  });
+
   it('authors PI and CSV text workflows with exact result types', async () => {
     await using file = await newFile();
     const alignment = shell.api.alignment.createByPiMethod(file, {

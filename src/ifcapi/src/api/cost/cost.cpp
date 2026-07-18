@@ -1157,15 +1157,16 @@ void cost_edit_cost_value(
     ifcopenshell::file* file,
     express::Base* cost_value,
     ifcopenshell_pset_props_t* attributes,
-    const CostEditCostValueOptions& options)
+    std::optional<CostEditCostValueOptions> supplied_options)
 {
+    const auto options = supplied_options.value_or(CostEditCostValueOptions{});
     cost_edit_cost_value(
         file,
         detail::deref_or_empty(cost_value),
         attributes,
-        options.edit_unit_basis,
-        options.clear_unit_basis,
-        options.value_component,
+        options.edit_unit_basis.value_or(false),
+        options.clear_unit_basis.value_or(false),
+        options.value_component.value_or(0.0),
         options.unit_component);
 }
 

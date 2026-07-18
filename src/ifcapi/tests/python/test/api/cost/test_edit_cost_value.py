@@ -18,15 +18,31 @@
 
 import ifcopenshell.api.cost
 import ifcopenshell.api.unit
+from ifcopenshell import _ifcopenshell_capi as _capi
+from ifcopenshell.api.pset import _capi as pset_capi
+
 import test.bootstrap
 
 
 class TestEditCostValue(test.bootstrap.IFC4):
+    def test_native_control_options_are_omittable(self):
+        value = self.file.create_entity("IfcCostValue")
+        properties = pset_capi.build_props({"Category": "LABOUR"})
+        try:
+            _capi.cost_edit_cost_value(self.file._handle, value._handle, properties)
+        finally:
+            pset_capi.free_props(properties)
+
+        assert value.Category == "LABOUR"
+        assert value.UnitBasis is None
+
     def test_editing_applied_value(self):
         schedule = ifcopenshell.api.cost.add_cost_schedule(self.file)
         item = ifcopenshell.api.cost.add_cost_item(self.file, cost_schedule=schedule)
         value = ifcopenshell.api.cost.add_cost_value(self.file, parent=item)
-        ifcopenshell.api.cost.edit_cost_value(self.file, cost_value=value, attributes={"AppliedValue": 42.0})
+        ifcopenshell.api.cost.edit_cost_value(
+            self.file, cost_value=value, attributes={"AppliedValue": 42.0}
+        )
         assert value.AppliedValue.wrappedValue == 42.0
 
     def test_editing_unit_basis_removes_old_deeply(self):

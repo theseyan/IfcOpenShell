@@ -18,6 +18,7 @@
 
 
 import ifcopenshell.api.style
+import pytest
 
 import test.bootstrap
 
@@ -124,7 +125,6 @@ class TestAddSurfaceTexture(test.bootstrap.IFC4):
                 "URLReference": "texture.png",
                 "TextureTransform": transform,
                 "Parameter": ["A", "B"],
-                "uv_mode": "unknown",
             }
         ]
         original = texture_data[0].copy()
@@ -136,6 +136,22 @@ class TestAddSurfaceTexture(test.bootstrap.IFC4):
         assert textures[0].TextureTransform == transform
         assert textures[0].Parameter == ("A", "B")
         assert textures[0].IsMappedBy == ()
+
+    def test_rejects_unknown_uv_mode_without_mutation(self):
+        before = len(list(self.file))
+        with pytest.raises(ValueError, match="Unsupported StyleUvMode value"):
+            ifcopenshell.api.style.add_surface_textures(
+                self.file,
+                textures=[
+                    {
+                        "RepeatS": True,
+                        "RepeatT": True,
+                        "URLReference": "texture.png",
+                        "uv_mode": "unknown",
+                    }
+                ],
+            )
+        assert len(list(self.file)) == before
 
     def test_multiple_uv_textures_preserve_existing_maps_without_duplicates(self):
         old = self.file.create_entity(
@@ -177,4 +193,20 @@ class TestAddSurfaceTextureIFC2X3(test.bootstrap.IFC2X3):
             ifcopenshell.api.style.add_surface_textures(self.file, textures=descriptors)
             == []
         )
+        assert len(list(self.file)) == before
+
+    def test_rejects_unknown_uv_mode_without_mutation(self):
+        before = len(list(self.file))
+        with pytest.raises(ValueError):
+            ifcopenshell.api.style.add_surface_textures(
+                self.file,
+                textures=[
+                    {
+                        "RepeatS": True,
+                        "RepeatT": True,
+                        "URLReference": "ignored.png",
+                        "uv_mode": "unknown",
+                    }
+                ],
+            )
         assert len(list(self.file)) == before

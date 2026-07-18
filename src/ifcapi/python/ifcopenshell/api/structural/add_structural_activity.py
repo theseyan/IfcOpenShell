@@ -53,6 +53,10 @@ def add_structural_activity(
         applied to.
     :return: The newly created entity based on the ifc_class
     """
+    if global_or_local not in ("GLOBAL_COORDS", "LOCAL_COORDS"):
+        raise ValueError(
+            f"Unsupported StructuralGlobalOrLocal value: {global_or_local}"
+        )
     activity_owner_history = _capi.owner_history(file)
     relationship_owner_history = _capi.owner_history(file)
     return _capi.call_handle(
@@ -63,9 +67,11 @@ def add_structural_activity(
         _capi.instance_handle(structural_member),
         _capi.string(ifc_class),
         _capi.string(predefined_type),
-        _capi.string(global_or_local),
+        global_or_local,
         {
             "activity_owner_history": _capi.instance_handle(activity_owner_history),
-            "relationship_owner_history": _capi.instance_handle(relationship_owner_history),
+            "relationship_owner_history": _capi.instance_handle(
+                relationship_owner_history
+            ),
         },
     )

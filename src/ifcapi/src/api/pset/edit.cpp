@@ -779,12 +779,14 @@ bool pset_edit_pset(
             const Entry* e = it->second;
             bool removed = false;
             if (entity_is_a(prop, "IfcPropertySingleValue")) {
-                if (!process_existing_single_value(file, prop, pset_template, *e, options.should_purge, removed)) {
+                if (!process_existing_single_value(
+                        file, prop, pset_template, *e, options.should_purge.value_or(true), removed)) {
                     kept.push_back(prop);
                     continue;
                 }
             } else if (entity_is_a(prop, "IfcPropertyEnumeratedValue")) {
-                if (!process_existing_enumerated(file, prop, *e, options.should_purge, removed)) {
+                if (!process_existing_enumerated(
+                        file, prop, *e, options.should_purge.value_or(true), removed)) {
                     kept.push_back(prop);
                     continue;
                 }
@@ -801,7 +803,7 @@ bool pset_edit_pset(
             auto it = remaining.find(key);
             if (it == remaining.end()) continue;
             const Entry* e = it->second;
-            if (e->kind == Kind::NONE && options.should_purge) continue;
+            if (e->kind == Kind::NONE && options.should_purge.value_or(true)) continue;
             auto np = build_new_property(file, pset_template, key, *e);
             if (np) kept.push_back(np);
         }

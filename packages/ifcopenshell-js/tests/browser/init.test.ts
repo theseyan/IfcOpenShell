@@ -4,6 +4,7 @@ import {
   IfcOpenShellError,
   IfcOpenShellErrorCode,
   IfcOpenShellErrorKind,
+  IfcFile,
   abortError,
   init,
   isIfcOpenShellAbortError,
@@ -49,6 +50,35 @@ describe('browser runtime', () => {
         code: IfcOpenShellErrorCode.OPERATION_CANCELLED,
         cause: reason,
       });
+    } finally {
+      shell.dispose();
+    }
+  });
+
+  it('preserves semantic defaults and rejects invalid literals before mutation', async () => {
+    const shell = await init();
+    try {
+      await shell.loadPlugin('schema', 'ifc4');
+      await shell.loadPlugin('mapping', 'ifc4');
+      await using file = await IfcFile.createEmpty(shell, 'IFC4');
+      shell.api.root.createEntity(file, { ifcClass: 'IfcProject' });
+      shell.api.unit.assignUnit(file, {});
+      const model = shell.api.context.addContext(file, {
+        contextType: 'Model', contextIdentifier: '', targetView: '',
+      });
+      const body = shell.api.context.addContext(file, {
+        contextType: 'Model', contextIdentifier: 'Body', targetView: 'MODEL_VIEW', parent: model,
+      });
+
+      using door = shell.api.geometry.addDoorRepresentation(file, { context: body });
+      expect(door.type).toBe('IfcShapeRepresentation');
+
+      const entityCount = file.entityCount;
+      expect(() => shell.api.geometry.addDoorRepresentation(file, {
+        context: body,
+        operationType: 'INVALID' as never,
+      })).toThrow(/Invalid literal/);
+      expect(file.entityCount).toBe(entityCount);
     } finally {
       shell.dispose();
     }

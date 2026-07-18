@@ -212,6 +212,17 @@ def _type_info(cpp_type, current_scope: str = "") -> dict[str, str]:
     return result
 
 
+def _enum_constant_literal(cursor, kinds) -> str | None:
+    prefix = "ifcapi.literal:"
+    for child in cursor.get_children():
+        if _kind_id(child) != kinds.ANNOTATE_ATTR.value:
+            continue
+        annotation = child.spelling or child.displayname
+        if annotation.startswith(prefix):
+            return annotation.removeprefix(prefix)
+    return None
+
+
 def _clean_comment(comment: str | None) -> str | None:
     if not comment:
         return None
@@ -272,6 +283,7 @@ def _record_node(cursor, kinds) -> dict:
             node = {
                 "kind": "CXXMethodDecl",
                 "name": child.spelling,
+                "returnType": _type_info(child.result_type, current_scope),
                 "type": {
                     "qualType": f"{child.result_type.spelling} ({', '.join(param['type']['qualType'] for param in params)}){suffix}"
                 },
@@ -322,6 +334,7 @@ def _function_node(cursor, kinds) -> dict:
         "kind": "FunctionDecl",
         "name": cursor.spelling,
         "namespace": current_scope,
+        "returnType": _type_info(cursor.result_type, current_scope),
         "type": {
             "qualType": f"{cursor.result_type.spelling} ({', '.join(param['type']['qualType'] for param in params)})"
         },
@@ -396,6 +409,7 @@ def parse_translation_unit(command) -> ParsedTranslationUnit:
                             "kind": "EnumConstantDecl",
                             "name": child.spelling,
                             "value": child.enum_value,
+                            "literal": _enum_constant_literal(child, kinds),
                         }
                         for child in cursor.get_children()
                         if _kind_id(child) == kinds.ENUM_CONSTANT_DECL.value

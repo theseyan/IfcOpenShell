@@ -6415,8 +6415,12 @@ static void free_input_type_unassign_type_options(ifcopenshell_type_unassign_typ
 static int fill_input_type_unassign_type_options(PyObject *obj, ifcopenshell_type_unassign_type_options_t *out, option_ref_owner *refs);
 static void free_input_unit_add_conversion_based_unit_options(ifcopenshell_unit_add_conversion_based_unit_options_t *value);
 static int fill_input_unit_add_conversion_based_unit_options(PyObject *obj, ifcopenshell_unit_add_conversion_based_unit_options_t *out, option_ref_owner *refs);
+static void free_input_unit_add_derived_unit_options(ifcopenshell_unit_add_derived_unit_options_t *value);
+static int fill_input_unit_add_derived_unit_options(PyObject *obj, ifcopenshell_unit_add_derived_unit_options_t *out, option_ref_owner *refs);
 static void free_input_unit_assign_unit_options(ifcopenshell_unit_assign_unit_options_t *value);
 static int fill_input_unit_assign_unit_options(PyObject *obj, ifcopenshell_unit_assign_unit_options_t *out, option_ref_owner *refs);
+static void free_input_unit_derived_unit_element(ifcopenshell_unit_derived_unit_element_t *value);
+static int fill_input_unit_derived_unit_element(PyObject *obj, ifcopenshell_unit_derived_unit_element_t *out, option_ref_owner *refs);
 static void free_input_unit_edit_named_unit_options(ifcopenshell_unit_edit_named_unit_options_t *value);
 static int fill_input_unit_edit_named_unit_options(PyObject *obj, ifcopenshell_unit_edit_named_unit_options_t *out, option_ref_owner *refs);
 
@@ -7622,6 +7626,40 @@ static int make_input_geometry_window_panel_properties_list(PyObject *obj, ifcop
     for (size_t i = 0; i < (size_t)size; ++i) {
         if (!fill_input_geometry_window_panel_properties(PySequence_Fast_GET_ITEM(seq, (Py_ssize_t)i), &out->items[i], refs)) {
             free_input_geometry_window_panel_properties_list(out);
+            Py_DECREF(seq);
+            return 0;
+        }
+    }
+    Py_DECREF(seq);
+    return 1;
+}
+
+static void free_input_unit_derived_unit_element_list(ifcopenshell_unit_derived_unit_element_list_t *value) {
+    if (value->items) {
+        for (size_t j = 0; j < value->size; ++j) {
+            free_input_unit_derived_unit_element(&value->items[j]);
+        }
+    }
+    PyMem_Free(value->items);
+    value->items = NULL;
+    value->size = 0;
+}
+
+static int make_input_unit_derived_unit_element_list(PyObject *obj, ifcopenshell_unit_derived_unit_element_list_t *out, option_ref_owner *refs) {
+    (void)refs;
+    PyObject *seq = PySequence_Fast(obj, "Expected a sequence");
+    if (!seq) return 0;
+    Py_ssize_t size = PySequence_Fast_GET_SIZE(seq);
+    out->items = size ? (ifcopenshell_unit_derived_unit_element_t *)PyMem_Calloc((size_t)size, sizeof(ifcopenshell_unit_derived_unit_element_t)) : NULL;
+    out->size = (size_t)size;
+    if (size && !out->items) {
+        Py_DECREF(seq);
+        PyErr_NoMemory();
+        return 0;
+    }
+    for (size_t i = 0; i < (size_t)size; ++i) {
+        if (!fill_input_unit_derived_unit_element(PySequence_Fast_GET_ITEM(seq, (Py_ssize_t)i), &out->items[i], refs)) {
+            free_input_unit_derived_unit_element_list(out);
             Py_DECREF(seq);
             return 0;
         }
@@ -8898,13 +8936,17 @@ static int fill_input_alignment_create_offset_curve_options(PyObject *obj, ifcop
         return 0;
     }
     free_input_instance_list(&offsets_items_1);
-    PyObject *field_2 = get_option_field(obj, "start_station", 1);
+    PyObject *field_2 = get_option_field(obj, "start_station", 0);
     if (!field_2) {
-        return 0;
+        if (PyErr_Occurred()) return 0;
+    } else {
+        if (!retain_option_ref(refs, field_2)) return 0;
+        if (field_2 != Py_None) {
+            out->start_station = PyFloat_AsDouble(field_2);
+            if (PyErr_Occurred()) return 0;
+        out->has_start_station = true;
+        }
     }
-    if (!retain_option_ref(refs, field_2)) return 0;
-    out->start_station = PyFloat_AsDouble(field_2);
-    if (PyErr_Occurred()) return 0;
     PyObject *field_3 = get_option_field(obj, "owner_history", 0);
     if (!field_3) {
         if (PyErr_Occurred()) return 0;
@@ -8961,37 +9003,53 @@ static int fill_input_alignment_create_options(PyObject *obj, ifcopenshell_align
     if (!retain_option_ref(refs, field_0)) return 0;
     out->name = PyUnicode_AsUTF8(field_0);
     if (!out->name) return 0;
-    PyObject *field_1 = get_option_field(obj, "include_vertical", 1);
+    PyObject *field_1 = get_option_field(obj, "include_vertical", 0);
     if (!field_1) {
-        return 0;
+        if (PyErr_Occurred()) return 0;
+    } else {
+        if (!retain_option_ref(refs, field_1)) return 0;
+        if (field_1 != Py_None) {
+            int value_1 = PyObject_IsTrue(field_1);
+            if (value_1 < 0) return 0;
+            out->include_vertical = (bool)value_1;
+        out->has_include_vertical = true;
+        }
     }
-    if (!retain_option_ref(refs, field_1)) return 0;
-    int value_1 = PyObject_IsTrue(field_1);
-    if (value_1 < 0) return 0;
-    out->include_vertical = (bool)value_1;
-    PyObject *field_2 = get_option_field(obj, "include_cant", 1);
+    PyObject *field_2 = get_option_field(obj, "include_cant", 0);
     if (!field_2) {
-        return 0;
+        if (PyErr_Occurred()) return 0;
+    } else {
+        if (!retain_option_ref(refs, field_2)) return 0;
+        if (field_2 != Py_None) {
+            int value_2 = PyObject_IsTrue(field_2);
+            if (value_2 < 0) return 0;
+            out->include_cant = (bool)value_2;
+        out->has_include_cant = true;
+        }
     }
-    if (!retain_option_ref(refs, field_2)) return 0;
-    int value_2 = PyObject_IsTrue(field_2);
-    if (value_2 < 0) return 0;
-    out->include_cant = (bool)value_2;
-    PyObject *field_3 = get_option_field(obj, "include_geometry", 1);
+    PyObject *field_3 = get_option_field(obj, "include_geometry", 0);
     if (!field_3) {
-        return 0;
+        if (PyErr_Occurred()) return 0;
+    } else {
+        if (!retain_option_ref(refs, field_3)) return 0;
+        if (field_3 != Py_None) {
+            int value_3 = PyObject_IsTrue(field_3);
+            if (value_3 < 0) return 0;
+            out->include_geometry = (bool)value_3;
+        out->has_include_geometry = true;
+        }
     }
-    if (!retain_option_ref(refs, field_3)) return 0;
-    int value_3 = PyObject_IsTrue(field_3);
-    if (value_3 < 0) return 0;
-    out->include_geometry = (bool)value_3;
-    PyObject *field_4 = get_option_field(obj, "start_station", 1);
+    PyObject *field_4 = get_option_field(obj, "start_station", 0);
     if (!field_4) {
-        return 0;
+        if (PyErr_Occurred()) return 0;
+    } else {
+        if (!retain_option_ref(refs, field_4)) return 0;
+        if (field_4 != Py_None) {
+            out->start_station = PyFloat_AsDouble(field_4);
+            if (PyErr_Occurred()) return 0;
+        out->has_start_station = true;
+        }
     }
-    if (!retain_option_ref(refs, field_4)) return 0;
-    out->start_station = PyFloat_AsDouble(field_4);
-    if (PyErr_Occurred()) return 0;
     PyObject *field_5 = get_option_field(obj, "owner_history", 0);
     if (!field_5) {
         if (PyErr_Occurred()) return 0;
@@ -9066,13 +9124,17 @@ static int fill_input_alignment_create_polyline_options(PyObject *obj, ifcopensh
         return 0;
     }
     free_input_instance_list(&points_items_1);
-    PyObject *field_2 = get_option_field(obj, "start_station", 1);
+    PyObject *field_2 = get_option_field(obj, "start_station", 0);
     if (!field_2) {
-        return 0;
+        if (PyErr_Occurred()) return 0;
+    } else {
+        if (!retain_option_ref(refs, field_2)) return 0;
+        if (field_2 != Py_None) {
+            out->start_station = PyFloat_AsDouble(field_2);
+            if (PyErr_Occurred()) return 0;
+        out->has_start_station = true;
+        }
     }
-    if (!retain_option_ref(refs, field_2)) return 0;
-    out->start_station = PyFloat_AsDouble(field_2);
-    if (PyErr_Occurred()) return 0;
     PyObject *field_3 = get_option_field(obj, "owner_history", 0);
     if (!field_3) {
         if (PyErr_Occurred()) return 0;
@@ -9598,28 +9660,36 @@ static int fill_input_boundary_assign_connection_geometry_options(PyObject *obj,
         return 0;
     }
     out->ref_direction = sequence_3;
-    PyObject *field_4 = get_option_field(obj, "inner_boundaries", 1);
+    PyObject *field_4 = get_option_field(obj, "inner_boundaries", 0);
     if (!field_4) {
-        return 0;
+        if (PyErr_Occurred()) return 0;
+    } else {
+        if (!retain_option_ref(refs, field_4)) return 0;
+        if (field_4 != Py_None) {
+            ifcopenshell_double_list_list_list_t *sequence_4 = (ifcopenshell_double_list_list_list_t *)PyMem_Calloc(1, sizeof(ifcopenshell_double_list_list_list_t));
+            if (!sequence_4) {
+                PyErr_NoMemory();
+                return 0;
+            }
+            if (!make_input_double_list_list_list(field_4, sequence_4, refs)) {
+                PyMem_Free(sequence_4);
+                return 0;
+            }
+            out->inner_boundaries = sequence_4;
+        out->has_inner_boundaries = true;
+        }
     }
-    if (!retain_option_ref(refs, field_4)) return 0;
-    ifcopenshell_double_list_list_list_t *sequence_4 = (ifcopenshell_double_list_list_list_t *)PyMem_Calloc(1, sizeof(ifcopenshell_double_list_list_list_t));
-    if (!sequence_4) {
-        PyErr_NoMemory();
-        return 0;
-    }
-    if (!make_input_double_list_list_list(field_4, sequence_4, refs)) {
-        PyMem_Free(sequence_4);
-        return 0;
-    }
-    out->inner_boundaries = sequence_4;
-    PyObject *field_5 = get_option_field(obj, "unit_scale", 1);
+    PyObject *field_5 = get_option_field(obj, "unit_scale", 0);
     if (!field_5) {
-        return 0;
+        if (PyErr_Occurred()) return 0;
+    } else {
+        if (!retain_option_ref(refs, field_5)) return 0;
+        if (field_5 != Py_None) {
+            out->unit_scale = PyFloat_AsDouble(field_5);
+            if (PyErr_Occurred()) return 0;
+        out->has_unit_scale = true;
+        }
     }
-    if (!retain_option_ref(refs, field_5)) return 0;
-    out->unit_scale = PyFloat_AsDouble(field_5);
-    if (PyErr_Occurred()) return 0;
     return 1;
 }
 
@@ -9678,15 +9748,50 @@ static int fill_input_boundary_edit_attributes_options(PyObject *obj, ifcopenshe
         return 0;
     }
     if (!retain_option_ref(refs, field_4)) return 0;
-    out->physical_or_virtual = PyUnicode_AsUTF8(field_4);
-    if (!out->physical_or_virtual) return 0;
+    if (PyLong_Check(field_4)) {
+        out->physical_or_virtual = (int32_t)PyLong_AsLong(field_4);
+        if (PyErr_Occurred()) return 0;
+    } else {
+        if (!PyUnicode_Check(field_4)) {
+            PyErr_Format(PyExc_TypeError, "Expected BoundaryPhysicalOrVirtual string or integer");
+            return 0;
+        }
+        const char *enum_4_text = PyUnicode_AsUTF8(field_4);
+        if (!enum_4_text) return 0;
+        if (strcmp(enum_4_text, "PHYSICAL") == 0) out->physical_or_virtual = (0);
+        else if (strcmp(enum_4_text, "VIRTUAL") == 0) out->physical_or_virtual = (1);
+        else if (strcmp(enum_4_text, "NOTDEFINED") == 0) out->physical_or_virtual = (2);
+        else {
+            PyErr_Format(PyExc_ValueError, "Unsupported BoundaryPhysicalOrVirtual value: %s", enum_4_text);
+            return 0;
+        }
+    }
     PyObject *field_5 = get_option_field(obj, "internal_or_external", 1);
     if (!field_5) {
         return 0;
     }
     if (!retain_option_ref(refs, field_5)) return 0;
-    out->internal_or_external = PyUnicode_AsUTF8(field_5);
-    if (!out->internal_or_external) return 0;
+    if (PyLong_Check(field_5)) {
+        out->internal_or_external = (int32_t)PyLong_AsLong(field_5);
+        if (PyErr_Occurred()) return 0;
+    } else {
+        if (!PyUnicode_Check(field_5)) {
+            PyErr_Format(PyExc_TypeError, "Expected BoundaryInternalOrExternal string or integer");
+            return 0;
+        }
+        const char *enum_5_text = PyUnicode_AsUTF8(field_5);
+        if (!enum_5_text) return 0;
+        if (strcmp(enum_5_text, "INTERNAL") == 0) out->internal_or_external = (0);
+        else if (strcmp(enum_5_text, "EXTERNAL") == 0) out->internal_or_external = (1);
+        else if (strcmp(enum_5_text, "EXTERNAL_EARTH") == 0) out->internal_or_external = (2);
+        else if (strcmp(enum_5_text, "EXTERNAL_WATER") == 0) out->internal_or_external = (3);
+        else if (strcmp(enum_5_text, "EXTERNAL_FIRE") == 0) out->internal_or_external = (4);
+        else if (strcmp(enum_5_text, "NOTDEFINED") == 0) out->internal_or_external = (5);
+        else {
+            PyErr_Format(PyExc_ValueError, "Unsupported BoundaryInternalOrExternal value: %s", enum_5_text);
+            return 0;
+        }
+    }
     return 1;
 }
 
@@ -10449,29 +10554,41 @@ static int fill_input_cost_edit_cost_value_options(PyObject *obj, ifcopenshell_c
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
     }
-    PyObject *field_0 = get_option_field(obj, "edit_unit_basis", 1);
+    PyObject *field_0 = get_option_field(obj, "edit_unit_basis", 0);
     if (!field_0) {
-        return 0;
+        if (PyErr_Occurred()) return 0;
+    } else {
+        if (!retain_option_ref(refs, field_0)) return 0;
+        if (field_0 != Py_None) {
+            int value_0 = PyObject_IsTrue(field_0);
+            if (value_0 < 0) return 0;
+            out->edit_unit_basis = (bool)value_0;
+        out->has_edit_unit_basis = true;
+        }
     }
-    if (!retain_option_ref(refs, field_0)) return 0;
-    int value_0 = PyObject_IsTrue(field_0);
-    if (value_0 < 0) return 0;
-    out->edit_unit_basis = (bool)value_0;
-    PyObject *field_1 = get_option_field(obj, "clear_unit_basis", 1);
+    PyObject *field_1 = get_option_field(obj, "clear_unit_basis", 0);
     if (!field_1) {
-        return 0;
+        if (PyErr_Occurred()) return 0;
+    } else {
+        if (!retain_option_ref(refs, field_1)) return 0;
+        if (field_1 != Py_None) {
+            int value_1 = PyObject_IsTrue(field_1);
+            if (value_1 < 0) return 0;
+            out->clear_unit_basis = (bool)value_1;
+        out->has_clear_unit_basis = true;
+        }
     }
-    if (!retain_option_ref(refs, field_1)) return 0;
-    int value_1 = PyObject_IsTrue(field_1);
-    if (value_1 < 0) return 0;
-    out->clear_unit_basis = (bool)value_1;
-    PyObject *field_2 = get_option_field(obj, "value_component", 1);
+    PyObject *field_2 = get_option_field(obj, "value_component", 0);
     if (!field_2) {
-        return 0;
+        if (PyErr_Occurred()) return 0;
+    } else {
+        if (!retain_option_ref(refs, field_2)) return 0;
+        if (field_2 != Py_None) {
+            out->value_component = PyFloat_AsDouble(field_2);
+            if (PyErr_Occurred()) return 0;
+        out->has_value_component = true;
+        }
     }
-    if (!retain_option_ref(refs, field_2)) return 0;
-    out->value_component = PyFloat_AsDouble(field_2);
-    if (PyErr_Occurred()) return 0;
     PyObject *field_3 = get_option_field(obj, "unit_component", 0);
     if (!field_3) {
         if (PyErr_Occurred()) return 0;
@@ -11216,8 +11333,30 @@ static int fill_input_geometry_add_door_representation_options(PyObject *obj, if
     } else {
         if (!retain_option_ref(refs, field_3)) return 0;
         if (field_3 != Py_None) {
-            out->operation_type = (int32_t)PyLong_AsLong(field_3);
-            if (PyErr_Occurred()) return 0;
+            if (PyLong_Check(field_3)) {
+                out->operation_type = (int32_t)PyLong_AsLong(field_3);
+                if (PyErr_Occurred()) return 0;
+            } else {
+                if (!PyUnicode_Check(field_3)) {
+                    PyErr_Format(PyExc_TypeError, "Expected GeometryDoorOperationType string or integer");
+                    return 0;
+                }
+                const char *enum_3_text = PyUnicode_AsUTF8(field_3);
+                if (!enum_3_text) return 0;
+                if (strcmp(enum_3_text, "SINGLE_SWING_LEFT") == 0) out->operation_type = (0);
+                else if (strcmp(enum_3_text, "SINGLE_SWING_RIGHT") == 0) out->operation_type = (1);
+                else if (strcmp(enum_3_text, "DOUBLE_SWING_RIGHT") == 0) out->operation_type = (2);
+                else if (strcmp(enum_3_text, "DOUBLE_SWING_LEFT") == 0) out->operation_type = (3);
+                else if (strcmp(enum_3_text, "DOUBLE_DOOR_SINGLE_SWING") == 0) out->operation_type = (4);
+                else if (strcmp(enum_3_text, "DOUBLE_DOOR_DOUBLE_SWING") == 0) out->operation_type = (5);
+                else if (strcmp(enum_3_text, "SLIDING_TO_LEFT") == 0) out->operation_type = (6);
+                else if (strcmp(enum_3_text, "SLIDING_TO_RIGHT") == 0) out->operation_type = (7);
+                else if (strcmp(enum_3_text, "DOUBLE_DOOR_SLIDING") == 0) out->operation_type = (8);
+                else {
+                    PyErr_Format(PyExc_ValueError, "Unsupported GeometryDoorOperationType value: %s", enum_3_text);
+                    return 0;
+                }
+            }
         out->has_operation_type = true;
         }
     }
@@ -11580,8 +11719,27 @@ static int fill_input_geometry_add_railing_representation_options(PyObject *obj,
     } else {
         if (!retain_option_ref(refs, field_6)) return 0;
         if (field_6 != Py_None) {
-            out->terminal_type = PyUnicode_AsUTF8(field_6);
-            if (!out->terminal_type) return 0;
+            if (PyLong_Check(field_6)) {
+                out->terminal_type = (int32_t)PyLong_AsLong(field_6);
+                if (PyErr_Occurred()) return 0;
+            } else {
+                if (!PyUnicode_Check(field_6)) {
+                    PyErr_Format(PyExc_TypeError, "Expected GeometryRailingTerminalType string or integer");
+                    return 0;
+                }
+                const char *enum_6_text = PyUnicode_AsUTF8(field_6);
+                if (!enum_6_text) return 0;
+                if (strcmp(enum_6_text, "180") == 0) out->terminal_type = (0);
+                else if (strcmp(enum_6_text, "TO_END_POST") == 0) out->terminal_type = (1);
+                else if (strcmp(enum_6_text, "TO_WALL") == 0) out->terminal_type = (2);
+                else if (strcmp(enum_6_text, "TO_FLOOR") == 0) out->terminal_type = (3);
+                else if (strcmp(enum_6_text, "TO_END_POST_AND_FLOOR") == 0) out->terminal_type = (4);
+                else if (strcmp(enum_6_text, "NONE") == 0) out->terminal_type = (5);
+                else {
+                    PyErr_Format(PyExc_ValueError, "Unsupported GeometryRailingTerminalType value: %s", enum_6_text);
+                    return 0;
+                }
+            }
         out->has_terminal_type = true;
         }
     }
@@ -11731,8 +11889,23 @@ static int fill_input_geometry_add_slab_representation_options(PyObject *obj, if
     } else {
         if (!retain_option_ref(refs, field_2)) return 0;
         if (field_2 != Py_None) {
-            out->direction_sense = PyUnicode_AsUTF8(field_2);
-            if (!out->direction_sense) return 0;
+            if (PyLong_Check(field_2)) {
+                out->direction_sense = (int32_t)PyLong_AsLong(field_2);
+                if (PyErr_Occurred()) return 0;
+            } else {
+                if (!PyUnicode_Check(field_2)) {
+                    PyErr_Format(PyExc_TypeError, "Expected GeometryDirectionSense string or integer");
+                    return 0;
+                }
+                const char *enum_2_text = PyUnicode_AsUTF8(field_2);
+                if (!enum_2_text) return 0;
+                if (strcmp(enum_2_text, "POSITIVE") == 0) out->direction_sense = (0);
+                else if (strcmp(enum_2_text, "NEGATIVE") == 0) out->direction_sense = (1);
+                else {
+                    PyErr_Format(PyExc_ValueError, "Unsupported GeometryDirectionSense value: %s", enum_2_text);
+                    return 0;
+                }
+            }
         out->has_direction_sense = true;
         }
     }
@@ -11904,8 +12077,23 @@ static int fill_input_geometry_add_wall_representation_options(PyObject *obj, if
     } else {
         if (!retain_option_ref(refs, field_3)) return 0;
         if (field_3 != Py_None) {
-            out->direction_sense = PyUnicode_AsUTF8(field_3);
-            if (!out->direction_sense) return 0;
+            if (PyLong_Check(field_3)) {
+                out->direction_sense = (int32_t)PyLong_AsLong(field_3);
+                if (PyErr_Occurred()) return 0;
+            } else {
+                if (!PyUnicode_Check(field_3)) {
+                    PyErr_Format(PyExc_TypeError, "Expected GeometryDirectionSense string or integer");
+                    return 0;
+                }
+                const char *enum_3_text = PyUnicode_AsUTF8(field_3);
+                if (!enum_3_text) return 0;
+                if (strcmp(enum_3_text, "POSITIVE") == 0) out->direction_sense = (0);
+                else if (strcmp(enum_3_text, "NEGATIVE") == 0) out->direction_sense = (1);
+                else {
+                    PyErr_Format(PyExc_ValueError, "Unsupported GeometryDirectionSense value: %s", enum_3_text);
+                    return 0;
+                }
+            }
         out->has_direction_sense = true;
         }
     }
@@ -12038,8 +12226,30 @@ static int fill_input_geometry_add_window_representation_options(PyObject *obj, 
     } else {
         if (!retain_option_ref(refs, field_3)) return 0;
         if (field_3 != Py_None) {
-            out->partition_type = (int32_t)PyLong_AsLong(field_3);
-            if (PyErr_Occurred()) return 0;
+            if (PyLong_Check(field_3)) {
+                out->partition_type = (int32_t)PyLong_AsLong(field_3);
+                if (PyErr_Occurred()) return 0;
+            } else {
+                if (!PyUnicode_Check(field_3)) {
+                    PyErr_Format(PyExc_TypeError, "Expected GeometryWindowPartitionType string or integer");
+                    return 0;
+                }
+                const char *enum_3_text = PyUnicode_AsUTF8(field_3);
+                if (!enum_3_text) return 0;
+                if (strcmp(enum_3_text, "SINGLE_PANEL") == 0) out->partition_type = (0);
+                else if (strcmp(enum_3_text, "DOUBLE_PANEL_HORIZONTAL") == 0) out->partition_type = (1);
+                else if (strcmp(enum_3_text, "DOUBLE_PANEL_VERTICAL") == 0) out->partition_type = (2);
+                else if (strcmp(enum_3_text, "TRIPLE_PANEL_BOTTOM") == 0) out->partition_type = (3);
+                else if (strcmp(enum_3_text, "TRIPLE_PANEL_HORIZONTAL") == 0) out->partition_type = (4);
+                else if (strcmp(enum_3_text, "TRIPLE_PANEL_LEFT") == 0) out->partition_type = (5);
+                else if (strcmp(enum_3_text, "TRIPLE_PANEL_RIGHT") == 0) out->partition_type = (6);
+                else if (strcmp(enum_3_text, "TRIPLE_PANEL_TOP") == 0) out->partition_type = (7);
+                else if (strcmp(enum_3_text, "TRIPLE_PANEL_VERTICAL") == 0) out->partition_type = (8);
+                else {
+                    PyErr_Format(PyExc_ValueError, "Unsupported GeometryWindowPartitionType value: %s", enum_3_text);
+                    return 0;
+                }
+            }
         out->has_partition_type = true;
         }
     }
@@ -12439,8 +12649,27 @@ static int fill_input_geometry_compute_wall_mounted_handrail_options(PyObject *o
     } else {
         if (!retain_option_ref(refs, field_6)) return 0;
         if (field_6 != Py_None) {
-            out->terminal_type = PyUnicode_AsUTF8(field_6);
-            if (!out->terminal_type) return 0;
+            if (PyLong_Check(field_6)) {
+                out->terminal_type = (int32_t)PyLong_AsLong(field_6);
+                if (PyErr_Occurred()) return 0;
+            } else {
+                if (!PyUnicode_Check(field_6)) {
+                    PyErr_Format(PyExc_TypeError, "Expected GeometryRailingTerminalType string or integer");
+                    return 0;
+                }
+                const char *enum_6_text = PyUnicode_AsUTF8(field_6);
+                if (!enum_6_text) return 0;
+                if (strcmp(enum_6_text, "180") == 0) out->terminal_type = (0);
+                else if (strcmp(enum_6_text, "TO_END_POST") == 0) out->terminal_type = (1);
+                else if (strcmp(enum_6_text, "TO_WALL") == 0) out->terminal_type = (2);
+                else if (strcmp(enum_6_text, "TO_FLOOR") == 0) out->terminal_type = (3);
+                else if (strcmp(enum_6_text, "TO_END_POST_AND_FLOOR") == 0) out->terminal_type = (4);
+                else if (strcmp(enum_6_text, "NONE") == 0) out->terminal_type = (5);
+                else {
+                    PyErr_Format(PyExc_ValueError, "Unsupported GeometryRailingTerminalType value: %s", enum_6_text);
+                    return 0;
+                }
+            }
         out->has_terminal_type = true;
         }
     }
@@ -12577,15 +12806,49 @@ static int fill_input_geometry_connect_path_options(PyObject *obj, ifcopenshell_
         return 0;
     }
     if (!retain_option_ref(refs, field_2)) return 0;
-    out->relating_connection = PyUnicode_AsUTF8(field_2);
-    if (!out->relating_connection) return 0;
+    if (PyLong_Check(field_2)) {
+        out->relating_connection = (int32_t)PyLong_AsLong(field_2);
+        if (PyErr_Occurred()) return 0;
+    } else {
+        if (!PyUnicode_Check(field_2)) {
+            PyErr_Format(PyExc_TypeError, "Expected GeometryPathConnectionType string or integer");
+            return 0;
+        }
+        const char *enum_2_text = PyUnicode_AsUTF8(field_2);
+        if (!enum_2_text) return 0;
+        if (strcmp(enum_2_text, "ATSTART") == 0) out->relating_connection = (0);
+        else if (strcmp(enum_2_text, "ATEND") == 0) out->relating_connection = (1);
+        else if (strcmp(enum_2_text, "ATPATH") == 0) out->relating_connection = (2);
+        else if (strcmp(enum_2_text, "NOTDEFINED") == 0) out->relating_connection = (3);
+        else {
+            PyErr_Format(PyExc_ValueError, "Unsupported GeometryPathConnectionType value: %s", enum_2_text);
+            return 0;
+        }
+    }
     PyObject *field_3 = get_option_field(obj, "related_connection", 1);
     if (!field_3) {
         return 0;
     }
     if (!retain_option_ref(refs, field_3)) return 0;
-    out->related_connection = PyUnicode_AsUTF8(field_3);
-    if (!out->related_connection) return 0;
+    if (PyLong_Check(field_3)) {
+        out->related_connection = (int32_t)PyLong_AsLong(field_3);
+        if (PyErr_Occurred()) return 0;
+    } else {
+        if (!PyUnicode_Check(field_3)) {
+            PyErr_Format(PyExc_TypeError, "Expected GeometryPathConnectionType string or integer");
+            return 0;
+        }
+        const char *enum_3_text = PyUnicode_AsUTF8(field_3);
+        if (!enum_3_text) return 0;
+        if (strcmp(enum_3_text, "ATSTART") == 0) out->related_connection = (0);
+        else if (strcmp(enum_3_text, "ATEND") == 0) out->related_connection = (1);
+        else if (strcmp(enum_3_text, "ATPATH") == 0) out->related_connection = (2);
+        else if (strcmp(enum_3_text, "NOTDEFINED") == 0) out->related_connection = (3);
+        else {
+            PyErr_Format(PyExc_ValueError, "Unsupported GeometryPathConnectionType value: %s", enum_3_text);
+            return 0;
+        }
+    }
     PyObject *field_4 = get_option_field(obj, "description", 0);
     if (!field_4) {
         if (PyErr_Occurred()) return 0;
@@ -12674,14 +12937,18 @@ static int fill_input_geometry_connect_wall_options(PyObject *obj, ifcopenshell_
     if (!extract_handle(field_1, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->second_wall, 0)) {
         return 0;
     }
-    PyObject *field_2 = get_option_field(obj, "is_atpath", 1);
+    PyObject *field_2 = get_option_field(obj, "is_atpath", 0);
     if (!field_2) {
-        return 0;
+        if (PyErr_Occurred()) return 0;
+    } else {
+        if (!retain_option_ref(refs, field_2)) return 0;
+        if (field_2 != Py_None) {
+            int value_2 = PyObject_IsTrue(field_2);
+            if (value_2 < 0) return 0;
+            out->is_atpath = (bool)value_2;
+        out->has_is_atpath = true;
+        }
     }
-    if (!retain_option_ref(refs, field_2)) return 0;
-    int value_2 = PyObject_IsTrue(field_2);
-    if (value_2 < 0) return 0;
-    out->is_atpath = (bool)value_2;
     PyObject *field_3 = get_option_field(obj, "owner_history", 0);
     if (!field_3) {
         if (PyErr_Occurred()) return 0;
@@ -12847,14 +13114,18 @@ static int fill_input_geometry_create2_pt_wall_options(PyObject *obj, ifcopenshe
     if (!retain_option_ref(refs, field_6)) return 0;
     out->thickness = PyFloat_AsDouble(field_6);
     if (PyErr_Occurred()) return 0;
-    PyObject *field_7 = get_option_field(obj, "is_si", 1);
+    PyObject *field_7 = get_option_field(obj, "is_si", 0);
     if (!field_7) {
-        return 0;
+        if (PyErr_Occurred()) return 0;
+    } else {
+        if (!retain_option_ref(refs, field_7)) return 0;
+        if (field_7 != Py_None) {
+            int value_7 = PyObject_IsTrue(field_7);
+            if (value_7 < 0) return 0;
+            out->is_si = (bool)value_7;
+        out->has_is_si = true;
+        }
     }
-    if (!retain_option_ref(refs, field_7)) return 0;
-    int value_7 = PyObject_IsTrue(field_7);
-    if (value_7 < 0) return 0;
-    out->is_si = (bool)value_7;
     return 1;
 }
 
@@ -12886,8 +13157,25 @@ static int fill_input_geometry_disconnect_path_options(PyObject *obj, ifcopenshe
     } else {
         if (!retain_option_ref(refs, field_1)) return 0;
         if (field_1 != Py_None) {
-            out->connection_type = PyUnicode_AsUTF8(field_1);
-            if (!out->connection_type) return 0;
+            if (PyLong_Check(field_1)) {
+                out->connection_type = (int32_t)PyLong_AsLong(field_1);
+                if (PyErr_Occurred()) return 0;
+            } else {
+                if (!PyUnicode_Check(field_1)) {
+                    PyErr_Format(PyExc_TypeError, "Expected GeometryPathConnectionType string or integer");
+                    return 0;
+                }
+                const char *enum_1_text = PyUnicode_AsUTF8(field_1);
+                if (!enum_1_text) return 0;
+                if (strcmp(enum_1_text, "ATSTART") == 0) out->connection_type = (0);
+                else if (strcmp(enum_1_text, "ATEND") == 0) out->connection_type = (1);
+                else if (strcmp(enum_1_text, "ATPATH") == 0) out->connection_type = (2);
+                else if (strcmp(enum_1_text, "NOTDEFINED") == 0) out->connection_type = (3);
+                else {
+                    PyErr_Format(PyExc_ValueError, "Unsupported GeometryPathConnectionType value: %s", enum_1_text);
+                    return 0;
+                }
+            }
         out->has_connection_type = true;
         }
     }
@@ -13161,22 +13449,30 @@ static int fill_input_geometry_edit_object_placement_options(PyObject *obj, ifco
         out->has_matrix = true;
         }
     }
-    PyObject *field_2 = get_option_field(obj, "is_si", 1);
+    PyObject *field_2 = get_option_field(obj, "is_si", 0);
     if (!field_2) {
-        return 0;
+        if (PyErr_Occurred()) return 0;
+    } else {
+        if (!retain_option_ref(refs, field_2)) return 0;
+        if (field_2 != Py_None) {
+            int value_2 = PyObject_IsTrue(field_2);
+            if (value_2 < 0) return 0;
+            out->is_si = (bool)value_2;
+        out->has_is_si = true;
+        }
     }
-    if (!retain_option_ref(refs, field_2)) return 0;
-    int value_2 = PyObject_IsTrue(field_2);
-    if (value_2 < 0) return 0;
-    out->is_si = (bool)value_2;
-    PyObject *field_3 = get_option_field(obj, "should_transform_children", 1);
+    PyObject *field_3 = get_option_field(obj, "should_transform_children", 0);
     if (!field_3) {
-        return 0;
+        if (PyErr_Occurred()) return 0;
+    } else {
+        if (!retain_option_ref(refs, field_3)) return 0;
+        if (field_3 != Py_None) {
+            int value_3 = PyObject_IsTrue(field_3);
+            if (value_3 < 0) return 0;
+            out->should_transform_children = (bool)value_3;
+        out->has_should_transform_children = true;
+        }
     }
-    if (!retain_option_ref(refs, field_3)) return 0;
-    int value_3 = PyObject_IsTrue(field_3);
-    if (value_3 < 0) return 0;
-    out->should_transform_children = (bool)value_3;
     return 1;
 }
 
@@ -16043,14 +16339,18 @@ static int fill_input_pset_edit_pset_options(PyObject *obj, ifcopenshell_pset_ed
         out->has_pset_template = true;
         }
     }
-    PyObject *field_4 = get_option_field(obj, "should_purge", 1);
+    PyObject *field_4 = get_option_field(obj, "should_purge", 0);
     if (!field_4) {
-        return 0;
+        if (PyErr_Occurred()) return 0;
+    } else {
+        if (!retain_option_ref(refs, field_4)) return 0;
+        if (field_4 != Py_None) {
+            int value_4 = PyObject_IsTrue(field_4);
+            if (value_4 < 0) return 0;
+            out->should_purge = (bool)value_4;
+        out->has_should_purge = true;
+        }
     }
-    if (!retain_option_ref(refs, field_4)) return 0;
-    int value_4 = PyObject_IsTrue(field_4);
-    if (value_4 < 0) return 0;
-    out->should_purge = (bool)value_4;
     return 1;
 }
 
@@ -19710,14 +20010,18 @@ static int fill_input_style_assign_item_style_options(PyObject *obj, ifcopenshel
         out->has_style = true;
         }
     }
-    PyObject *field_2 = get_option_field(obj, "should_use_presentation_style_assignment", 1);
+    PyObject *field_2 = get_option_field(obj, "should_use_presentation_style_assignment", 0);
     if (!field_2) {
-        return 0;
+        if (PyErr_Occurred()) return 0;
+    } else {
+        if (!retain_option_ref(refs, field_2)) return 0;
+        if (field_2 != Py_None) {
+            int value_2 = PyObject_IsTrue(field_2);
+            if (value_2 < 0) return 0;
+            out->should_use_presentation_style_assignment = (bool)value_2;
+        out->has_should_use_presentation_style_assignment = true;
+        }
     }
-    if (!retain_option_ref(refs, field_2)) return 0;
-    int value_2 = PyObject_IsTrue(field_2);
-    if (value_2 < 0) return 0;
-    out->should_use_presentation_style_assignment = (bool)value_2;
     return 1;
 }
 
@@ -19806,8 +20110,24 @@ static int fill_input_style_surface_texture_options(PyObject *obj, ifcopenshell_
     } else {
         if (!retain_option_ref(refs, field_6)) return 0;
         if (field_6 != Py_None) {
-            out->uv_mode = PyUnicode_AsUTF8(field_6);
-            if (!out->uv_mode) return 0;
+            if (PyLong_Check(field_6)) {
+                out->uv_mode = (int32_t)PyLong_AsLong(field_6);
+                if (PyErr_Occurred()) return 0;
+            } else {
+                if (!PyUnicode_Check(field_6)) {
+                    PyErr_Format(PyExc_TypeError, "Expected StyleUvMode string or integer");
+                    return 0;
+                }
+                const char *enum_6_text = PyUnicode_AsUTF8(field_6);
+                if (!enum_6_text) return 0;
+                if (strcmp(enum_6_text, "Generated") == 0) out->uv_mode = (0);
+                else if (strcmp(enum_6_text, "Camera") == 0) out->uv_mode = (1);
+                else if (strcmp(enum_6_text, "UV") == 0) out->uv_mode = (2);
+                else {
+                    PyErr_Format(PyExc_ValueError, "Unsupported StyleUvMode value: %s", enum_6_text);
+                    return 0;
+                }
+            }
         out->has_uv_mode = true;
         }
     }
@@ -20143,8 +20463,25 @@ static int fill_input_system_connect_port_options(PyObject *obj, ifcopenshell_sy
         return 0;
     }
     if (!retain_option_ref(refs, field_2)) return 0;
-    out->direction = PyUnicode_AsUTF8(field_2);
-    if (!out->direction) return 0;
+    if (PyLong_Check(field_2)) {
+        out->direction = (int32_t)PyLong_AsLong(field_2);
+        if (PyErr_Occurred()) return 0;
+    } else {
+        if (!PyUnicode_Check(field_2)) {
+            PyErr_Format(PyExc_TypeError, "Expected SystemFlowDirection string or integer");
+            return 0;
+        }
+        const char *enum_2_text = PyUnicode_AsUTF8(field_2);
+        if (!enum_2_text) return 0;
+        if (strcmp(enum_2_text, "SOURCE") == 0) out->direction = (0);
+        else if (strcmp(enum_2_text, "SINK") == 0) out->direction = (1);
+        else if (strcmp(enum_2_text, "SOURCEANDSINK") == 0) out->direction = (2);
+        else if (strcmp(enum_2_text, "NOTDEFINED") == 0) out->direction = (3);
+        else {
+            PyErr_Format(PyExc_ValueError, "Unsupported SystemFlowDirection value: %s", enum_2_text);
+            return 0;
+        }
+    }
     PyObject *field_3 = get_option_field(obj, "element", 0);
     if (!field_3) {
         if (PyErr_Occurred()) return 0;
@@ -20543,6 +20880,56 @@ static int fill_input_unit_add_conversion_based_unit_options(PyObject *obj, ifco
 }
 
 
+static void free_input_unit_add_derived_unit_options(ifcopenshell_unit_add_derived_unit_options_t *value) {
+    if (value->elements) {
+        free_input_unit_derived_unit_element_list((ifcopenshell_unit_derived_unit_element_list_t *)value->elements);
+        PyMem_Free((void *)value->elements);
+        value->elements = NULL;
+    }
+}
+
+static int fill_input_unit_add_derived_unit_options(PyObject *obj, ifcopenshell_unit_add_derived_unit_options_t *out, option_ref_owner *refs) {
+    if (!PyMapping_Check(obj)) {
+        PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
+        return 0;
+    }
+    PyObject *field_0 = get_option_field(obj, "unit_type", 1);
+    if (!field_0) {
+        return 0;
+    }
+    if (!retain_option_ref(refs, field_0)) return 0;
+    out->unit_type = PyUnicode_AsUTF8(field_0);
+    if (!out->unit_type) return 0;
+    PyObject *field_1 = get_option_field(obj, "userdefinedtype", 0);
+    if (!field_1) {
+        if (PyErr_Occurred()) return 0;
+    } else {
+        if (!retain_option_ref(refs, field_1)) return 0;
+        if (field_1 != Py_None) {
+            out->userdefinedtype = PyUnicode_AsUTF8(field_1);
+            if (!out->userdefinedtype) return 0;
+        out->has_userdefinedtype = true;
+        }
+    }
+    PyObject *field_2 = get_option_field(obj, "elements", 1);
+    if (!field_2) {
+        return 0;
+    }
+    if (!retain_option_ref(refs, field_2)) return 0;
+    ifcopenshell_unit_derived_unit_element_list_t *sequence_2 = (ifcopenshell_unit_derived_unit_element_list_t *)PyMem_Calloc(1, sizeof(ifcopenshell_unit_derived_unit_element_list_t));
+    if (!sequence_2) {
+        PyErr_NoMemory();
+        return 0;
+    }
+    if (!make_input_unit_derived_unit_element_list(field_2, sequence_2, refs)) {
+        PyMem_Free(sequence_2);
+        return 0;
+    }
+    out->elements = sequence_2;
+    return 1;
+}
+
+
 static void free_input_unit_assign_unit_options(ifcopenshell_unit_assign_unit_options_t *value) {
     if (value->units) {
         ifcopenshell_parse_instance_list_destroy(value->units);
@@ -20643,6 +21030,34 @@ static int fill_input_unit_assign_unit_options(PyObject *obj, ifcopenshell_unit_
         out->has_volume_raw = true;
         }
     }
+    return 1;
+}
+
+
+static void free_input_unit_derived_unit_element(ifcopenshell_unit_derived_unit_element_t *value) {
+    (void)value;
+}
+
+static int fill_input_unit_derived_unit_element(PyObject *obj, ifcopenshell_unit_derived_unit_element_t *out, option_ref_owner *refs) {
+    if (!PyMapping_Check(obj)) {
+        PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
+        return 0;
+    }
+    PyObject *field_0 = get_option_field(obj, "unit", 1);
+    if (!field_0) {
+        return 0;
+    }
+    if (!retain_option_ref(refs, field_0)) return 0;
+    if (!extract_handle(field_0, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->unit, 0)) {
+        return 0;
+    }
+    PyObject *field_1 = get_option_field(obj, "exponent", 1);
+    if (!field_1) {
+        return 0;
+    }
+    if (!retain_option_ref(refs, field_1)) return 0;
+    out->exponent = (int64_t)PyLong_AsLongLong(field_1);
+    if (PyErr_Occurred()) return 0;
     return 1;
 }
 
@@ -21823,8 +22238,8 @@ static PyObject *py_ifcopenshell_aggregate_assign_object(PyObject *self, PyObjec
         goto __cleanup;
     }
     if (!fill_input_aggregate_assign_object_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_aggregate_assign_object(arg_file, &arg_options, &result);
@@ -21858,8 +22273,8 @@ static PyObject *py_ifcopenshell_aggregate_unassign_object(PyObject *self, PyObj
         goto __cleanup;
     }
     if (!fill_input_aggregate_unassign_object_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_aggregate_unassign_object(arg_file, &arg_options);
@@ -22096,8 +22511,8 @@ static PyObject *py_ifcopenshell_alignment_add_stationing_referent(PyObject *sel
         goto __cleanup;
     }
     if (!fill_input_alignment_add_stationing_referent_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_alignment_add_stationing_referent(arg_file, &arg_options, &result);
@@ -22191,8 +22606,8 @@ static PyObject *py_ifcopenshell_alignment_create(PyObject *self, PyObject *args
         goto __cleanup;
     }
     if (!fill_input_alignment_create_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_alignment_create(arg_file, &arg_options, &result);
@@ -22226,8 +22641,8 @@ static PyObject *py_ifcopenshell_alignment_create_as_offset_curve(PyObject *self
         goto __cleanup;
     }
     if (!fill_input_alignment_create_offset_curve_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_alignment_create_as_offset_curve(arg_file, &arg_options, &result);
@@ -22261,8 +22676,8 @@ static PyObject *py_ifcopenshell_alignment_create_as_polyline(PyObject *self, Py
         goto __cleanup;
     }
     if (!fill_input_alignment_create_polyline_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_alignment_create_as_polyline(arg_file, &arg_options, &result);
@@ -22296,8 +22711,8 @@ static PyObject *py_ifcopenshell_alignment_create_by_pi_method(PyObject *self, P
         goto __cleanup;
     }
     if (!fill_input_alignment_create_by_pi_method_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_alignment_create_by_pi_method(arg_file, &arg_options, &result);
@@ -22331,8 +22746,8 @@ static PyObject *py_ifcopenshell_alignment_create_from_csv_text(PyObject *self, 
         goto __cleanup;
     }
     if (!fill_input_alignment_create_from_csv_text_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_alignment_create_from_csv_text(arg_file, &arg_options, &result);
@@ -23105,8 +23520,8 @@ static PyObject *py_ifcopenshell_alignment_layout_horizontal_by_pi_method(PyObje
         goto __cleanup;
     }
     if (!fill_input_alignment_layout_horizontal_by_pi_method_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_alignment_layout_horizontal_by_pi_method(arg_file, arg_layout, &arg_options);
@@ -23146,8 +23561,8 @@ static PyObject *py_ifcopenshell_alignment_layout_vertical_by_pi_method(PyObject
         goto __cleanup;
     }
     if (!fill_input_alignment_layout_vertical_by_pi_method_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_alignment_layout_vertical_by_pi_method(arg_file, arg_layout, &arg_options);
@@ -23182,8 +23597,8 @@ static PyObject *py_ifcopenshell_alignment_map_segment(PyObject *self, PyObject 
         goto __cleanup;
     }
     if (!fill_input_alignment_map_segment_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_alignment_map_segment(arg_file, &arg_options, &result);
@@ -23377,8 +23792,8 @@ static PyObject *py_ifcopenshell_attribute_edit_attributes(PyObject *self, PyObj
         goto __cleanup;
     }
     if (!fill_input_attribute_edit_attributes_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_attribute_edit_attributes(arg_file, &arg_options);
@@ -23491,8 +23906,8 @@ static PyObject *py_ifcopenshell_boundary_assign_connection_geometry(PyObject *s
         goto __cleanup;
     }
     if (!fill_input_boundary_assign_connection_geometry_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_boundary_assign_connection_geometry(arg_file, arg_rel_space_boundary, &arg_options);
@@ -23559,8 +23974,8 @@ static PyObject *py_ifcopenshell_boundary_edit_attributes(PyObject *self, PyObje
         goto __cleanup;
     }
     if (!fill_input_boundary_edit_attributes_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_boundary_edit_attributes(arg_entity, &arg_options);
@@ -23656,8 +24071,8 @@ static PyObject *py_ifcopenshell_classification_add_reference(PyObject *self, Py
         goto __cleanup;
     }
     if (!fill_input_classification_add_reference_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_classification_add_reference(arg_file, &arg_options, &result);
@@ -23846,8 +24261,8 @@ static PyObject *py_ifcopenshell_classification_remove_reference(PyObject *self,
         goto __cleanup;
     }
     if (!fill_input_classification_remove_reference_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_classification_remove_reference(arg_file, &arg_options);
@@ -23882,8 +24297,8 @@ static PyObject *py_ifcopenshell_cogo_add_survey_point(PyObject *self, PyObject 
         goto __cleanup;
     }
     if (!fill_input_cogo_add_survey_point_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_cogo_add_survey_point(arg_file, &arg_options, &result);
@@ -24121,8 +24536,8 @@ static PyObject *py_ifcopenshell_constraint_assign_constraint(PyObject *self, Py
         goto __cleanup;
     }
     if (!fill_input_constraint_assign_constraint_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_constraint_assign_constraint(arg_file, &arg_options, &result);
@@ -24316,8 +24731,8 @@ static PyObject *py_ifcopenshell_constraint_unassign_constraint(PyObject *self, 
         goto __cleanup;
     }
     if (!fill_input_constraint_unassign_constraint_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_constraint_unassign_constraint(arg_file, &arg_options);
@@ -24352,8 +24767,8 @@ static PyObject *py_ifcopenshell_context_add_context(PyObject *self, PyObject *a
         goto __cleanup;
     }
     if (!fill_input_context_add_context_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_context_add_context(arg_file, &arg_options, &result);
@@ -24467,8 +24882,8 @@ static PyObject *py_ifcopenshell_control_assign_control(PyObject *self, PyObject
         goto __cleanup;
     }
     if (!fill_input_control_assign_control_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_control_assign_control(arg_file, &arg_options, &result);
@@ -24502,8 +24917,8 @@ static PyObject *py_ifcopenshell_control_unassign_control(PyObject *self, PyObje
         goto __cleanup;
     }
     if (!fill_input_control_unassign_control_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_control_unassign_control(arg_file, &arg_options);
@@ -24538,8 +24953,8 @@ static PyObject *py_ifcopenshell_cost_add_cost_item(PyObject *self, PyObject *ar
         goto __cleanup;
     }
     if (!fill_input_cost_add_cost_item_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_cost_add_cost_item(arg_file, &arg_options, &result);
@@ -24682,8 +25097,8 @@ static PyObject *py_ifcopenshell_cost_assign_cost_item_quantity(PyObject *self, 
         goto __cleanup;
     }
     if (!fill_input_cost_assign_cost_item_quantity_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
     if (!make_input_instance_list(arg_products_obj, &arg_products, &arg_products_refs)) {
         goto __cleanup;
     }
@@ -24868,8 +25283,8 @@ static PyObject *py_ifcopenshell_cost_copy_cost_schedule(PyObject *self, PyObjec
         goto __cleanup;
     }
     if (!fill_input_cost_copy_cost_schedule_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_cost_copy_cost_schedule(arg_file, arg_cost_schedule, &arg_options, &result);
@@ -25041,10 +25456,11 @@ static PyObject *py_ifcopenshell_cost_edit_cost_value(PyObject *self, PyObject *
     void *arg_attributes = NULL;
     int arg_attributes_has_view = 0;
     PyObject *arg_options_obj = NULL;
-    ifcopenshell_cost_edit_cost_value_options_t arg_options = {0};
+    ifcopenshell_cost_edit_cost_value_options_t arg_options_value = {0};
+    ifcopenshell_cost_edit_cost_value_options_t *arg_options = NULL;
     option_ref_owner arg_options_refs = {0};
 
-    if (!PyArg_ParseTuple(args, "OOOO", &arg_file_obj, &arg_cost_value_obj, &arg_attributes_obj, &arg_options_obj)) return NULL;
+    if (!PyArg_ParseTuple(args, "OOO|O", &arg_file_obj, &arg_cost_value_obj, &arg_attributes_obj, &arg_options_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
@@ -25061,12 +25477,15 @@ static PyObject *py_ifcopenshell_cost_edit_cost_value(PyObject *self, PyObject *
         PyErr_SetString(PyExc_TypeError, "Expected a capsule or buffer-compatible object");
         goto __cleanup;
     }
-    if (!fill_input_cost_edit_cost_value_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
+    if (arg_options_obj != NULL && arg_options_obj != Py_None) {
+        if (!fill_input_cost_edit_cost_value_options(arg_options_obj, &arg_options_value, &arg_options_refs)) {
+            goto __cleanup;
+        }
+        arg_options = &arg_options_value;
     }
 
     ifcopenshell_clear_error();
-    ok = ifcopenshell_cost_edit_cost_value(arg_file, arg_cost_value, arg_attributes, &arg_options);
+    ok = ifcopenshell_cost_edit_cost_value(arg_file, arg_cost_value, arg_attributes, arg_options);
     if (!ok) {
         raise_last_error("ifcopenshell_cost_edit_cost_value failed");
         goto __cleanup;
@@ -25079,7 +25498,7 @@ static PyObject *py_ifcopenshell_cost_edit_cost_value(PyObject *self, PyObject *
     __py_result = Py_None;
 __cleanup:
         release_option_refs(&arg_options_refs);
-        free_input_cost_edit_cost_value_options(&arg_options);
+        free_input_cost_edit_cost_value_options(&arg_options_value);
         if (arg_attributes_has_view) PyBuffer_Release(&arg_attributes_view);
     return __py_result;
 }
@@ -25283,8 +25702,8 @@ static PyObject *py_ifcopenshell_cost_unassign_cost_item_quantity(PyObject *self
         goto __cleanup;
     }
     if (!fill_input_cost_unassign_cost_item_quantity_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
     if (!make_input_instance_list(arg_products_obj, &arg_products, &arg_products_refs)) {
         goto __cleanup;
     }
@@ -25574,8 +25993,8 @@ static PyObject *py_ifcopenshell_document_add_information(PyObject *self, PyObje
         goto __cleanup;
     }
     if (!fill_input_document_add_information_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_document_add_information(arg_file, &arg_options, &result);
@@ -25641,8 +26060,8 @@ static PyObject *py_ifcopenshell_document_assign_document(PyObject *self, PyObje
         goto __cleanup;
     }
     if (!fill_input_document_assign_document_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_document_assign_document(arg_file, &arg_options, &result);
@@ -25836,8 +26255,8 @@ static PyObject *py_ifcopenshell_document_unassign_document(PyObject *self, PyOb
         goto __cleanup;
     }
     if (!fill_input_document_unassign_document_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_document_unassign_document(arg_file, &arg_options);
@@ -25872,8 +26291,8 @@ static PyObject *py_ifcopenshell_drawing_assign_product(PyObject *self, PyObject
         goto __cleanup;
     }
     if (!fill_input_drawing_assign_product_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_drawing_assign_product(arg_file, &arg_options, &result);
@@ -25954,8 +26373,8 @@ static PyObject *py_ifcopenshell_drawing_unassign_product(PyObject *self, PyObje
         goto __cleanup;
     }
     if (!fill_input_drawing_unassign_product_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_drawing_unassign_product(arg_file, &arg_options);
@@ -26044,8 +26463,8 @@ static PyObject *py_ifcopenshell_element_get_container(PyObject *self, PyObject 
         goto __cleanup;
     }
     if (!fill_input_element_get_container_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_element_get_container(arg_instance, &arg_options, &result);
@@ -26106,8 +26525,8 @@ static PyObject *py_ifcopenshell_element_get_decomposition(PyObject *self, PyObj
         goto __cleanup;
     }
     if (!fill_input_element_get_decomposition_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_element_get_decomposition(arg_element, &arg_options, &result);
@@ -26357,8 +26776,8 @@ static PyObject *py_ifcopenshell_element_get_material(PyObject *self, PyObject *
         goto __cleanup;
     }
     if (!fill_input_element_get_material_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_element_get_material(arg_instance, &arg_options, &result);
@@ -26500,8 +26919,8 @@ static PyObject *py_ifcopenshell_element_get_pset_ids(PyObject *self, PyObject *
         goto __cleanup;
     }
     if (!fill_input_element_get_pset_ids_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_element_get_pset_ids(arg_element, &arg_options, &result);
@@ -26589,8 +27008,8 @@ static PyObject *py_ifcopenshell_element_get_shape_aspects(PyObject *self, PyObj
         goto __cleanup;
     }
     if (!fill_input_element_get_shape_aspects_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_element_get_shape_aspects(arg_element, &arg_options, &result);
@@ -27134,8 +27553,8 @@ static PyObject *py_ifcopenshell_entity_remove_deep_with_options(PyObject *self,
         goto __cleanup;
     }
     if (!fill_input_entity_remove_deep_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_entity_remove_deep_with_options(arg_instance, &arg_options);
@@ -27454,8 +27873,8 @@ static PyObject *py_ifcopenshell_feature_add_feature(PyObject *self, PyObject *a
         goto __cleanup;
     }
     if (!fill_input_feature_add_feature_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_feature_add_feature(arg_file, &arg_options, &result);
@@ -27526,8 +27945,8 @@ static PyObject *py_ifcopenshell_feature_remove_feature(PyObject *self, PyObject
         goto __cleanup;
     }
     if (!fill_input_feature_remove_feature_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_feature_remove_feature(arg_file, &arg_options);
@@ -28640,13 +29059,36 @@ static PyObject *py_ifcopenshell_file_initialize(PyObject *self, PyObject *args)
     PyObject *arg_self_obj = NULL;
     ifcopenshell_file_t *arg_self = NULL;
     const char *arg_path = NULL;
+    PyObject *arg_type_obj = NULL;
     int32_t arg_type = 0;
+    const char *arg_type_enum_text = NULL;
     int arg_read_only = 0;
     bool result = {0};
-    if (!PyArg_ParseTuple(args, "Osip", &arg_self_obj, &arg_path, &arg_type, &arg_read_only)) return NULL;
+    if (!PyArg_ParseTuple(args, "OsOp", &arg_self_obj, &arg_path, &arg_type_obj, &arg_read_only)) return NULL;
 
     if (!extract_handle(arg_self_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_self, 0)) {
         goto __cleanup;
+    }
+    if (PyLong_Check(arg_type_obj)) {
+        arg_type = (int32_t)PyLong_AsLong(arg_type_obj);
+        if (PyErr_Occurred()) goto __cleanup;
+    } else {
+        if (!PyUnicode_Check(arg_type_obj)) {
+            PyErr_Format(PyExc_TypeError, "Expected filetype string or integer");
+            goto __cleanup;
+        }
+        arg_type_enum_text = PyUnicode_AsUTF8(arg_type_obj);
+        if (!arg_type_enum_text) goto __cleanup;
+        if (strcmp(arg_type_enum_text, "FT_IFCSPF") == 0) arg_type = (0);
+        else if (strcmp(arg_type_enum_text, "FT_IFCXML") == 0) arg_type = (1);
+        else if (strcmp(arg_type_enum_text, "FT_IFCZIP") == 0) arg_type = (2);
+        else if (strcmp(arg_type_enum_text, "FT_ROCKSDB") == 0) arg_type = (3);
+        else if (strcmp(arg_type_enum_text, "FT_UNKNOWN") == 0) arg_type = (4);
+        else if (strcmp(arg_type_enum_text, "FT_AUTODETECT") == 0) arg_type = (5);
+        else {
+            PyErr_Format(PyExc_ValueError, "Unsupported filetype value: %s", arg_type_enum_text);
+            goto __cleanup;
+        }
     }
 
     ifcopenshell_clear_error();
@@ -32009,15 +32451,34 @@ static PyObject *py_ifcopenshell_geom_geometry_serializer_read(PyObject *self, P
     ifcopenshell_file_t *arg_f = NULL;
     const char *arg_guid = NULL;
     const char *arg_representation_id = NULL;
+    PyObject *arg_rt_obj = NULL;
     int32_t arg_rt = 0;
+    const char *arg_rt_enum_text = NULL;
     ifcopenshell_geom_element_t *result = NULL;
-    if (!PyArg_ParseTuple(args, "OOssi", &arg_self_obj, &arg_f_obj, &arg_guid, &arg_representation_id, &arg_rt)) return NULL;
+    if (!PyArg_ParseTuple(args, "OOssO", &arg_self_obj, &arg_f_obj, &arg_guid, &arg_representation_id, &arg_rt_obj)) return NULL;
 
     if (!extract_handle(arg_self_obj, &IfcOpenshellGeomGeometrySerializerType, "IfcOpenshellGeomGeometrySerializer", (void **)&arg_self, 0)) {
         goto __cleanup;
     }
     if (!extract_handle(arg_f_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_f, 0)) {
         goto __cleanup;
+    }
+    if (PyLong_Check(arg_rt_obj)) {
+        arg_rt = (int32_t)PyLong_AsLong(arg_rt_obj);
+        if (PyErr_Occurred()) goto __cleanup;
+    } else {
+        if (!PyUnicode_Check(arg_rt_obj)) {
+            PyErr_Format(PyExc_TypeError, "Expected read_type string or integer");
+            goto __cleanup;
+        }
+        arg_rt_enum_text = PyUnicode_AsUTF8(arg_rt_obj);
+        if (!arg_rt_enum_text) goto __cleanup;
+        if (strcmp(arg_rt_enum_text, "READ_BREP") == 0) arg_rt = (0);
+        else if (strcmp(arg_rt_enum_text, "READ_TRIANGULATION") == 0) arg_rt = (1);
+        else {
+            PyErr_Format(PyExc_ValueError, "Unsupported read_type value: %s", arg_rt_enum_text);
+            goto __cleanup;
+        }
     }
 
     ifcopenshell_clear_error();
@@ -39569,15 +40030,35 @@ static PyObject *py_ifcopenshell_geometry_add_boolean(PyObject *self, PyObject *
     PyObject *arg_second_items_obj = NULL;
     ifcopenshell_instance_list_t arg_second_items = {0};
     option_ref_owner arg_second_items_refs = {0};
-    const char *arg_operator_type = NULL;
+    PyObject *arg_operator_type_obj = NULL;
+    int32_t arg_operator_type = 0;
+    const char *arg_operator_type_enum_text = NULL;
     ifcopenshell_parse_instance_list_t *result = NULL;
-    if (!PyArg_ParseTuple(args, "OOOs", &arg_file_obj, &arg_first_item_obj, &arg_second_items_obj, &arg_operator_type)) return NULL;
+    if (!PyArg_ParseTuple(args, "OOOO", &arg_file_obj, &arg_first_item_obj, &arg_second_items_obj, &arg_operator_type_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
     }
     if (!extract_handle(arg_first_item_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_first_item, 0)) {
         goto __cleanup;
+    }
+    if (PyLong_Check(arg_operator_type_obj)) {
+        arg_operator_type = (int32_t)PyLong_AsLong(arg_operator_type_obj);
+        if (PyErr_Occurred()) goto __cleanup;
+    } else {
+        if (!PyUnicode_Check(arg_operator_type_obj)) {
+            PyErr_Format(PyExc_TypeError, "Expected GeometryBooleanOperator string or integer");
+            goto __cleanup;
+        }
+        arg_operator_type_enum_text = PyUnicode_AsUTF8(arg_operator_type_obj);
+        if (!arg_operator_type_enum_text) goto __cleanup;
+        if (strcmp(arg_operator_type_enum_text, "DIFFERENCE") == 0) arg_operator_type = (0);
+        else if (strcmp(arg_operator_type_enum_text, "INTERSECTION") == 0) arg_operator_type = (1);
+        else if (strcmp(arg_operator_type_enum_text, "UNION") == 0) arg_operator_type = (2);
+        else {
+            PyErr_Format(PyExc_ValueError, "Unsupported GeometryBooleanOperator value: %s", arg_operator_type_enum_text);
+            goto __cleanup;
+        }
     }
     if (!make_input_instance_list(arg_second_items_obj, &arg_second_items, &arg_second_items_refs)) {
         goto __cleanup;
@@ -39614,8 +40095,8 @@ static PyObject *py_ifcopenshell_geometry_add_door_representation(PyObject *self
         goto __cleanup;
     }
     if (!fill_input_geometry_add_door_representation_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_geometry_add_door_representation(arg_file, &arg_options, &result);
@@ -39693,8 +40174,8 @@ static PyObject *py_ifcopenshell_geometry_add_mesh_representation(PyObject *self
         goto __cleanup;
     }
     if (!fill_input_geometry_add_mesh_representation_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_geometry_add_mesh_representation(arg_file, arg_context, &arg_options, &result);
@@ -39728,8 +40209,8 @@ static PyObject *py_ifcopenshell_geometry_add_profile_representation(PyObject *s
         goto __cleanup;
     }
     if (!fill_input_geometry_add_profile_representation_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_geometry_add_profile_representation(arg_file, &arg_options, &result);
@@ -39763,8 +40244,8 @@ static PyObject *py_ifcopenshell_geometry_add_railing_representation(PyObject *s
         goto __cleanup;
     }
     if (!fill_input_geometry_add_railing_representation_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_geometry_add_railing_representation(arg_file, &arg_options, &result);
@@ -39798,8 +40279,8 @@ static PyObject *py_ifcopenshell_geometry_add_shape_aspect(PyObject *self, PyObj
         goto __cleanup;
     }
     if (!fill_input_geometry_add_shape_aspect_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_geometry_add_shape_aspect(arg_file, &arg_options, &result);
@@ -39833,8 +40314,8 @@ static PyObject *py_ifcopenshell_geometry_add_slab_representation(PyObject *self
         goto __cleanup;
     }
     if (!fill_input_geometry_add_slab_representation_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_geometry_add_slab_representation(arg_file, &arg_options, &result);
@@ -39868,8 +40349,8 @@ static PyObject *py_ifcopenshell_geometry_add_topology_representation(PyObject *
         goto __cleanup;
     }
     if (!fill_input_geometry_add_topology_representation_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_geometry_add_topology_representation(arg_file, &arg_options, &result);
@@ -39903,8 +40384,8 @@ static PyObject *py_ifcopenshell_geometry_add_wall_representation(PyObject *self
         goto __cleanup;
     }
     if (!fill_input_geometry_add_wall_representation_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_geometry_add_wall_representation(arg_file, &arg_options, &result);
@@ -39938,8 +40419,8 @@ static PyObject *py_ifcopenshell_geometry_add_window_representation(PyObject *se
         goto __cleanup;
     }
     if (!fill_input_geometry_add_window_representation_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_geometry_add_window_representation(arg_file, &arg_options, &result);
@@ -40010,8 +40491,8 @@ static PyObject *py_ifcopenshell_geometry_clip_solid(PyObject *self, PyObject *a
         goto __cleanup;
     }
     if (!fill_input_geometry_clip_solid_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_geometry_clip_solid(arg_file, &arg_options, &result);
@@ -40045,8 +40526,8 @@ static PyObject *py_ifcopenshell_geometry_clip_solid_bounded(PyObject *self, PyO
         goto __cleanup;
     }
     if (!fill_input_geometry_clip_solid_bounded_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_geometry_clip_solid_bounded(arg_file, &arg_options, &result);
@@ -40075,8 +40556,8 @@ static PyObject *py_ifcopenshell_geometry_compute_wall_mounted_handrail_geometry
     if (!PyArg_ParseTuple(args, "O", &arg_options_obj)) return NULL;
 
     if (!fill_input_geometry_compute_wall_mounted_handrail_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_geometry_compute_wall_mounted_handrail_geometry(&arg_options, &result);
@@ -40106,8 +40587,8 @@ static PyObject *py_ifcopenshell_geometry_connect_element(PyObject *self, PyObje
         goto __cleanup;
     }
     if (!fill_input_geometry_connect_element_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_geometry_connect_element(arg_file, &arg_options, &result);
@@ -40141,8 +40622,8 @@ static PyObject *py_ifcopenshell_geometry_connect_path(PyObject *self, PyObject 
         goto __cleanup;
     }
     if (!fill_input_geometry_connect_path_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_geometry_connect_path(arg_file, &arg_options, &result);
@@ -40176,8 +40657,8 @@ static PyObject *py_ifcopenshell_geometry_connect_wall(PyObject *self, PyObject 
         goto __cleanup;
     }
     if (!fill_input_geometry_connect_wall_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_geometry_connect_wall(arg_file, &arg_options, &result);
@@ -40211,8 +40692,8 @@ static PyObject *py_ifcopenshell_geometry_copy_representation(PyObject *self, Py
         goto __cleanup;
     }
     if (!fill_input_geometry_copy_representation_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_geometry_copy_representation(arg_file, &arg_options, &result);
@@ -40246,8 +40727,8 @@ static PyObject *py_ifcopenshell_geometry_create_2pt_wall(PyObject *self, PyObje
         goto __cleanup;
     }
     if (!fill_input_geometry_create2_pt_wall_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_geometry_create_2pt_wall(arg_file, &arg_options, &result);
@@ -40319,8 +40800,8 @@ static PyObject *py_ifcopenshell_geometry_disconnect_path(PyObject *self, PyObje
         goto __cleanup;
     }
     if (!fill_input_geometry_disconnect_path_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_geometry_disconnect_path(arg_file, &arg_options);
@@ -40355,8 +40836,8 @@ static PyObject *py_ifcopenshell_geometry_edit_object_placement(PyObject *self, 
         goto __cleanup;
     }
     if (!fill_input_geometry_edit_object_placement_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_geometry_edit_object_placement(arg_file, &arg_options, &result);
@@ -40450,8 +40931,8 @@ static PyObject *py_ifcopenshell_geometry_regenerate_wall_representation(PyObjec
         goto __cleanup;
     }
     if (!fill_input_geometry_regenerate_wall_representation_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_geometry_regenerate_wall_representation(arg_file, &arg_options, &result);
@@ -40523,8 +41004,8 @@ static PyObject *py_ifcopenshell_geometry_remove_representation(PyObject *self, 
         goto __cleanup;
     }
     if (!fill_input_geometry_remove_representation_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_geometry_remove_representation(arg_file, arg_representation, &arg_options);
@@ -40602,8 +41083,8 @@ static PyObject *py_ifcopenshell_geometry_validate_type(PyObject *self, PyObject
         goto __cleanup;
     }
     if (!fill_input_geometry_validate_type_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_geometry_validate_type(arg_file, arg_representation, &arg_options, &result);
@@ -40633,8 +41114,8 @@ static PyObject *py_ifcopenshell_georeference_add_georeferencing(PyObject *self,
         goto __cleanup;
     }
     if (!fill_input_georeference_add_georeferencing_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_georeference_add_georeferencing(arg_file, &arg_options);
@@ -40669,8 +41150,8 @@ static PyObject *py_ifcopenshell_georeference_edit_georeferencing(PyObject *self
         goto __cleanup;
     }
     if (!fill_input_georeference_edit_georeferencing_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_georeference_edit_georeferencing(arg_file, &arg_options);
@@ -40705,8 +41186,8 @@ static PyObject *py_ifcopenshell_georeference_edit_true_north(PyObject *self, Py
         goto __cleanup;
     }
     if (!fill_input_georeference_edit_true_north_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_georeference_edit_true_north(arg_file, &arg_options);
@@ -40741,8 +41222,8 @@ static PyObject *py_ifcopenshell_georeference_edit_wcs(PyObject *self, PyObject 
         goto __cleanup;
     }
     if (!fill_input_georeference_edit_wcs_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_georeference_edit_wcs(arg_file, &arg_options);
@@ -40922,8 +41403,8 @@ static PyObject *py_ifcopenshell_group_add_group(PyObject *self, PyObject *args)
         goto __cleanup;
     }
     if (!fill_input_group_add_group_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_group_add_group(arg_file, &arg_options, &result);
@@ -40957,8 +41438,8 @@ static PyObject *py_ifcopenshell_group_assign_group(PyObject *self, PyObject *ar
         goto __cleanup;
     }
     if (!fill_input_group_assign_group_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_group_assign_group(arg_file, &arg_options, &result);
@@ -41072,8 +41553,8 @@ static PyObject *py_ifcopenshell_group_unassign_group(PyObject *self, PyObject *
         goto __cleanup;
     }
     if (!fill_input_group_unassign_group_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_group_unassign_group(arg_file, &arg_options);
@@ -41108,8 +41589,8 @@ static PyObject *py_ifcopenshell_group_update_group_products(PyObject *self, PyO
         goto __cleanup;
     }
     if (!fill_input_group_update_group_products_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_group_update_group_products(arg_file, &arg_options, &result);
@@ -42794,8 +43275,8 @@ static PyObject *py_ifcopenshell_layer_add_layer_with_style(PyObject *self, PyOb
         goto __cleanup;
     }
     if (!fill_input_layer_add_layer_with_style_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_layer_add_layer_with_style(arg_file, arg_name, &arg_options, &result);
@@ -43049,8 +43530,8 @@ static PyObject *py_ifcopenshell_library_assign_reference(PyObject *self, PyObje
         goto __cleanup;
     }
     if (!fill_input_library_assign_reference_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_library_assign_reference(arg_file, &arg_options, &result);
@@ -43278,8 +43759,8 @@ static PyObject *py_ifcopenshell_library_unassign_reference(PyObject *self, PyOb
         goto __cleanup;
     }
     if (!fill_input_library_unassign_reference_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_library_unassign_reference(arg_file, &arg_options);
@@ -43319,8 +43800,8 @@ static PyObject *py_ifcopenshell_material_add_constituent(PyObject *self, PyObje
         goto __cleanup;
     }
     if (!fill_input_material_add_constituent_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_material_add_constituent(arg_file, arg_constituent_set, &arg_options, &result);
@@ -43359,8 +43840,8 @@ static PyObject *py_ifcopenshell_material_add_layer(PyObject *self, PyObject *ar
         goto __cleanup;
     }
     if (!fill_input_material_add_layer_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_material_add_layer(arg_file, arg_layer_set, &arg_options, &result);
@@ -43432,8 +43913,8 @@ static PyObject *py_ifcopenshell_material_add_material(PyObject *self, PyObject 
         goto __cleanup;
     }
     if (!fill_input_material_add_material_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_material_add_material(arg_file, &arg_options, &result);
@@ -43467,8 +43948,8 @@ static PyObject *py_ifcopenshell_material_add_material_set(PyObject *self, PyObj
         goto __cleanup;
     }
     if (!fill_input_material_add_material_set_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_material_add_material_set(arg_file, &arg_options, &result);
@@ -43507,8 +43988,8 @@ static PyObject *py_ifcopenshell_material_add_profile(PyObject *self, PyObject *
         goto __cleanup;
     }
     if (!fill_input_material_add_profile_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_material_add_profile(arg_file, arg_profile_set, &arg_options, &result);
@@ -43545,8 +44026,8 @@ static PyObject *py_ifcopenshell_material_assign_material(PyObject *self, PyObje
         goto __cleanup;
     }
     if (!fill_input_material_assign_material_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
     if (!make_input_instance_list(arg_products_obj, &arg_products, &arg_products_refs)) {
         goto __cleanup;
     }
@@ -43961,8 +44442,8 @@ static PyObject *py_ifcopenshell_material_edit_profile_usage(PyObject *self, PyO
         goto __cleanup;
     }
     if (!fill_input_material_edit_profile_usage_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_material_edit_profile_usage(arg_file, arg_usage, &arg_options);
@@ -44002,8 +44483,8 @@ static PyObject *py_ifcopenshell_material_remove_constituent(PyObject *self, PyO
         goto __cleanup;
     }
     if (!fill_input_material_remove_item_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_material_remove_constituent(arg_file, arg_constituent, &arg_options);
@@ -44043,8 +44524,8 @@ static PyObject *py_ifcopenshell_material_remove_layer(PyObject *self, PyObject 
         goto __cleanup;
     }
     if (!fill_input_material_remove_item_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_material_remove_layer(arg_file, arg_layer, &arg_options);
@@ -44084,8 +44565,8 @@ static PyObject *py_ifcopenshell_material_remove_list_item(PyObject *self, PyObj
         goto __cleanup;
     }
     if (!fill_input_material_remove_list_item_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_material_remove_list_item(arg_file, arg_material_list, &arg_options);
@@ -44191,8 +44672,8 @@ static PyObject *py_ifcopenshell_material_remove_profile(PyObject *self, PyObjec
         goto __cleanup;
     }
     if (!fill_input_material_remove_profile_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_material_remove_profile(arg_file, arg_profile, &arg_options);
@@ -44232,8 +44713,8 @@ static PyObject *py_ifcopenshell_material_reorder_set_item(PyObject *self, PyObj
         goto __cleanup;
     }
     if (!fill_input_material_reorder_set_item_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_material_reorder_set_item(arg_file, arg_material_set, &arg_options);
@@ -44281,8 +44762,8 @@ static PyObject *py_ifcopenshell_material_set_shape_aspect_constituents(PyObject
         goto __cleanup;
     }
     if (!fill_input_material_set_shape_aspect_constituents_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
     if (!make_input_material_constituent_entry_options_list(arg_materials_obj, &arg_materials, &arg_materials_refs)) {
         goto __cleanup;
     }
@@ -44324,8 +44805,8 @@ static PyObject *py_ifcopenshell_material_unassign_material(PyObject *self, PyOb
         goto __cleanup;
     }
     if (!fill_input_material_unassign_material_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
     if (!make_input_instance_list(arg_products_obj, &arg_products, &arg_products_refs)) {
         goto __cleanup;
     }
@@ -44442,8 +44923,8 @@ static PyObject *py_ifcopenshell_nest_assign_object(PyObject *self, PyObject *ar
         goto __cleanup;
     }
     if (!fill_input_nest_assign_object_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_nest_assign_object(arg_file, &arg_options, &result);
@@ -44477,8 +44958,8 @@ static PyObject *py_ifcopenshell_nest_change_nest(PyObject *self, PyObject *args
         goto __cleanup;
     }
     if (!fill_input_nest_change_nest_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_nest_change_nest(arg_file, &arg_options);
@@ -44513,8 +44994,8 @@ static PyObject *py_ifcopenshell_nest_reorder_nesting(PyObject *self, PyObject *
         goto __cleanup;
     }
     if (!fill_input_nest_reorder_nesting_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_nest_reorder_nesting(arg_file, &arg_options);
@@ -44549,8 +45030,8 @@ static PyObject *py_ifcopenshell_nest_unassign_object(PyObject *self, PyObject *
         goto __cleanup;
     }
     if (!fill_input_nest_unassign_object_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_nest_unassign_object(arg_file, &arg_options);
@@ -44585,8 +45066,8 @@ static PyObject *py_ifcopenshell_owner_add_actor(PyObject *self, PyObject *args)
         goto __cleanup;
     }
     if (!fill_input_owner_add_actor_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_owner_add_actor(arg_file, &arg_options, &result);
@@ -44653,8 +45134,8 @@ static PyObject *py_ifcopenshell_owner_add_application(PyObject *self, PyObject 
         goto __cleanup;
     }
     if (!fill_input_owner_add_application_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_owner_add_application(arg_file, &arg_options, &result);
@@ -44817,8 +45298,8 @@ static PyObject *py_ifcopenshell_owner_assign_actor(PyObject *self, PyObject *ar
         goto __cleanup;
     }
     if (!fill_input_owner_assign_actor_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_owner_assign_actor(arg_file, &arg_options, &result);
@@ -44852,8 +45333,8 @@ static PyObject *py_ifcopenshell_owner_create_owner_history(PyObject *self, PyOb
         goto __cleanup;
     }
     if (!fill_input_owner_create_owner_history_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_owner_create_owner_history(arg_file, &arg_options, &result);
@@ -45400,8 +45881,8 @@ static PyObject *py_ifcopenshell_owner_unassign_actor(PyObject *self, PyObject *
         goto __cleanup;
     }
     if (!fill_input_owner_unassign_actor_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_owner_unassign_actor(arg_file, &arg_options);
@@ -45436,8 +45917,8 @@ static PyObject *py_ifcopenshell_owner_update_owner_history(PyObject *self, PyOb
         goto __cleanup;
     }
     if (!fill_input_owner_update_owner_history_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_owner_update_owner_history(arg_file, &arg_options, &result);
@@ -47165,11 +47646,30 @@ static PyObject *py_ifcopenshell_placement_rotation(PyObject *self, PyObject *ar
     PyObject *__py_result = NULL;
     bool ok = false;
     double arg_angle_rad = 0;
-    const char *arg_axis = NULL;
+    PyObject *arg_axis_obj = NULL;
+    int32_t arg_axis = 0;
+    const char *arg_axis_enum_text = NULL;
     ifcopenshell_double_list_t result = {0};
-    if (!PyArg_ParseTuple(args, "ds", &arg_angle_rad, &arg_axis)) return NULL;
+    if (!PyArg_ParseTuple(args, "dO", &arg_angle_rad, &arg_axis_obj)) return NULL;
 
-
+    if (PyLong_Check(arg_axis_obj)) {
+        arg_axis = (int32_t)PyLong_AsLong(arg_axis_obj);
+        if (PyErr_Occurred()) goto __cleanup;
+    } else {
+        if (!PyUnicode_Check(arg_axis_obj)) {
+            PyErr_Format(PyExc_TypeError, "Expected PlacementRotationAxis string or integer");
+            goto __cleanup;
+        }
+        arg_axis_enum_text = PyUnicode_AsUTF8(arg_axis_obj);
+        if (!arg_axis_enum_text) goto __cleanup;
+        if (strcmp(arg_axis_enum_text, "X") == 0) arg_axis = (0);
+        else if (strcmp(arg_axis_enum_text, "Y") == 0) arg_axis = (1);
+        else if (strcmp(arg_axis_enum_text, "Z") == 0) arg_axis = (2);
+        else {
+            PyErr_Format(PyExc_ValueError, "Unsupported PlacementRotationAxis value: %s", arg_axis_enum_text);
+            goto __cleanup;
+        }
+    }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_placement_rotation(arg_angle_rad, arg_axis, &result);
@@ -47197,8 +47697,8 @@ static PyObject *py_ifcopenshell_profile_add_arbitrary_profile(PyObject *self, P
         goto __cleanup;
     }
     if (!fill_input_profile_add_arbitrary_profile_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_profile_add_arbitrary_profile(arg_file, &arg_options, &result);
@@ -47232,8 +47732,8 @@ static PyObject *py_ifcopenshell_profile_add_arbitrary_profile_with_voids(PyObje
         goto __cleanup;
     }
     if (!fill_input_profile_add_arbitrary_profile_with_voids_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_profile_add_arbitrary_profile_with_voids(arg_file, &arg_options, &result);
@@ -47403,8 +47903,8 @@ static PyObject *py_ifcopenshell_project_append_asset(PyObject *self, PyObject *
         goto __cleanup;
     }
     if (!fill_input_project_append_asset_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_project_append_asset(arg_file, &arg_options, &result);
@@ -47551,8 +48051,8 @@ static PyObject *py_ifcopenshell_project_assign_declaration(PyObject *self, PyOb
         goto __cleanup;
     }
     if (!fill_input_project_assign_declaration_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_project_assign_declaration(arg_file, &arg_options, &result);
@@ -47586,8 +48086,8 @@ static PyObject *py_ifcopenshell_project_unassign_declaration(PyObject *self, Py
         goto __cleanup;
     }
     if (!fill_input_project_unassign_declaration_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_project_unassign_declaration(arg_file, &arg_options);
@@ -47622,8 +48122,8 @@ static PyObject *py_ifcopenshell_pset_add_pset(PyObject *self, PyObject *args) {
         goto __cleanup;
     }
     if (!fill_input_pset_add_pset_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_pset_add_pset(arg_file, &arg_options, &result);
@@ -47657,8 +48157,8 @@ static PyObject *py_ifcopenshell_pset_add_qto(PyObject *self, PyObject *args) {
         goto __cleanup;
     }
     if (!fill_input_pset_add_qto_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_pset_add_qto(arg_file, &arg_options, &result);
@@ -47692,8 +48192,8 @@ static PyObject *py_ifcopenshell_pset_assign_pset(PyObject *self, PyObject *args
         goto __cleanup;
     }
     if (!fill_input_pset_assign_pset_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_pset_assign_pset(arg_file, &arg_options, &result);
@@ -47727,8 +48227,8 @@ static PyObject *py_ifcopenshell_pset_edit_pset(PyObject *self, PyObject *args) 
         goto __cleanup;
     }
     if (!fill_input_pset_edit_pset_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_pset_edit_pset(arg_file, &arg_options, &result);
@@ -47758,8 +48258,8 @@ static PyObject *py_ifcopenshell_pset_edit_qto(PyObject *self, PyObject *args) {
         goto __cleanup;
     }
     if (!fill_input_pset_edit_qto_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_pset_edit_qto(arg_file, &arg_options, &result);
@@ -48835,8 +49335,8 @@ static PyObject *py_ifcopenshell_pset_template_edit_prop_template(PyObject *self
         goto __cleanup;
     }
     if (!fill_input_pset_template_edit_prop_template_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_pset_template_edit_prop_template(arg_file, &arg_options);
@@ -49203,8 +49703,8 @@ static PyObject *py_ifcopenshell_pset_unshare_pset(PyObject *self, PyObject *arg
         goto __cleanup;
     }
     if (!fill_input_pset_unshare_pset_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_pset_unshare_pset(arg_file, &arg_options, &result);
@@ -49319,8 +49819,8 @@ static PyObject *py_ifcopenshell_representation_get_product_representation(PyObj
         goto __cleanup;
     }
     if (!fill_input_representation_get_product_representation_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_representation_get_product_representation(arg_element, &arg_options, &result);
@@ -49408,8 +49908,8 @@ static PyObject *py_ifcopenshell_resource_add_resource(PyObject *self, PyObject 
         goto __cleanup;
     }
     if (!fill_input_resource_add_resource_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_resource_add_resource(arg_file, &arg_options, &result);
@@ -49508,8 +50008,8 @@ static PyObject *py_ifcopenshell_resource_assign_resource(PyObject *self, PyObje
         goto __cleanup;
     }
     if (!fill_input_resource_assignment_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_resource_assign_resource(arg_file, &arg_options, &result);
@@ -49750,8 +50250,8 @@ static PyObject *py_ifcopenshell_resource_remove_resource(PyObject *self, PyObje
         goto __cleanup;
     }
     if (!fill_input_resource_remove_resource_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_resource_remove_resource(arg_file, &arg_options);
@@ -49819,8 +50319,8 @@ static PyObject *py_ifcopenshell_resource_unassign_resource(PyObject *self, PyOb
         goto __cleanup;
     }
     if (!fill_input_resource_assignment_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_resource_unassign_resource(arg_file, &arg_options);
@@ -49887,8 +50387,8 @@ static PyObject *py_ifcopenshell_root_create_entity(PyObject *self, PyObject *ar
         goto __cleanup;
     }
     if (!fill_input_root_create_entity_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_root_create_entity(arg_file, &arg_options, &result);
@@ -49922,8 +50422,8 @@ static PyObject *py_ifcopenshell_root_reassign_class(PyObject *self, PyObject *a
         goto __cleanup;
     }
     if (!fill_input_root_reassign_class_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_root_reassign_class(arg_file, &arg_options, &result);
@@ -49962,8 +50462,8 @@ static PyObject *py_ifcopenshell_root_remove_product(PyObject *self, PyObject *a
         goto __cleanup;
     }
     if (!fill_input_root_remove_product_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_root_remove_product(arg_file, arg_product, &arg_options);
@@ -50888,8 +51388,8 @@ static PyObject *py_ifcopenshell_sequence_add_task(PyObject *self, PyObject *arg
         goto __cleanup;
     }
     if (!fill_input_sequence_add_task_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_sequence_add_task(arg_file, &arg_options, &result);
@@ -50928,8 +51428,8 @@ static PyObject *py_ifcopenshell_sequence_add_task_time(PyObject *self, PyObject
         goto __cleanup;
     }
     if (!fill_input_sequence_add_task_time_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_sequence_add_task_time(arg_file, arg_task, &arg_options, &result);
@@ -50968,8 +51468,8 @@ static PyObject *py_ifcopenshell_sequence_add_time_period(PyObject *self, PyObje
         goto __cleanup;
     }
     if (!fill_input_sequence_add_time_period_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_sequence_add_time_period(arg_file, arg_recurrence_pattern, &arg_options, &result);
@@ -51003,8 +51503,8 @@ static PyObject *py_ifcopenshell_sequence_add_work_calendar(PyObject *self, PyOb
         goto __cleanup;
     }
     if (!fill_input_sequence_add_work_calendar_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_sequence_add_work_calendar(arg_file, &arg_options, &result);
@@ -51038,8 +51538,8 @@ static PyObject *py_ifcopenshell_sequence_add_work_plan(PyObject *self, PyObject
         goto __cleanup;
     }
     if (!fill_input_sequence_add_work_plan_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_sequence_add_work_plan(arg_file, &arg_options, &result);
@@ -51073,8 +51573,8 @@ static PyObject *py_ifcopenshell_sequence_add_work_schedule(PyObject *self, PyOb
         goto __cleanup;
     }
     if (!fill_input_sequence_add_work_schedule_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_sequence_add_work_schedule(arg_file, &arg_options, &result);
@@ -51147,8 +51647,8 @@ static PyObject *py_ifcopenshell_sequence_assign_lag_time(PyObject *self, PyObje
         goto __cleanup;
     }
     if (!fill_input_sequence_assign_lag_time_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_sequence_assign_lag_time(arg_file, arg_rel_sequence, arg_lag_value, &arg_options, &result);
@@ -51192,8 +51692,8 @@ static PyObject *py_ifcopenshell_sequence_assign_process(PyObject *self, PyObjec
         goto __cleanup;
     }
     if (!fill_input_sequence_assign_process_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_sequence_assign_process(arg_file, arg_relating_process, arg_related_object, &arg_options, &result);
@@ -51237,8 +51737,8 @@ static PyObject *py_ifcopenshell_sequence_assign_product(PyObject *self, PyObjec
         goto __cleanup;
     }
     if (!fill_input_sequence_assign_product_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_sequence_assign_product(arg_file, arg_relating_product, arg_related_object, &arg_options, &result);
@@ -51315,8 +51815,8 @@ static PyObject *py_ifcopenshell_sequence_assign_sequence(PyObject *self, PyObje
         goto __cleanup;
     }
     if (!fill_input_sequence_assign_sequence_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_sequence_assign_sequence(arg_file, arg_relating_process, arg_related_process, &arg_options, &result);
@@ -51360,8 +51860,8 @@ static PyObject *py_ifcopenshell_sequence_assign_work_plan(PyObject *self, PyObj
         goto __cleanup;
     }
     if (!fill_input_sequence_assign_work_plan_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_sequence_assign_work_plan(arg_file, arg_work_schedule, arg_work_plan, &arg_options, &result);
@@ -51466,8 +51966,8 @@ static PyObject *py_ifcopenshell_sequence_copy_work_schedule(PyObject *self, PyO
         goto __cleanup;
     }
     if (!fill_input_sequence_copy_work_schedule_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_sequence_copy_work_schedule(arg_file, arg_work_schedule, &arg_options, &result);
@@ -51506,8 +52006,8 @@ static PyObject *py_ifcopenshell_sequence_create_baseline(PyObject *self, PyObje
         goto __cleanup;
     }
     if (!fill_input_sequence_create_baseline_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_sequence_create_baseline(arg_file, arg_work_schedule, &arg_options);
@@ -51547,8 +52047,8 @@ static PyObject *py_ifcopenshell_sequence_duplicate_task(PyObject *self, PyObjec
         goto __cleanup;
     }
     if (!fill_input_sequence_duplicate_task_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_sequence_duplicate_task(arg_file, arg_task, &arg_options, &result);
@@ -52009,8 +52509,8 @@ static PyObject *py_ifcopenshell_sequence_remove_task(PyObject *self, PyObject *
         goto __cleanup;
     }
     if (!fill_input_sequence_remove_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_sequence_remove_task(arg_file, arg_task, &arg_options);
@@ -52083,8 +52583,8 @@ static PyObject *py_ifcopenshell_sequence_remove_work_calendar(PyObject *self, P
         goto __cleanup;
     }
     if (!fill_input_sequence_remove_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_sequence_remove_work_calendar(arg_file, arg_work_calendar, &arg_options);
@@ -52124,8 +52624,8 @@ static PyObject *py_ifcopenshell_sequence_remove_work_plan(PyObject *self, PyObj
         goto __cleanup;
     }
     if (!fill_input_sequence_remove_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_sequence_remove_work_plan(arg_file, arg_work_plan, &arg_options);
@@ -52165,8 +52665,8 @@ static PyObject *py_ifcopenshell_sequence_remove_work_schedule(PyObject *self, P
         goto __cleanup;
     }
     if (!fill_input_sequence_remove_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_sequence_remove_work_schedule(arg_file, arg_work_schedule, &arg_options);
@@ -52277,8 +52777,8 @@ static PyObject *py_ifcopenshell_sequence_unassign_process(PyObject *self, PyObj
         goto __cleanup;
     }
     if (!fill_input_sequence_remove_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_sequence_unassign_process(arg_file, arg_relating_process, arg_related_object, &arg_options, &result);
@@ -52322,8 +52822,8 @@ static PyObject *py_ifcopenshell_sequence_unassign_product(PyObject *self, PyObj
         goto __cleanup;
     }
     if (!fill_input_sequence_remove_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_sequence_unassign_product(arg_file, arg_relating_product, arg_related_object, &arg_options, &result);
@@ -52428,8 +52928,8 @@ static PyObject *py_ifcopenshell_shape_builder_axis2_placement_2d(PyObject *self
         goto __cleanup;
     }
     if (!fill_input_shape_builder_axis2_placement2d_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_shape_builder_axis2_placement_2d(arg_file, &arg_options, &result);
@@ -52463,8 +52963,8 @@ static PyObject *py_ifcopenshell_shape_builder_axis2_placement_3d(PyObject *self
         goto __cleanup;
     }
     if (!fill_input_shape_builder_axis2_placement3d_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_shape_builder_axis2_placement_3d(arg_file, &arg_options, &result);
@@ -52498,8 +52998,8 @@ static PyObject *py_ifcopenshell_shape_builder_block(PyObject *self, PyObject *a
         goto __cleanup;
     }
     if (!fill_input_shape_builder_block_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_shape_builder_block(arg_file, &arg_options, &result);
@@ -52676,8 +53176,8 @@ static PyObject *py_ifcopenshell_shape_builder_ellipse_curve(PyObject *self, PyO
         goto __cleanup;
     }
     if (!fill_input_shape_builder_ellipse_curve_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_shape_builder_ellipse_curve(arg_file, &arg_options, &result);
@@ -52711,8 +53211,8 @@ static PyObject *py_ifcopenshell_shape_builder_extrude(PyObject *self, PyObject 
         goto __cleanup;
     }
     if (!fill_input_shape_builder_extrude_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_shape_builder_extrude(arg_file, &arg_options, &result);
@@ -52845,8 +53345,8 @@ static PyObject *py_ifcopenshell_shape_builder_half_space_solid(PyObject *self, 
         goto __cleanup;
     }
     if (!fill_input_shape_builder_half_space_solid_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_shape_builder_half_space_solid(arg_file, &arg_options, &result);
@@ -52880,8 +53380,8 @@ static PyObject *py_ifcopenshell_shape_builder_indexed_polycurve_2d(PyObject *se
         goto __cleanup;
     }
     if (!fill_input_shape_builder_indexed_polycurve2d_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_shape_builder_indexed_polycurve_2d(arg_file, &arg_options, &result);
@@ -52915,8 +53415,8 @@ static PyObject *py_ifcopenshell_shape_builder_mep_bend_shape(PyObject *self, Py
         goto __cleanup;
     }
     if (!fill_input_shape_builder_mep_bend_shape_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_shape_builder_mep_bend_shape(arg_file, &arg_options, &result);
@@ -52941,8 +53441,8 @@ static PyObject *py_ifcopenshell_shape_builder_mep_transition_calculate(PyObject
     if (!PyArg_ParseTuple(args, "O", &arg_options_obj)) return NULL;
 
     if (!fill_input_shape_builder_mep_transition_calculate_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_shape_builder_mep_transition_calculate(&arg_options, &result);
@@ -52967,8 +53467,8 @@ static PyObject *py_ifcopenshell_shape_builder_mep_transition_length(PyObject *s
     if (!PyArg_ParseTuple(args, "O", &arg_options_obj)) return NULL;
 
     if (!fill_input_shape_builder_mep_transition_length_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_shape_builder_mep_transition_length(&arg_options, &result);
@@ -52998,8 +53498,8 @@ static PyObject *py_ifcopenshell_shape_builder_mep_transition_shape(PyObject *se
         goto __cleanup;
     }
     if (!fill_input_shape_builder_mep_transition_shape_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_shape_builder_mep_transition_shape(arg_file, &arg_options, &result);
@@ -53071,8 +53571,8 @@ static PyObject *py_ifcopenshell_shape_builder_mirror(PyObject *self, PyObject *
         goto __cleanup;
     }
     if (!fill_input_shape_builder_mirror_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_shape_builder_mirror(arg_file, &arg_options, &result);
@@ -53190,8 +53690,8 @@ static PyObject *py_ifcopenshell_shape_builder_polyline(PyObject *self, PyObject
         goto __cleanup;
     }
     if (!fill_input_shape_builder_polyline_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_shape_builder_polyline(arg_file, &arg_options, &result);
@@ -53225,8 +53725,8 @@ static PyObject *py_ifcopenshell_shape_builder_profile(PyObject *self, PyObject 
         goto __cleanup;
     }
     if (!fill_input_shape_builder_profile_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_shape_builder_profile(arg_file, &arg_options, &result);
@@ -53260,8 +53760,8 @@ static PyObject *py_ifcopenshell_shape_builder_representation(PyObject *self, Py
         goto __cleanup;
     }
     if (!fill_input_shape_builder_representation_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_shape_builder_representation(arg_file, &arg_options, &result);
@@ -53295,8 +53795,8 @@ static PyObject *py_ifcopenshell_shape_builder_rotate(PyObject *self, PyObject *
         goto __cleanup;
     }
     if (!fill_input_shape_builder_rotate_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_shape_builder_rotate(arg_file, &arg_options, &result);
@@ -53368,8 +53868,8 @@ static PyObject *py_ifcopenshell_shape_builder_sphere(PyObject *self, PyObject *
         goto __cleanup;
     }
     if (!fill_input_shape_builder_sphere_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_shape_builder_sphere(arg_file, &arg_options, &result);
@@ -53436,8 +53936,8 @@ static PyObject *py_ifcopenshell_shape_builder_translate(PyObject *self, PyObjec
         goto __cleanup;
     }
     if (!fill_input_shape_builder_translate_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_shape_builder_translate(arg_file, &arg_options, &result);
@@ -53642,8 +54142,8 @@ static PyObject *py_ifcopenshell_spatial_assign_container(PyObject *self, PyObje
         goto __cleanup;
     }
     if (!fill_input_spatial_assign_container_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_spatial_assign_container(arg_file, &arg_options, &result);
@@ -53677,8 +54177,8 @@ static PyObject *py_ifcopenshell_spatial_dereference_structure(PyObject *self, P
         goto __cleanup;
     }
     if (!fill_input_spatial_dereference_structure_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_spatial_dereference_structure(arg_file, &arg_options);
@@ -53713,8 +54213,8 @@ static PyObject *py_ifcopenshell_spatial_reference_structure(PyObject *self, PyO
         goto __cleanup;
     }
     if (!fill_input_spatial_reference_structure_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_spatial_reference_structure(arg_file, &arg_options, &result);
@@ -53748,8 +54248,8 @@ static PyObject *py_ifcopenshell_spatial_unassign_container(PyObject *self, PyOb
         goto __cleanup;
     }
     if (!fill_input_spatial_unassign_container_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_spatial_unassign_container(arg_file, &arg_options);
@@ -53780,12 +54280,14 @@ static PyObject *py_ifcopenshell_structural_add_structural_activity(PyObject *se
     ifcopenshell_instance_t *arg_structural_member = NULL;
     const char *arg_ifc_class = NULL;
     const char *arg_predefined_type = NULL;
-    const char *arg_global_or_local = NULL;
+    PyObject *arg_global_or_local_obj = NULL;
+    int32_t arg_global_or_local = 0;
+    const char *arg_global_or_local_enum_text = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_structural_add_structural_activity_options_t arg_options = {0};
     option_ref_owner arg_options_refs = {0};
     ifcopenshell_instance_t *result = NULL;
-    if (!PyArg_ParseTuple(args, "OOOsssO", &arg_file_obj, &arg_applied_load_obj, &arg_structural_member_obj, &arg_ifc_class, &arg_predefined_type, &arg_global_or_local, &arg_options_obj)) return NULL;
+    if (!PyArg_ParseTuple(args, "OOOssOO", &arg_file_obj, &arg_applied_load_obj, &arg_structural_member_obj, &arg_ifc_class, &arg_predefined_type, &arg_global_or_local_obj, &arg_options_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
@@ -53796,9 +54298,26 @@ static PyObject *py_ifcopenshell_structural_add_structural_activity(PyObject *se
     if (!extract_handle(arg_structural_member_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_structural_member, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_structural_add_structural_activity_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
+    if (PyLong_Check(arg_global_or_local_obj)) {
+        arg_global_or_local = (int32_t)PyLong_AsLong(arg_global_or_local_obj);
+        if (PyErr_Occurred()) goto __cleanup;
+    } else {
+        if (!PyUnicode_Check(arg_global_or_local_obj)) {
+            PyErr_Format(PyExc_TypeError, "Expected StructuralGlobalOrLocal string or integer");
+            goto __cleanup;
+        }
+        arg_global_or_local_enum_text = PyUnicode_AsUTF8(arg_global_or_local_obj);
+        if (!arg_global_or_local_enum_text) goto __cleanup;
+        if (strcmp(arg_global_or_local_enum_text, "GLOBAL_COORDS") == 0) arg_global_or_local = (0);
+        else if (strcmp(arg_global_or_local_enum_text, "LOCAL_COORDS") == 0) arg_global_or_local = (1);
+        else {
+            PyErr_Format(PyExc_ValueError, "Unsupported StructuralGlobalOrLocal value: %s", arg_global_or_local_enum_text);
+            goto __cleanup;
+        }
     }
+    if (!fill_input_structural_add_structural_activity_options(arg_options_obj, &arg_options, &arg_options_refs)) {
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_structural_add_structural_activity(arg_file, arg_applied_load, arg_structural_member, arg_ifc_class, arg_predefined_type, arg_global_or_local, &arg_options, &result);
@@ -53865,8 +54384,8 @@ static PyObject *py_ifcopenshell_structural_add_structural_boundary_condition(Py
         goto __cleanup;
     }
     if (!fill_input_structural_add_structural_boundary_condition_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_structural_add_structural_boundary_condition(arg_file, arg_ifc_class, &arg_options, &result);
@@ -54091,8 +54610,8 @@ static PyObject *py_ifcopenshell_structural_assign_structural_analysis_model(PyO
         goto __cleanup;
     }
     if (!fill_input_structural_assign_structural_analysis_model_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
     if (!make_input_instance_list(arg_products_obj, &arg_products, &arg_products_refs)) {
         goto __cleanup;
     }
@@ -54481,8 +55000,8 @@ static PyObject *py_ifcopenshell_structural_remove_structural_boundary_condition
         goto __cleanup;
     }
     if (!fill_input_structural_remove_structural_boundary_condition_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_structural_remove_structural_boundary_condition(arg_file, &arg_options);
@@ -54657,8 +55176,8 @@ static PyObject *py_ifcopenshell_structural_unassign_structural_analysis_model(P
         goto __cleanup;
     }
     if (!fill_input_structural_unassign_structural_analysis_model_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
     if (!make_input_instance_list(arg_products_obj, &arg_products, &arg_products_refs)) {
         goto __cleanup;
     }
@@ -54767,10 +55286,11 @@ static PyObject *py_ifcopenshell_style_add_surface_textures(PyObject *self, PyOb
     ifcopenshell_style_surface_texture_options_list_t arg_textures = {0};
     option_ref_owner arg_textures_refs = {0};
     PyObject *arg_uv_maps_obj = NULL;
-    ifcopenshell_instance_list_t arg_uv_maps = {0};
+    ifcopenshell_instance_list_t arg_uv_maps_items = {0};
     option_ref_owner arg_uv_maps_refs = {0};
+    ifcopenshell_parse_instance_list_t *arg_uv_maps = NULL;
     ifcopenshell_parse_instance_list_t *result = NULL;
-    if (!PyArg_ParseTuple(args, "OOO", &arg_file_obj, &arg_textures_obj, &arg_uv_maps_obj)) return NULL;
+    if (!PyArg_ParseTuple(args, "OO|O", &arg_file_obj, &arg_textures_obj, &arg_uv_maps_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
@@ -54778,11 +55298,17 @@ static PyObject *py_ifcopenshell_style_add_surface_textures(PyObject *self, PyOb
     if (!make_input_style_surface_texture_options_list(arg_textures_obj, &arg_textures, &arg_textures_refs)) {
         goto __cleanup;
     }
-    if (!make_input_instance_list(arg_uv_maps_obj, &arg_uv_maps, &arg_uv_maps_refs)) {
-        goto __cleanup;
+    if (arg_uv_maps_obj != NULL && arg_uv_maps_obj != Py_None) {
+        if (!make_input_instance_list(arg_uv_maps_obj, &arg_uv_maps_items, &arg_uv_maps_refs)) {
+            goto __cleanup;
+        }
+        if (!ifcopenshell_parse_instance_list_create_from_handles(&arg_uv_maps_items, &arg_uv_maps)) {
+            raise_last_error("ifcopenshell_parse_instance_list_create_from_handles failed");
+            goto __cleanup;
+        }
     }
     ifcopenshell_clear_error();
-    ok = ifcopenshell_style_add_surface_textures(arg_file, &arg_textures, &arg_uv_maps, &result);
+    ok = ifcopenshell_style_add_surface_textures(arg_file, &arg_textures, arg_uv_maps, &result);
     if (!ok) {
         raise_last_error("ifcopenshell_style_add_surface_textures failed");
         goto __cleanup;
@@ -54794,7 +55320,8 @@ static PyObject *py_ifcopenshell_style_add_surface_textures(PyObject *self, PyOb
     __py_result = wrap_parse_instance_list(result, 1);
 __cleanup:
         release_option_refs(&arg_uv_maps_refs);
-        free_input_instance_list(&arg_uv_maps);
+        free_input_instance_list(&arg_uv_maps_items);
+        ifcopenshell_parse_instance_list_destroy(arg_uv_maps);
         release_option_refs(&arg_textures_refs);
         free_input_style_surface_texture_options_list(&arg_textures);
     return __py_result;
@@ -54815,8 +55342,8 @@ static PyObject *py_ifcopenshell_style_assign_item_style(PyObject *self, PyObjec
         goto __cleanup;
     }
     if (!fill_input_style_assign_item_style_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_style_assign_item_style(arg_file, &arg_options, &result);
@@ -55212,8 +55739,8 @@ static PyObject *py_ifcopenshell_system_add_port(PyObject *self, PyObject *args)
         goto __cleanup;
     }
     if (!fill_input_system_add_port_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_system_add_port(arg_file, &arg_options, &result);
@@ -55247,8 +55774,8 @@ static PyObject *py_ifcopenshell_system_add_system(PyObject *self, PyObject *arg
         goto __cleanup;
     }
     if (!fill_input_system_add_system_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_system_add_system(arg_file, &arg_options, &result);
@@ -55282,8 +55809,8 @@ static PyObject *py_ifcopenshell_system_assign_flow_control(PyObject *self, PyOb
         goto __cleanup;
     }
     if (!fill_input_system_assign_flow_control_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_system_assign_flow_control(arg_file, &arg_options, &result);
@@ -55317,8 +55844,8 @@ static PyObject *py_ifcopenshell_system_assign_port(PyObject *self, PyObject *ar
         goto __cleanup;
     }
     if (!fill_input_system_assign_port_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_system_assign_port(arg_file, &arg_options, &result);
@@ -55352,8 +55879,8 @@ static PyObject *py_ifcopenshell_system_assign_system(PyObject *self, PyObject *
         goto __cleanup;
     }
     if (!fill_input_system_assign_system_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_system_assign_system(arg_file, &arg_options, &result);
@@ -55387,8 +55914,8 @@ static PyObject *py_ifcopenshell_system_connect_port(PyObject *self, PyObject *a
         goto __cleanup;
     }
     if (!fill_input_system_connect_port_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_system_connect_port(arg_file, &arg_options);
@@ -55536,8 +56063,8 @@ static PyObject *py_ifcopenshell_system_unassign_flow_control(PyObject *self, Py
         goto __cleanup;
     }
     if (!fill_input_system_unassign_flow_control_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_system_unassign_flow_control(arg_file, &arg_options);
@@ -55572,8 +56099,8 @@ static PyObject *py_ifcopenshell_system_unassign_port(PyObject *self, PyObject *
         goto __cleanup;
     }
     if (!fill_input_system_unassign_port_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_system_unassign_port(arg_file, &arg_options);
@@ -55608,8 +56135,8 @@ static PyObject *py_ifcopenshell_system_unassign_system(PyObject *self, PyObject
         goto __cleanup;
     }
     if (!fill_input_system_unassign_system_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_system_unassign_system(arg_file, &arg_options);
@@ -55644,8 +56171,8 @@ static PyObject *py_ifcopenshell_type_assign_type(PyObject *self, PyObject *args
         goto __cleanup;
     }
     if (!fill_input_type_assign_type_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_type_assign_type(arg_file, &arg_options, &result);
@@ -55789,8 +56316,8 @@ static PyObject *py_ifcopenshell_type_unassign_type(PyObject *self, PyObject *ar
         goto __cleanup;
     }
     if (!fill_input_type_unassign_type_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_type_unassign_type(arg_file, &arg_options);
@@ -55818,7 +56345,7 @@ static PyObject *py_ifcopenshell_unit_add_context_dependent_unit(PyObject *self,
     const char *arg_unit_type = NULL;
     const char *arg_name = NULL;
     PyObject *arg_dimensions_obj = NULL;
-    ifcopenshell_int64_list_t arg_dimensions = {0};
+    ifcopenshell_int32_list_t arg_dimensions = {0};
     option_ref_owner arg_dimensions_refs = {0};
     ifcopenshell_instance_t *result = NULL;
     if (!PyArg_ParseTuple(args, "OssO", &arg_file_obj, &arg_unit_type, &arg_name, &arg_dimensions_obj)) return NULL;
@@ -55826,7 +56353,7 @@ static PyObject *py_ifcopenshell_unit_add_context_dependent_unit(PyObject *self,
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
     }
-    if (!make_input_int64_list(arg_dimensions_obj, &arg_dimensions, &arg_dimensions_refs)) {
+    if (!make_input_int32_list(arg_dimensions_obj, &arg_dimensions, &arg_dimensions_refs)) {
         goto __cleanup;
     }
     ifcopenshell_clear_error();
@@ -55842,7 +56369,7 @@ static PyObject *py_ifcopenshell_unit_add_context_dependent_unit(PyObject *self,
     __py_result = wrap_instance(result, 1);
 __cleanup:
         release_option_refs(&arg_dimensions_refs);
-        free_input_int64_list(&arg_dimensions);
+        free_input_int32_list(&arg_dimensions);
     return __py_result;
 }
 
@@ -55861,8 +56388,8 @@ static PyObject *py_ifcopenshell_unit_add_conversion_based_unit(PyObject *self, 
         goto __cleanup;
     }
     if (!fill_input_unit_add_conversion_based_unit_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_unit_add_conversion_based_unit(arg_file, &arg_options, &result);
@@ -55886,28 +56413,21 @@ static PyObject *py_ifcopenshell_unit_add_derived_unit(PyObject *self, PyObject 
     bool ok = false;
     PyObject *arg_file_obj = NULL;
     ifcopenshell_file_t *arg_file = NULL;
-    const char *arg_unit_type = NULL;
-    const char *arg_userdefinedtype = NULL;
-    PyObject *arg_units_obj = NULL;
-    ifcopenshell_instance_list_t arg_units = {0};
-    option_ref_owner arg_units_refs = {0};
-    PyObject *arg_exponents_obj = NULL;
-    ifcopenshell_int64_list_t arg_exponents = {0};
-    option_ref_owner arg_exponents_refs = {0};
+    PyObject *arg_options_obj = NULL;
+    ifcopenshell_unit_add_derived_unit_options_t arg_options = {0};
+    option_ref_owner arg_options_refs = {0};
     ifcopenshell_instance_t *result = NULL;
-    if (!PyArg_ParseTuple(args, "Os|zOO", &arg_file_obj, &arg_unit_type, &arg_userdefinedtype, &arg_units_obj, &arg_exponents_obj)) return NULL;
+    if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_options_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
     }
-    if (!make_input_instance_list(arg_units_obj, &arg_units, &arg_units_refs)) {
-        goto __cleanup;
-    }
-    if (!make_input_int64_list(arg_exponents_obj, &arg_exponents, &arg_exponents_refs)) {
-        goto __cleanup;
-    }
+    if (!fill_input_unit_add_derived_unit_options(arg_options_obj, &arg_options, &arg_options_refs)) {
+            goto __cleanup;
+        }
+
     ifcopenshell_clear_error();
-    ok = ifcopenshell_unit_add_derived_unit(arg_file, arg_unit_type, arg_userdefinedtype, &arg_units, &arg_exponents, &result);
+    ok = ifcopenshell_unit_add_derived_unit(arg_file, &arg_options, &result);
     if (!ok) {
         raise_last_error("ifcopenshell_unit_add_derived_unit failed");
         goto __cleanup;
@@ -55918,10 +56438,8 @@ static PyObject *py_ifcopenshell_unit_add_derived_unit(PyObject *self, PyObject 
     }
     __py_result = wrap_instance(result, 1);
 __cleanup:
-        release_option_refs(&arg_exponents_refs);
-        free_input_int64_list(&arg_exponents);
-        release_option_refs(&arg_units_refs);
-        free_input_instance_list(&arg_units);
+        release_option_refs(&arg_options_refs);
+        free_input_unit_add_derived_unit_options(&arg_options);
     return __py_result;
 }
 
@@ -55997,8 +56515,8 @@ static PyObject *py_ifcopenshell_unit_assign_unit(PyObject *self, PyObject *args
         goto __cleanup;
     }
     if (!fill_input_unit_assign_unit_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_unit_assign_unit(arg_file, &arg_options, &result);
@@ -56203,8 +56721,8 @@ static PyObject *py_ifcopenshell_unit_edit_named_unit(PyObject *self, PyObject *
         goto __cleanup;
     }
     if (!fill_input_unit_edit_named_unit_options(arg_options_obj, &arg_options, &arg_options_refs)) {
-        goto __cleanup;
-    }
+            goto __cleanup;
+        }
 
     ifcopenshell_clear_error();
     ok = ifcopenshell_unit_edit_named_unit(arg_file, &arg_options);

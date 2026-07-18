@@ -17,6 +17,8 @@
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
 import ifcopenshell.util.placement as subject
+import pytest
+
 import test.bootstrap
 
 
@@ -40,3 +42,9 @@ class TestGetStoreyElevationIFC4(test.bootstrap.IFC4):
         assert subject.get_storey_elevation(storey) == 0.0
         building = self.file.createIfcBuilding()
         assert subject.get_storey_elevation(building) == 0.0
+
+
+def test_rotation_axis_is_case_sensitive():
+    assert subject.rotation(0.0, "X").shape == (4, 4)
+    with pytest.raises(ValueError, match="Unsupported PlacementRotationAxis value"):
+        subject.rotation(0.0, "x")
