@@ -97,6 +97,14 @@ declare module 'ifcopenshell-api' {
     full_transition_length: number;
   }
 
+  export type GeometryDoorOperationType = 'SINGLE_SWING_LEFT' | 'SINGLE_SWING_RIGHT' | 'DOUBLE_SWING_RIGHT' | 'DOUBLE_SWING_LEFT' | 'DOUBLE_DOOR_SINGLE_SWING' | 'DOUBLE_DOOR_DOUBLE_SWING' | 'SLIDING_TO_LEFT' | 'SLIDING_TO_RIGHT' | 'DOUBLE_DOOR_SLIDING';
+  export type GeometryWindowPartitionType = 'SINGLE_PANEL' | 'DOUBLE_PANEL_HORIZONTAL' | 'DOUBLE_PANEL_VERTICAL' | 'TRIPLE_PANEL_BOTTOM' | 'TRIPLE_PANEL_HORIZONTAL' | 'TRIPLE_PANEL_LEFT' | 'TRIPLE_PANEL_RIGHT' | 'TRIPLE_PANEL_TOP' | 'TRIPLE_PANEL_VERTICAL';
+  export type filetype = 'FT_IFCSPF' | 'FT_IFCXML' | 'FT_IFCZIP' | 'FT_ROCKSDB' | 'FT_UNKNOWN' | 'FT_AUTODETECT';
+  export type kinds = 'MATRIX4' | 'POINT3' | 'DIRECTION3' | 'LINE' | 'CIRCLE' | 'ELLIPSE' | 'BSPLINE_CURVE' | 'OFFSET_CURVE' | 'PLANE' | 'CYLINDER' | 'SPHERE' | 'TORUS' | 'BSPLINE_SURFACE' | 'EDGE' | 'LOOP' | 'FACE' | 'SHELL' | 'SOLID' | 'LOFT' | 'EXTRUSION' | 'REVOLVE' | 'SWEEP_ALONG_CURVE' | 'NODE' | 'COLLECTION' | 'BOOLEAN_RESULT' | 'FUNCTION_ITEM' | 'FUNCTOR_ITEM' | 'PIECEWISE_FUNCTION' | 'GRADIENT_FUNCTION' | 'CANT_FUNCTION' | 'OFFSET_FUNCTION' | 'COLOUR' | 'STYLE';
+  export type operation_t = 'UNION' | 'SUBTRACTION' | 'INTERSECTION';
+  export type read_type = 'READ_BREP' | 'READ_TRIANGULATION';
+  export type tree_point = [number, number, number];
+
   export interface IfcOpenshellAggregateAssignObjectOptions {
     products: IfcOpenshellParseInstanceList;
     relating_object: IfcOpenshellInstance;
@@ -124,11 +132,9 @@ declare module 'ifcopenshell-api' {
 
   export interface IfcOpenshellAlignmentCreateByPiMethodOptions {
     name: string;
-    horizontal_points: number[][];
-    radii: number[];
-    vertical_points: number[][];
-    vertical_lengths: number[];
-    start_station: number;
+    horizontal: IfcOpenshellAlignmentHorizontalPiLayout;
+    vertical?: IfcOpenshellAlignmentVerticalPiLayout;
+    start_station?: number;
     owner_history?: IfcOpenshellInstance;
     user?: IfcOpenshellInstance;
     application?: IfcOpenshellInstance;
@@ -170,9 +176,39 @@ declare module 'ifcopenshell-api' {
     application?: IfcOpenshellInstance;
   }
 
+  export interface IfcOpenshellAlignmentHorizontalPiLayout {
+    start_point: [number, number];
+    intersections: IfcOpenshellAlignmentHorizontalPi[];
+    end_point: [number, number];
+  }
+
+  export interface IfcOpenshellAlignmentHorizontalPi {
+    point: [number, number];
+    radius: number;
+  }
+
+  export interface IfcOpenshellAlignmentLayoutHorizontalByPiMethodOptions {
+    pis: IfcOpenshellAlignmentHorizontalPiLayout;
+  }
+
+  export interface IfcOpenshellAlignmentLayoutVerticalByPiMethodOptions {
+    pis: IfcOpenshellAlignmentVerticalPiLayout;
+  }
+
   export interface IfcOpenshellAlignmentMapSegmentOptions {
     segment: IfcOpenshellInstance;
     rail_head_distance?: number;
+  }
+
+  export interface IfcOpenshellAlignmentVerticalPiLayout {
+    start_point: [number, number];
+    intersections: IfcOpenshellAlignmentVerticalPi[];
+    end_point: [number, number];
+  }
+
+  export interface IfcOpenshellAlignmentVerticalPi {
+    point: [number, number];
+    curve_length: number;
   }
 
   export interface IfcOpenshellAttributeEditAttributesOptions {
@@ -185,11 +221,11 @@ declare module 'ifcopenshell-api' {
   }
 
   export interface IfcOpenshellBoundaryAssignConnectionGeometryOptions {
-    outer_boundary: number[][];
-    location: number[];
-    axis: number[];
-    ref_direction: number[];
-    inner_boundaries: number[][][];
+    outer_boundary: [number, number][];
+    location: [number, number, number];
+    axis: [number, number, number];
+    ref_direction: [number, number, number];
+    inner_boundaries: [number, number][][];
     unit_scale: number;
   }
 
@@ -379,37 +415,35 @@ declare module 'ifcopenshell-api' {
 
   export interface IfcOpenshellGeometryAddDoorRepresentationOptions {
     context: IfcOpenshellInstance;
-    overall_height: number;
-    overall_width: number;
-    operation_type: string;
-    lining_properties: number[];
-    panel_properties: number[];
+    overall_height?: number;
+    overall_width?: number;
+    operation_type?: GeometryDoorOperationType;
+    lining_properties?: IfcOpenshellGeometryDoorLiningProperties;
+    panel_properties?: IfcOpenshellGeometryDoorPanelProperties;
     part_of_product?: IfcOpenshellInstance;
-    unit_scale: number;
+    unit_scale?: number;
   }
 
   export interface IfcOpenshellGeometryAddMeshRepresentationOptions {
-    vertices: number[][][];
-    faces: number[][][][];
+    items: IfcOpenshellGeometryMeshItem[];
+    coordinate_offset?: [number, number, number];
+    unit_scale?: number;
     force_faceted_brep?: boolean;
   }
 
   export interface IfcOpenshellGeometryAddProfileRepresentationOptions {
     context: IfcOpenshellInstance;
     profile: IfcOpenshellInstance;
-    depth: number;
+    depth?: number;
     cardinal_point?: string;
-    placement_z_axis?: number[];
-    placement_x_axis?: number[];
-    clipping_kinds: number[];
-    clipping_locations: number[][];
-    clipping_normals: number[][];
-    clipping_entities: IfcOpenshellParseInstanceList;
+    placement_z_axis?: [number, number, number];
+    placement_x_axis?: [number, number, number];
+    clippings?: (IfcOpenshellGeometryPlaneClipping | IfcOpenshellGeometryEntityClipping)[];
   }
 
   export interface IfcOpenshellGeometryAddRailingRepresentationOptions {
     context: IfcOpenshellInstance;
-    railing_path?: number[][];
+    railing_path?: [number, number, number][];
     use_manual_supports?: boolean;
     support_spacing?: number;
     railing_diameter?: number;
@@ -430,14 +464,11 @@ declare module 'ifcopenshell-api' {
 
   export interface IfcOpenshellGeometryAddSlabRepresentationOptions {
     context: IfcOpenshellInstance;
-    depth: number;
-    direction_sense: string;
-    offset: number;
-    x_angle: number;
-    clipping_kinds: number[];
-    clipping_locations: number[][];
-    clipping_normals: number[][];
-    clipping_entities: IfcOpenshellParseInstanceList;
+    depth?: number;
+    direction_sense?: string;
+    offset?: number;
+    x_angle?: number;
+    clippings?: (IfcOpenshellGeometryPlaneClipping | IfcOpenshellGeometryEntityClipping)[];
     polyline?: number[][];
   }
 
@@ -450,36 +481,33 @@ declare module 'ifcopenshell-api' {
 
   export interface IfcOpenshellGeometryAddWallRepresentationOptions {
     context: IfcOpenshellInstance;
-    length: number;
-    height: number;
-    direction_sense: string;
-    offset: number;
-    thickness: number;
-    x_angle: number;
-    clipping_kinds: number[];
-    clipping_locations: number[][];
-    clipping_normals: number[][];
-    clipping_entities: IfcOpenshellParseInstanceList;
-    booleans: IfcOpenshellParseInstanceList;
+    length?: number;
+    height?: number;
+    direction_sense?: string;
+    offset?: number;
+    thickness?: number;
+    x_angle?: number;
+    clippings?: (IfcOpenshellGeometryPlaneClipping | IfcOpenshellGeometryEntityClipping)[];
+    booleans?: IfcOpenshellParseInstanceList;
   }
 
   export interface IfcOpenshellGeometryAddWindowRepresentationOptions {
     context: IfcOpenshellInstance;
-    overall_height: number;
-    overall_width: number;
-    panel_schema: number[][];
-    lining_properties: number[];
-    panel_properties: number[][];
+    overall_height?: number;
+    overall_width?: number;
+    partition_type?: GeometryWindowPartitionType;
+    lining_properties?: IfcOpenshellGeometryWindowLiningProperties;
+    panel_properties?: IfcOpenshellGeometryWindowPanelProperties[];
     part_of_product?: IfcOpenshellInstance;
-    glass_thickness: number;
+    unit_scale?: number;
   }
 
   export interface IfcOpenshellGeometryClipSolidBoundedOptions {
     item: IfcOpenshellInstance;
-    location: number[];
-    normal: number[];
-    boundary_points: number[][];
-    boundary_position: number[];
+    location: [number, number, number];
+    normal: [number, number, number];
+    boundary_points: [number, number][];
+    boundary_position: [number, number, number];
     element?: IfcOpenshellInstance;
     owner_history?: IfcOpenshellInstance;
     user?: IfcOpenshellInstance;
@@ -488,8 +516,8 @@ declare module 'ifcopenshell-api' {
 
   export interface IfcOpenshellGeometryClipSolidOptions {
     item: IfcOpenshellInstance;
-    location: number[];
-    normal: number[];
+    location: [number, number, number];
+    normal: [number, number, number];
     element?: IfcOpenshellInstance;
     owner_history?: IfcOpenshellInstance;
     user?: IfcOpenshellInstance;
@@ -497,7 +525,7 @@ declare module 'ifcopenshell-api' {
   }
 
   export interface IfcOpenshellGeometryComputeWallMountedHandrailOptions {
-    railing_path: number[][];
+    railing_path: [number, number, number][];
     support_spacing: number;
     railing_diameter: number;
     clear_width: number;
@@ -547,8 +575,8 @@ declare module 'ifcopenshell-api' {
   export interface IfcOpenshellGeometryCreate2PtWallOptions {
     element: IfcOpenshellInstance;
     context: IfcOpenshellInstance;
-    start: number[];
-    end: number[];
+    start: [number, number];
+    end: [number, number];
     elevation: number;
     height: number;
     thickness: number;
@@ -562,11 +590,52 @@ declare module 'ifcopenshell-api' {
     related_element?: IfcOpenshellInstance;
   }
 
+  export interface IfcOpenshellGeometryDoorLiningProperties {
+    lining_depth?: number;
+    lining_thickness?: number;
+    lining_offset?: number;
+    lining_to_panel_offset_x?: number;
+    lining_to_panel_offset_y?: number;
+    transom_thickness?: number;
+    transom_offset?: number;
+    casing_depth?: number;
+    casing_thickness?: number;
+    threshold_depth?: number;
+    threshold_thickness?: number;
+    threshold_offset?: number;
+  }
+
+  export interface IfcOpenshellGeometryDoorPanelProperties {
+    panel_depth?: number;
+    panel_width?: number;
+    frame_depth?: number;
+    frame_thickness?: number;
+  }
+
   export interface IfcOpenshellGeometryEditObjectPlacementOptions {
     product: IfcOpenshellInstance;
-    matrix: number[];
+    matrix?: [number, number, number, number, number, number, number, number, number, number, number, number, number, number, number, number];
     is_si: boolean;
     should_transform_children: boolean;
+  }
+
+  export interface IfcOpenshellGeometryEntityClipping {
+    entity: IfcOpenshellInstance;
+  }
+
+  export interface IfcOpenshellGeometryMeshFace {
+    outer: number[];
+    inner_loops?: number[][];
+  }
+
+  export interface IfcOpenshellGeometryMeshItem {
+    vertices: [number, number, number][];
+    faces: IfcOpenshellGeometryMeshFace[];
+  }
+
+  export interface IfcOpenshellGeometryPlaneClipping {
+    location: [number, number, number];
+    normal: [number, number, number];
   }
 
   export interface IfcOpenshellGeometryRegenerateWallRepresentationOptions {
@@ -584,6 +653,25 @@ declare module 'ifcopenshell-api' {
     preferred_item?: IfcOpenshellInstance;
   }
 
+  export interface IfcOpenshellGeometryWindowLiningProperties {
+    lining_depth?: number;
+    lining_thickness?: number;
+    lining_offset?: number;
+    lining_to_panel_offset_x?: number;
+    lining_to_panel_offset_y?: number;
+    mullion_thickness?: number;
+    first_mullion_offset?: number;
+    second_mullion_offset?: number;
+    transom_thickness?: number;
+    first_transom_offset?: number;
+    second_transom_offset?: number;
+  }
+
+  export interface IfcOpenshellGeometryWindowPanelProperties {
+    frame_depth?: number;
+    frame_thickness?: number;
+  }
+
   export interface IfcOpenshellGeoreferenceAddGeoreferencingOptions {
     ifc_class: string;
     name: string;
@@ -598,7 +686,7 @@ declare module 'ifcopenshell-api' {
   }
 
   export interface IfcOpenshellGeoreferenceEditTrueNorthOptions {
-    true_north?: number[];
+    true_north?: [number, number];
   }
 
   export interface IfcOpenshellGeoreferenceEditWcsOptions {
@@ -812,13 +900,13 @@ declare module 'ifcopenshell-api' {
   }
 
   export interface IfcOpenshellProfileAddArbitraryProfileOptions {
-    profile: number[][];
+    profile: [number, number][] | [number, number, number][];
     name?: string;
   }
 
   export interface IfcOpenshellProfileAddArbitraryProfileWithVoidsOptions {
-    outer_profile: number[][];
-    inner_profiles: number[][][];
+    outer_profile: [number, number][] | [number, number, number][];
+    inner_profiles: ([number, number][] | [number, number, number][])[];
     name?: string;
   }
 
@@ -1053,46 +1141,75 @@ declare module 'ifcopenshell-api' {
     application?: IfcOpenshellInstance;
   }
 
+  export interface IfcOpenshellShapeBuilderArcSegment {
+    arc_indices: [number, number, number];
+  }
+
   export interface IfcOpenshellShapeBuilderAxis2Placement2dOptions {
-    position: number[];
-    x_direction?: number[];
+    position?: [number, number];
+    x_direction?: [number, number];
   }
 
   export interface IfcOpenshellShapeBuilderAxis2Placement3dOptions {
-    position: number[];
-    z_axis: number[];
-    x_axis: number[];
+    position?: [number, number, number];
+    z_axis?: [number, number, number];
+    x_axis?: [number, number, number];
   }
 
   export interface IfcOpenshellShapeBuilderBlockOptions {
-    position: number[];
-    x_length: number;
-    y_length: number;
-    z_length: number;
+    position?: [number, number, number];
+    x_length?: number;
+    y_length?: number;
+    z_length?: number;
+  }
+
+  export interface IfcOpenshellShapeBuilderEllipseCardinalTrim {
+    cardinal_points: [number, number];
   }
 
   export interface IfcOpenshellShapeBuilderEllipseCurveOptions {
     x_axis_radius: number;
     y_axis_radius: number;
-    position: number[];
-    trim_points: number[][];
-    ref_x_direction?: number[];
-    trim_points_mask: number[];
+    position?: [number, number];
+    ref_x_direction?: [number, number];
+    trim?: IfcOpenshellShapeBuilderEllipseTrim;
+  }
+
+  export interface IfcOpenshellShapeBuilderEllipsePointTrim {
+    points: [[number, number], [number, number]];
+  }
+
+  export interface IfcOpenshellShapeBuilderEllipseTrim {
+    value: IfcOpenshellShapeBuilderEllipsePointTrim | IfcOpenshellShapeBuilderEllipseCardinalTrim;
   }
 
   export interface IfcOpenshellShapeBuilderExtrudeOptions {
     profile_or_curve: IfcOpenshellInstance;
-    magnitude: number;
-    position: number[];
-    extrusion_vector: number[];
-    position_z_axis: number[];
-    position_x_axis: number[];
-    position_y_axis?: number[];
+    magnitude?: number;
+    position?: [number, number, number];
+    extrusion_vector?: [number, number, number];
+    position_z_axis?: [number, number, number];
+    position_x_axis?: [number, number, number];
+    position_y_axis?: [number, number, number];
   }
 
   export interface IfcOpenshellShapeBuilderHalfSpaceSolidOptions {
     plane: IfcOpenshellInstance;
-    agreement_flag: boolean;
+    agreement_flag?: boolean;
+  }
+
+  export interface IfcOpenshellShapeBuilderIndexedPolycurve2dOptions {
+    points: [number, number][];
+    segments: (IfcOpenshellShapeBuilderLineSegment | IfcOpenshellShapeBuilderArcSegment)[];
+  }
+
+  export interface IfcOpenshellShapeBuilderLineSegment {
+    line_indices: number[];
+  }
+
+  export interface IfcOpenshellShapeBuilderMepBendDirection {
+    x: number;
+    y: number;
   }
 
   export interface IfcOpenshellShapeBuilderMepBendShapeOptions {
@@ -1101,25 +1218,43 @@ declare module 'ifcopenshell-api' {
     end_length: number;
     angle: number;
     radius: number;
-    bend_vector: number[];
+    bend_vector: IfcOpenshellShapeBuilderMepBendDirection;
     flip_z_axis: boolean;
   }
 
+  export interface IfcOpenshellShapeBuilderMepOffset {
+    x: number;
+    y: number;
+  }
+
+  export interface IfcOpenshellShapeBuilderMepProfileHalfDimensions {
+    half_x: number;
+    half_y: number;
+    depth: number;
+  }
+
   export interface IfcOpenshellShapeBuilderMepTransitionCalculateOptions {
-    start_half_dim: number[];
-    end_half_dim: number[];
-    offset: number[];
-    diff?: number[];
-    end_profile: boolean;
-    length?: number;
-    angle?: number;
+    start_half_dim: IfcOpenshellShapeBuilderMepProfileHalfDimensions;
+    end_half_dim: IfcOpenshellShapeBuilderMepProfileHalfDimensions;
+    offset: IfcOpenshellShapeBuilderMepOffset;
+    diff?: IfcOpenshellShapeBuilderMepOffset;
+    end_profile?: boolean;
+    calculation: IfcOpenshellShapeBuilderMepTransitionFromLength | IfcOpenshellShapeBuilderMepTransitionFromAngle;
+  }
+
+  export interface IfcOpenshellShapeBuilderMepTransitionFromAngle {
+    angle: number;
+  }
+
+  export interface IfcOpenshellShapeBuilderMepTransitionFromLength {
+    length: number;
   }
 
   export interface IfcOpenshellShapeBuilderMepTransitionLengthOptions {
-    start_half_dim: number[];
-    end_half_dim: number[];
+    start_half_dim: IfcOpenshellShapeBuilderMepProfileHalfDimensions;
+    end_half_dim: IfcOpenshellShapeBuilderMepProfileHalfDimensions;
     angle: number;
-    profile_offset: number[];
+    profile_offset?: IfcOpenshellShapeBuilderMepOffset;
   }
 
   export interface IfcOpenshellShapeBuilderMepTransitionShapeOptions {
@@ -1127,29 +1262,28 @@ declare module 'ifcopenshell-api' {
     end_segment: IfcOpenshellInstance;
     start_length: number;
     end_length: number;
-    angle: number;
-    profile_offset: number[];
+    angle?: number;
+    profile_offset?: IfcOpenshellShapeBuilderMepOffset;
   }
 
   export interface IfcOpenshellShapeBuilderMirrorOptions {
     item: IfcOpenshellInstance;
-    mirror_axes: number[];
-    mirror_point: number[];
-    create_copy: boolean;
-    placement_matrix: number[];
+    mirror_axes?: [number, number];
+    mirror_point?: [number, number];
+    create_copy?: boolean;
+    placement_matrix?: [number, number, number, number, number, number, number, number, number] | [number, number, number, number, number, number, number, number, number, number, number, number, number, number, number, number];
   }
 
   export interface IfcOpenshellShapeBuilderPolylineOptions {
-    points: number[][];
-    closed?: boolean;
-    position_offset?: number[];
-    arc_points: number[];
+    points: [number, number][] | [number, number, number][];
+    position_offset?: [number, number] | [number, number, number];
+    segments?: (IfcOpenshellShapeBuilderLineSegment | IfcOpenshellShapeBuilderArcSegment)[];
   }
 
   export interface IfcOpenshellShapeBuilderProfileOptions {
     outer_curve: IfcOpenshellInstance;
     name?: string;
-    inner_curves: IfcOpenshellParseInstanceList;
+    inner_curves?: IfcOpenshellParseInstanceList;
     profile_type?: string;
   }
 
@@ -1161,21 +1295,21 @@ declare module 'ifcopenshell-api' {
 
   export interface IfcOpenshellShapeBuilderRotateOptions {
     item: IfcOpenshellInstance;
-    angle: number;
-    pivot_point: number[];
-    counter_clockwise: boolean;
-    create_copy: boolean;
+    angle?: number;
+    pivot_point?: [number, number];
+    counter_clockwise?: boolean;
+    create_copy?: boolean;
   }
 
   export interface IfcOpenshellShapeBuilderSphereOptions {
-    radius: number;
-    center: number[];
+    radius?: number;
+    center?: [number, number, number];
   }
 
   export interface IfcOpenshellShapeBuilderTranslateOptions {
     item: IfcOpenshellInstance;
-    translation: number[];
-    create_copy: boolean;
+    translation: [number, number] | [number, number, number];
+    create_copy?: boolean;
   }
 
   export interface IfcOpenshellSpatialAssignContainerOptions {
@@ -1555,7 +1689,7 @@ declare module 'ifcopenshell-api' {
     headerFileName(): IfcOpenshellInstance | null;
     headerFileSchema(): IfcOpenshellInstance | null;
     ifcrootType(): IfcOpenshellDeclaration | null;
-    initialize(path: string, type: number, read_only: boolean): boolean;
+    initialize(path: string, type: filetype, read_only: boolean): boolean;
     instancesByReference(reference_id: number): IfcOpenshellParseInstanceList;
     keyValueStoreIter(prefix: string): string[];
     keyValueStoreQuery(key: string): number[];
@@ -1633,7 +1767,7 @@ declare module 'ifcopenshell-api' {
     geometrySettings(): IfcOpenshellGeomSettings;
     isStreaming(): boolean;
     isTesselated(): boolean;
-    read(f: IfcOpenshellFile, guid: string, representation_id: string, rt: number): IfcOpenshellGeomElement | null;
+    read(f: IfcOpenshellFile, guid: string, representation_id: string, rt: read_type): IfcOpenshellGeomElement | null;
     ready(): boolean;
     setFile(arg_0: IfcOpenshellFile): void;
     setUnitNameAndMagnitude(name: string, magnitude: number): void;
@@ -1902,7 +2036,7 @@ declare module 'ifcopenshell-api' {
     addItem(item: IfcOpenshellGeomTaxonomyItem): void;
     itemAt(index: number): IfcOpenshellGeomTaxonomyItem;
     itemCount(): number;
-    operation(): number;
+    operation(): operation_t;
   }
 
   export class IfcOpenshellGeomTaxonomyBsplineCurve {
@@ -2008,7 +2142,7 @@ declare module 'ifcopenshell-api' {
     destroy(): void;
     hash(): number;
     identity(): number;
-    kind(): number;
+    kind(): kinds;
   }
 
   export class IfcOpenshellGeomTaxonomyLine {
@@ -2181,8 +2315,8 @@ declare module 'ifcopenshell-api' {
     a(): IfcOpenshellInstance;
     b(): IfcOpenshellInstance;
     distance(): number;
-    p1(): number[];
-    p2(): number[];
+    p1(): tree_point;
+    p2(): tree_point;
     type(): number;
   }
 
@@ -2197,8 +2331,8 @@ declare module 'ifcopenshell-api' {
     distance(): number;
     dotProduct(): number;
     instance(): IfcOpenshellInstance;
-    normal(): number[];
-    position(): number[];
+    normal(): tree_point;
+    position(): tree_point;
     rayDistance(): number;
     styleIndex(): number;
   }
@@ -2329,7 +2463,7 @@ declare module 'ifcopenshell-api' {
     getChildAlignments(alignment: IfcOpenshellInstance): IfcOpenshellParseInstanceList;
     getCurve(alignment: IfcOpenshellInstance): IfcOpenshellInstance | null;
     getCurveSegment(layout: IfcOpenshellInstance, segment: IfcOpenshellInstance): IfcOpenshellInstance | null;
-    getCurveSegmentTransitionCode(segment: IfcOpenshellInstance, next_segment: IfcOpenshellInstance, position_tolerance: number): string;
+    getCurveSegmentTransitionCode(segment: IfcOpenshellInstance, next_segment: IfcOpenshellInstance, position_tolerance?: number | null): string;
     getHorizontalLayout(alignment: IfcOpenshellInstance): IfcOpenshellInstance | null;
     getLayout(segment: IfcOpenshellInstance): IfcOpenshellInstance | null;
     getLayoutCurve(layout: IfcOpenshellInstance): IfcOpenshellInstance | null;
@@ -2339,13 +2473,13 @@ declare module 'ifcopenshell-api' {
     getReferentNest(alignment: IfcOpenshellInstance): IfcOpenshellInstance | null;
     getVerticalLayout(alignment: IfcOpenshellInstance): IfcOpenshellInstance | null;
     hasZeroLengthSegment(layout: IfcOpenshellInstance): boolean;
-    layoutHorizontalByPiMethod(file: IfcOpenshellFile, layout: IfcOpenshellInstance, points: number[][], radii: number[]): void;
-    layoutVerticalByPiMethod(file: IfcOpenshellFile, layout: IfcOpenshellInstance, points: number[][], lengths: number[]): void;
+    layoutHorizontalByPiMethod(file: IfcOpenshellFile, layout: IfcOpenshellInstance, options: IfcOpenshellAlignmentLayoutHorizontalByPiMethodOptions): void;
+    layoutVerticalByPiMethod(file: IfcOpenshellFile, layout: IfcOpenshellInstance, options: IfcOpenshellAlignmentLayoutVerticalByPiMethodOptions): void;
     /** Map one semantic segment. A Helmert segment returns both mapped halves. */
     mapSegment(file: IfcOpenshellFile, options: IfcOpenshellAlignmentMapSegmentOptions): IfcOpenshellParseInstanceList;
     nameSegments(prefix: string, layout: IfcOpenshellInstance): void;
     stationAsString(file: IfcOpenshellFile, station: number): string;
-    updateCurveSegmentTransitionCode(segment: IfcOpenshellInstance, next_segment: IfcOpenshellInstance, position_tolerance: number): void;
+    updateCurveSegmentTransitionCode(segment: IfcOpenshellInstance, next_segment: IfcOpenshellInstance, position_tolerance?: number | null): void;
     updateEndPoint(file: IfcOpenshellFile, curve: IfcOpenshellInstance): void;
     updateFallbackPosition(file: IfcOpenshellFile, linear_placement: IfcOpenshellInstance): void;
   }
@@ -3393,7 +3527,7 @@ declare module 'ifcopenshell-api' {
      * @param axis Ordered XY or XYZ points defining the axis curve.
      * @return IfcShapeRepresentation entity, or no result if creation fails.
      */
-    addAxisRepresentation(file: IfcOpenshellFile, context: IfcOpenshellInstance, axis: number[][]): IfcOpenshellInstance;
+    addAxisRepresentation(file: IfcOpenshellFile, context: IfcOpenshellInstance, axis: [number, number][] | [number, number, number][]): IfcOpenshellInstance;
     /**
      * Add boolean operands to a solid representation item.
      *
@@ -3433,7 +3567,15 @@ declare module 'ifcopenshell-api' {
      *
      * @param file IFC file that receives the representation.
      * @param context IfcGeometricRepresentationContext.
-     * @param options Vertices, faces, and optional faceted BRep override.
+     * Each item binds its vertex list to its faces. Face indices are zero-based.
+     * Polygonal face sets support optional inner loops; IFC2X3 and forced faceted
+     * BReps reject inner loops. Edges without faces are not supported upstream and
+     * are intentionally absent from this native contract.
+     *
+     * Vertices are divided by unit_scale, then coordinate_offset (in project
+     * units) is added. If omitted, unit_scale is calculated from the file.
+     *
+     * @param options Mesh items, coordinate conversion, and optional faceted BRep override.
      * @return IfcShapeRepresentation entity, or no result if creation fails.
      */
     addMeshRepresentation(file: IfcOpenshellFile, context: IfcOpenshellInstance, options: IfcOpenshellGeometryAddMeshRepresentationOptions): IfcOpenshellInstance;
@@ -3499,7 +3641,7 @@ declare module 'ifcopenshell-api' {
      * Create a window representation with lining and panel geometry.
      *
      * @param file IFC file that receives the representation.
-     * @param options Window dimensions, panel schema, lining/panel properties.
+     * @param options Window dimensions, partition type, and semantic lining/panel properties.
      * @return IfcShapeRepresentation entity, or no result if creation fails.
      */
     addWindowRepresentation(file: IfcOpenshellFile, options: IfcOpenshellGeometryAddWindowRepresentationOptions): IfcOpenshellInstance;
@@ -3816,7 +3958,7 @@ declare module 'ifcopenshell-api' {
      * @param grid_axis IfcGridAxis whose AxisCurve to set.
      * @param is_si True if p1/p2 are in SI metres; false if already in model units.
      */
-    createAxisCurve(file: IfcOpenshellFile, p1: number[], p2: number[], grid_axis: IfcOpenshellInstance, is_si: boolean): void;
+    createAxisCurve(file: IfcOpenshellFile, p1: [number, number, number], p2: [number, number, number], grid_axis: IfcOpenshellInstance, is_si: boolean): void;
     /**
      * Create an IfcGridAxis and append it to the specified grid axis aggregate.
      *
@@ -4410,7 +4552,7 @@ declare module 'ifcopenshell-api' {
      * @param instance IfcAxis2Placement entity.
      * @return 16-element row-major 4x4 matrix.
      */
-    getAxis2Placement(instance: IfcOpenshellInstance): number[];
+    getAxis2Placement(instance: IfcOpenshellInstance): [number, number, number, number, number, number, number, number, number, number, number, number, number, number, number, number];
     /**
      * Extract a 4x4 row-major matrix from an IfcCartesianTransformationOperator3D.
      *
@@ -4420,7 +4562,7 @@ declare module 'ifcopenshell-api' {
      * @param instance IfcCartesianTransformationOperator3D entity.
      * @return 16-element row-major 4x4 matrix.
      */
-    getCartesianXform3d(instance: IfcOpenshellInstance): number[];
+    getCartesianXform3d(instance: IfcOpenshellInstance): [number, number, number, number, number, number, number, number, number, number, number, number, number, number, number, number];
     /**
      * Compute the cumulative 4x4 row-major world matrix of an IfcLocalPlacement.
      *
@@ -4430,7 +4572,7 @@ declare module 'ifcopenshell-api' {
      * @param instance IfcLocalPlacement entity. When omitted, returns the identity matrix.
      * @return 16-element row-major 4x4 matrix.
      */
-    getLocalPlacement(instance: IfcOpenshellInstance | null): number[];
+    getLocalPlacement(instance: IfcOpenshellInstance | null): [number, number, number, number, number, number, number, number, number, number, number, number, number, number, number, number];
     /**
      * Compute the combined 4x4 row-major matrix for an IfcMappedItem.
      *
@@ -4441,7 +4583,7 @@ declare module 'ifcopenshell-api' {
      * @param instance IfcMappedItem entity.
      * @return 16-element row-major 4x4 matrix.
      */
-    getMappeditemXform(instance: IfcOpenshellInstance): number[];
+    getMappeditemXform(instance: IfcOpenshellInstance): [number, number, number, number, number, number, number, number, number, number, number, number, number, number, number, number];
     /**
      * Return the elevation of a building storey in model units.
      *
@@ -4461,7 +4603,7 @@ declare module 'ifcopenshell-api' {
      * @param x_axis Direction ratios for the X axis (Y is derived).
      * @return 16-element row-major 4x4 matrix.
      */
-    matrixFromAxes(origin: number[], z_axis: number[], x_axis: number[]): number[];
+    matrixFromAxes(origin: [number, number, number], z_axis: [number, number, number], x_axis: [number, number, number]): [number, number, number, number, number, number, number, number, number, number, number, number, number, number, number, number];
     /**
      * Build a 4x4 row-major rotation matrix about a principal axis.
      *
@@ -4469,7 +4611,7 @@ declare module 'ifcopenshell-api' {
      * @param axis Rotation axis: "X", "Y", or "Z" (case-insensitive).
      * @return 16-element row-major 4x4 rotation matrix.
      */
-    rotation(angle_rad: number, axis: string): number[];
+    rotation(angle_rad: number, axis: string): [number, number, number, number, number, number, number, number, number, number, number, number, number, number, number, number];
   }
 
   export interface IfcOpenshellProfileModule {
@@ -4985,7 +5127,7 @@ declare module 'ifcopenshell-api' {
      * Unsupported combinations and schema-resolution failures are value errors
      * with distinct stable codes; diagnostic messages must not be parsed.
      */
-    addResourceQuantity(file: IfcOpenshellFile, resource: IfcOpenshellInstance, ifc_class: string): IfcOpenshellInstance;
+    addResourceQuantity(file: IfcOpenshellFile, resource: IfcOpenshellInstance, ifc_class?: string | null): IfcOpenshellInstance;
     /** Create an IfcResourceTime and replace the resource Usage reference. */
     addResourceTime(file: IfcOpenshellFile, resource: IfcOpenshellInstance): IfcOpenshellInstance;
     /** Assign one product or actor to a resource, reusing its ordered relationship and suppressing duplicates. */
@@ -5755,7 +5897,7 @@ declare module 'ifcopenshell-api' {
      * @param radius Circle radius in model units.
      * @return IfcCircle entity.
      */
-    builderCircle(file: IfcOpenshellFile, center: number[], radius: number): IfcOpenshellInstance;
+    builderCircle(file: IfcOpenshellFile, center: [number, number], radius: number): IfcOpenshellInstance;
     /**
      * Create a 2D IfcIndexedPolyCurve arc between two points.
      *
@@ -5766,7 +5908,7 @@ declare module 'ifcopenshell-api' {
      * @param points Two XY endpoints.
      * @return IfcIndexedPolyCurve entity with one arc segment.
      */
-    builderCurveBetweenTwoPoints(file: IfcOpenshellFile, points: number[][]): IfcOpenshellInstance;
+    builderCurveBetweenTwoPoints(file: IfcOpenshellFile, points: [[number, number], [number, number]]): IfcOpenshellInstance;
     /**
      * Create an independent copy of an IFC entity and the entities it references.
      *
@@ -5785,7 +5927,7 @@ declare module 'ifcopenshell-api' {
      * @param end XYZ coordinates of the edge end.
      * @return IfcEdge entity.
      */
-    builderEdge(file: IfcOpenshellFile, start: number[], end: number[]): IfcOpenshellInstance;
+    builderEdge(file: IfcOpenshellFile, start: [number, number, number], end: [number, number, number]): IfcOpenshellInstance;
     /**
      * Create an IfcEllipse, optionally trimmed to an IfcTrimmedCurve.
      *
@@ -5812,7 +5954,7 @@ declare module 'ifcopenshell-api' {
      * @param points XYZ coordinates defining the face outer boundary.
      * @return IfcFace entity with an IfcFaceOuterBound.
      */
-    builderFace(file: IfcOpenshellFile, points: number[][]): IfcOpenshellInstance;
+    builderFace(file: IfcOpenshellFile, points: [number, number, number][]): IfcOpenshellInstance;
     /**
      * Create an IfcFacetedBrep from vertices and face index lists.
      *
@@ -5821,7 +5963,7 @@ declare module 'ifcopenshell-api' {
      * @param faces Face index lists (zero-based). Each face is a single outer loop.
      * @return IfcFacetedBrep entity with an IfcClosedShell.
      */
-    builderFacetedBrep(file: IfcOpenshellFile, points: number[][], faces: number[][]): IfcOpenshellInstance;
+    builderFacetedBrep(file: IfcOpenshellFile, points: [number, number, number][], faces: number[][]): IfcOpenshellInstance;
     /**
      * Read the coordinate list from an IfcPolyline or IfcIndexedPolyCurve.
      *
@@ -5840,15 +5982,11 @@ declare module 'ifcopenshell-api' {
     /**
      * Create a 2D IfcIndexedPolyCurve from explicit points and segment indices.
      *
-     * Segments with two indices are line segments; segments with three indices
-     * are arc segments.
-     *
      * @param file IFC file that receives the geometry.
-     * @param points XY coordinates for the point list.
-     * @param segments Segment index arrays (1-based).
+     * @param options XY points and explicit zero-based line or arc segments.
      * @return IfcIndexedPolyCurve entity.
      */
-    builderIndexedPolycurve2d(file: IfcOpenshellFile, points: number[][], segments: number[][]): IfcOpenshellInstance;
+    builderIndexedPolycurve2d(file: IfcOpenshellFile, options: IfcOpenshellShapeBuilderIndexedPolycurve2dOptions): IfcOpenshellInstance;
     /**
      * Build MEP bend geometry for a duct segment.
      *
@@ -5898,7 +6036,7 @@ declare module 'ifcopenshell-api' {
      * @param faces Face index lists (zero-based).
      * @return IfcPolygonalFaceSet or IfcFacetedBrep entity.
      */
-    builderMesh(file: IfcOpenshellFile, points: number[][], faces: number[][]): IfcOpenshellInstance;
+    builderMesh(file: IfcOpenshellFile, points: [number, number, number][], faces: number[][]): IfcOpenshellInstance;
     /**
      * Mirror a geometry item across 2D axes.
      *
@@ -5921,7 +6059,7 @@ declare module 'ifcopenshell-api' {
      * @param normal Direction ratios of the plane normal.
      * @return IfcPlane entity.
      */
-    builderPlane(file: IfcOpenshellFile, location: number[], normal: number[]): IfcOpenshellInstance;
+    builderPlane(file: IfcOpenshellFile, location: [number, number, number], normal: [number, number, number]): IfcOpenshellInstance;
     /**
      * Create an IfcPolygonalFaceSet from vertices and polygonal face loops.
      *
@@ -5933,12 +6071,12 @@ declare module 'ifcopenshell-api' {
      * @param faces Per-face loop index lists (zero-based).
      * @return IfcPolygonalFaceSet entity.
      */
-    builderPolygonalFaceSet(file: IfcOpenshellFile, points: number[][], faces: number[][][]): IfcOpenshellInstance;
+    builderPolygonalFaceSet(file: IfcOpenshellFile, points: [number, number, number][], faces: number[][][]): IfcOpenshellInstance;
     /**
      * Create a 2D or 3D polyline (IfcPolyline for IFC2X3, IfcIndexedPolyCurve otherwise).
      *
      * @param file IFC file that receives the geometry.
-     * @param options Points, closure, offset, and arc segment indices.
+     * @param options Points, optional offset, and explicit semantic segments.
      * @return IfcPolyline or IfcIndexedPolyCurve entity.
      */
     builderPolyline(file: IfcOpenshellFile, options: IfcOpenshellShapeBuilderPolylineOptions): IfcOpenshellInstance;
@@ -5983,7 +6121,7 @@ declare module 'ifcopenshell-api' {
      * @param coords Replacement coordinates.
      * @return The modified polyline entity.
      */
-    builderSetPolylineCoords(file: IfcOpenshellFile, polyline: IfcOpenshellInstance, coords: number[][]): IfcOpenshellInstance;
+    builderSetPolylineCoords(file: IfcOpenshellFile, polyline: IfcOpenshellInstance, coords: [number, number][] | [number, number, number][]): IfcOpenshellInstance;
     /**
      * Create an IfcSphere.
      *
@@ -6021,7 +6159,7 @@ declare module 'ifcopenshell-api' {
      * @param faces Triangle index lists (zero-based, truncated to 3 vertices each).
      * @return IfcTriangulatedFaceSet entity.
      */
-    builderTriangulatedFaceSet(file: IfcOpenshellFile, points: number[][], faces: number[][]): IfcOpenshellInstance;
+    builderTriangulatedFaceSet(file: IfcOpenshellFile, points: [number, number, number][], faces: [number, number, number][]): IfcOpenshellInstance;
     /**
      * Create an IfcVertexPoint at the given position.
      *
@@ -6029,7 +6167,7 @@ declare module 'ifcopenshell-api' {
      * @param position XYZ coordinates of the vertex.
      * @return IfcVertexPoint entity.
      */
-    builderVertex(file: IfcOpenshellFile, position: number[]): IfcOpenshellInstance;
+    builderVertex(file: IfcOpenshellFile, position: [number, number, number]): IfcOpenshellInstance;
     /**
      * Check whether two floating-point values are approximately equal.
      *
@@ -6077,7 +6215,7 @@ declare module 'ifcopenshell-api' {
      * @param radius Circle radius in model units.
      * @return IfcCircle entity.
      */
-    circle(file: IfcOpenshellFile, center: number[], radius: number): IfcOpenshellInstance;
+    circle(file: IfcOpenshellFile, center: [number, number], radius: number): IfcOpenshellInstance;
     /**
      * Create a 2D IfcIndexedPolyCurve arc between two points.
      *
@@ -6088,7 +6226,7 @@ declare module 'ifcopenshell-api' {
      * @param points Two XY endpoints.
      * @return IfcIndexedPolyCurve entity with one arc segment.
      */
-    curveBetweenTwoPoints(file: IfcOpenshellFile, points: number[][]): IfcOpenshellInstance;
+    curveBetweenTwoPoints(file: IfcOpenshellFile, points: [[number, number], [number, number]]): IfcOpenshellInstance;
     /**
      * Create an independent copy of an IFC entity and the entities it references.
      *
@@ -6107,7 +6245,7 @@ declare module 'ifcopenshell-api' {
      * @param end XYZ coordinates of the edge end.
      * @return IfcEdge entity.
      */
-    edge(file: IfcOpenshellFile, start: number[], end: number[]): IfcOpenshellInstance;
+    edge(file: IfcOpenshellFile, start: [number, number, number], end: [number, number, number]): IfcOpenshellInstance;
     /**
      * Create an IfcEllipse, optionally trimmed to an IfcTrimmedCurve.
      *
@@ -6134,7 +6272,7 @@ declare module 'ifcopenshell-api' {
      * @param points XYZ coordinates defining the face outer boundary.
      * @return IfcFace entity with an IfcFaceOuterBound.
      */
-    face(file: IfcOpenshellFile, points: number[][]): IfcOpenshellInstance;
+    face(file: IfcOpenshellFile, points: [number, number, number][]): IfcOpenshellInstance;
     /**
      * Create an IfcFacetedBrep from vertices and face index lists.
      *
@@ -6143,7 +6281,7 @@ declare module 'ifcopenshell-api' {
      * @param faces Face index lists (zero-based). Each face is a single outer loop.
      * @return IfcFacetedBrep entity with an IfcClosedShell.
      */
-    facetedBrep(file: IfcOpenshellFile, points: number[][], faces: number[][]): IfcOpenshellInstance;
+    facetedBrep(file: IfcOpenshellFile, points: [number, number, number][], faces: number[][]): IfcOpenshellInstance;
     /**
      * Read the coordinate list from an IfcPolyline or IfcIndexedPolyCurve.
      *
@@ -6162,15 +6300,11 @@ declare module 'ifcopenshell-api' {
     /**
      * Create a 2D IfcIndexedPolyCurve from explicit points and segment indices.
      *
-     * Segments with two indices are line segments; segments with three indices
-     * are arc segments.
-     *
      * @param file IFC file that receives the geometry.
-     * @param points XY coordinates for the point list.
-     * @param segments Segment index arrays (1-based).
+     * @param options XY points and explicit zero-based line or arc segments.
      * @return IfcIndexedPolyCurve entity.
      */
-    indexedPolycurve2d(file: IfcOpenshellFile, points: number[][], segments: number[][]): IfcOpenshellInstance;
+    indexedPolycurve2d(file: IfcOpenshellFile, options: IfcOpenshellShapeBuilderIndexedPolycurve2dOptions): IfcOpenshellInstance;
     /**
      * Build MEP bend geometry for a duct segment.
      *
@@ -6220,7 +6354,7 @@ declare module 'ifcopenshell-api' {
      * @param faces Face index lists (zero-based).
      * @return IfcPolygonalFaceSet or IfcFacetedBrep entity.
      */
-    mesh(file: IfcOpenshellFile, points: number[][], faces: number[][]): IfcOpenshellInstance;
+    mesh(file: IfcOpenshellFile, points: [number, number, number][], faces: number[][]): IfcOpenshellInstance;
     /**
      * Mirror a geometry item across 2D axes.
      *
@@ -6243,7 +6377,7 @@ declare module 'ifcopenshell-api' {
      * @param normal Direction ratios of the plane normal.
      * @return IfcPlane entity.
      */
-    plane(file: IfcOpenshellFile, location: number[], normal: number[]): IfcOpenshellInstance;
+    plane(file: IfcOpenshellFile, location: [number, number, number], normal: [number, number, number]): IfcOpenshellInstance;
     /**
      * Create an IfcPolygonalFaceSet from vertices and polygonal face loops.
      *
@@ -6255,12 +6389,12 @@ declare module 'ifcopenshell-api' {
      * @param faces Per-face loop index lists (zero-based).
      * @return IfcPolygonalFaceSet entity.
      */
-    polygonalFaceSet(file: IfcOpenshellFile, points: number[][], faces: number[][][]): IfcOpenshellInstance;
+    polygonalFaceSet(file: IfcOpenshellFile, points: [number, number, number][], faces: number[][][]): IfcOpenshellInstance;
     /**
      * Create a 2D or 3D polyline (IfcPolyline for IFC2X3, IfcIndexedPolyCurve otherwise).
      *
      * @param file IFC file that receives the geometry.
-     * @param options Points, closure, offset, and arc segment indices.
+     * @param options Points, optional offset, and explicit semantic segments.
      * @return IfcPolyline or IfcIndexedPolyCurve entity.
      */
     polyline(file: IfcOpenshellFile, options: IfcOpenshellShapeBuilderPolylineOptions): IfcOpenshellInstance;
@@ -6305,7 +6439,7 @@ declare module 'ifcopenshell-api' {
      * @param coords Replacement coordinates.
      * @return The modified polyline entity.
      */
-    setPolylineCoords(file: IfcOpenshellFile, polyline: IfcOpenshellInstance, coords: number[][]): IfcOpenshellInstance;
+    setPolylineCoords(file: IfcOpenshellFile, polyline: IfcOpenshellInstance, coords: [number, number][] | [number, number, number][]): IfcOpenshellInstance;
     /**
      * Create an IfcSphere.
      *
@@ -6343,7 +6477,7 @@ declare module 'ifcopenshell-api' {
      * @param faces Triangle index lists (zero-based, truncated to 3 vertices each).
      * @return IfcTriangulatedFaceSet entity.
      */
-    triangulatedFaceSet(file: IfcOpenshellFile, points: number[][], faces: number[][]): IfcOpenshellInstance;
+    triangulatedFaceSet(file: IfcOpenshellFile, points: [number, number, number][], faces: [number, number, number][]): IfcOpenshellInstance;
     /**
      * Create an IfcVertexPoint at the given position.
      *
@@ -6351,7 +6485,7 @@ declare module 'ifcopenshell-api' {
      * @param position XYZ coordinates of the vertex.
      * @return IfcVertexPoint entity.
      */
-    vertex(file: IfcOpenshellFile, position: number[]): IfcOpenshellInstance;
+    vertex(file: IfcOpenshellFile, position: [number, number, number]): IfcOpenshellInstance;
   }
 
   export interface IfcOpenshellSpatialModule {
@@ -6541,7 +6675,7 @@ declare module 'ifcopenshell-api' {
      * @param axis 3-element direction ratios for the Axis attribute.
      * @param ref_direction 3-element direction ratios for the RefDirection attribute.
      */
-    editStructuralConnectionCs(file: IfcOpenshellFile, structural_item: IfcOpenshellInstance, axis: number[], ref_direction: number[]): void;
+    editStructuralConnectionCs(file: IfcOpenshellFile, structural_item: IfcOpenshellInstance, axis: [number, number, number], ref_direction: [number, number, number]): void;
     /**
      * Edit the Axis direction of a structural item.
      *
@@ -6553,7 +6687,7 @@ declare module 'ifcopenshell-api' {
      * @param structural_item Structural item with an Axis attribute.
      * @param axis 3-element direction ratios.
      */
-    editStructuralItemAxis(file: IfcOpenshellFile, structural_item: IfcOpenshellInstance, axis: number[]): void;
+    editStructuralItemAxis(file: IfcOpenshellFile, structural_item: IfcOpenshellInstance, axis: [number, number, number]): void;
     /** Edit an IfcStructuralLoad using the shared attribute property writer. */
     editStructuralLoad(file: IfcOpenshellFile, structural_load: IfcOpenshellInstance, attributes: number): void;
     /** Edit an IfcStructuralLoadCase using the shared attribute property writer. */

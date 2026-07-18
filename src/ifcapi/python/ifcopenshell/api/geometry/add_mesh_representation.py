@@ -19,10 +19,10 @@
 from typing import Optional
 
 import numpy as np
-import numpy.typing as npt
 
-import ifcopenshell.util.unit
+import ifcopenshell
 from ifcopenshell.util.shape_builder import SequenceOfVectors, VectorType
+
 from . import _capi
 
 
@@ -51,6 +51,8 @@ def add_mesh_representation(
         where ``itemN = [(0., 0., 0.), (1., 1., 1.), (x, y, z), ...]``
     :param edges: A list of edges, represented by vertex index pairs
         where ``itemN = [(0, 1), (1, 2), (v1, v2), ...]``
+        This remains accepted for upstream API compatibility but is ignored;
+        faces are still required.
     :param faces: A list of polygons, represented by vertex indices.
         where ``itemN = [(0, 1, 2), (5, 4, 2, 3), (v1, v2, v3, ... vN), ...]``
     :param coordinate_offset: Optionally apply a vector offset to all coordinates.
@@ -69,68 +71,60 @@ def add_mesh_representation(
     assert len(vertices) != 0
     assert len(faces) == len(vertices)
 
-    usecase = Usecase()
-    usecase.file = file
-
-    # Process arguments.
-    if unit_scale is None:
-        unit_scale = ifcopenshell.util.unit.calculate_unit_scale(file)
-    np_vertices = np.array(vertices, dtype=np.float64) * (1 / unit_scale)
-    if coordinate_offset is not None:
-        np_vertices += coordinate_offset
-
-    return usecase.execute(context, np_vertices, _mesh_faces(faces), force_faceted_brep)
+    normalized_faces = _mesh_faces(faces)
+    items = [
+        {
+            "vertices": np.asarray(item_vertices, dtype=np.float64).tolist(),
+            "faces": item_faces,
+        }
+        for item_vertices, item_faces in zip(vertices, normalized_faces)
+    ]
+    return _capi.call_handle(
+        file,
+        "geometry_add_mesh_representation",
+        _capi.file_handle(file),
+        _capi.instance_handle(context),
+        {
+            "items": items,
+            "coordinate_offset": None
+            if coordinate_offset is None
+            else list(coordinate_offset),
+            "unit_scale": unit_scale,
+            "force_faceted_brep": force_faceted_brep,
+        },
+    )
 
 
 def _mesh_faces(faces):
     def is_sequence_of_ints(value):
-        return isinstance(value, (list, tuple)) and all(isinstance(item, int) for item in value)
+        return isinstance(value, (list, tuple)) and all(
+            isinstance(item, int) for item in value
+        )
 
     def is_sequence_of_sequence_of_ints(value):
-        return isinstance(value, (list, tuple)) and all(is_sequence_of_ints(item) for item in value)
+        return isinstance(value, (list, tuple)) and all(
+            is_sequence_of_ints(item) for item in value
+        )
 
     result = []
     for item_faces in faces:
         normalized_item_faces = []
         for face in item_faces:
             if is_sequence_of_ints(face):
-                normalized_item_faces.append([face])
+                loops = [face]
             elif is_sequence_of_sequence_of_ints(face):
-                normalized_item_faces.append(face)
+                loops = face
             else:
-                raise ValueError("Expected a sequence of int or sequence of sequence of int for each face")
+                raise ValueError(
+                    "Expected a sequence of int or sequence of sequence of int for each face"
+                )
+            if not loops:
+                raise ValueError("Expected at least one loop for each face")
+            normalized_item_faces.append(
+                {
+                    "outer": list(loops[0]),
+                    "inner_loops": [list(loop) for loop in loops[1:]] or None,
+                }
+            )
         result.append(normalized_item_faces)
     return result
-
-
-class Usecase:
-    file: ifcopenshell.file
-
-    vertices: npt.NDArray[np.float64]
-    """In project units."""
-
-    def execute(
-        self,
-        context: ifcopenshell.entity_instance,
-        vertices: npt.NDArray[np.float64],
-        faces: list[list[list[list[int]]]],
-        force_faceted_brep: bool,
-    ) -> ifcopenshell.entity_instance:
-        self.vertices = vertices
-        self.faces = faces
-        self.context = context
-        self.force_faceted_brep = force_faceted_brep
-        return self.create_mesh_representation()
-
-    def create_mesh_representation(self) -> ifcopenshell.entity_instance:
-        return _capi.call_handle(
-            self.file,
-            "geometry_add_mesh_representation",
-            _capi.file_handle(self.file),
-            _capi.instance_handle(self.context),
-            {
-                "vertices": self.vertices.tolist(),
-                "faces": self.faces,
-                "force_faceted_brep": self.force_faceted_brep,
-            },
-        )

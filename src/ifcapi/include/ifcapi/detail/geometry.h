@@ -4,6 +4,7 @@
 #ifndef IFCAPI_DETAIL_GEOMETRY_H
 #define IFCAPI_DETAIL_GEOMETRY_H
 
+#include "ifcapi/bindings/geometry.h"
 #include "ifcapi/bindings/unit.h"
 #include "ifcapi/detail/attribute.h"
 #include "ifcapi/detail/copy.h"
@@ -240,37 +241,25 @@ inline express::Base copy_boolean_clipping(
     return copy;
 }
 
-/** Apply flattened clippings in reverse input order, copying entity clippings. */
+/** Apply semantic clippings in reverse input order, copying entity clippings. */
 inline express::Base apply_ordered_clippings(
     ifcopenshell::file* file,
     express::Base first_operand,
-    const std::vector<int32_t>& clipping_kinds,
-    const std::vector<std::vector<double>>& clipping_locations,
-    const std::vector<std::vector<double>>& clipping_normals,
-    const std::vector<express::Base>& clipping_entities,
+    const std::vector<bindings::GeometryClipping>& clippings,
     double unit_scale)
 {
-    size_t plane_cursor = clipping_locations.size();
-    size_t entity_cursor = clipping_entities.size();
-    if (clipping_locations.size() != clipping_normals.size()) {
-        throw std::runtime_error("Clipping location/normal count mismatch");
-    }
-    for (auto it = clipping_kinds.rbegin(); it != clipping_kinds.rend(); ++it) {
-        if (*it == 0) {
-            if (plane_cursor == 0) throw std::runtime_error("Missing clipping plane data");
-            --plane_cursor;
+    for (auto it = clippings.rbegin(); it != clippings.rend(); ++it) {
+        if (const auto* plane = std::get_if<bindings::GeometryPlaneClipping>(&*it)) {
             first_operand = create_clipping_result(
-                file, first_operand, clipping_locations[plane_cursor], clipping_normals[plane_cursor], unit_scale);
-        } else if (*it == 1) {
-            if (entity_cursor == 0) throw std::runtime_error("Missing clipping entity data");
-            --entity_cursor;
-            first_operand = copy_boolean_clipping(file, clipping_entities[entity_cursor], first_operand);
+                file,
+                first_operand,
+                std::vector<double>(plane->location.begin(), plane->location.end()),
+                std::vector<double>(plane->normal.begin(), plane->normal.end()),
+                unit_scale);
         } else {
-            throw std::runtime_error("Unknown clipping kind");
+            first_operand = copy_boolean_clipping(
+                file, std::get<bindings::GeometryEntityClipping>(*it).entity, first_operand);
         }
-    }
-    if (plane_cursor != 0 || entity_cursor != 0) {
-        throw std::runtime_error("Unused clipping data");
     }
     return first_operand;
 }

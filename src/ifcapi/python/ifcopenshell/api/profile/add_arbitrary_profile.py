@@ -52,10 +52,13 @@ def add_arbitrary_profile(
             name="SK01 Profile")
     """
     outer = [list(v) for v in profile]
-    handle = _capi.profile_add_arbitrary_profile(
-        file._handle,
-        {"profile": outer, **({"name": name} if name is not None else {})},
-    )
+    try:
+        handle = _capi.profile_add_arbitrary_profile(
+            file._handle,
+            {"profile": outer, **({"name": name} if name is not None else {})},
+        )
+    except TypeError as error:
+        raise RuntimeError(str(error)) from error
     if handle:
         return ifcopenshell.entity_instance(file, handle)
     raise RuntimeError(_capi.last_error_message() or "Failed to add arbitrary profile")

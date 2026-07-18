@@ -58,6 +58,23 @@
 
 namespace {
 
+template <typename T, std::size_t N>
+std::vector<T> dynamic_array(const std::array<T, N>& values) {
+    return {values.begin(), values.end()};
+}
+
+template <typename T, std::size_t N>
+std::vector<std::vector<T>> dynamic_arrays(const std::vector<std::array<T, N>>& values) {
+    std::vector<std::vector<T>> result;
+    result.reserve(values.size());
+    for (const auto& value : values) result.push_back(dynamic_array(value));
+    return result;
+}
+
+std::vector<std::vector<double>> dynamic_vectors(const ifcapi::bindings::Vec2OrVec3List& value) {
+    return std::visit([](const auto& items) { return dynamic_arrays(items); }, value);
+}
+
 inline void set_error(const char* msg) { ifcopenshell::capi::set_last_error(msg); }
 
 inline express::Entity as_entity(express::Base e) {
@@ -878,9 +895,10 @@ struct WallRegenerator {
         auto axes2 = get_axes(wall2, reference2, layers2, wall_vectors2.a);
         auto placement1 = read_ref(wall1, "ObjectPlacement");
         auto placement2 = read_ref(wall2, "ObjectPlacement");
-        auto matrix1i = ifcapi::detail::invert_rigid4(ifcapi::bindings::placement_get_local_placement(placement1));
-        auto matrix2 = ifcapi::bindings::placement_get_local_placement(placement2);
-        auto transform = ifcapi::detail::matmul4(matrix1i, matrix2);
+        const auto placement1_matrix = ifcapi::bindings::placement_get_local_placement(placement1);
+        auto matrix1i = ifcapi::detail::invert_rigid4(dynamic_array(placement1_matrix));
+        const auto matrix2 = ifcapi::bindings::placement_get_local_placement(placement2);
+        auto transform = ifcapi::detail::matmul4(matrix1i, dynamic_array(matrix2));
 
         for (auto& axis_pair : axes2) {
             axis_pair[0] = ifcapi::detail::transform_point_2d(transform, axis_pair[0]);
@@ -1055,10 +1073,23 @@ struct WallRegenerator {
     double axes_maxy = 0.0;
 
     express::Base polyline(const std::vector<std::vector<double>>& points, bool closed, bool has_offset) {
+        std::optional<std::vector<ifcapi::bindings::ShapeBuilderCurveSegment>> segments;
+        if (closed && !points.empty()) {
+            std::vector<std::uint32_t> indices;
+            for (std::uint32_t index = 0; index < points.size(); ++index) indices.push_back(index);
+            indices.push_back(0);
+            segments = std::vector<ifcapi::bindings::ShapeBuilderCurveSegment>{
+                ifcapi::bindings::ShapeBuilderLineSegment{std::move(indices)}};
+        }
         return ifcapi::bindings::shape_builder_polyline(
             file,
             ifcapi::bindings::ShapeBuilderPolylineOptions{
-                points, closed, has_offset ? std::optional<std::vector<double>>(mul2(reference_p1, -1.0)) : std::nullopt, {}});
+                ifcapi::detail::fixed_vec2_or_vec3_list(points),
+                has_offset
+                    ? std::optional<ifcapi::bindings::Vec2OrVec3>(
+                          ifcapi::detail::fixed_vec2_or_vec3(mul2(reference_p1, -1.0)))
+                    : std::nullopt,
+                std::move(segments)});
     }
 
     express::Base profile_from_points(const std::vector<std::vector<double>>& points, bool has_offset) {
@@ -1071,7 +1102,14 @@ struct WallRegenerator {
     express::Base extrude(express::Base profile, double magnitude, const std::vector<double>& vector) {
         return ifcapi::bindings::shape_builder_extrude(
             file,
-            ifcapi::bindings::ShapeBuilderExtrudeOptions{profile, magnitude, {}, vector, vector, {1.0, 0.0, 0.0}, {}});
+            ifcapi::bindings::ShapeBuilderExtrudeOptions{
+                profile,
+                magnitude,
+                {},
+                ifcapi::detail::fixed_vec3(vector),
+                ifcapi::detail::fixed_vec3(vector),
+                ifcapi::bindings::Vec3{1.0, 0.0, 0.0},
+                {}});
     }
 
     express::Base regenerate(express::Base wall, double length, double height, bool has_angle, double angle) {
@@ -1216,9 +1254,11 @@ struct WallRegenerator {
         auto axis_curve = ifcapi::bindings::shape_builder_polyline(
             file,
             ifcapi::bindings::ShapeBuilderPolylineOptions{
-                {reference_p1, reference_p2},
-                false,
-                has_offset ? std::optional<std::vector<double>>(mul2(reference_p1, -1.0)) : std::nullopt,
+                ifcapi::detail::fixed_vec2_or_vec3_list({reference_p1, reference_p2}),
+                has_offset
+                    ? std::optional<ifcapi::bindings::Vec2OrVec3>(
+                          ifcapi::detail::fixed_vec2_or_vec3(mul2(reference_p1, -1.0)))
+                    : std::nullopt,
                 {}});
         auto axis_rep = ifcapi::bindings::shape_builder_representation(
             file,
@@ -1262,7 +1302,7 @@ struct WallRegenerator {
 
     void restore_wall_placement(express::Base wall) {
         struct ChildPlacement {
-            std::vector<double> matrix;
+            ifcapi::bindings::Mat4 matrix;
             std::vector<express::Base> elements;
         };
         std::vector<ChildPlacement> children;
@@ -1878,8 +1918,9 @@ express::Base geometry_add_footprint_representation(
 express::Base geometry_add_mesh_representation(
     ifcopenshell::file* file,
     express::Base context,
-    const std::vector<std::vector<std::vector<double>>>& vertices,
-    const std::vector<std::vector<std::vector<std::vector<int>>>>& faces,
+    const std::vector<GeometryMeshItem>& mesh_items,
+    const std::optional<std::array<double, 3>>& coordinate_offset,
+    const std::optional<double>& supplied_unit_scale,
     bool force_faceted_brep)
 {
     ifcopenshell_clear_error();
@@ -1889,11 +1930,88 @@ express::Base geometry_add_mesh_representation(
     }
 
     try {
-        if (vertices.size() != faces.size()) {
-            throw std::invalid_argument("vertices and faces item counts must match");
+        const bool use_faceted_brep = force_faceted_brep || file->schema()->name() == "IFC2X3";
+        if (mesh_items.empty()) throw std::invalid_argument("Mesh representation requires at least one item");
+
+        const double unit_scale = supplied_unit_scale.value_or(
+            unit_calculate_unit_scale(file, "LENGTHUNIT"));
+        if (!std::isfinite(unit_scale) || unit_scale <= 0.0) {
+            throw std::invalid_argument("Mesh unit scale must be finite and positive");
+        }
+        const std::array<double, 3> offset = coordinate_offset.value_or(
+            std::array<double, 3>{0.0, 0.0, 0.0});
+        if (!std::all_of(
+                offset.begin(), offset.end(), [](double value) { return std::isfinite(value); })) {
+            throw std::invalid_argument("Mesh coordinate offset values must be finite");
         }
 
-        const bool use_faceted_brep = force_faceted_brep || file->schema()->name() == "IFC2X3";
+        std::vector<std::vector<ifcapi::bindings::Vec3>> vertices;
+        std::vector<std::vector<std::vector<std::vector<int>>>> faces;
+        vertices.reserve(mesh_items.size());
+        faces.reserve(mesh_items.size());
+        for (size_t item_index = 0; item_index < mesh_items.size(); ++item_index) {
+            const auto& mesh_item = mesh_items[item_index];
+            if (mesh_item.vertices.empty()) {
+                throw std::invalid_argument(
+                    "Mesh item " + std::to_string(item_index) + " requires at least one vertex");
+            }
+            if (mesh_item.faces.empty()) {
+                throw std::invalid_argument(
+                    "Mesh item " + std::to_string(item_index) + " requires at least one face");
+            }
+
+            std::vector<ifcapi::bindings::Vec3> item_vertices;
+            item_vertices.reserve(mesh_item.vertices.size());
+            for (const auto& vertex : mesh_item.vertices) {
+                if (!std::all_of(
+                        vertex.begin(), vertex.end(), [](double value) { return std::isfinite(value); })) {
+                    throw std::invalid_argument("Mesh vertex coordinates must be finite");
+                }
+                item_vertices.push_back(
+                    {vertex[0] / unit_scale + offset[0],
+                     vertex[1] / unit_scale + offset[1],
+                     vertex[2] / unit_scale + offset[2]});
+            }
+
+            std::vector<std::vector<std::vector<int>>> item_faces;
+            item_faces.reserve(mesh_item.faces.size());
+            for (size_t face_index = 0; face_index < mesh_item.faces.size(); ++face_index) {
+                const auto& face = mesh_item.faces[face_index];
+                std::vector<std::vector<std::uint32_t>> loops = {face.outer};
+                if (face.inner_loops) {
+                    loops.insert(loops.end(), face.inner_loops->begin(), face.inner_loops->end());
+                }
+                if (use_faceted_brep && loops.size() != 1) {
+                    throw std::invalid_argument("IfcFacetedBrep mesh faces cannot contain inner loops");
+                }
+
+                std::vector<std::vector<int>> converted_loops;
+                converted_loops.reserve(loops.size());
+                for (size_t loop_index = 0; loop_index < loops.size(); ++loop_index) {
+                    const auto& loop = loops[loop_index];
+                    if (loop.size() < 3) {
+                        throw std::invalid_argument(
+                            "Mesh face " + std::to_string(face_index) + " loop " + std::to_string(loop_index)
+                            + " requires at least three vertex indices");
+                    }
+                    std::vector<int> converted_loop;
+                    converted_loop.reserve(loop.size());
+                    for (std::uint32_t index : loop) {
+                        if (index >= mesh_item.vertices.size()) {
+                            throw std::invalid_argument(
+                                "Mesh face vertex index " + std::to_string(index) + " is out of range for item "
+                                + std::to_string(item_index));
+                        }
+                        converted_loop.push_back(static_cast<int>(index));
+                    }
+                    converted_loops.push_back(std::move(converted_loop));
+                }
+                item_faces.push_back(std::move(converted_loops));
+            }
+            vertices.push_back(std::move(item_vertices));
+            faces.push_back(std::move(item_faces));
+        }
+
         std::vector<express::Base> items;
         items.reserve(vertices.size());
         for (size_t i = 0; i < vertices.size(); ++i) {
@@ -1901,9 +2019,6 @@ express::Base geometry_add_mesh_representation(
                 std::vector<std::vector<int>> brep_faces;
                 brep_faces.reserve(faces[i].size());
                 for (const auto& face : faces[i]) {
-                    if (face.size() != 1) {
-                        throw std::invalid_argument("IfcFacetedBrep mesh faces cannot contain inner loops");
-                    }
                     brep_faces.push_back(face.front());
                 }
                 items.push_back(shape_builder_faceted_brep(file, vertices[i], brep_faces));
@@ -2065,10 +2180,7 @@ express::Base geometry_add_wall_representation(
     double offset,
     double thickness,
     double x_angle,
-    const std::vector<int32_t>& clipping_kinds,
-    const std::vector<std::vector<double>>& clipping_locations,
-    const std::vector<std::vector<double>>& clipping_normals,
-    const std::vector<express::Base>& clipping_entities,
+    const std::vector<GeometryClipping>& clippings,
     const std::vector<express::Base>& booleans)
 {
     ifcopenshell_clear_error();
@@ -2115,10 +2227,9 @@ express::Base geometry_add_wall_representation(
             write_ref(boolean, "FirstOperand", item);
             item = boolean;
         }
-        item = ifcapi::detail::apply_ordered_clippings(
-            file, item, clipping_kinds, clipping_locations, clipping_normals, clipping_entities, unit_scale);
+        item = ifcapi::detail::apply_ordered_clippings(file, item, clippings, unit_scale);
         return make_shape_representation(
-            file, context, (!clipping_kinds.empty() || !booleans.empty()) ? "Clipping" : "SweptSolid", item);
+            file, context, (!clippings.empty() || !booleans.empty()) ? "Clipping" : "SweptSolid", item);
     } catch (const std::exception& e) {
         ifcapi::detail::set_error(e);
         return {};
@@ -2132,10 +2243,7 @@ express::Base geometry_add_slab_representation(
     const std::string& direction_sense,
     double offset,
     double x_angle,
-    const std::vector<int32_t>& clipping_kinds,
-    const std::vector<std::vector<double>>& clipping_locations,
-    const std::vector<std::vector<double>>& clipping_normals,
-    const std::vector<express::Base>& clipping_entities,
+    const std::vector<GeometryClipping>& clippings,
     const std::vector<std::vector<double>>& polyline,
     bool has_polyline)
 {
@@ -2193,9 +2301,8 @@ express::Base geometry_add_slab_representation(
             extrusion.set_attribute_value(static_cast<size_t>(depth_idx), perpendicular_depth);
         }
 
-        auto item = ifcapi::detail::apply_ordered_clippings(
-            file, extrusion, clipping_kinds, clipping_locations, clipping_normals, clipping_entities, unit_scale);
-        return make_shape_representation(file, context, clipping_kinds.empty() ? "SweptSolid" : "Clipping", item);
+        auto item = ifcapi::detail::apply_ordered_clippings(file, extrusion, clippings, unit_scale);
+        return make_shape_representation(file, context, clippings.empty() ? "SweptSolid" : "Clipping", item);
     } catch (const std::exception& e) {
         ifcapi::detail::set_error(e);
         return {};
@@ -2234,7 +2341,7 @@ express::Base geometry_create_2pt_wall(
             elevation *= unit_scale;
         }
         auto representation = geometry_add_wall_representation(
-            file, context, length, height, "POSITIVE", 0.0, thickness, 0.0, {}, {}, {}, {}, {});
+            file, context, length, height, "POSITIVE", 0.0, thickness, 0.0, {}, {});
         if (!representation) {
             throw std::runtime_error("Unable to create wall representation");
         }
@@ -2242,7 +2349,7 @@ express::Base geometry_create_2pt_wall(
         const double norm = std::sqrt(dx * dx + dy * dy);
         const double vx = dx / norm;
         const double vy = dy / norm;
-        const std::vector<double> matrix = {
+        const Mat4 matrix = {
             vx, -vy, 0.0, p1_si[0],
             vy,  vx, 0.0, p1_si[1],
             0.0, 0.0, 1.0, elevation,
@@ -2278,9 +2385,10 @@ express::Base geometry_connect_wall(
     try {
         auto placement1 = read_ref(wall1, "ObjectPlacement");
         auto placement2 = read_ref(wall2, "ObjectPlacement");
-        auto matrix1i = ifcapi::detail::invert_rigid4(ifcapi::bindings::placement_get_local_placement(placement1));
-        auto matrix2 = ifcapi::bindings::placement_get_local_placement(placement2);
-        auto transform = ifcapi::detail::matmul4(matrix1i, matrix2);
+        const auto placement1_matrix = ifcapi::bindings::placement_get_local_placement(placement1);
+        auto matrix1i = ifcapi::detail::invert_rigid4(dynamic_array(placement1_matrix));
+        const auto matrix2 = ifcapi::bindings::placement_get_local_placement(placement2);
+        auto transform = ifcapi::detail::matmul4(matrix1i, dynamic_array(matrix2));
         auto axis1 = ifcapi::detail::get_reference_line(file, wall1);
         auto axis2 = ifcapi::detail::get_reference_line(file, wall2);
         axis2[0] = ifcapi::detail::transform_point_2d(transform, axis2[0]);
@@ -3240,10 +3348,10 @@ std::vector<express::Base> geometry_add_boolean(
 express::Base geometry_add_axis_representation(
     ifcopenshell::file* file,
     express::Base* context,
-    const std::vector<std::vector<double>>& axis)
+    const Vec2OrVec3List& axis)
 {
     auto context_value = ifcapi::detail::deref_or_empty(context);
-    return geometry_add_axis_representation(file, context_value, axis);
+    return geometry_add_axis_representation(file, context_value, dynamic_vectors(axis));
 }
 
 express::Base geometry_add_footprint_representation(
@@ -3262,7 +3370,12 @@ express::Base geometry_add_mesh_representation(
 {
     auto context_value = ifcapi::detail::deref_or_empty(context);
     return geometry_add_mesh_representation(
-        file, context_value, options.vertices, options.faces, options.force_faceted_brep.value_or(false));
+        file,
+        context_value,
+        options.items,
+        options.coordinate_offset,
+        options.unit_scale,
+        options.force_faceted_brep.value_or(false));
 }
 
 express::Base geometry_add_shape_aspect(
@@ -3297,38 +3410,35 @@ express::Base geometry_add_wall_representation(
     ifcopenshell::file* file,
     const GeometryAddWallRepresentationOptions& options)
 {
+    static const std::vector<GeometryClipping> empty_clippings;
+    static const std::vector<express::Base> empty_booleans;
     return geometry_add_wall_representation(
         file,
         options.context,
-        options.length,
-        options.height,
-        options.direction_sense,
-        options.offset,
-        options.thickness,
-        options.x_angle,
-        options.clipping_kinds,
-        options.clipping_locations,
-        options.clipping_normals,
-        options.clipping_entities,
-        options.booleans);
+        options.length.value_or(1.0),
+        options.height.value_or(3.0),
+        options.direction_sense.value_or("POSITIVE"),
+        options.offset.value_or(0.0),
+        options.thickness.value_or(0.2),
+        options.x_angle.value_or(0.0),
+        options.clippings ? *options.clippings : empty_clippings,
+        options.booleans ? *options.booleans : empty_booleans);
 }
 
 express::Base geometry_add_slab_representation(
     ifcopenshell::file* file,
     const GeometryAddSlabRepresentationOptions& options)
 {
+    static const std::vector<GeometryClipping> empty_clippings;
     static const std::vector<std::vector<double>> empty_polyline;
     return geometry_add_slab_representation(
         file,
         options.context,
-        options.depth,
-        options.direction_sense,
-        options.offset,
-        options.x_angle,
-        options.clipping_kinds,
-        options.clipping_locations,
-        options.clipping_normals,
-        options.clipping_entities,
+        options.depth.value_or(0.2),
+        options.direction_sense.value_or("POSITIVE"),
+        options.offset.value_or(0.0),
+        options.x_angle.value_or(0.0),
+        options.clippings ? *options.clippings : empty_clippings,
         options.polyline ? *options.polyline : empty_polyline,
         static_cast<bool>(options.polyline));
 }
@@ -3341,8 +3451,8 @@ express::Base geometry_create_2pt_wall(
         file,
         options.element,
         options.context,
-        options.start,
-        options.end,
+        dynamic_array(options.start),
+        dynamic_array(options.end),
         options.elevation,
         options.height,
         options.thickness,
@@ -3370,8 +3480,8 @@ express::Base geometry_clip_solid(
     return geometry_clip_solid(
         file,
         options.item,
-        options.location,
-        options.normal,
+        dynamic_array(options.location),
+        dynamic_array(options.normal),
         options.element.value_or(express::Base{}),
         options.owner_history.value_or(express::Base{}),
         options.user.value_or(express::Base{}),
@@ -3385,10 +3495,10 @@ express::Base geometry_clip_solid_bounded(
     return geometry_clip_solid_bounded(
         file,
         options.item,
-        options.location,
-        options.normal,
-        options.boundary_points,
-        options.boundary_position,
+        dynamic_array(options.location),
+        dynamic_array(options.normal),
+        dynamic_arrays(options.boundary_points),
+        dynamic_array(options.boundary_position),
         options.element.value_or(express::Base{}),
         options.owner_history.value_or(express::Base{}),
         options.user.value_or(express::Base{}),

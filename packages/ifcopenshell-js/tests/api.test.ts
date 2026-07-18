@@ -159,7 +159,7 @@ describeGeneratedOrSkip('direct api modules', () => {
       endLength: 1,
       angle: 1,
       radius: 1,
-      bendVector: [1, 0],
+      bendVector: { x: 1, y: 0 },
       flipZAxis: false,
     });
 

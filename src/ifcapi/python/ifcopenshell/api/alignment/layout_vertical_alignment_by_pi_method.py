@@ -7,6 +7,5 @@ def layout_vertical_alignment_by_pi_method(file, layout, vpoints, lengths):
         "alignment_layout_vertical_by_pi_method",
         _capi.file_handle(file),
         _capi.instance_handle(layout),
-        _capi.point_list(vpoints),
-        list(lengths),
+        {"pis": _capi.vertical_pi_layout(vpoints, lengths)},
     )

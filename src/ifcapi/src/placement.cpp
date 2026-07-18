@@ -178,21 +178,20 @@ bool compute_axis2placement(express::Base e, double* out) {
 
 namespace {
 
-std::vector<double> matrix_to_vector(const double* matrix) {
-    return std::vector<double>(matrix, matrix + 16);
+ifcapi::bindings::Mat4 matrix_to_array(const double* matrix) {
+    ifcapi::bindings::Mat4 result;
+    std::copy(matrix, matrix + result.size(), result.begin());
+    return result;
 }
 
-void vector_to_vec3(const std::vector<double>& values, const char* name, double out[3]) {
-    if (values.size() != 3) {
-        throw std::invalid_argument(std::string(name) + " must contain exactly 3 values");
-    }
+void array_to_vec3(const ifcapi::bindings::Vec3& values, double out[3]) {
     out[0] = values[0];
     out[1] = values[1];
     out[2] = values[2];
 }
 
-std::vector<double> matrix_result(bool ok, const double* matrix) {
-    return ok ? matrix_to_vector(matrix) : std::vector<double>();
+ifcapi::bindings::Mat4 matrix_result(const double* matrix) {
+    return matrix_to_array(matrix);
 }
 
 } // namespace
@@ -200,43 +199,47 @@ std::vector<double> matrix_result(bool ok, const double* matrix) {
 namespace ifcapi {
 namespace bindings {
 
-std::vector<double> placement_matrix_from_axes(
-    const std::vector<double>& origin,
-    const std::vector<double>& z_axis,
-    const std::vector<double>& x_axis)
+Mat4 placement_matrix_from_axes(
+    const Vec3& origin,
+    const Vec3& z_axis,
+    const Vec3& x_axis)
 {
     double o[3], z[3], x[3], out[16];
-    vector_to_vec3(origin, "origin", o);
-    vector_to_vec3(z_axis, "z_axis", z);
-    vector_to_vec3(x_axis, "x_axis", x);
+    array_to_vec3(origin, o);
+    array_to_vec3(z_axis, z);
+    array_to_vec3(x_axis, x);
     a2p(o, z, x, out);
-    return matrix_to_vector(out);
+    return matrix_to_array(out);
 }
 
-std::vector<double> placement_get_axis2_placement(express::Base* instance) {
+Mat4 placement_get_axis2_placement(express::Base* instance) {
     double out[16];
     identity4(out);
-    return matrix_result(compute_axis2placement(ifcapi::detail::deref_or_empty(instance), out), out);
+    compute_axis2placement(ifcapi::detail::deref_or_empty(instance), out);
+    return matrix_result(out);
 }
 
-std::vector<double> placement_get_local_placement(std::optional<express::Base> instance) {
+Mat4 placement_get_local_placement(std::optional<express::Base> instance) {
     double out[16];
     identity4(out);
     auto instance_value = instance.value_or(express::Base());
-    if (!instance_value) return matrix_to_vector(out);
-    return matrix_result(compute_local_placement(instance_value, out), out);
+    if (!instance_value) return matrix_to_array(out);
+    compute_local_placement(instance_value, out);
+    return matrix_result(out);
 }
 
-std::vector<double> placement_get_cartesian_xform_3d(express::Base* instance) {
+Mat4 placement_get_cartesian_xform_3d(express::Base* instance) {
     double out[16];
     identity4(out);
-    return matrix_result(compute_cart_xform_3d(ifcapi::detail::deref_or_empty(instance), out), out);
+    compute_cart_xform_3d(ifcapi::detail::deref_or_empty(instance), out);
+    return matrix_result(out);
 }
 
-std::vector<double> placement_get_mappeditem_xform(express::Base* instance) {
+Mat4 placement_get_mappeditem_xform(express::Base* instance) {
     double out[16];
     identity4(out);
-    return matrix_result(compute_mappeditem_xform(ifcapi::detail::deref_or_empty(instance), out), out);
+    compute_mappeditem_xform(ifcapi::detail::deref_or_empty(instance), out);
+    return matrix_result(out);
 }
 
 double placement_get_storey_elevation(express::Base* instance) {
@@ -257,7 +260,7 @@ double placement_get_storey_elevation(express::Base* instance) {
     return out;
 }
 
-std::vector<double> placement_rotation(double angle_rad, const std::string& axis) {
+Mat4 placement_rotation(double angle_rad, const std::string& axis) {
     double out[16];
     identity4(out);
     const char axis_char = !axis.empty() ? axis[0] : '\0';
@@ -273,7 +276,7 @@ std::vector<double> placement_rotation(double angle_rad, const std::string& axis
         out[0] = c;  out[1] = -s;
         out[4] = s;  out[5] = c;
     }
-    return matrix_to_vector(out);
+    return matrix_to_array(out);
 }
 
 } // namespace bindings

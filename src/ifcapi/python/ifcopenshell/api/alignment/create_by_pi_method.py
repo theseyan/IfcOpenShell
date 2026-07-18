@@ -8,13 +8,12 @@ def create_by_pi_method(
     owner = _capi.owner_options(file)
     options = {
         "name": name,
-        "horizontal_points": _capi.point_list(hpoints),
-        "radii": list(radii),
-        "vertical_points": _capi.point_list(vpoints or ()),
-        "vertical_lengths": list(lengths or ()),
+        "horizontal": _capi.horizontal_pi_layout(hpoints, radii),
         "start_station": start_station,
         **owner.values,
     }
+    if vpoints and lengths:
+        options["vertical"] = _capi.vertical_pi_layout(vpoints, lengths)
     return _capi.call_handle(
         file, "alignment_create_by_pi_method", _capi.file_handle(file), options
     )

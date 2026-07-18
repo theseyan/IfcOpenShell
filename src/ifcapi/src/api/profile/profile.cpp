@@ -21,6 +21,18 @@
 
 namespace {
 
+template <typename T, std::size_t N>
+std::vector<std::vector<T>> dynamic_arrays(const std::vector<std::array<T, N>>& values) {
+    std::vector<std::vector<T>> result;
+    result.reserve(values.size());
+    for (const auto& value : values) result.emplace_back(value.begin(), value.end());
+    return result;
+}
+
+std::vector<std::vector<double>> dynamic_vectors(const ifcapi::bindings::Vec2OrVec3List& value) {
+    return std::visit([](const auto& items) { return dynamic_arrays(items); }, value);
+}
+
 bool is_ifc2x3(ifcopenshell::file* file) {
     return file && file->schema() && file->schema()->name() == "IFC2X3";
 }
@@ -96,7 +108,7 @@ express::Base profile_add_arbitrary_profile(
     ifcopenshell::file* file,
     const ProfileAddArbitraryProfileOptions& options)
 {
-    auto points = ifcapi::detail::convert_si_to_project_units(file, options.profile);
+    auto points = ifcapi::detail::convert_si_to_project_units(file, dynamic_vectors(options.profile));
     auto curve = create_arbitrary_profile_curve(file, points);
     auto result = file->create(file->schema()->declaration_by_name("IfcArbitraryClosedProfileDef"));
     ifcapi::detail::write_string_attr(result, "ProfileType", "AREA");
@@ -111,11 +123,16 @@ express::Base profile_add_arbitrary_profile_with_voids(
     ifcopenshell::file* file,
     const ProfileAddArbitraryProfileWithVoidsOptions& options)
 {
-    auto outer_points = ifcapi::detail::convert_si_to_project_units(file, options.outer_profile);
+    for (const auto& inner_profile : options.inner_profiles) {
+        if (inner_profile.index() != options.outer_profile.index()) {
+            throw std::invalid_argument("outer and inner profile points must use the same dimension");
+        }
+    }
+    auto outer_points = ifcapi::detail::convert_si_to_project_units(file, dynamic_vectors(options.outer_profile));
     auto outer_curve = create_arbitrary_profile_curve(file, outer_points, !is_ifc2x3(file));
     std::vector<express::Base> inner_curves;
     for (const auto& inner_profile : options.inner_profiles) {
-        auto inner_points = ifcapi::detail::convert_si_to_project_units(file, inner_profile);
+        auto inner_points = ifcapi::detail::convert_si_to_project_units(file, dynamic_vectors(inner_profile));
         inner_curves.push_back(create_arbitrary_profile_curve(file, inner_points));
     }
     auto result = file->create(file->schema()->declaration_by_name("IfcArbitraryProfileDefWithVoids"));

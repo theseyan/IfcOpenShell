@@ -14,8 +14,9 @@ from .._shared import (
     _module_type_name,
     _public_module_members,
     _public_params,
+    _sequence_leaf_type,
 )
-from .typescript import _render_doc_comment, _ts_type
+from .typescript import _render_doc_comment, _render_semantic_aliases, _ts_type
 
 _HANDLE_TS = {
     "file": "IfcFile",
@@ -211,17 +212,20 @@ def _property_access(receiver: str, name: str) -> str:
 
 def _direct_ts_type(type_spec: TypeSpec, metadata: BindingABI) -> str:
     if type_spec.sequence_depth > 0:
-        inner = _direct_ts_type(
-            TypeSpec(
-                kind=type_spec.kind,
-                handle=type_spec.handle,
-                struct=type_spec.struct,
-                variants=type_spec.variants,
-            ),
-            metadata,
-        )
-        for _ in range(type_spec.sequence_depth):
-            inner = f"{inner}[]"
+        inner_spec = _sequence_leaf_type(type_spec)
+        inner = _direct_ts_type(inner_spec, metadata).removesuffix(" | null")
+        if " | " in inner:
+            inner = f"({inner})"
+        dimensions = list(type_spec.fixed_lengths or (None,) * type_spec.sequence_depth)
+        if type_spec.alias and dimensions and dimensions[-1] is not None:
+            inner = type_spec.alias
+            dimensions.pop()
+        for length in reversed(dimensions):
+            inner = (
+                "[" + ", ".join(inner for _ in range(length)) + "]"
+                if length is not None
+                else f"{inner}[]"
+            )
         return f"{inner} | null" if type_spec.nullable else inner
 
     handle = _handle_kind_from_type(type_spec)
@@ -230,6 +234,9 @@ def _direct_ts_type(type_spec: TypeSpec, metadata: BindingABI) -> str:
     elif type_spec.kind == "struct" and type_spec.struct is not None:
         struct = metadata.value_types.get(type_spec.struct)
         result = _struct_type_name(struct) if struct is not None else "ApiData"
+    elif type_spec.kind == "option" and type_spec.struct is not None:
+        option = metadata.option_structs.get(type_spec.struct)
+        result = _option_type_name(option) if option is not None else "ApiData"
     elif type_spec.kind == "variant":
         result = " | ".join(
             _direct_ts_type(alt, metadata).removesuffix(" | null")
@@ -362,6 +369,117 @@ def _entity_list_field_names(option: COptionIR, metadata: BindingABI) -> set[str
     }
 
 
+def _fixed_field_lengths(option: COptionIR) -> dict[str, tuple[int | None, ...]]:
+    return {
+        _camel_name(field.name): field.type.fixed_lengths
+        for field in option.fields
+        if field.type.fixed_lengths
+        and any(length is not None for length in field.type.fixed_lengths)
+    }
+
+
+def _variant_field_descriptors(
+    option: COptionIR, metadata: BindingABI
+) -> dict[str, dict[str, object]]:
+    result: dict[str, dict[str, object]] = {}
+    for field in option.fields:
+        if field.type.kind != "variant":
+            continue
+        alternatives: list[dict[str, object]] = []
+        for index, alternative in enumerate(field.type.variants):
+            if alternative.sequence_depth > 0:
+                alternatives.append(
+                    {
+                        "kind": index,
+                        "mode": "sequence",
+                        "fixedLengths": alternative.fixed_lengths,
+                    }
+                )
+                continue
+            if alternative.kind != "option" or alternative.struct is None:
+                raise ValueError(
+                    "Direct API input variants require semantic record or sequence alternatives"
+                )
+            nested = metadata.option_structs[alternative.struct]
+            alternatives.append(
+                {
+                    "kind": index,
+                    "mode": "record",
+                    "sequenceDepth": 0,
+                    "fields": {
+                        _camel_name(item.name): item.name for item in nested.fields
+                    },
+                    "required": sorted(
+                        _camel_name(item.name)
+                        for item in nested.fields
+                        if not item.type.nullable
+                    ),
+                    "pset": sorted(_pset_props_field_names(nested)),
+                    "entities": sorted(_entity_list_field_names(nested, metadata)),
+                    "fixed": _fixed_field_lengths(nested),
+                    "variants": _variant_field_descriptors(nested, metadata),
+                    "records": _record_field_descriptors(nested, metadata),
+                }
+            )
+        result[_camel_name(field.name)] = {
+            "sequenceDepth": field.type.sequence_depth,
+            "alternatives": alternatives,
+        }
+    return result
+
+
+def _record_field_descriptors(
+    option: COptionIR, metadata: BindingABI
+) -> dict[str, dict[str, object]]:
+    result: dict[str, dict[str, object]] = {}
+    for field in option.fields:
+        if field.type.kind != "option" or field.type.struct is None:
+            continue
+        nested = metadata.option_structs[field.type.struct]
+        result[_camel_name(field.name)] = {
+            "sequenceDepth": field.type.sequence_depth,
+            "fields": {_camel_name(item.name): item.name for item in nested.fields},
+            "pset": sorted(_pset_props_field_names(nested)),
+            "entities": sorted(_entity_list_field_names(nested, metadata)),
+            "fixed": _fixed_field_lengths(nested),
+            "variants": _variant_field_descriptors(nested, metadata),
+            "records": _record_field_descriptors(nested, metadata),
+        }
+    return result
+
+
+def _option_codec_args(option: COptionIR, metadata: BindingABI) -> str:
+    pset_fields = sorted(_pset_props_field_names(option))
+    entity_list_fields = sorted(_entity_list_field_names(option, metadata))
+    fixed_fields = _fixed_field_lengths(option)
+    variant_fields = _variant_field_descriptors(option, metadata)
+    record_fields = _record_field_descriptors(option, metadata)
+    if not any(
+        (
+            pset_fields,
+            entity_list_fields,
+            fixed_fields,
+            variant_fields,
+            record_fields,
+        )
+    ):
+        return ""
+    if not any((fixed_fields, variant_fields, record_fields)):
+        extra_args = ", " + json.dumps(pset_fields)
+        if entity_list_fields:
+            extra_args += ", " + json.dumps(entity_list_fields)
+        return extra_args
+    return ", " + ", ".join(
+        (
+            json.dumps(pset_fields),
+            json.dumps(entity_list_fields),
+            json.dumps(fixed_fields, sort_keys=True),
+            json.dumps(variant_fields, sort_keys=True),
+            json.dumps(record_fields, sort_keys=True),
+        )
+    )
+
+
 def _is_property_map_param(param: CParamIR) -> bool:
     return param.semantic == "property_map"
 
@@ -374,6 +492,10 @@ def _param_ts_type(
     if _is_property_map_param(param):
         base = "PsetProperties | PsetInput"
         return f"{base} | null" if param.nullable else base
+    if param.type is not None and (
+        param.type.sequence_depth > 0 or param.type.kind == "variant"
+    ):
+        return _direct_ts_type(param.type, metadata)
     normalized_base = (
         " ".join(param.c_type.replace(" *", "*").split())
         .removeprefix("const ")
@@ -409,18 +531,39 @@ def _param_ts_type(
         result = _option_type_name(option)
         return f"{result} | null" if param.nullable else result
     if param.type_kind == "string":
-        return "string"
+        result = "string"
+        return f"{result} | null" if param.nullable else result
     if param.type_kind == "bool":
-        return "boolean"
+        result = "boolean"
+        return f"{result} | null" if param.nullable else result
     if param.type_kind in {"int32", "uint32", "size", "double"}:
-        return "number"
+        result = "number"
+        return f"{result} | null" if param.nullable else result
     if param.type_kind == "int64":
-        return "bigint"
+        result = "bigint"
+        return f"{result} | null" if param.nullable else result
     return "ApiData"
 
 
 def _raw_param_type(param: CParamIR) -> str:
     normalized = " ".join(param.c_type.replace(" *", "*").split())
+    if param.nullable and normalized in {
+        "const bool*",
+        "const double*",
+        "const int32_t*",
+        "const int64_t*",
+        "const size_t*",
+        "const uint32_t*",
+    }:
+        scalar = {
+            "bool": "boolean",
+            "double": "number",
+            "int32": "number",
+            "int64": "bigint",
+            "size": "number",
+            "uint32": "number",
+        }[param.type_kind]
+        return f"{scalar} | null"
     result = _RAW_PARAM_SCALAR_TS.get(normalized)
     if result is None:
         return "RawValue"
@@ -441,7 +584,8 @@ def _raw_return_type(function: CFunctionIR) -> str:
 
 def _render_raw_method_signature(name: str, function: CFunctionIR) -> str:
     params = ", ".join(
-        f"{param.name}: {_raw_param_type(param)}" for param in _public_params(function)
+        f"{param.name}{'?' if param.has_default else ''}: {_raw_param_type(param)}"
+        for param in _public_params(function)
     )
     return f"    {_member_name(name)}: ({params}) => {_raw_return_type(function)};"
 
@@ -459,7 +603,7 @@ def _render_option_interfaces(metadata: BindingABI) -> str:
     ):
         fields = "\n".join(
             _render_interface_field(
-                f"{_camel_name(field.name)}{'?' if field.type.nullable else ''}: "
+                f"{_camel_name(field.name)}{'?' if field.type.nullable or field.has_default else ''}: "
                 f"{_option_field_type(field.name, field.type, metadata)};",
                 field.doc,
             )
@@ -508,6 +652,12 @@ def _param_expr(
                 f"toRawPsetProperties(shell, {param.name} as PsetProperties | PsetInput, temps)"
             )
         return f"toRawPsetProperties(shell, {param.name} as PsetProperties | PsetInput, temps)"
+    if param.type is not None and param.type.kind == "variant":
+        descriptor = _variant_descriptor_for_type(param.type, metadata)
+        return (
+            f"encodeOptionValue({json.dumps(param.name)}, {param.name}, shell, temps, "
+            f"undefined, undefined, undefined, {json.dumps(descriptor, sort_keys=True)})"
+        )
     normalized_base = (
         " ".join(param.c_type.replace(" *", "*").split())
         .removeprefix("const ")
@@ -530,18 +680,19 @@ def _param_expr(
         None,
     )
     if sequence is not None:
+        if param.type is not None and any(
+            length is not None for length in param.type.fixed_lengths
+        ):
+            return (
+                f"encodeOptionValue({json.dumps(param.name)}, {param.name}, shell, temps, "
+                f"undefined, undefined, {json.dumps(param.type.fixed_lengths)})"
+            )
         if sequence.kind == "input_record_sequence":
             option = _option_by_c_type(sequence.element_type or "", metadata)
             if option is None:
                 return param.name
             fields = {_camel_name(field.name): field.name for field in option.fields}
-            pset_fields = sorted(_pset_props_field_names(option))
-            entity_list_fields = sorted(_entity_list_field_names(option, metadata))
-            extra_args = ""
-            if pset_fields or entity_list_fields:
-                extra_args += ", " + json.dumps(pset_fields)
-            if entity_list_fields:
-                extra_args += ", " + json.dumps(entity_list_fields)
+            extra_args = _option_codec_args(option, metadata)
             return (
                 f"{param.name}.map((item) => encodeOptions(item, "
                 f"{json.dumps(fields, sort_keys=True)}, shell, temps{extra_args}))"
@@ -553,22 +704,60 @@ def _param_expr(
     if handle == "value" and module_name != "value":
         return f"{param.name} == null ? null : toRawValue(shell, {param.name}, temps)"
     if _uses_generated_handle(handle):
-        return f"{param.name} == null ? null : {param.name}" if param.nullable else param.name
+        return (
+            f"{param.name} == null ? null : {param.name}"
+            if param.nullable
+            else param.name
+        )
     if handle is not None:
         raw = f"{param.name}.raw"
         return f"{param.name} == null ? null : {raw}" if param.nullable else raw
     option = _option_by_c_type(param.c_type, metadata)
     if option is not None:
         fields = {_camel_name(field.name): field.name for field in option.fields}
-        pset_fields = sorted(_pset_props_field_names(option))
-        entity_list_fields = sorted(_entity_list_field_names(option, metadata))
-        extra_args = ""
-        if pset_fields or entity_list_fields:
-            extra_args += ", " + json.dumps(pset_fields)
-        if entity_list_fields:
-            extra_args += ", " + json.dumps(entity_list_fields)
+        extra_args = _option_codec_args(option, metadata)
         return f"encodeOptions({param.name}, {json.dumps(fields, sort_keys=True)}, shell, temps{extra_args})"
     return param.name
+
+
+def _variant_descriptor_for_type(
+    type_spec: TypeSpec, metadata: BindingABI
+) -> dict[str, object]:
+    alternatives: list[dict[str, object]] = []
+    for index, alternative in enumerate(type_spec.variants):
+        if alternative.sequence_depth > 0:
+            alternatives.append(
+                {
+                    "kind": index,
+                    "mode": "sequence",
+                    "fixedLengths": alternative.fixed_lengths,
+                }
+            )
+            continue
+        if alternative.kind != "option" or alternative.struct is None:
+            raise ValueError(
+                "Direct API input variants require semantic record or sequence alternatives"
+            )
+        nested = metadata.option_structs[alternative.struct]
+        alternatives.append(
+            {
+                "kind": index,
+                "mode": "record",
+                "sequenceDepth": 0,
+                "fields": {_camel_name(item.name): item.name for item in nested.fields},
+                "required": sorted(
+                    _camel_name(item.name)
+                    for item in nested.fields
+                    if not item.type.nullable
+                ),
+                "pset": sorted(_pset_props_field_names(nested)),
+                "entities": sorted(_entity_list_field_names(nested, metadata)),
+                "fixed": _fixed_field_lengths(nested),
+                "variants": _variant_field_descriptors(nested, metadata),
+                "records": _record_field_descriptors(nested, metadata),
+            }
+        )
+    return {"sequenceDepth": type_spec.sequence_depth, "alternatives": alternatives}
 
 
 def _result_wrap_expr(value_expr: str, c_type: str, metadata: BindingABI) -> str:
@@ -702,7 +891,7 @@ def _render_direct_method(
 ) -> str:
     params = _public_params(function)
     signature_params = ", ".join(
-        f"{param.name}: {_param_ts_type(param, metadata, module_name)}"
+        f"{param.name}{'?' if param.has_default else ''}: {_param_ts_type(param, metadata, module_name)}"
         for param in params
     )
     args = ", ".join(_param_expr(param, metadata, module_name) for param in params)
@@ -798,7 +987,7 @@ def _render_direct_interface(
             else _direct_ts_type(function.returns, metadata)
         )
         params = ", ".join(
-            f"{param.name}: {_param_ts_type(param, metadata, module_name)}"
+            f"{param.name}{'?' if param.has_default else ''}: {_param_ts_type(param, metadata, module_name)}"
             for param in _public_params(function)
         )
         signature = f"    {_member_name(name)}({params}): {return_type};"
@@ -883,11 +1072,14 @@ def render_api_direct(metadata: BindingABI) -> str:
             "type RawValue = ApiData | object | RawValue[];",
             "type ApiInput = ApiData | PsetProperties | PsetInput;",
             "type Disposable = { destroy(): void };",
+            "type FixedLength = null | number;",
             _render_raw_api_type(modules),
             "",
             _render_result_interfaces(metadata),
             "",
             _render_generated_handle_interfaces(metadata),
+            "",
+            _render_semantic_aliases(metadata),
             "",
             _render_option_interfaces(metadata),
             "",
@@ -915,6 +1107,9 @@ def render_api_direct(metadata: BindingABI) -> str:
             "  temps: Disposable[],",
             "  psetFields?: string[],",
             "  entityListFields?: string[],",
+            "  fixedFields?: Record<string, FixedLength[]>,",
+            "  variantFields?: Record<string, VariantDescriptor>,",
+            "  recordFields?: Record<string, RecordDescriptor>,",
             "): Record<string, RawValue> {",
             "  const data = value as Record<string, ApiInput | undefined>;",
             "  const psetFieldSet = psetFields ? new Set(psetFields) : undefined;",
@@ -922,7 +1117,7 @@ def render_api_direct(metadata: BindingABI) -> str:
             "  return Object.fromEntries(",
             "    Object.entries(fields)",
             "      .filter(([publicName]) => data[publicName] !== undefined)",
-            "      .map(([publicName, nativeName]) => [nativeName, encodeOptionValue(publicName, data[publicName] as ApiInput, shell, temps, psetFieldSet, entityListFieldSet)]),",
+            "      .map(([publicName, nativeName]) => [nativeName, encodeOptionValue(publicName, data[publicName] as ApiInput, shell, temps, psetFieldSet, entityListFieldSet, fixedFields?.[publicName], variantFields?.[publicName], recordFields?.[publicName])]),",
             "  ) as Record<string, RawValue>;",
             "}",
             "",
@@ -962,7 +1157,46 @@ def render_api_direct(metadata: BindingABI) -> str:
             "  return raw;",
             "}",
             "",
-            "function encodeOptionValue(publicName: string, value: ApiInput, shell: IfcOpenShell, temps: Disposable[], psetFields?: Set<string>, entityListFields?: Set<string>): RawValue {",
+            "type RecordDescriptor = { sequenceDepth: number; fields: Record<string, string>; pset: string[]; entities: string[]; fixed: Record<string, FixedLength[]>; variants: Record<string, VariantDescriptor>; records: Record<string, RecordDescriptor> };",
+            "type VariantAlternative = (RecordDescriptor & { kind: number; mode: 'record'; required: string[] }) | { kind: number; mode: 'sequence'; fixedLengths: FixedLength[] };",
+            "type VariantDescriptor = { sequenceDepth: number; alternatives: VariantAlternative[] };",
+            "",
+            "function encodeOptionValue(publicName: string, value: ApiInput, shell: IfcOpenShell, temps: Disposable[], psetFields?: Set<string>, entityListFields?: Set<string>, fixedLengths?: FixedLength[], variantDescriptor?: VariantDescriptor, record?: RecordDescriptor): RawValue {",
+            "  if (variantDescriptor) {",
+            "    const encodeVariant = (item: ApiInput, depth: number): RawValue => {",
+            "      if (depth < variantDescriptor.sequenceDepth) {",
+            "        if (!Array.isArray(item)) throw new TypeError(`Expected ${publicName} to be an array.`);",
+            "        return item.map((nested) => encodeVariant(nested, depth + 1));",
+            "      }",
+            "      const matches = variantDescriptor.alternatives.filter((alternative) => {",
+            "        if (alternative.mode === 'sequence') return matchesFixedLengths(item, alternative.fixedLengths);",
+            "        return isPlainObject(item) && alternative.required.every((name) => Object.prototype.hasOwnProperty.call(item, name));",
+            "      });",
+            "      if (matches.length !== 1) throw new TypeError(`Expected ${publicName} to match exactly one variant alternative.`);",
+            "      const alternative = matches[0]!;",
+            "      if (alternative.mode === 'sequence') {",
+            "        return { kind: alternative.kind, [`value_${alternative.kind}`]: toRaw(item, shell, temps) };",
+            "      }",
+            "      if (!isPlainObject(item)) throw new TypeError(`Expected ${publicName} to be an object.`);",
+            "      return {",
+            "        kind: alternative.kind,",
+            "        [`value_${alternative.kind}`]: encodeOptions(item, alternative.fields, shell, temps, alternative.pset, alternative.entities, alternative.fixed, alternative.variants, alternative.records),",
+            "      };",
+            "    };",
+            "    return encodeVariant(value, 0);",
+            "  }",
+            "  if (record) {",
+            "    const encodeRecord = (item: ApiInput, depth: number): RawValue => {",
+            "      if (depth < record.sequenceDepth) {",
+            "        if (!Array.isArray(item)) throw new TypeError(`Expected ${publicName} to be an array.`);",
+            "        return item.map((nested) => encodeRecord(nested, depth + 1));",
+            "      }",
+            "      if (!isPlainObject(item)) throw new TypeError(`Expected ${publicName} to be an object.`);",
+            "      return encodeOptions(item, record.fields, shell, temps, record.pset, record.entities, record.fixed, record.variants, record.records);",
+            "    };",
+            "    return encodeRecord(value, 0);",
+            "  }",
+            "  if (fixedLengths) validateFixedLengths(publicName, value, fixedLengths);",
             "  if (psetFields?.has(publicName)) {",
             "    return toRawPsetProperties(shell, value as PsetProperties | PsetInput, temps);",
             "  }",
@@ -970,6 +1204,28 @@ def render_api_direct(metadata: BindingABI) -> str:
             "    return toRawEntityList(value, shell, temps);",
             "  }",
             "  return toRaw(value, shell, temps);",
+            "}",
+            "",
+            "function validateFixedLengths(publicName: string, value: ApiInput, lengths: FixedLength[]): void {",
+            "  const visit = (level: ApiInput, depth: number): void => {",
+            "    if (depth >= lengths.length) return;",
+            "    if (!Array.isArray(level)) throw new TypeError(`Expected ${publicName} to be an array.`);",
+            "    const expected = lengths[depth];",
+            "    if (expected !== null && expected !== undefined && level.length !== expected) {",
+            "      throw new TypeError(`Expected ${publicName} to contain ${expected} items.`);",
+            "    }",
+            "    for (const item of level) visit(item as ApiInput, depth + 1);",
+            "  };",
+            "  visit(value, 0);",
+            "}",
+            "",
+            "function matchesFixedLengths(value: ApiInput, lengths: FixedLength[]): boolean {",
+            "  try {",
+            "    validateFixedLengths('variant', value, lengths);",
+            "    return true;",
+            "  } catch {",
+            "    return false;",
+            "  }",
             "}",
             "",
             "function wrapEntities(shell: IfcOpenShell, value: RawValue): Entity[] {",

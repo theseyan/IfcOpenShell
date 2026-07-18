@@ -46,6 +46,36 @@ def point_list(values):
     return [list(value) for value in values]
 
 
+def horizontal_pi_layout(values, radii):
+    points = point_list(values)
+    radii = list(radii)
+    if len(points) - 2 != len(radii):
+        raise ValueError("radii should have two fewer elements than points")
+    return {
+        "start_point": points[0],
+        "intersections": [
+            {"point": point, "radius": radius}
+            for point, radius in zip(points[1:-1], radii)
+        ],
+        "end_point": points[-1],
+    }
+
+
+def vertical_pi_layout(values, lengths):
+    points = point_list(values)
+    lengths = list(lengths)
+    if len(points) - 2 != len(lengths):
+        raise ValueError("lengths should have two fewer elements than points")
+    return {
+        "start_point": points[0],
+        "intersections": [
+            {"point": point, "curve_length": length}
+            for point, length in zip(points[1:-1], lengths)
+        ],
+        "end_point": points[-1],
+    }
+
+
 def owner_options(file):
     if not file.schema.upper().startswith("IFC4X3"):
         return OwnerOptions({})

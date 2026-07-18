@@ -4,6 +4,7 @@
 #define IFCAPI_BINDINGS_GRID_H
 
 #include "ifcapi/bindings/contract.h"
+#include "ifcapi/bindings/types.h"
 
 #include "ifcparse/express.h"
 #include "ifcparse/file.h"
@@ -59,8 +60,8 @@ IFCAPI_BINDING void grid_remove_grid_axis(
  */
 IFCAPI_BINDING void grid_create_axis_curve(
     ifcopenshell::file* file,
-    const std::vector<double>& p1,
-    const std::vector<double>& p2,
+    const std::array<double, 3>& p1,
+    const std::array<double, 3>& p2,
     express::Base* grid_axis,
     bool is_si);
 

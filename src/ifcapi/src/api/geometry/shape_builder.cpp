@@ -27,6 +27,31 @@
 
 namespace {
 
+template <typename T, std::size_t N>
+std::vector<T> dynamic_array(const std::array<T, N>& values) {
+    return {values.begin(), values.end()};
+}
+
+template <typename T, std::size_t N>
+std::vector<std::vector<T>> dynamic_arrays(const std::vector<std::array<T, N>>& values) {
+    std::vector<std::vector<T>> result;
+    result.reserve(values.size());
+    for (const auto& value : values) result.push_back(dynamic_array(value));
+    return result;
+}
+
+std::vector<double> dynamic_vector(const ifcapi::bindings::Vec2OrVec3& value) {
+    return std::visit([](const auto& item) { return dynamic_array(item); }, value);
+}
+
+std::vector<std::vector<double>> dynamic_vectors(const ifcapi::bindings::Vec2OrVec3List& value) {
+    return std::visit([](const auto& items) { return dynamic_arrays(items); }, value);
+}
+
+std::vector<double> dynamic_matrix(const ifcapi::bindings::Mat3OrMat4& value) {
+    return std::visit([](const auto& item) { return dynamic_array(item); }, value);
+}
+
 express::Base create_entity(ifcopenshell::file* file, const std::string& name) {
     if (!file) {
         throw std::invalid_argument("missing file");
@@ -300,22 +325,152 @@ express::Base polyline_impl(
 
 express::Base indexed_polycurve_2d_impl(
     ifcopenshell::file* file,
-    const std::vector<std::vector<double>>& points,
-    const std::vector<std::vector<int>>& segments)
+    const ifcapi::bindings::ShapeBuilderIndexedPolycurve2dOptions& options)
 {
+    const auto& points = options.points;
+    if (points.empty()) {
+        throw std::invalid_argument("indexed polycurve requires at least one point");
+    }
+    std::vector<std::vector<double>> coordinates;
+    coordinates.reserve(points.size());
+    for (const auto& point : points) {
+        if (!std::isfinite(point[0]) || !std::isfinite(point[1])) {
+            throw std::invalid_argument("indexed polycurve points must be finite");
+        }
+        coordinates.push_back({point[0], point[1]});
+    }
+    std::vector<std::pair<bool, std::vector<int>>> segments;
+    segments.reserve(options.segments.size());
+    for (const auto& segment : options.segments) {
+        std::visit(
+            [&](const auto& value) {
+                using T = std::decay_t<decltype(value)>;
+                std::vector<std::uint32_t> indices;
+                bool is_arc = false;
+                if constexpr (std::is_same_v<T, ifcapi::bindings::ShapeBuilderLineSegment>) {
+                    if (value.line_indices.size() < 2) {
+                        throw std::invalid_argument("line segment requires at least two point indices");
+                    }
+                    indices = value.line_indices;
+                } else {
+                    indices.assign(value.arc_indices.begin(), value.arc_indices.end());
+                    is_arc = true;
+                }
+                std::vector<int> converted;
+                converted.reserve(indices.size());
+                for (std::uint32_t index : indices) {
+                    if (index >= points.size()) {
+                        throw std::out_of_range("curve segment point index out of range");
+                    }
+                    converted.push_back(static_cast<int>(index) + 1);
+                }
+                segments.emplace_back(is_arc, std::move(converted));
+            },
+            segment);
+    }
     auto point_list = create_entity(file, "IfcCartesianPointList2D");
-    set_attr(point_list, "CoordList", points);
+    set_attr(point_list, "CoordList", coordinates);
     std::vector<express::Base> ifc_segments;
     ifc_segments.reserve(segments.size());
     for (const auto& segment : segments) {
-        if (segment.size() == 2) {
-            ifc_segments.push_back(line_index(file, segment));
-        } else if (segment.size() == 3) {
-            ifc_segments.push_back(arc_index(file, segment));
-        }
+        ifc_segments.push_back(segment.first ? arc_index(file, segment.second) : line_index(file, segment.second));
     }
     auto result = create_entity(file, "IfcIndexedPolyCurve");
     set_ref(result, "Points", point_list);
+    set_refs(result, "Segments", ifc_segments);
+    return result;
+}
+
+express::Base semantic_polyline_impl(
+    ifcopenshell::file* file,
+    const ifcapi::bindings::ShapeBuilderPolylineOptions& options)
+{
+    const auto input_points = dynamic_vectors(options.points);
+    const auto position_offset = options.position_offset
+        ? std::optional<std::vector<double>>(dynamic_vector(*options.position_offset))
+        : std::nullopt;
+    if (input_points.empty()) {
+        throw std::invalid_argument("polyline requires at least one point");
+    }
+    const size_t dimensions = input_points.front().size();
+    if (dimensions != 2 && dimensions != 3) {
+        throw std::invalid_argument("polyline points must be XY or XYZ");
+    }
+    for (const auto& point : input_points) {
+        if (point.size() != dimensions ||
+            std::any_of(point.begin(), point.end(), [](double value) { return !std::isfinite(value); })) {
+            throw std::invalid_argument("polyline points must have consistent finite coordinates");
+        }
+    }
+    if (position_offset) {
+        if (position_offset->size() != dimensions ||
+            std::any_of(position_offset->begin(), position_offset->end(), [](double value) {
+                return !std::isfinite(value);
+            })) {
+            throw std::invalid_argument("polyline offset must match the point dimension and be finite");
+        }
+    }
+
+    std::vector<std::pair<bool, std::vector<int>>> segments;
+    for (const auto& segment : options.segments.value_or(std::vector<ifcapi::bindings::ShapeBuilderCurveSegment>{})) {
+        std::visit(
+            [&](const auto& value) {
+                using T = std::decay_t<decltype(value)>;
+                std::vector<std::uint32_t> indices;
+                bool is_arc = false;
+                if constexpr (std::is_same_v<T, ifcapi::bindings::ShapeBuilderLineSegment>) {
+                    if (value.line_indices.size() < 2) {
+                        throw std::invalid_argument("line segment requires at least two point indices");
+                    }
+                    indices = value.line_indices;
+                } else {
+                    indices.assign(value.arc_indices.begin(), value.arc_indices.end());
+                    is_arc = true;
+                }
+                std::vector<int> converted;
+                for (std::uint32_t index : indices) {
+                    if (index >= input_points.size()) {
+                        throw std::out_of_range("curve segment point index out of range");
+                    }
+                    converted.push_back(static_cast<int>(index) + 1);
+                }
+                segments.emplace_back(is_arc, std::move(converted));
+            },
+            segment);
+    }
+
+    std::vector<std::vector<double>> points;
+    points.reserve(input_points.size());
+    for (const auto& point : input_points) {
+        points.push_back(position_offset ? add_vectors(point, *position_offset) : point);
+    }
+    if (file->schema()->name() == "IFC2X3") {
+        if (std::any_of(segments.begin(), segments.end(), [](const auto& value) { return value.first; }) ||
+            segments.size() > 1) {
+            throw std::invalid_argument("IFC2X3 polylines cannot represent explicit arc or multiple segments");
+        }
+        std::vector<std::uint32_t> indices;
+        if (!segments.empty()) {
+            for (int index : segments.front().second) indices.push_back(static_cast<std::uint32_t>(index - 1));
+        } else {
+            for (std::uint32_t index = 0; index < points.size(); ++index) indices.push_back(index);
+        }
+        std::vector<express::Base> ifc_points;
+        for (std::uint32_t index : indices) ifc_points.push_back(cartesian_point(file, points[index]));
+        auto result = create_entity(file, "IfcPolyline");
+        set_refs(result, "Points", ifc_points);
+        return result;
+    }
+
+    auto point_list = create_entity(file, dimensions == 2 ? "IfcCartesianPointList2D" : "IfcCartesianPointList3D");
+    set_attr(point_list, "CoordList", points);
+    auto result = create_entity(file, "IfcIndexedPolyCurve");
+    set_ref(result, "Points", point_list);
+    if (!options.segments) return result;
+    std::vector<express::Base> ifc_segments;
+    for (const auto& segment : segments) {
+        ifc_segments.push_back(segment.first ? arc_index(file, segment.second) : line_index(file, segment.second));
+    }
     set_refs(result, "Segments", ifc_segments);
     return result;
 }
@@ -755,6 +910,18 @@ std::vector<double> abs_xy_diff(const std::vector<double>& start_half_dim, const
     };
 }
 
+std::vector<double> mep_dimensions(const ifcapi::bindings::ShapeBuilderMepProfileHalfDimensions& value) {
+    return {value.half_x, value.half_y, value.depth};
+}
+
+std::vector<double> mep_offset(const ifcapi::bindings::ShapeBuilderMepOffset& value) {
+    return {value.x, value.y};
+}
+
+std::vector<double> mep_bend_direction(const ifcapi::bindings::ShapeBuilderMepBendDirection& value) {
+    return {value.x, value.y};
+}
+
 std::vector<double> rounded_mep_offset(const std::vector<double>& profile_offset) {
     std::vector<double> result = profile_offset;
     if (result.size() < 2) result.resize(2, 0.0);
@@ -1152,7 +1319,8 @@ express::Base mirror_impl(
         mirror_impl(file, read_ref(result, "BasisCurve"), mirror_axes, mirror_point, false, {});
     } else if (is_a(result, "IfcExtrudedAreaSolid")) {
         auto result_position = read_ref(result, "Position");
-        const auto placement = mat3_from_matrix(ifcapi::bindings::placement_get_axis2_placement(&result_position));
+        const auto placement_matrix = ifcapi::bindings::placement_get_axis2_placement(&result_position);
+        const auto placement = mat3_from_matrix(dynamic_array(placement_matrix));
         auto position = location_coordinates(result);
         auto mirrored = mirror_point_2d(position, mirror_axes, mirror_point);
         if (position.size() > 2) {
@@ -1212,76 +1380,76 @@ namespace bindings {
 
 express::Base shape_builder_mesh(
     ifcopenshell::file* file,
-    const std::vector<std::vector<double>>& points,
+    const std::vector<Vec3>& points,
     const std::vector<std::vector<int>>& faces)
 {
     return wrap_shape_builder_errors("shape_builder_mesh", [&]() -> express::Base {
         if (file && file->schema()->name() == "IFC2X3") {
-            return faceted_brep_impl(file, points, faces);
+            return faceted_brep_impl(file, dynamic_arrays(points), faces);
         }
         std::vector<std::vector<std::vector<int>>> polygon_faces;
         polygon_faces.reserve(faces.size());
         for (const auto& face : faces) {
             polygon_faces.push_back({face});
         }
-        return polygonal_face_set_impl(file, points, polygon_faces);
+        return polygonal_face_set_impl(file, dynamic_arrays(points), polygon_faces);
     });
 }
 
 express::Base shape_builder_faceted_brep(
     ifcopenshell::file* file,
-    const std::vector<std::vector<double>>& points,
+    const std::vector<Vec3>& points,
     const std::vector<std::vector<int>>& faces)
 {
     return wrap_shape_builder_errors("shape_builder_faceted_brep", [&]() {
-        return faceted_brep_impl(file, points, faces);
+        return faceted_brep_impl(file, dynamic_arrays(points), faces);
     });
 }
 
 express::Base shape_builder_triangulated_face_set(
     ifcopenshell::file* file,
-    const std::vector<std::vector<double>>& points,
-    const std::vector<std::vector<int>>& faces)
+    const std::vector<Vec3>& points,
+    const std::vector<std::array<int, 3>>& faces)
 {
     return wrap_shape_builder_errors("shape_builder_triangulated_face_set", [&]() {
-        return triangulated_face_set_impl(file, points, faces);
+        return triangulated_face_set_impl(file, dynamic_arrays(points), dynamic_arrays(faces));
     });
 }
 
 express::Base shape_builder_polygonal_face_set(
     ifcopenshell::file* file,
-    const std::vector<std::vector<double>>& points,
+    const std::vector<Vec3>& points,
     const std::vector<std::vector<std::vector<int>>>& faces)
 {
     return wrap_shape_builder_errors("shape_builder_polygonal_face_set", [&]() {
-        return polygonal_face_set_impl(file, points, faces);
+        return polygonal_face_set_impl(file, dynamic_arrays(points), faces);
     });
 }
 
-express::Base shape_builder_vertex(ifcopenshell::file* file, const std::vector<double>& position)
+express::Base shape_builder_vertex(ifcopenshell::file* file, const Vec3& position)
 {
     return wrap_shape_builder_errors("shape_builder_vertex", [&]() {
-        return vertex_point(file, position);
+        return vertex_point(file, dynamic_array(position));
     });
 }
 
 express::Base shape_builder_edge(
     ifcopenshell::file* file,
-    const std::vector<double>& start,
-    const std::vector<double>& end)
+    const Vec3& start,
+    const Vec3& end)
 {
     return wrap_shape_builder_errors("shape_builder_edge", [&]() {
         auto edge = create_entity(file, "IfcEdge");
-        set_ref(edge, "EdgeStart", vertex_point(file, start));
-        set_ref(edge, "EdgeEnd", vertex_point(file, end));
+        set_ref(edge, "EdgeStart", vertex_point(file, dynamic_array(start)));
+        set_ref(edge, "EdgeEnd", vertex_point(file, dynamic_array(end)));
         return edge;
     });
 }
 
-express::Base shape_builder_face(ifcopenshell::file* file, const std::vector<std::vector<double>>& points)
+express::Base shape_builder_face(ifcopenshell::file* file, const std::vector<Vec3>& points)
 {
     return wrap_shape_builder_errors("shape_builder_face", [&]() {
-        return face_impl(file, points);
+        return face_impl(file, dynamic_arrays(points));
     });
 }
 
@@ -1290,14 +1458,7 @@ express::Base shape_builder_polyline(
     const ShapeBuilderPolylineOptions& options)
 {
     return wrap_shape_builder_errors("shape_builder_polyline", [&]() {
-        static const std::vector<double> empty_offset;
-        return polyline_impl(
-            file,
-            options.points,
-            options.closed.value_or(false),
-            options.position_offset ? *options.position_offset : empty_offset,
-            static_cast<bool>(options.position_offset),
-            options.arc_points);
+        return semantic_polyline_impl(file, options);
     });
 }
 
@@ -1306,7 +1467,11 @@ express::Base shape_builder_axis2_placement_3d(
     const ShapeBuilderAxis2Placement3dOptions& options)
 {
     return wrap_shape_builder_errors("shape_builder_axis2_placement_3d", [&]() {
-        return axis2_placement_3d(file, options.position, options.z_axis, options.x_axis);
+        return axis2_placement_3d(
+            file,
+            dynamic_array(options.position.value_or(Vec3{0.0, 0.0, 0.0})),
+            dynamic_array(options.z_axis.value_or(Vec3{0.0, 0.0, 1.0})),
+            dynamic_array(options.x_axis.value_or(Vec3{1.0, 0.0, 0.0})));
     });
 }
 
@@ -1318,20 +1483,20 @@ express::Base shape_builder_axis2_placement_2d(
         static const std::vector<double> empty_direction;
         return axis2_placement_2d(
             file,
-            options.position,
-            options.x_direction ? *options.x_direction : empty_direction,
+            dynamic_array(options.position.value_or(Vec2{0.0, 0.0})),
+            options.x_direction ? dynamic_array(*options.x_direction) : empty_direction,
             static_cast<bool>(options.x_direction));
     });
 }
 
 express::Base shape_builder_circle(
     ifcopenshell::file* file,
-    const std::vector<double>& center,
+    const Vec2& center,
     double radius)
 {
     return wrap_shape_builder_errors("shape_builder_circle", [&]() {
         auto result = create_entity(file, "IfcCircle");
-        set_ref(result, "Position", axis2_placement_2d(file, center, {}, false));
+        set_ref(result, "Position", axis2_placement_2d(file, dynamic_array(center), {}, false));
         set_attr(result, "Radius", radius);
         return result;
     });
@@ -1339,18 +1504,20 @@ express::Base shape_builder_circle(
 
 express::Base shape_builder_plane(
     ifcopenshell::file* file,
-    const std::vector<double>& location,
-    const std::vector<double>& normal)
+    const Vec3& location,
+    const Vec3& normal)
 {
     return wrap_shape_builder_errors("shape_builder_plane", [&]() {
+        const auto location_values = dynamic_array(location);
+        const auto normal_values = dynamic_array(normal);
         std::vector<double> arbitrary = {0.0, 0.0, 1.0};
-        if (normal.size() >= 3 && std::fabs(std::round(normal[0] * 100.0) / 100.0) == 0.0 &&
+        if (std::fabs(std::round(normal[0] * 100.0) / 100.0) == 0.0 &&
             std::fabs(std::round(normal[1] * 100.0) / 100.0) == 0.0 &&
             std::fabs(std::round(normal[2] * 100.0) / 100.0 - 1.0) == 0.0) {
             arbitrary = {0.0, 1.0, 0.0};
         }
         auto result = create_entity(file, "IfcPlane");
-        set_ref(result, "Position", axis2_placement_3d(file, location, normal, normalized(cross3(normal, arbitrary))));
+        set_ref(result, "Position", axis2_placement_3d(file, location_values, normal_values, normalized(cross3(normal_values, arbitrary))));
         return result;
     });
 }
@@ -1360,14 +1527,15 @@ express::Base shape_builder_profile(
     const ShapeBuilderProfileOptions& options)
 {
     return wrap_shape_builder_errors("shape_builder_profile", [&]() {
-        auto result = create_entity(file, options.inner_curves.empty() ? "IfcArbitraryClosedProfileDef" : "IfcArbitraryProfileDefWithVoids");
+        const auto inner_curves = options.inner_curves.value_or(std::vector<express::Base>{});
+        auto result = create_entity(file, inner_curves.empty() ? "IfcArbitraryClosedProfileDef" : "IfcArbitraryProfileDefWithVoids");
         set_attr(result, "ProfileType", options.profile_type.value_or("AREA"));
         if (options.name && !options.name->empty()) {
             set_attr(result, "ProfileName", *options.name);
         }
         set_ref(result, "OuterCurve", options.outer_curve);
-        if (!options.inner_curves.empty()) {
-            set_refs(result, "InnerCurves", options.inner_curves);
+        if (!inner_curves.empty()) {
+            set_refs(result, "InnerCurves", inner_curves);
         }
         return result;
     });
@@ -1377,8 +1545,8 @@ express::Base shape_builder_sphere(ifcopenshell::file* file, const ShapeBuilderS
 {
     return wrap_shape_builder_errors("shape_builder_sphere", [&]() {
         auto result = create_entity(file, "IfcSphere");
-        set_ref(result, "Position", axis2_placement_3d(file, options.center, {0.0, 0.0, 1.0}, {1.0, 0.0, 0.0}));
-        set_attr(result, "Radius", options.radius);
+        set_ref(result, "Position", axis2_placement_3d(file, dynamic_array(options.center.value_or(Vec3{0.0, 0.0, 0.0})), {0.0, 0.0, 1.0}, {1.0, 0.0, 0.0}));
+        set_attr(result, "Radius", options.radius.value_or(1.0));
         return result;
     });
 }
@@ -1389,10 +1557,10 @@ express::Base shape_builder_block(
 {
     return wrap_shape_builder_errors("shape_builder_block", [&]() {
         auto result = create_entity(file, "IfcBlock");
-        set_ref(result, "Position", axis2_placement_3d(file, options.position, {0.0, 0.0, 1.0}, {1.0, 0.0, 0.0}));
-        set_attr(result, "XLength", options.x_length);
-        set_attr(result, "YLength", options.y_length);
-        set_attr(result, "ZLength", options.z_length);
+        set_ref(result, "Position", axis2_placement_3d(file, dynamic_array(options.position.value_or(Vec3{0.0, 0.0, 0.0})), {0.0, 0.0, 1.0}, {1.0, 0.0, 0.0}));
+        set_attr(result, "XLength", options.x_length.value_or(1.0));
+        set_attr(result, "YLength", options.y_length.value_or(1.0));
+        set_attr(result, "ZLength", options.z_length.value_or(1.0));
         return result;
     });
 }
@@ -1404,7 +1572,7 @@ express::Base shape_builder_half_space_solid(
     return wrap_shape_builder_errors("shape_builder_half_space_solid", [&]() {
         auto result = create_entity(file, "IfcHalfSpaceSolid");
         set_ref(result, "BaseSurface", options.plane);
-        set_attr(result, "AgreementFlag", options.agreement_flag);
+        set_attr(result, "AgreementFlag", options.agreement_flag.value_or(false));
         return result;
     });
 }
@@ -1414,7 +1582,12 @@ express::Base shape_builder_extrude(
     const ShapeBuilderExtrudeOptions& options)
 {
     return wrap_shape_builder_errors("shape_builder_extrude", [&]() {
-        if (options.magnitude == 0.0) {
+        const double magnitude = options.magnitude.value_or(1.0);
+        const auto position = dynamic_array(options.position.value_or(Vec3{0.0, 0.0, 0.0}));
+        const auto extrusion_vector = dynamic_array(options.extrusion_vector.value_or(Vec3{0.0, 0.0, 1.0}));
+        const auto position_z_axis = dynamic_array(options.position_z_axis.value_or(Vec3{0.0, 0.0, 1.0}));
+        const auto position_x_axis = dynamic_array(options.position_x_axis.value_or(Vec3{1.0, 0.0, 0.0}));
+        if (!std::isfinite(magnitude) || magnitude <= 0.0) {
             throw std::invalid_argument(
                 "Extrusion magnitude must be greater than 0 to be valid.\n"
                 "Ref: https://ifc43-docs.standards.buildingsmart.org/IFC/RELEASE/IFC4x3/HTML/lexical/IfcPositiveLengthMeasure.htm#8.11.2.71.3-Formal-representation"
@@ -1424,13 +1597,13 @@ express::Base shape_builder_extrude(
         if (!is_a(profile, "IfcProfileDef")) {
             profile = shape_builder_profile(file, ShapeBuilderProfileOptions{profile, {}, {}, "AREA"});
         }
-        std::vector<double> z_axis = options.position_y_axis ? cross3(options.position_x_axis, *options.position_y_axis)
-                                                             : options.position_z_axis;
+        std::vector<double> z_axis = options.position_y_axis ? cross3(position_x_axis, dynamic_array(*options.position_y_axis))
+                                                             : position_z_axis;
         auto result = create_entity(file, "IfcExtrudedAreaSolid");
         set_ref(result, "SweptArea", profile);
-        set_ref(result, "Position", axis2_placement_3d(file, options.position, z_axis, options.position_x_axis));
-        set_ref(result, "ExtrudedDirection", direction(file, options.extrusion_vector));
-        set_attr(result, "Depth", options.magnitude);
+        set_ref(result, "Position", axis2_placement_3d(file, position, z_axis, position_x_axis));
+        set_ref(result, "ExtrudedDirection", direction(file, extrusion_vector));
+        set_attr(result, "Depth", magnitude);
         return result;
     });
 }
@@ -1467,17 +1640,18 @@ express::Base shape_builder_deep_copy(ifcopenshell::file* file, express::Base* e
 
 express::Base shape_builder_curve_between_two_points(
     ifcopenshell::file* file,
-    const std::vector<std::vector<double>>& points)
+    const std::array<Vec2, 2>& points)
 {
     return wrap_shape_builder_errors("shape_builder_curve_between_two_points", [&]() {
-        if (points.size() != 2 || points[0].size() != 2 || points[1].size() != 2) {
-            throw std::invalid_argument("curve_between_two_points expects two 2D points");
-        }
         std::vector<double> diff = {points[1][0] - points[0][0], points[1][1] - points[0][1]};
         const size_t max_i = std::fabs(diff[0]) >= std::fabs(diff[1]) ? 0 : 1;
-        std::vector<double> middle = points[0];
+        std::vector<double> middle(points[0].begin(), points[0].end());
         middle[max_i] += (diff[max_i] < 0.0 ? -0.01 : 0.01);
-        return indexed_polycurve_2d_impl(file, {points[0], middle, points[1]}, {{1, 2, 3}});
+        return indexed_polycurve_2d_impl(
+            file,
+            ShapeBuilderIndexedPolycurve2dOptions{
+                {{{points[0][0], points[0][1]}}, {{middle[0], middle[1]}}, {{points[1][0], points[1][1]}}},
+                {ShapeBuilderArcSegment{{0, 1, 2}}}});
     });
 }
 
@@ -1489,7 +1663,35 @@ express::Base shape_builder_ellipse_curve(
         static const std::vector<double> empty_direction;
         const double x_axis_radius = options.x_axis_radius;
         const double y_axis_radius = options.y_axis_radius;
-        const auto& position = options.position;
+        const auto position = dynamic_array(options.position.value_or(Vec2{0.0, 0.0}));
+        if (!std::isfinite(x_axis_radius) || !std::isfinite(y_axis_radius) || x_axis_radius <= 0.0 ||
+            y_axis_radius <= 0.0) {
+            throw std::invalid_argument("ellipse radii must be finite and greater than zero");
+        }
+        std::vector<std::vector<double>> trims;
+        if (options.trim) {
+            std::visit(
+                [&](const auto& trim) {
+                    using Trim = std::decay_t<decltype(trim)>;
+                    if constexpr (std::is_same_v<Trim, ShapeBuilderEllipsePointTrim>) {
+                        for (const auto& point : trim.points) trims.push_back({point[0], point[1]});
+                    } else {
+                        const std::vector<std::vector<double>> cardinal = {
+                            {x_axis_radius, 0.0},
+                            {0.0, y_axis_radius},
+                            {-x_axis_radius, 0.0},
+                            {0.0, -y_axis_radius},
+                        };
+                        for (std::uint32_t index : trim.cardinal_points) {
+                            if (index >= cardinal.size()) {
+                                throw std::out_of_range("ellipse cardinal trim index out of range");
+                            }
+                            trims.push_back(add_vectors(cardinal[index], position));
+                        }
+                    }
+                },
+                options.trim->value);
+        }
         auto ellipse = create_entity(file, "IfcEllipse");
         set_ref(
             ellipse,
@@ -1497,25 +1699,10 @@ express::Base shape_builder_ellipse_curve(
             axis2_placement_2d(
                 file,
                 position,
-                options.ref_x_direction ? *options.ref_x_direction : empty_direction,
+                options.ref_x_direction ? dynamic_array(*options.ref_x_direction) : empty_direction,
                 static_cast<bool>(options.ref_x_direction)));
         set_attr(ellipse, "SemiAxis1", x_axis_radius);
         set_attr(ellipse, "SemiAxis2", y_axis_radius);
-        std::vector<std::vector<double>> trims = options.trim_points;
-        if (trims.empty() && !options.trim_points_mask.empty()) {
-            const std::vector<std::vector<double>> cardinal = {
-                {x_axis_radius, 0.0},
-                {0.0, y_axis_radius},
-                {-x_axis_radius, 0.0},
-                {0.0, -y_axis_radius},
-            };
-            for (int index : options.trim_points_mask) {
-                if (index < 0 || static_cast<size_t>(index) >= cardinal.size()) {
-                    throw std::out_of_range("ellipse trim point mask index out of range");
-                }
-                trims.push_back(add_vectors(cardinal[static_cast<size_t>(index)], position));
-            }
-        }
         if (trims.empty()) {
             return ellipse;
         }
@@ -1534,11 +1721,10 @@ express::Base shape_builder_ellipse_curve(
 
 express::Base shape_builder_indexed_polycurve_2d(
     ifcopenshell::file* file,
-    const std::vector<std::vector<double>>& points,
-    const std::vector<std::vector<int>>& segments)
+    const ShapeBuilderIndexedPolycurve2dOptions& options)
 {
     return wrap_shape_builder_errors("shape_builder_indexed_polycurve_2d", [&]() {
-        return indexed_polycurve_2d_impl(file, points, segments);
+        return indexed_polycurve_2d_impl(file, options);
     });
 }
 
@@ -1547,7 +1733,7 @@ express::Base shape_builder_translate(
     const ShapeBuilderTranslateOptions& options)
 {
     return wrap_shape_builder_errors("shape_builder_translate", [&]() {
-        return translate_impl(file, options.item, options.translation, options.create_copy);
+        return translate_impl(file, options.item, dynamic_vector(options.translation), options.create_copy.value_or(false));
     });
 }
 
@@ -1559,10 +1745,10 @@ express::Base shape_builder_rotate(
         return rotate_impl(
             file,
             options.item,
-            options.angle,
-            options.pivot_point,
-            options.counter_clockwise,
-            options.create_copy);
+            options.angle.value_or(90.0),
+            dynamic_array(options.pivot_point.value_or(Vec2{0.0, 0.0})),
+            options.counter_clockwise.value_or(false),
+            options.create_copy.value_or(false));
     });
 }
 
@@ -1574,10 +1760,10 @@ express::Base shape_builder_mirror(
         return mirror_impl(
             file,
             options.item,
-            options.mirror_axes,
-            options.mirror_point,
-            options.create_copy,
-            options.placement_matrix);
+            dynamic_array(options.mirror_axes.value_or(Vec2{1.0, 1.0})),
+            dynamic_array(options.mirror_point.value_or(Vec2{0.0, 0.0})),
+            options.create_copy.value_or(false),
+            options.placement_matrix ? dynamic_matrix(*options.placement_matrix) : std::vector<double>{});
     });
 }
 
@@ -1589,10 +1775,10 @@ std::vector<std::vector<double>> shape_builder_get_polyline_coords(express::Base
 express::Base shape_builder_set_polyline_coords(
     ifcopenshell::file*,
     express::Base* polyline,
-    const std::vector<std::vector<double>>& coords)
+    const Vec2OrVec3List& coords)
 {
     auto polyline_value = ifcapi::detail::deref_or_empty(polyline);
-    set_polyline_coords_impl(polyline_value, coords);
+    set_polyline_coords_impl(polyline_value, dynamic_vectors(coords));
     return polyline_value;
 }
 
@@ -1600,23 +1786,29 @@ double shape_builder_mep_transition_calculate(
     const ShapeBuilderMepTransitionCalculateOptions& options)
 {
     static const std::vector<double> empty_diff;
+    const auto start = mep_dimensions(options.start_half_dim);
+    const auto end = mep_dimensions(options.end_half_dim);
+    const auto offset = mep_offset(options.offset);
+    const auto diff = options.diff ? mep_offset(*options.diff) : empty_diff;
+    if (const auto* from_length = std::get_if<ShapeBuilderMepTransitionFromLength>(&options.calculation)) {
+        return mep_transition_calculate_impl(
+            start, end, offset, diff, static_cast<bool>(options.diff), options.end_profile.value_or(false),
+            from_length->length, true, 0.0, false);
+    }
+    const auto& from_angle = std::get<ShapeBuilderMepTransitionFromAngle>(options.calculation);
     return mep_transition_calculate_impl(
-        options.start_half_dim,
-        options.end_half_dim,
-        options.offset,
-        options.diff ? *options.diff : empty_diff,
-        static_cast<bool>(options.diff),
-        options.end_profile,
-        options.length.value_or(0.0),
-        static_cast<bool>(options.length),
-        options.angle.value_or(0.0),
-        static_cast<bool>(options.angle));
+        start, end, offset, diff, static_cast<bool>(options.diff), options.end_profile.value_or(false),
+        0.0, false, from_angle.angle, true);
 }
 
 double shape_builder_mep_transition_length(
     const ShapeBuilderMepTransitionLengthOptions& options)
 {
-    return mep_transition_length_impl(options.start_half_dim, options.end_half_dim, options.angle, options.profile_offset);
+    return mep_transition_length_impl(
+        mep_dimensions(options.start_half_dim),
+        mep_dimensions(options.end_half_dim),
+        options.angle,
+        mep_offset(options.profile_offset.value_or(ShapeBuilderMepOffset{})));
 }
 
 std::optional<ShapeBuilderMepTransitionShapeResult> shape_builder_mep_transition_shape(
@@ -1626,12 +1818,12 @@ std::optional<ShapeBuilderMepTransitionShapeResult> shape_builder_mep_transition
     ShapeBuilderMepTransitionShapeResult result;
     result.start_length = options.start_length;
     result.end_length = options.end_length;
-    result.angle = options.angle;
-    result.profile_offset = options.profile_offset;
+    result.angle = options.angle.value_or(30.0);
+    result.profile_offset = mep_offset(options.profile_offset.value_or(ShapeBuilderMepOffset{}));
     const double start_length = options.start_length;
     const double end_length = options.end_length;
-    const double angle = options.angle;
-    const auto& profile_offset = options.profile_offset;
+    const double angle = options.angle.value_or(30.0);
+    const auto profile_offset = mep_offset(options.profile_offset.value_or(ShapeBuilderMepOffset{}));
     auto start_profile = mep_profile(options.start_segment);
     auto end_profile = mep_profile(options.end_segment);
     if (!start_profile || !end_profile) return std::nullopt;
@@ -1733,7 +1925,7 @@ ShapeBuilderMepBendShapeResult shape_builder_mep_bend_shape(
     const double end_length = options.end_length;
     const double angle = options.angle;
     const double radius = options.radius;
-    const auto& bend_vector = options.bend_vector;
+    const auto bend_vector = mep_bend_direction(options.bend_vector);
     const bool flip_z_axis = options.flip_z_axis;
     result.start_length = start_length;
     result.end_length = end_length;
@@ -1805,10 +1997,10 @@ ShapeBuilderMepBendShapeResult shape_builder_mep_bend_shape(
             ShapeBuilderExtrudeOptions{
                 bend_profile,
                 profile_dim[static_cast<size_t>(non_lateral_axis)] * 2.0,
-                offset,
-                {0.0, 0.0, 1.0},
-                z_axis,
-                x_axis,
+                Vec3{offset.at(0), offset.at(1), offset.at(2)},
+                Vec3{0.0, 0.0, 1.0},
+                Vec3{z_axis.at(0), z_axis.at(1), z_axis.at(2)},
+                Vec3{x_axis.at(0), x_axis.at(1), x_axis.at(2)},
                 {}});
     }
     if (bend) items.push_back(bend);
@@ -1816,7 +2008,13 @@ ShapeBuilderMepBendShapeResult shape_builder_mep_bend_shape(
         items.push_back(shape_builder_extrude(
             file,
             ShapeBuilderExtrudeOptions{
-                profile, start_length, {}, {0.0, 0.0, z_sign}, {0.0, 0.0, 1.0}, {1.0, 0.0, 0.0}, {}}));
+                profile,
+                start_length,
+                {},
+                Vec3{0.0, 0.0, z_sign},
+                Vec3{0.0, 0.0, 1.0},
+                Vec3{1.0, 0.0, 0.0},
+                {}}));
     }
     if (end_length != 0.0) {
         auto endpoint = bend_circle_points({angle}, radius + profile_dim[static_cast<size_t>(lateral_axis)], lateral_axis, lateral_sign, z_sign)[0];
@@ -1826,7 +2024,14 @@ ShapeBuilderMepBendShapeResult shape_builder_mep_bend_shape(
         std::vector<double> x_axis = lateral_axis == 0 ? cross3(z_axis, {0.0, 1.0, 0.0}) : std::vector<double>{1.0, 0.0, 0.0};
         items.push_back(shape_builder_extrude(
             file,
-            ShapeBuilderExtrudeOptions{profile, end_length, endpoint, {0.0, 0.0, 1.0}, z_axis, x_axis, {}}));
+            ShapeBuilderExtrudeOptions{
+                profile,
+                end_length,
+                Vec3{endpoint.at(0), endpoint.at(1), endpoint.at(2)},
+                Vec3{0.0, 0.0, 1.0},
+                Vec3{z_axis.at(0), z_axis.at(1), z_axis.at(2)},
+                Vec3{x_axis.at(0), x_axis.at(1), x_axis.at(2)},
+                {}}));
     }
     auto body = ifcapi::bindings::representation_get_context(file, "Model", "Body", "MODEL_VIEW");
     result.representation = representation_impl(file, body, items, "");

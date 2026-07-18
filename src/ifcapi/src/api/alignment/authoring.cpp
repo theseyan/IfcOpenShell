@@ -53,9 +53,30 @@ express::Base local_placement(ifcopenshell::file* file, bool is_3d = false) {
     return result;
 }
 
-void validate_points(const std::vector<std::vector<double>>& points, const char* name) {
-    if (points.size() < 2) throw std::runtime_error(std::string(name) + " must contain at least two points");
-    for (const auto& p : points) if (p.size() != 2) throw std::runtime_error(std::string(name) + " points must contain two values");
+void validate_point(const std::array<double, 2>& point, const char* name) {
+    if (!std::isfinite(point[0]) || !std::isfinite(point[1])) {
+        throw std::runtime_error(std::string(name) + " must contain finite coordinates");
+    }
+}
+
+void validate_horizontal_pis(const ifcapi::bindings::AlignmentHorizontalPiLayout& pis) {
+    validate_point(pis.start_point, "horizontal start_point");
+    validate_point(pis.end_point, "horizontal end_point");
+    for (const auto& intersection : pis.intersections) {
+        validate_point(intersection.point, "horizontal PI point");
+        if (!std::isfinite(intersection.radius)) throw std::runtime_error("horizontal PI radius must be finite");
+    }
+}
+
+void validate_vertical_pis(const ifcapi::bindings::AlignmentVerticalPiLayout& pis) {
+    validate_point(pis.start_point, "vertical start_point");
+    validate_point(pis.end_point, "vertical end_point");
+    for (const auto& intersection : pis.intersections) {
+        validate_point(intersection.point, "vertical PI point");
+        if (!std::isfinite(intersection.curve_length)) {
+            throw std::runtime_error("vertical PI curve_length must be finite");
+        }
+    }
 }
 
 void assign_root_history(
@@ -95,6 +116,48 @@ void decode_pi_row(
     }
     if (transitions.size() >= 2) transitions = {transitions.begin() + 1, transitions.end() - 1};
     else transitions.clear();
+}
+
+ifcapi::bindings::AlignmentHorizontalPiLayout horizontal_pis(
+    const std::vector<std::vector<double>>& points,
+    const std::vector<double>& radii)
+{
+    if (points.size() < 2) throw std::runtime_error("horizontal_points must contain at least two points");
+    for (const auto& point : points) {
+        if (point.size() != 2) throw std::runtime_error("horizontal_points points must contain two values");
+    }
+    if (points.size() - 2 != radii.size()) {
+        throw std::runtime_error("radii should have two fewer elements than points");
+    }
+    ifcapi::bindings::AlignmentHorizontalPiLayout result;
+    result.start_point = {points.front()[0], points.front()[1]};
+    result.end_point = {points.back()[0], points.back()[1]};
+    for (size_t i = 0; i < radii.size(); ++i) {
+        result.intersections.push_back({{points[i + 1][0], points[i + 1][1]}, radii[i]});
+    }
+    validate_horizontal_pis(result);
+    return result;
+}
+
+ifcapi::bindings::AlignmentVerticalPiLayout vertical_pis(
+    const std::vector<std::vector<double>>& points,
+    const std::vector<double>& lengths)
+{
+    if (points.size() < 2) throw std::runtime_error("vertical_points must contain at least two points");
+    for (const auto& point : points) {
+        if (point.size() != 2) throw std::runtime_error("vertical_points points must contain two values");
+    }
+    if (points.size() - 2 != lengths.size()) {
+        throw std::runtime_error("lengths should have two fewer elements than points");
+    }
+    ifcapi::bindings::AlignmentVerticalPiLayout result;
+    result.start_point = {points.front()[0], points.front()[1]};
+    result.end_point = {points.back()[0], points.back()[1]};
+    for (size_t i = 0; i < lengths.size(); ++i) {
+        result.intersections.push_back({{points[i + 1][0], points[i + 1][1]}, lengths[i]});
+    }
+    validate_vertical_pis(result);
+    return result;
 }
 
 } // namespace
@@ -166,23 +229,25 @@ AlignmentCreateLayoutSegmentResult alignment_add_segment_to_layout(
 void alignment_layout_horizontal_by_pi_method(
     ifcopenshell::file* file,
     express::Base layout,
-    const std::vector<std::vector<double>>& points,
-    const std::vector<double>& radii)
+    const AlignmentLayoutHorizontalByPiMethodOptions& options)
 {
+    const auto& pis = options.pis;
     require_ifc4x3(file);
     require_owned(file, layout, "layout");
     require_type(layout, "IfcAlignmentHorizontal", "layout");
-    validate_points(points, "horizontal_points");
-    if (points.size() - 2 != radii.size()) throw std::runtime_error("radii should have two fewer elements than points");
+    validate_horizontal_pis(pis);
     const double angle_scale = unit_calculate_unit_scale(file, "PLANEANGLEUNIT");
-    double x_back = points[0][0], y_back = points[0][1];
-    double x_pi = points[1][0], y_pi = points[1][1];
-    size_t index = 1;
-    for (double input_radius : radii) {
+    double x_back = pis.start_point[0], y_back = pis.start_point[1];
+    const auto& first_pi = pis.intersections.empty() ? pis.end_point : pis.intersections.front().point;
+    double x_pi = first_pi[0], y_pi = first_pi[1];
+    for (size_t index = 0; index < pis.intersections.size(); ++index) {
+        const double input_radius = pis.intersections[index].radius;
         const double dx_back = x_pi - x_back, dy_back = y_pi - y_back;
         const double angle_back = std::atan2(dy_back, dx_back);
         const double back_length = std::hypot(dx_back, dy_back);
-        const auto& forward = points[++index];
+        const auto& forward = index + 1 < pis.intersections.size()
+            ? pis.intersections[index + 1].point
+            : pis.end_point;
         const double angle_forward = std::atan2(forward[1] - y_pi, forward[0] - x_pi);
         const double delta = angle_forward - angle_back;
         const double tangent = std::abs(input_radius * std::tan(delta / 2.0));
@@ -231,21 +296,23 @@ void alignment_layout_horizontal_by_pi_method(
 void alignment_layout_vertical_by_pi_method(
     ifcopenshell::file* file,
     express::Base layout,
-    const std::vector<std::vector<double>>& points,
-    const std::vector<double>& lengths)
+    const AlignmentLayoutVerticalByPiMethodOptions& options)
 {
+    const auto& pis = options.pis;
     require_ifc4x3(file);
     require_owned(file, layout, "layout");
     require_type(layout, "IfcAlignmentVertical", "layout");
-    validate_points(points, "vertical_points");
-    if (points.size() - 2 != lengths.size()) throw std::runtime_error("lengths should have two fewer elements than points");
-    double x_begin = points[0][0], y_begin = points[0][1];
-    double x_pi = points[1][0], y_pi = points[1][1];
-    size_t index = 1;
-    for (double length : lengths) {
+    validate_vertical_pis(pis);
+    double x_begin = pis.start_point[0], y_begin = pis.start_point[1];
+    const auto& first_pi = pis.intersections.empty() ? pis.end_point : pis.intersections.front().point;
+    double x_pi = first_pi[0], y_pi = first_pi[1];
+    for (size_t index = 0; index < pis.intersections.size(); ++index) {
+        const double length = pis.intersections[index].curve_length;
         const double dx_back = x_pi - x_begin, dy_back = y_pi - y_begin;
         const double start_slope = dy_back / dx_back;
-        const auto& forward = points[++index];
+        const auto& forward = index + 1 < pis.intersections.size()
+            ? pis.intersections[index + 1].point
+            : pis.end_point;
         const double end_slope = (forward[1] - y_pi) / (forward[0] - x_pi);
         const double x_end = x_pi + length / 2.0;
         const double y_end = y_pi + end_slope * length / 2.0;
@@ -329,23 +396,25 @@ express::Base alignment_create_by_pi_method(
     ifcopenshell::file* file,
     const AlignmentCreateByPiMethodOptions& options)
 {
-    validate_points(options.horizontal_points, "horizontal_points");
-    if (!options.vertical_points.empty()) validate_points(options.vertical_points, "vertical_points");
-    const bool include_vertical = !options.vertical_points.empty() || !options.vertical_lengths.empty();
-    if (include_vertical && (options.vertical_points.empty() || options.vertical_lengths.empty())) {
-        throw std::runtime_error("vertical_points and vertical_lengths must be supplied together");
-    }
+    validate_horizontal_pis(options.horizontal);
+    if (options.vertical) validate_vertical_pis(*options.vertical);
+    const double start_station = options.start_station.value_or(0.0);
+    if (!std::isfinite(start_station)) throw std::runtime_error("start_station must be finite");
     AlignmentCreateOptions create_options;
     create_options.name = options.name;
-    create_options.include_vertical = include_vertical;
-    create_options.start_station = options.start_station;
+    create_options.include_vertical = options.vertical.has_value();
+    create_options.start_station = start_station;
     create_options.owner_history = options.owner_history;
     create_options.user = options.user;
     create_options.application = options.application;
     auto alignment = alignment_create(file, create_options);
-    alignment_layout_horizontal_by_pi_method(file, *alignment_get_horizontal_layout(alignment), options.horizontal_points, options.radii);
-    if (include_vertical) {
-        alignment_layout_vertical_by_pi_method(file, *alignment_get_vertical_layout(alignment), options.vertical_points, options.vertical_lengths);
+    AlignmentLayoutHorizontalByPiMethodOptions horizontal_options;
+    horizontal_options.pis = options.horizontal;
+    alignment_layout_horizontal_by_pi_method(file, *alignment_get_horizontal_layout(alignment), horizontal_options);
+    if (options.vertical) {
+        AlignmentLayoutVerticalByPiMethodOptions vertical_options;
+        vertical_options.pis = *options.vertical;
+        alignment_layout_vertical_by_pi_method(file, *alignment_get_vertical_layout(alignment), vertical_options);
     }
     return alignment;
 }
@@ -363,19 +432,28 @@ express::Base alignment_create_from_csv_text(
     std::vector<std::vector<double>> horizontal_points;
     std::vector<double> radii;
     decode_pi_row(rows.front(), horizontal_points, radii);
+    const auto horizontal = horizontal_pis(horizontal_points, radii);
+    std::vector<AlignmentVerticalPiLayout> vertical_layouts;
+    for (size_t i = 1; i < rows.size(); ++i) {
+        std::vector<std::vector<double>> vertical_points;
+        std::vector<double> lengths;
+        decode_pi_row(rows[i], vertical_points, lengths);
+        vertical_layouts.push_back(vertical_pis(vertical_points, lengths));
+    }
     AlignmentCreateOptions options;
     options.name = "Alignment_from_CSV";
     options.owner_history = csv_options.owner_history;
     options.user = csv_options.user;
     options.application = csv_options.application;
     auto alignment = alignment_create(file, options);
-    alignment_layout_horizontal_by_pi_method(file, *alignment_get_horizontal_layout(alignment), horizontal_points, radii);
-    for (size_t i = 1; i < rows.size(); ++i) {
-        std::vector<std::vector<double>> vertical_points;
-        std::vector<double> lengths;
-        decode_pi_row(rows[i], vertical_points, lengths);
+    AlignmentLayoutHorizontalByPiMethodOptions horizontal_options;
+    horizontal_options.pis = horizontal;
+    alignment_layout_horizontal_by_pi_method(file, *alignment_get_horizontal_layout(alignment), horizontal_options);
+    for (const auto& vertical_pis : vertical_layouts) {
         auto vertical = alignment_add_vertical_layout(file, alignment);
-        alignment_layout_vertical_by_pi_method(file, vertical, vertical_points, lengths);
+        AlignmentLayoutVerticalByPiMethodOptions vertical_options;
+        vertical_options.pis = vertical_pis;
+        alignment_layout_vertical_by_pi_method(file, vertical, vertical_options);
     }
     return alignment;
 }

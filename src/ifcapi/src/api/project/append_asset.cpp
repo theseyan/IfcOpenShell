@@ -882,10 +882,13 @@ class AppendAsset {
         reuse_contexts();
         auto source_placement = ifcapi::detail::read_ref_attr(source_asset_, "ObjectPlacement");
         if (source_placement && result) {
-            auto matrix = ifcapi::bindings::placement_get_local_placement(source_placement);
+            const auto source_matrix = ifcapi::bindings::placement_get_local_placement(source_placement);
+            std::vector<double> matrix(source_matrix.begin(), source_matrix.end());
             matrix = local_to_global(library_, matrix);
             matrix = global_to_local(file_, matrix);
-            ifcapi::bindings::geometry_edit_object_placement(file_, {result, matrix, false, false});
+            ifcapi::bindings::Mat4 target_matrix;
+            std::copy(matrix.begin(), matrix.end(), target_matrix.begin());
+            ifcapi::bindings::geometry_edit_object_placement(file_, {result, target_matrix, false, false});
             prune_cache(cache_, file_);
         }
         auto source_type = ifcapi::bindings::element_get_type(&source_asset_);

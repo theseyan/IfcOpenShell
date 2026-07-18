@@ -25,7 +25,9 @@ COORD = Union[tuple[float, float], tuple[float, float, float]]
 
 
 def add_axis_representation(
-    file: ifcopenshell.file, context: ifcopenshell.entity_instance, axis: tuple[COORD, COORD]
+    file: ifcopenshell.file,
+    context: ifcopenshell.entity_instance,
+    axis: tuple[COORD, COORD],
 ) -> ifcopenshell.entity_instance:
     """Adds a new axis representation
 
@@ -72,10 +74,13 @@ def add_axis_representation(
             context=context, axis=[(0.0, 0.0), (1.0, 0.0)])
     """
     axis_list = _capi.double_list_list(axis or [])
-    return _capi.call_handle(
-        file,
-        "geometry_add_axis_representation",
-        _capi.file_handle(file),
-        _capi.instance_handle(context),
-        axis_list,
-    )
+    try:
+        return _capi.call_handle(
+            file,
+            "geometry_add_axis_representation",
+            _capi.file_handle(file),
+            _capi.instance_handle(context),
+            axis_list,
+        )
+    except TypeError as error:
+        raise RuntimeError(str(error)) from error

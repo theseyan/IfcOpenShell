@@ -1,10 +1,11 @@
 # This file was generated with the assistance of an AI coding tool.
 # SPDX-License-Identifier: LGPL-3.0-or-later
 
-import pytest
-
 import ifcopenshell.api.context
 import ifcopenshell.api.geometry
+import ifcopenshell.api.unit
+import pytest
+
 import test.bootstrap
 
 
@@ -27,7 +28,9 @@ class TestAddMeshRepresentation(test.bootstrap.IFC4):
         rep = ifcopenshell.api.geometry.add_mesh_representation(
             self.file,
             context,
-            vertices=[[(0.0, 0.0, 0.0), (1.0, 0.0, 0.0), (1.0, 1.0, 0.0), (0.0, 1.0, 0.0)]],
+            vertices=[
+                [(0.0, 0.0, 0.0), (1.0, 0.0, 0.0), (1.0, 1.0, 0.0), (0.0, 1.0, 0.0)]
+            ],
             faces=[[(0, 1, 2, 3)]],
         )
 
@@ -37,7 +40,12 @@ class TestAddMeshRepresentation(test.bootstrap.IFC4):
         assert rep.RepresentationIdentifier == "Body"
         assert rep.RepresentationType == "Tessellation"
         assert item.is_a("IfcPolygonalFaceSet")
-        assert item.Coordinates.CoordList == ((0.0, 0.0, 0.0), (1.0, 0.0, 0.0), (1.0, 1.0, 0.0), (0.0, 1.0, 0.0))
+        assert item.Coordinates.CoordList == (
+            (0.0, 0.0, 0.0),
+            (1.0, 0.0, 0.0),
+            (1.0, 1.0, 0.0),
+            (0.0, 1.0, 0.0),
+        )
         assert item.Faces[0].CoordIndex == (1, 2, 3, 4)
 
     def test_preserves_null_context_identifier(self):
@@ -60,7 +68,30 @@ class TestAddMeshRepresentation(test.bootstrap.IFC4):
             unit_scale=0.5,
             coordinate_offset=(1.0, 2.0, 3.0),
         )
-        assert rep.Items[0].Coordinates.CoordList == ((3.0, 5.0, 7.0), (5.0, 5.0, 7.0), (3.0, 7.0, 7.0))
+        assert rep.Items[0].Coordinates.CoordList == (
+            (3.0, 5.0, 7.0),
+            (5.0, 5.0, 7.0),
+            (3.0, 7.0, 7.0),
+        )
+
+    def test_uses_file_unit_scale_when_omitted_and_project_units_for_offset(self):
+        context = self.setup_context()
+        unit = ifcopenshell.api.unit.add_si_unit(
+            self.file, unit_type="LENGTHUNIT", prefix="MILLI"
+        )
+        ifcopenshell.api.unit.assign_unit(self.file, [unit])
+        rep = ifcopenshell.api.geometry.add_mesh_representation(
+            self.file,
+            context,
+            vertices=[[(1.0, 1.5, 2.0), (2.0, 1.5, 2.0), (1.0, 2.5, 2.0)]],
+            faces=[[(0, 1, 2)]],
+            coordinate_offset=(10.0, 20.0, 30.0),
+        )
+        assert rep.Items[0].Coordinates.CoordList == (
+            (1010.0, 1520.0, 2030.0),
+            (2010.0, 1520.0, 2030.0),
+            (1010.0, 2520.0, 2030.0),
+        )
 
     def test_creates_multiple_mesh_items(self):
         context = self.setup_context()
@@ -69,11 +100,14 @@ class TestAddMeshRepresentation(test.bootstrap.IFC4):
             context,
             vertices=[
                 [(0.0, 0.0, 0.0), (1.0, 0.0, 0.0), (0.0, 1.0, 0.0)],
-                [(0.0, 0.0, 1.0), (1.0, 0.0, 1.0), (0.0, 1.0, 1.0)],
+                [(0.0, 0.0, 1.0), (1.0, 0.0, 1.0), (1.0, 1.0, 1.0), (0.0, 1.0, 1.0)],
             ],
-            faces=[[(0, 1, 2)], [(0, 1, 2)]],
+            faces=[[(0, 1, 2)], [(0, 1, 2, 3)]],
         )
-        assert [item.is_a() for item in rep.Items] == ["IfcPolygonalFaceSet", "IfcPolygonalFaceSet"]
+        assert [item.is_a() for item in rep.Items] == [
+            "IfcPolygonalFaceSet",
+            "IfcPolygonalFaceSet",
+        ]
 
     def test_preserves_polygonal_face_voids(self):
         context = self.setup_context()
@@ -114,11 +148,42 @@ class TestAddMeshRepresentation(test.bootstrap.IFC4):
     def test_preserves_upstream_assertions(self):
         context = self.setup_context()
         with pytest.raises(AssertionError):
-            ifcopenshell.api.geometry.add_mesh_representation(self.file, context, vertices=[], faces=[])
+            ifcopenshell.api.geometry.add_mesh_representation(
+                self.file, context, vertices=[], faces=[]
+            )
         with pytest.raises(AssertionError):
-            ifcopenshell.api.geometry.add_mesh_representation(self.file, context, vertices=[[]], faces=[])
+            ifcopenshell.api.geometry.add_mesh_representation(
+                self.file, context, vertices=[[]], faces=[]
+            )
         with pytest.raises(AssertionError):
-            ifcopenshell.api.geometry.add_mesh_representation(self.file, context, vertices=[[]], faces=None)
+            ifcopenshell.api.geometry.add_mesh_representation(
+                self.file, context, vertices=[[]], faces=None
+            )
+
+    @pytest.mark.parametrize(
+        ("faces", "force_faceted_brep", "message"),
+        [
+            ([[(0, 1)]], False, "requires at least three"),
+            ([[(0, 1, 3)]], False, "out of range"),
+            ([[[(0, 1, 2), (0, 1, 2)]]], True, "cannot contain inner loops"),
+        ],
+    )
+    def test_invalid_face_contracts_fail_before_mutation(
+        self, faces, force_faceted_brep, message
+    ):
+        context = self.setup_context()
+        entity_count = len(list(self.file))
+
+        with pytest.raises(ValueError, match=message):
+            ifcopenshell.api.geometry.add_mesh_representation(
+                self.file,
+                context,
+                vertices=[[(0.0, 0.0, 0.0), (1.0, 0.0, 0.0), (0.0, 1.0, 0.0)]],
+                faces=faces,
+                force_faceted_brep=force_faceted_brep,
+            )
+
+        assert len(list(self.file)) == entity_count
 
 
 class TestAddMeshRepresentationIFC2X3(test.bootstrap.IFC2X3):

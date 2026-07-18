@@ -50,12 +50,18 @@ describeGeneratedOrSkip('generated native alignment API', () => {
     await using file = await newFile();
     const alignment = shell.api.alignment.createByPiMethod(file, {
       name: 'PI',
-      horizontalPoints: [[0, 0], [100, 0], [200, 100]],
-      radii: [25],
-      verticalPoints: [[0, 10], [100, 12], [200, 10]],
-      verticalLengths: [30],
-      startStation: 0,
+      horizontal: {
+        startPoint: [0, 0],
+        intersections: [{ point: [100, 0], radius: 25 }],
+        endPoint: [200, 100],
+      },
+      vertical: {
+        startPoint: [0, 10],
+        intersections: [{ point: [100, 12], curveLength: 30 }],
+        endPoint: [200, 10],
+      },
     });
+    expect(shell.api.alignment.getAlignmentStartStation(file, alignment)).toBe(0);
     const horizontal = shell.api.alignment.getHorizontalLayout(alignment)!;
     const semantic = shell.api.alignment.getLayoutSegments(horizontal);
     expect(semantic.length).toBeGreaterThan(3);
@@ -69,5 +75,31 @@ describeGeneratedOrSkip('generated native alignment API', () => {
     });
     expect(shell.api.alignment.getVerticalLayout(csv)?.type).toBe('IfcAlignmentVertical');
     expect(shell.api.alignment.getBasisCurve(csv)?.type).toBe('IfcCompositeCurve');
+  });
+
+  it('supports a straight horizontal-only PI contract and rejects malformed input before mutation', async () => {
+    await using file = await newFile();
+    const straight = shell.api.alignment.createByPiMethod(file, {
+      name: 'Straight',
+      horizontal: {
+        startPoint: [0, 0],
+        intersections: [],
+        endPoint: [100, 0],
+      },
+    });
+    expect(shell.api.alignment.getVerticalLayout(straight)).toBeNull();
+    const horizontal = shell.api.alignment.getHorizontalLayout(straight)!;
+    expect(shell.api.alignment.getLayoutSegments(horizontal)).toHaveLength(2);
+
+    const before = file.all('IfcAlignment').length;
+    expect(() => shell.api.alignment.createByPiMethod(file, {
+      name: 'Invalid',
+      horizontal: {
+        startPoint: [0, 0],
+        intersections: [],
+        endPoint: [Number.NaN, 0],
+      },
+    })).toThrow(/horizontal end_point must contain finite coordinates/);
+    expect(file.all('IfcAlignment')).toHaveLength(before);
   });
 });

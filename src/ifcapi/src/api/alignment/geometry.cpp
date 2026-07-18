@@ -27,13 +27,6 @@ using namespace ifcapi::detail::alignment;
 
 double real(express::Base entity, const char* attr) { return entity_view(entity).get_or<double>(attr, 0.0); }
 
-Matrix vector_matrix(const std::vector<double>& values) {
-    Matrix result{};
-    if (values.size() != 16) throw std::runtime_error("Expected a 4x4 placement matrix");
-    std::copy(values.begin(), values.end(), result.begin());
-    return result;
-}
-
 express::Base create_zero_parent_line(ifcopenshell::file* file) {
     auto parent = create(file, "IfcLine");
     write_ref_attr(parent, "Pnt", point(file, {0.0, 0.0}));
@@ -215,8 +208,9 @@ namespace ifcapi::bindings {
 std::string alignment_get_curve_segment_transition_code(
     express::Base segment,
     express::Base next_segment,
-    double position_tolerance)
+    std::optional<double> position_tolerance)
 {
+    const double tolerance = position_tolerance.value_or(0.001);
     ifcapi::detail::alignment::require_type(segment, "IfcCurveSegment", "segment");
     ifcapi::detail::alignment::require_type(next_segment, "IfcCurveSegment", "next_segment");
     auto first_curves = ifcapi::detail::alignment::inverses(segment, "UsingCurves");
@@ -229,9 +223,9 @@ std::string alignment_get_curve_segment_transition_code(
     auto close = [](double a, double b, double tolerance) {
         return std::abs(a - b) <= tolerance + 1e-5 * std::abs(b);
     };
-    const bool same_position = close(end[3], start[3], position_tolerance) &&
-                               close(end[7], start[7], position_tolerance) &&
-                               close(end[11], start[11], position_tolerance);
+    const bool same_position = close(end[3], start[3], tolerance) &&
+                               close(end[7], start[7], tolerance) &&
+                               close(end[11], start[11], tolerance);
     if (!same_position) return "DISCONTINUOUS";
     const bool same_gradient = close(end[0], start[0], 1e-8) && close(end[4], start[4], 1e-8) && close(end[8], start[8], 1e-8);
     if (!same_gradient) return "CONTINUOUS";
@@ -242,7 +236,7 @@ std::string alignment_get_curve_segment_transition_code(
 void alignment_update_curve_segment_transition_code(
     express::Base segment,
     express::Base next_segment,
-    double position_tolerance)
+    std::optional<double> position_tolerance)
 {
     ifcapi::detail::write_enum_attr(
         segment, "Transition",
@@ -351,7 +345,7 @@ void alignment_update_end_point(ifcopenshell::file* file, express::Base curve) {
             : ifcapi::detail::alignment::axis3d(file, ifcapi::detail::alignment::point(file, {0.0, 0.0, 0.0}), {0.0, 0.0, 1.0}, {1.0, 0.0, 0.0});
         ifcapi::detail::write_ref_attr(curve, "EndPoint", endpoint);
     }
-    const auto matrix = vector_matrix(placement_get_axis2_placement(&placement));
+    const auto matrix = placement_get_axis2_placement(&placement);
     auto location = ifcapi::detail::read_ref_attr(endpoint, "Location");
     ifcapi::detail::write_double_aggregate(location, "Coordinates", curve.declaration().is("IfcGradientCurve")
         ? std::vector<double>{matrix[3], matrix[7]} : std::vector<double>{matrix[3], matrix[7], matrix[11]});

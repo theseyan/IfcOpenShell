@@ -22,6 +22,7 @@ import type { IfcOpenShell } from '../init.js';
 type RawValue = ApiData | object | RawValue[];
 type ApiInput = ApiData | PsetProperties | PsetInput;
 type Disposable = { destroy(): void };
+type FixedLength = null | number;
 type RawApi = {
   aggregate: {
     assignObject: (file: RawValue, options: RawValue) => RawValue;
@@ -53,7 +54,7 @@ type RawApi = {
     getChildAlignments: (alignment: RawValue) => RawValue;
     getCurve: (alignment: RawValue) => RawValue;
     getCurveSegment: (layout: RawValue, segment: RawValue) => RawValue;
-    getCurveSegmentTransitionCode: (segment: RawValue, next_segment: RawValue, position_tolerance: number) => string;
+    getCurveSegmentTransitionCode: (segment: RawValue, next_segment: RawValue, position_tolerance?: number | null) => string;
     getHorizontalLayout: (alignment: RawValue) => RawValue;
     getLayout: (segment: RawValue) => RawValue;
     getLayoutCurve: (layout: RawValue) => RawValue;
@@ -63,12 +64,12 @@ type RawApi = {
     getReferentNest: (alignment: RawValue) => RawValue;
     getVerticalLayout: (alignment: RawValue) => RawValue;
     hasZeroLengthSegment: (layout: RawValue) => boolean;
-    layoutHorizontalByPiMethod: (file: RawValue, layout: RawValue, points: RawValue, radii: RawValue) => void;
-    layoutVerticalByPiMethod: (file: RawValue, layout: RawValue, points: RawValue, lengths: RawValue) => void;
+    layoutHorizontalByPiMethod: (file: RawValue, layout: RawValue, options: RawValue) => void;
+    layoutVerticalByPiMethod: (file: RawValue, layout: RawValue, options: RawValue) => void;
     mapSegment: (file: RawValue, options: RawValue) => RawValue;
     nameSegments: (prefix: string, layout: RawValue) => void;
     stationAsString: (file: RawValue, station: number) => string;
-    updateCurveSegmentTransitionCode: (segment: RawValue, next_segment: RawValue, position_tolerance: number) => void;
+    updateCurveSegmentTransitionCode: (segment: RawValue, next_segment: RawValue, position_tolerance?: number | null) => void;
     updateEndPoint: (file: RawValue, curve: RawValue) => void;
     updateFallbackPosition: (file: RawValue, linear_placement: RawValue) => void;
   };
@@ -412,7 +413,7 @@ type RawApi = {
   };
   resource: {
     addResource: (file: RawValue, options: RawValue) => RawValue;
-    addResourceQuantity: (file: RawValue, resource: RawValue, ifc_class: string) => RawValue;
+    addResourceQuantity: (file: RawValue, resource: RawValue, ifc_class?: string | null) => RawValue;
     addResourceTime: (file: RawValue, resource: RawValue) => RawValue;
     assignResource: (file: RawValue, options: RawValue) => RawValue;
     calculateResourceUsage: (file: RawValue, resource: RawValue) => void;
@@ -496,7 +497,7 @@ type RawApi = {
     builderFacetedBrep: (file: RawValue, points: RawValue, faces: RawValue) => RawValue;
     builderGetPolylineCoords: (polyline: RawValue) => RawValue;
     builderHalfSpaceSolid: (file: RawValue, options: RawValue) => RawValue;
-    builderIndexedPolycurve2d: (file: RawValue, points: RawValue, segments: RawValue) => RawValue;
+    builderIndexedPolycurve2d: (file: RawValue, options: RawValue) => RawValue;
     builderMepBendShape: (file: RawValue, options: RawValue) => RawValue;
     builderMepTransitionCalculate: (options: RawValue) => number;
     builderMepTransitionLength: (options: RawValue) => number;
@@ -531,7 +532,7 @@ type RawApi = {
     facetedBrep: (file: RawValue, points: RawValue, faces: RawValue) => RawValue;
     getPolylineCoords: (polyline: RawValue) => RawValue;
     halfSpaceSolid: (file: RawValue, options: RawValue) => RawValue;
-    indexedPolycurve2d: (file: RawValue, points: RawValue, segments: RawValue) => RawValue;
+    indexedPolycurve2d: (file: RawValue, options: RawValue) => RawValue;
     mepBendShape: (file: RawValue, options: RawValue) => RawValue;
     mepTransitionCalculate: (options: RawValue) => number;
     mepTransitionLength: (options: RawValue) => number;
@@ -749,6 +750,14 @@ export interface PsetTemplate {
   destroy(): void;
 }
 
+export type GeometryDoorOperationType = 'SINGLE_SWING_LEFT' | 'SINGLE_SWING_RIGHT' | 'DOUBLE_SWING_RIGHT' | 'DOUBLE_SWING_LEFT' | 'DOUBLE_DOOR_SINGLE_SWING' | 'DOUBLE_DOOR_DOUBLE_SWING' | 'SLIDING_TO_LEFT' | 'SLIDING_TO_RIGHT' | 'DOUBLE_DOOR_SLIDING';
+export type GeometryWindowPartitionType = 'SINGLE_PANEL' | 'DOUBLE_PANEL_HORIZONTAL' | 'DOUBLE_PANEL_VERTICAL' | 'TRIPLE_PANEL_BOTTOM' | 'TRIPLE_PANEL_HORIZONTAL' | 'TRIPLE_PANEL_LEFT' | 'TRIPLE_PANEL_RIGHT' | 'TRIPLE_PANEL_TOP' | 'TRIPLE_PANEL_VERTICAL';
+export type filetype = 'FT_IFCSPF' | 'FT_IFCXML' | 'FT_IFCZIP' | 'FT_ROCKSDB' | 'FT_UNKNOWN' | 'FT_AUTODETECT';
+export type kinds = 'MATRIX4' | 'POINT3' | 'DIRECTION3' | 'LINE' | 'CIRCLE' | 'ELLIPSE' | 'BSPLINE_CURVE' | 'OFFSET_CURVE' | 'PLANE' | 'CYLINDER' | 'SPHERE' | 'TORUS' | 'BSPLINE_SURFACE' | 'EDGE' | 'LOOP' | 'FACE' | 'SHELL' | 'SOLID' | 'LOFT' | 'EXTRUSION' | 'REVOLVE' | 'SWEEP_ALONG_CURVE' | 'NODE' | 'COLLECTION' | 'BOOLEAN_RESULT' | 'FUNCTION_ITEM' | 'FUNCTOR_ITEM' | 'PIECEWISE_FUNCTION' | 'GRADIENT_FUNCTION' | 'CANT_FUNCTION' | 'OFFSET_FUNCTION' | 'COLOUR' | 'STYLE';
+export type operation_t = 'UNION' | 'SUBTRACTION' | 'INTERSECTION';
+export type read_type = 'READ_BREP' | 'READ_TRIANGULATION';
+export type tree_point = [number, number, number];
+
 export interface IfcOpenShellAggregateAssignObjectOptions {
   /** Products to assign as parts of the relating object. */
   products: Entity[];
@@ -784,11 +793,12 @@ export interface IfcOpenShellAlignmentAddStationingReferentOptions {
 
 export interface IfcOpenShellAlignmentCreateByPiMethodOptions {
   name: string;
-  horizontalPoints: number[][];
-  radii: number[];
-  verticalPoints: number[][];
-  verticalLengths: number[];
-  startStation: number;
+  /** Required horizontal PI layout. Start and end encode the two-point minimum. */
+  horizontal: IfcOpenShellAlignmentHorizontalPiLayout;
+  /** Optional vertical PI layout. Omit it to create a horizontal-only alignment. */
+  vertical?: IfcOpenShellAlignmentVerticalPiLayout;
+  /** Initial station value; defaults to zero when omitted. */
+  startStation?: number;
   ownerHistory?: Entity;
   user?: Entity;
   application?: Entity;
@@ -830,9 +840,49 @@ export interface IfcOpenShellAlignmentCreatePolylineOptions {
   application?: Entity;
 }
 
+export interface IfcOpenShellAlignmentHorizontalPiLayout {
+  /** First plan-view point. */
+  startPoint: [number, number];
+  /** Interior PIs, each carrying its corresponding radius. */
+  intersections: IfcOpenShellAlignmentHorizontalPi[];
+  /** Last plan-view point. */
+  endPoint: [number, number];
+}
+
+export interface IfcOpenShellAlignmentHorizontalPi {
+  /** Plan-view point of intersection. */
+  point: [number, number];
+  /** Circular-arc radius at this interior PI. */
+  radius: number;
+}
+
+export interface IfcOpenShellAlignmentLayoutHorizontalByPiMethodOptions {
+  pis: IfcOpenShellAlignmentHorizontalPiLayout;
+}
+
+export interface IfcOpenShellAlignmentLayoutVerticalByPiMethodOptions {
+  pis: IfcOpenShellAlignmentVerticalPiLayout;
+}
+
 export interface IfcOpenShellAlignmentMapSegmentOptions {
   segment: Entity;
   railHeadDistance?: number;
+}
+
+export interface IfcOpenShellAlignmentVerticalPiLayout {
+  /** First distance-along and elevation point. */
+  startPoint: [number, number];
+  /** Interior PIs, each carrying its corresponding curve length. */
+  intersections: IfcOpenShellAlignmentVerticalPi[];
+  /** Last distance-along and elevation point. */
+  endPoint: [number, number];
+}
+
+export interface IfcOpenShellAlignmentVerticalPi {
+  /** Distance-along and elevation at the point of intersection. */
+  point: [number, number];
+  /** Parabolic-curve length at this interior PI. */
+  curveLength: number;
 }
 
 export interface IfcOpenShellAttributeEditAttributesOptions {
@@ -852,15 +902,15 @@ export interface IfcOpenShellAttributeEditAttributesOptions {
 
 export interface IfcOpenShellBoundaryAssignConnectionGeometryOptions {
   /** Outer boundary of the connection plane, in SI metres and converted to project units using unit_scale. */
-  outerBoundary: number[][];
+  outerBoundary: [number, number][];
   /** Origin of the connection plane relative to the bounded space, in SI metres and converted to project units using unit_scale. */
-  location: number[];
+  location: [number, number, number];
   /** Local axis direction of the connection plane. */
-  axis: number[];
+  axis: [number, number, number];
   /** Local reference direction of the connection plane. */
-  refDirection: number[];
+  refDirection: [number, number, number];
   /** Inner boundaries representing openings in the connection plane, in SI metres and converted to project units using unit_scale. */
-  innerBoundaries: number[][][];
+  innerBoundaries: [number, number][][];
   /** Scale that converts model units to SI units. */
   unitScale: number;
 }
@@ -1161,27 +1211,29 @@ export interface IfcOpenShellFeatureRemoveFeatureOptions {
 export interface IfcOpenShellGeometryAddDoorRepresentationOptions {
   /** IfcGeometricRepresentationContext for the representation. */
   context: Entity;
-  /** Overall door height in model units. */
-  overallHeight: number;
-  /** Overall door width in model units. */
-  overallWidth: number;
-  /** Door operation type (e.g. "SINGLE_SWING_LEFT", "DOUBLE_SWING"). */
-  operationType: string;
-  /** Lining properties as a flat double array. */
-  liningProperties: number[];
-  /** Panel properties as a flat double array. */
-  panelProperties: number[];
+  /** Overall door height in model units. Defaults to 2 metres. */
+  overallHeight?: number;
+  /** Overall door width in model units. Defaults to 0.9 metres. */
+  overallWidth?: number;
+  /** Door operation layout. Defaults to SINGLE_SWING_LEFT. */
+  operationType?: GeometryDoorOperationType;
+  /** Optional semantic lining property overrides. */
+  liningProperties?: IfcOpenShellGeometryDoorLiningProperties;
+  /** Optional semantic panel property overrides. */
+  panelProperties?: IfcOpenShellGeometryDoorPanelProperties;
   /** Optional IfcProductDefinitionShape to attach a shape aspect to. */
   partOfProduct?: Entity;
-  /** Scale factor from model units to SI metres. Defaults to 1.0. */
-  unitScale: number;
+  /** Scale factor from model units to SI metres. Calculated from the file when omitted. */
+  unitScale?: number;
 }
 
 export interface IfcOpenShellGeometryAddMeshRepresentationOptions {
-  /** Vertices for each mesh item. Each point is an XYZ coordinate. */
-  vertices: number[][][];
-  /** Faces for each mesh item. Each face may contain one outer loop and optional inner loops. */
-  faces: number[][][][];
+  /** Ordered representation items. At least one item is required. */
+  items: IfcOpenShellGeometryMeshItem[];
+  /** Optional XYZ offset applied after unit conversion, in project units. */
+  coordinateOffset?: [number, number, number];
+  /** Vertex-unit scale relative to SI. Defaults to the file length-unit scale. */
+  unitScale?: number;
   /** Force faceted BRep output instead of tessellated face sets. Defaults to false. */
   forceFacetedBrep?: boolean;
 }
@@ -1192,28 +1244,22 @@ export interface IfcOpenShellGeometryAddProfileRepresentationOptions {
   /** IfcProfileDef to extrude. */
   profile: Entity;
   /** Extrusion depth in SI metres. */
-  depth: number;
-  /** Canonical cardinal-point name; when omitted, the profile origin is used. */
+  depth?: number;
+  /** Canonical cardinal-point name. Defaults to "mid-depth centre". */
   cardinalPoint?: string;
   /** Optional placement Z axis; defaults to (0, 0, 1) when omitted. */
-  placementZAxis?: number[];
+  placementZAxis?: [number, number, number];
   /** Optional placement X axis; defaults to (1, 0, 0) when omitted. */
-  placementXAxis?: number[];
-  /** Clipping kinds in input order: 0 = plane, 1 = pre-existing entity. */
-  clippingKinds: number[];
-  /** Plane clipping locations in SI metres, in plane-only order. */
-  clippingLocations: number[][];
-  /** Plane clipping normals, in the same order as clipping_locations. */
-  clippingNormals: number[][];
-  /** Pre-existing clipping entities, in entity-only input order; each is copied before use. */
-  clippingEntities: Entity[];
+  placementXAxis?: [number, number, number];
+  /** Ordered plane or entity clippings. Defaults to no clippings. */
+  clippings?: (IfcOpenShellGeometryPlaneClipping | IfcOpenShellGeometryEntityClipping)[];
 }
 
 export interface IfcOpenShellGeometryAddRailingRepresentationOptions {
   /** IfcGeometricRepresentationContext for the representation. */
   context: Entity;
   /** Optional finite XYZ path. When omitted, uses the documented three-point default path. */
-  railingPath?: number[][];
+  railingPath?: [number, number, number][];
   /** Optional manual-support mode. Defaults to false. */
   useManualSupports?: boolean;
   /** Optional automatic support spacing; defaults to 1000 mm in project units. */
@@ -1249,21 +1295,15 @@ export interface IfcOpenShellGeometryAddSlabRepresentationOptions {
   /** IfcGeometricRepresentationContext for the representation. */
   context: Entity;
   /** Slab depth (thickness) in SI metres. */
-  depth: number;
+  depth?: number;
   /** Extrusion direction sense: "POSITIVE" or "NEGATIVE". */
-  directionSense: string;
+  directionSense?: string;
   /** Offset from the reference plane along the extrusion direction, in SI metres. */
-  offset: number;
+  offset?: number;
   /** Angle of the extrusion direction from vertical, in radians. */
-  xAngle: number;
-  /** Clipping plane types: 0 = plane, 1 = entity. */
-  clippingKinds: number[];
-  /** Clipping plane locations in SI metres (one XYZ point per plane-kind clipping). */
-  clippingLocations: number[][];
-  /** Clipping plane normals (one direction per plane-kind clipping). */
-  clippingNormals: number[][];
-  /** Pre-existing boolean clipping entities (used for entity-kind clippings). */
-  clippingEntities: Entity[];
+  xAngle?: number;
+  /** Ordered plane or entity clippings. Defaults to no clippings. */
+  clippings?: (IfcOpenShellGeometryPlaneClipping | IfcOpenShellGeometryEntityClipping)[];
   /** Optional outer boundary polyline in SI metres. Defaults to a unit square when omitted. */
   polyline?: number[][];
 }
@@ -1283,59 +1323,53 @@ export interface IfcOpenShellGeometryAddWallRepresentationOptions {
   /** IfcGeometricRepresentationContext for the representation. */
   context: Entity;
   /** Wall length in SI metres. */
-  length: number;
+  length?: number;
   /** Wall height in SI metres. */
-  height: number;
+  height?: number;
   /** Extrusion direction sense: "POSITIVE" or "NEGATIVE". */
-  directionSense: string;
+  directionSense?: string;
   /** Offset from the reference plane along the extrusion direction, in SI metres. */
-  offset: number;
+  offset?: number;
   /** Wall thickness in SI metres. */
-  thickness: number;
+  thickness?: number;
   /** Angle of the extrusion direction from vertical, in radians. */
-  xAngle: number;
-  /** Clipping plane types: 0 = plane, 1 = entity. */
-  clippingKinds: number[];
-  /** Clipping plane locations in SI metres (one XYZ point per plane-kind clipping). */
-  clippingLocations: number[][];
-  /** Clipping plane normals (one direction per plane-kind clipping). */
-  clippingNormals: number[][];
-  /** Pre-existing boolean clipping entities (used for entity-kind clippings). */
-  clippingEntities: Entity[];
-  /** Pre-existing boolean operand entities applied before clippings. */
-  booleans: Entity[];
+  xAngle?: number;
+  /** Ordered plane or entity clippings. Defaults to no clippings. */
+  clippings?: (IfcOpenShellGeometryPlaneClipping | IfcOpenShellGeometryEntityClipping)[];
+  /** Pre-existing boolean operand entities applied before clippings. Defaults to empty. */
+  booleans?: Entity[];
 }
 
 export interface IfcOpenShellGeometryAddWindowRepresentationOptions {
   /** IfcGeometricRepresentationContext for the representation. */
   context: Entity;
-  /** Overall window height in model units. */
-  overallHeight: number;
-  /** Overall window width in model units. */
-  overallWidth: number;
-  /** Panel layout schema: each entry is {panel_index, operation_type}. */
-  panelSchema: number[][];
-  /** Lining properties as a flat double array. */
-  liningProperties: number[];
-  /** Per-panel properties as arrays of doubles. */
-  panelProperties: number[][];
-  /** Optional IfcProductDefinitionShape to attach a shape aspect to. */
+  /** Overall window height in model units. Defaults to 0.9 metres. */
+  overallHeight?: number;
+  /** Overall window width in model units. Defaults to 0.6 metres. */
+  overallWidth?: number;
+  /** Window panel partition layout. Defaults to SINGLE_PANEL. */
+  partitionType?: GeometryWindowPartitionType;
+  /** Optional semantic lining property overrides. */
+  liningProperties?: IfcOpenShellGeometryWindowLiningProperties;
+  /** Optional semantic panel property overrides. Omission creates one default panel. */
+  panelProperties?: IfcOpenShellGeometryWindowPanelProperties[];
+  /** Optional IfcProductDefinitionShape to attach shape aspects to. */
   partOfProduct?: Entity;
-  /** Glass thickness in model units. Defaults to 0.01. */
-  glassThickness: number;
+  /** Scale factor from model units to SI metres. Calculated from the file when omitted. */
+  unitScale?: number;
 }
 
 export interface IfcOpenShellGeometryClipSolidBoundedOptions {
   /** Solid item to clip (first operand). */
   item: Entity;
   /** XYZ point on the clipping plane, in model units. */
-  location: number[];
+  location: [number, number, number];
   /** Direction ratios of the clipping plane normal. */
-  normal: number[];
+  normal: [number, number, number];
   /** XY points defining the polygonal boundary of the clipping region. */
-  boundaryPoints: number[][];
+  boundaryPoints: [number, number][];
   /** XYZ position of the boundary polygon's local origin. */
-  boundaryPosition: number[];
+  boundaryPosition: [number, number, number];
   /** Optional owning element for BBIM_Boolean tracking. */
   element?: Entity;
   /** Optional existing IfcOwnerHistory. */
@@ -1350,9 +1384,9 @@ export interface IfcOpenShellGeometryClipSolidOptions {
   /** Solid item to clip (first operand). */
   item: Entity;
   /** XYZ point on the clipping plane, in model units. */
-  location: number[];
+  location: [number, number, number];
   /** Direction ratios of the clipping plane normal. */
-  normal: number[];
+  normal: [number, number, number];
   /** Optional owning element for BBIM_Boolean tracking. */
   element?: Entity;
   /** Optional existing IfcOwnerHistory. */
@@ -1365,7 +1399,7 @@ export interface IfcOpenShellGeometryClipSolidOptions {
 
 export interface IfcOpenShellGeometryComputeWallMountedHandrailOptions {
   /** Required unclosed sequence of finite XYZ points in project units. */
-  railingPath: number[][];
+  railingPath: [number, number, number][];
   /** Required automatic support spacing in project units; unused in manual mode. */
   supportSpacing: number;
   /** Required positive handrail diameter in project units. */
@@ -1450,9 +1484,9 @@ export interface IfcOpenShellGeometryCreate2PtWallOptions {
   /** IfcGeometricRepresentationContext for the body representation. */
   context: Entity;
   /** XY start point of the wall baseline. */
-  start: number[];
+  start: [number, number];
   /** XY end point of the wall baseline. */
-  end: number[];
+  end: [number, number];
   /** Wall base elevation in SI metres (or model units when is_si is false). */
   elevation: number;
   /** Wall height in SI metres (or model units when is_si is false). */
@@ -1474,15 +1508,63 @@ export interface IfcOpenShellGeometryDisconnectPathOptions {
   relatedElement?: Entity;
 }
 
+export interface IfcOpenShellGeometryDoorLiningProperties {
+  liningDepth?: number;
+  liningThickness?: number;
+  liningOffset?: number;
+  liningToPanelOffsetX?: number;
+  liningToPanelOffsetY?: number;
+  transomThickness?: number;
+  transomOffset?: number;
+  casingDepth?: number;
+  casingThickness?: number;
+  thresholdDepth?: number;
+  thresholdThickness?: number;
+  thresholdOffset?: number;
+}
+
+export interface IfcOpenShellGeometryDoorPanelProperties {
+  panelDepth?: number;
+  panelWidth?: number;
+  frameDepth?: number;
+  frameThickness?: number;
+}
+
 export interface IfcOpenShellGeometryEditObjectPlacementOptions {
   /** Product whose ObjectPlacement to set. */
   product: Entity;
   /** 16-element row-major 4x4 transformation matrix. */
-  matrix: number[];
+  matrix?: [number, number, number, number, number, number, number, number, number, number, number, number, number, number, number, number];
   /** If true, translation components are in SI metres. Defaults to true. */
   isSi: boolean;
   /** If true, child local placements are left unchanged so children move with the parent. If false (default), child world positions are preserved. */
   shouldTransformChildren: boolean;
+}
+
+export interface IfcOpenShellGeometryEntityClipping {
+  /** IfcBooleanClippingResult (or compatible boolean result) to copy. */
+  entity: Entity;
+}
+
+export interface IfcOpenShellGeometryMeshFace {
+  /** Outer boundary loop. At least three indices are required. */
+  outer: number[];
+  /** Optional inner boundary loops. Each loop requires at least three indices. */
+  innerLoops?: number[][];
+}
+
+export interface IfcOpenShellGeometryMeshItem {
+  /** XYZ vertex coordinates in the units described by unit_scale. */
+  vertices: [number, number, number][];
+  /** Faces referencing this item's vertices. */
+  faces: IfcOpenShellGeometryMeshFace[];
+}
+
+export interface IfcOpenShellGeometryPlaneClipping {
+  /** Point on the clipping plane, in SI metres. */
+  location: [number, number, number];
+  /** Plane normal pointing towards the material to discard. */
+  normal: [number, number, number];
 }
 
 export interface IfcOpenShellGeometryRegenerateWallRepresentationOptions {
@@ -1504,6 +1586,25 @@ export interface IfcOpenShellGeometryRemoveRepresentationOptions {
 export interface IfcOpenShellGeometryValidateTypeOptions {
   /** Preferred first operand for boolean consolidation. Auto-selected when omitted. */
   preferredItem?: Entity;
+}
+
+export interface IfcOpenShellGeometryWindowLiningProperties {
+  liningDepth?: number;
+  liningThickness?: number;
+  liningOffset?: number;
+  liningToPanelOffsetX?: number;
+  liningToPanelOffsetY?: number;
+  mullionThickness?: number;
+  firstMullionOffset?: number;
+  secondMullionOffset?: number;
+  transomThickness?: number;
+  firstTransomOffset?: number;
+  secondTransomOffset?: number;
+}
+
+export interface IfcOpenShellGeometryWindowPanelProperties {
+  frameDepth?: number;
+  frameThickness?: number;
 }
 
 export interface IfcOpenShellGeoreferenceAddGeoreferencingOptions {
@@ -1528,7 +1629,7 @@ export interface IfcOpenShellGeoreferenceEditGeoreferencingOptions {
 
 export interface IfcOpenShellGeoreferenceEditTrueNorthOptions {
   /** Direction ratios (X, Y) for true north. When omitted, true north is removed. */
-  trueNorth?: number[];
+  trueNorth?: [number, number];
 }
 
 export interface IfcOpenShellGeoreferenceEditWcsOptions {
@@ -1869,16 +1970,16 @@ export interface IfcOpenShellOwnerUpdateOwnerHistoryOptions {
 
 export interface IfcOpenShellProfileAddArbitraryProfileOptions {
   /** Ordered XYZ or XY points defining the closed outer curve, in SI metres. */
-  profile: number[][];
+  profile: [number, number][] | [number, number, number][];
   /** Optional profile name. When omitted, the profile name is empty. */
   name?: string;
 }
 
 export interface IfcOpenShellProfileAddArbitraryProfileWithVoidsOptions {
   /** Ordered XYZ or XY points defining the outer curve, in SI metres. */
-  outerProfile: number[][];
+  outerProfile: [number, number][] | [number, number, number][];
   /** Inner void curves, each as ordered XY or XYZ points in SI metres. */
-  innerProfiles: number[][][];
+  innerProfiles: ([number, number][] | [number, number, number][])[];
   /** Optional profile name. When omitted, the profile name is empty. */
   name?: string;
 }
@@ -2263,31 +2364,41 @@ export interface IfcOpenShellSequenceRemoveOptions {
   application?: Entity;
 }
 
+export interface IfcOpenShellShapeBuilderArcSegment {
+  /** Zero-based start, midpoint, and end point indices. */
+  arcIndices: [number, number, number];
+}
+
 export interface IfcOpenShellShapeBuilderAxis2Placement2dOptions {
   /** XY coordinates of the placement origin. */
-  position: number[];
+  position?: [number, number];
   /** Optional reference direction. Defaults to (1, 0) when omitted. */
-  xDirection?: number[];
+  xDirection?: [number, number];
 }
 
 export interface IfcOpenShellShapeBuilderAxis2Placement3dOptions {
   /** XYZ coordinates of the placement origin. */
-  position: number[];
+  position?: [number, number, number];
   /** Direction ratios for the Z axis. */
-  zAxis: number[];
+  zAxis?: [number, number, number];
   /** Direction ratios for the X axis (Y is derived). */
-  xAxis: number[];
+  xAxis?: [number, number, number];
 }
 
 export interface IfcOpenShellShapeBuilderBlockOptions {
   /** XYZ position of the block's local origin (corner from which X/Y/Z lengths extend). */
-  position: number[];
+  position?: [number, number, number];
   /** Block length along X in model units. Defaults to 1.0. */
-  xLength: number;
+  xLength?: number;
   /** Block length along Y in model units. Defaults to 1.0. */
-  yLength: number;
+  yLength?: number;
   /** Block length along Z in model units. Defaults to 1.0. */
-  zLength: number;
+  zLength?: number;
+}
+
+export interface IfcOpenShellShapeBuilderEllipseCardinalTrim {
+  /** Cardinal indices (0=+X, 1=+Y, 2=-X, 3=-Y). */
+  cardinalPoints: [number, number];
 }
 
 export interface IfcOpenShellShapeBuilderEllipseCurveOptions {
@@ -2296,37 +2407,62 @@ export interface IfcOpenShellShapeBuilderEllipseCurveOptions {
   /** Second semi-axis radius (Y direction). */
   yAxisRadius: number;
   /** XY centre of the ellipse. */
-  position: number[];
-  /** Two trim points in XY. When non-empty, wraps the ellipse in an IfcTrimmedCurve. */
-  trimPoints: number[][];
+  position?: [number, number];
   /** Optional reference X direction for the ellipse placement. */
-  refXDirection?: number[];
-  /** Cardinal index mask (0=+X, 1=+Y, 2=-X, 3=-Y) for trim points, used when trim_points is empty. */
-  trimPointsMask: number[];
+  refXDirection?: [number, number];
+  /** Optional explicit point or cardinal trim mode. */
+  trim?: IfcOpenShellShapeBuilderEllipseTrim;
+}
+
+export interface IfcOpenShellShapeBuilderEllipsePointTrim {
+  /** Explicit start and end trim points. */
+  points: [[number, number], [number, number]];
+}
+
+export interface IfcOpenShellShapeBuilderEllipseTrim {
+  /** Explicit point or cardinal trim mode. */
+  value: IfcOpenShellShapeBuilderEllipsePointTrim | IfcOpenShellShapeBuilderEllipseCardinalTrim;
 }
 
 export interface IfcOpenShellShapeBuilderExtrudeOptions {
   /** IfcProfileDef or IfcCurve to extrude. Curves are wrapped in an IfcArbitraryClosedProfileDef. */
   profileOrCurve: Entity;
   /** Extrusion depth in model units. Must be greater than zero. */
-  magnitude: number;
+  magnitude?: number;
   /** XYZ position of the solid's local origin. */
-  position: number[];
+  position?: [number, number, number];
   /** Direction ratios for the extrusion direction. */
-  extrusionVector: number[];
+  extrusionVector?: [number, number, number];
   /** Z axis direction ratios for the solid's placement. */
-  positionZAxis: number[];
+  positionZAxis?: [number, number, number];
   /** X axis direction ratios for the solid's placement. */
-  positionXAxis: number[];
+  positionXAxis?: [number, number, number];
   /** Optional Y axis; when provided, the Z axis is computed as cross(X, Y). */
-  positionYAxis?: number[];
+  positionYAxis?: [number, number, number];
 }
 
 export interface IfcOpenShellShapeBuilderHalfSpaceSolidOptions {
   /** IfcPlane defining the bounding surface. */
   plane: Entity;
   /** If true, the half-space is on the side of the plane normal. */
-  agreementFlag: boolean;
+  agreementFlag?: boolean;
+}
+
+export interface IfcOpenShellShapeBuilderIndexedPolycurve2dOptions {
+  /** Ordered XY coordinate points. */
+  points: [number, number][];
+  /** Explicit line and arc segments using zero-based indices. */
+  segments: (IfcOpenShellShapeBuilderLineSegment | IfcOpenShellShapeBuilderArcSegment)[];
+}
+
+export interface IfcOpenShellShapeBuilderLineSegment {
+  /** Zero-based point indices forming one continuous line segment. */
+  lineIndices: number[];
+}
+
+export interface IfcOpenShellShapeBuilderMepBendDirection {
+  x: number;
+  y: number;
 }
 
 export interface IfcOpenShellShapeBuilderMepBendShapeOptions {
@@ -2341,37 +2477,54 @@ export interface IfcOpenShellShapeBuilderMepBendShapeOptions {
   /** Bend radius in model units. */
   radius: number;
   /** XY direction indicating the bend plane. */
-  bendVector: number[];
+  bendVector: IfcOpenShellShapeBuilderMepBendDirection;
   /** If true, flip the Z axis direction. Defaults to false. */
   flipZAxis: boolean;
 }
 
+export interface IfcOpenShellShapeBuilderMepOffset {
+  x: number;
+  y: number;
+}
+
+export interface IfcOpenShellShapeBuilderMepProfileHalfDimensions {
+  halfX: number;
+  halfY: number;
+  depth: number;
+}
+
 export interface IfcOpenShellShapeBuilderMepTransitionCalculateOptions {
   /** Half-dimensions of the start profile (X, Y). */
-  startHalfDim: number[];
+  startHalfDim: IfcOpenShellShapeBuilderMepProfileHalfDimensions;
   /** Half-dimensions of the end profile (X, Y). */
-  endHalfDim: number[];
+  endHalfDim: IfcOpenShellShapeBuilderMepProfileHalfDimensions;
   /** XY offset between the two profile centres. */
-  offset: number[];
+  offset: IfcOpenShellShapeBuilderMepOffset;
   /** Optional override for the absolute XY difference of half-dimensions. */
-  diff?: number[];
+  diff?: IfcOpenShellShapeBuilderMepOffset;
   /** If true, swap X/Y axes for the end profile. Defaults to false. */
-  endProfile: boolean;
-  /** Transition length in model units. Provide either length or angle, not both. */
-  length?: number;
-  /** Transition angle in degrees. Provide either length or angle, not both. */
-  angle?: number;
+  endProfile?: boolean;
+  /** Known transition length or angle used to solve for the other value. */
+  calculation: IfcOpenShellShapeBuilderMepTransitionFromLength | IfcOpenShellShapeBuilderMepTransitionFromAngle;
+}
+
+export interface IfcOpenShellShapeBuilderMepTransitionFromAngle {
+  angle: number;
+}
+
+export interface IfcOpenShellShapeBuilderMepTransitionFromLength {
+  length: number;
 }
 
 export interface IfcOpenShellShapeBuilderMepTransitionLengthOptions {
   /** Half-dimensions of the start profile (X, Y). */
-  startHalfDim: number[];
+  startHalfDim: IfcOpenShellShapeBuilderMepProfileHalfDimensions;
   /** Half-dimensions of the end profile (X, Y). */
-  endHalfDim: number[];
+  endHalfDim: IfcOpenShellShapeBuilderMepProfileHalfDimensions;
   /** Transition angle in degrees. */
   angle: number;
   /** XY offset between the two profile centres. */
-  profileOffset: number[];
+  profileOffset?: IfcOpenShellShapeBuilderMepOffset;
 }
 
 export interface IfcOpenShellShapeBuilderMepTransitionShapeOptions {
@@ -2384,33 +2537,31 @@ export interface IfcOpenShellShapeBuilderMepTransitionShapeOptions {
   /** Length of the end straight section in model units. */
   endLength: number;
   /** Transition angle in degrees. */
-  angle: number;
+  angle?: number;
   /** XY offset between the two profile centres. */
-  profileOffset: number[];
+  profileOffset?: IfcOpenShellShapeBuilderMepOffset;
 }
 
 export interface IfcOpenShellShapeBuilderMirrorOptions {
   /** Geometry item to mirror (polyline, circle, ellipse, trimmed curve, or extruded solid). */
   item: Entity;
   /** Mirror axes: non-zero values flip the corresponding axis (index 0 = X, index 1 = Y). */
-  mirrorAxes: number[];
+  mirrorAxes?: [number, number];
   /** XY point through which the mirror plane passes. */
-  mirrorPoint: number[];
+  mirrorPoint?: [number, number];
   /** If true, mirror an independent copy instead of the supplied item. Defaults to false. */
-  createCopy: boolean;
+  createCopy?: boolean;
   /** Optional 3x3 or 4x4 placement matrix for local-space mirroring. */
-  placementMatrix: number[];
+  placementMatrix?: [number, number, number, number, number, number, number, number, number] | [number, number, number, number, number, number, number, number, number, number, number, number, number, number, number, number];
 }
 
 export interface IfcOpenShellShapeBuilderPolylineOptions {
   /** Ordered coordinate points (each XY or XYZ). */
-  points: number[][];
-  /** Whether the polyline is closed. Defaults to false. */
-  closed?: boolean;
+  points: [number, number][] | [number, number, number][];
   /** Optional offset added to every point before storage. */
-  positionOffset?: number[];
-  /** Zero-based indices of arc middle points. Each selected point and its adjacent points form an arc segment. */
-  arcPoints: number[];
+  positionOffset?: [number, number] | [number, number, number];
+  /** Explicit line and arc segments. Omit for an open, unsegmented polyline. */
+  segments?: (IfcOpenShellShapeBuilderLineSegment | IfcOpenShellShapeBuilderArcSegment)[];
 }
 
 export interface IfcOpenShellShapeBuilderProfileOptions {
@@ -2419,7 +2570,7 @@ export interface IfcOpenShellShapeBuilderProfileOptions {
   /** Optional profile name. */
   name?: string;
   /** Inner void curves. If non-empty, creates IfcArbitraryProfileDefWithVoids. */
-  innerCurves: Entity[];
+  innerCurves?: Entity[];
   /** Profile type string (e.g. "AREA"). Defaults to "AREA". */
   profileType?: string;
 }
@@ -2437,29 +2588,29 @@ export interface IfcOpenShellShapeBuilderRotateOptions {
   /** Geometry item to rotate (polyline, circle, or extruded solid). */
   item: Entity;
   /** Rotation angle in degrees. */
-  angle: number;
+  angle?: number;
   /** XY pivot point for the rotation. */
-  pivotPoint: number[];
+  pivotPoint?: [number, number];
   /** If true, rotate counter-clockwise; if false, clockwise. Defaults to false. */
-  counterClockwise: boolean;
+  counterClockwise?: boolean;
   /** If true, rotate an independent copy instead of the supplied item. Defaults to false. */
-  createCopy: boolean;
+  createCopy?: boolean;
 }
 
 export interface IfcOpenShellShapeBuilderSphereOptions {
   /** Sphere radius in model units. Defaults to 1.0. */
-  radius: number;
+  radius?: number;
   /** XYZ centre of the sphere. */
-  center: number[];
+  center?: [number, number, number];
 }
 
 export interface IfcOpenShellShapeBuilderTranslateOptions {
   /** Geometry item to translate (polyline, circle, extruded solid, or shape representation). */
   item: Entity;
   /** Translation (XY or XYZ). */
-  translation: number[];
+  translation: [number, number] | [number, number, number];
   /** If true, translate an independent copy instead of the supplied item. Defaults to false. */
-  createCopy: boolean;
+  createCopy?: boolean;
 }
 
 export interface IfcOpenShellSpatialAssignContainerOptions {
@@ -2803,7 +2954,7 @@ export interface AlignmentApi {
     getChildAlignments(alignment: Entity): Entity[];
     getCurve(alignment: Entity): Entity | null;
     getCurveSegment(layout: Entity, segment: Entity): Entity | null;
-    getCurveSegmentTransitionCode(segment: Entity, next_segment: Entity, position_tolerance: number): string;
+    getCurveSegmentTransitionCode(segment: Entity, next_segment: Entity, position_tolerance?: number | null): string;
     getHorizontalLayout(alignment: Entity): Entity | null;
     getLayout(segment: Entity): Entity | null;
     getLayoutCurve(layout: Entity): Entity | null;
@@ -2813,13 +2964,13 @@ export interface AlignmentApi {
     getReferentNest(alignment: Entity): Entity | null;
     getVerticalLayout(alignment: Entity): Entity | null;
     hasZeroLengthSegment(layout: Entity): boolean;
-    layoutHorizontalByPiMethod(file: IfcFile, layout: Entity, points: number[][], radii: number[]): void;
-    layoutVerticalByPiMethod(file: IfcFile, layout: Entity, points: number[][], lengths: number[]): void;
+    layoutHorizontalByPiMethod(file: IfcFile, layout: Entity, options: IfcOpenShellAlignmentLayoutHorizontalByPiMethodOptions): void;
+    layoutVerticalByPiMethod(file: IfcFile, layout: Entity, options: IfcOpenShellAlignmentLayoutVerticalByPiMethodOptions): void;
     /** Map one semantic segment. A Helmert segment returns both mapped halves. */
     mapSegment(file: IfcFile, options: IfcOpenShellAlignmentMapSegmentOptions): Entity[];
     nameSegments(prefix: string, layout: Entity): void;
     stationAsString(file: IfcFile, station: number): string;
-    updateCurveSegmentTransitionCode(segment: Entity, next_segment: Entity, position_tolerance: number): void;
+    updateCurveSegmentTransitionCode(segment: Entity, next_segment: Entity, position_tolerance?: number | null): void;
     updateEndPoint(file: IfcFile, curve: Entity): void;
     updateFallbackPosition(file: IfcFile, linear_placement: Entity): void;
 }
@@ -3119,7 +3270,7 @@ export interface CostApi {
      * @param owner_history Owner history for the new entity. When omitted, no owner history is assigned.
      * @return Newly created IfcCostSchedule.
      */
-    addCostSchedule(file: IfcFile, name: string, predefined_type: string, update_date: string, owner_history: Entity | null): Entity;
+    addCostSchedule(file: IfcFile, name: string | null, predefined_type: string, update_date: string, owner_history: Entity | null): Entity;
     /**
      * Create an IfcCostValue and attach it to a parent entity.
      *
@@ -3148,7 +3299,7 @@ export interface CostApi {
      * @param prop_name Quantity property name to match. When omitted, no named quantity is collected.
      * @param options Ownership options for the assignment relationship.
      */
-    assignCostItemQuantity(file: IfcFile, cost_item: Entity, products: Entity[], prop_name: string, options: IfcOpenShellCostAssignCostItemQuantityOptions): void;
+    assignCostItemQuantity(file: IfcFile, cost_item: Entity, products: Entity[], prop_name: string | null, options: IfcOpenShellCostAssignCostItemQuantityOptions): void;
     /**
      * Assign a cost rate's values to a cost item.
      *
@@ -3797,7 +3948,7 @@ export interface GeometryApi {
      * @param axis Ordered XY or XYZ points defining the axis curve.
      * @return IfcShapeRepresentation entity, or no result if creation fails.
      */
-    addAxisRepresentation(file: IfcFile, context: Entity, axis: number[][]): Entity;
+    addAxisRepresentation(file: IfcFile, context: Entity, axis: [number, number][] | [number, number, number][]): Entity;
     /**
      * Add boolean operands to a solid representation item.
      *
@@ -3837,7 +3988,15 @@ export interface GeometryApi {
      *
      * @param file IFC file that receives the representation.
      * @param context IfcGeometricRepresentationContext.
-     * @param options Vertices, faces, and optional faceted BRep override.
+     * Each item binds its vertex list to its faces. Face indices are zero-based.
+     * Polygonal face sets support optional inner loops; IFC2X3 and forced faceted
+     * BReps reject inner loops. Edges without faces are not supported upstream and
+     * are intentionally absent from this native contract.
+     *
+     * Vertices are divided by unit_scale, then coordinate_offset (in project
+     * units) is added. If omitted, unit_scale is calculated from the file.
+     *
+     * @param options Mesh items, coordinate conversion, and optional faceted BRep override.
      * @return IfcShapeRepresentation entity, or no result if creation fails.
      */
     addMeshRepresentation(file: IfcFile, context: Entity, options: IfcOpenShellGeometryAddMeshRepresentationOptions): Entity;
@@ -3903,7 +4062,7 @@ export interface GeometryApi {
      * Create a window representation with lining and panel geometry.
      *
      * @param file IFC file that receives the representation.
-     * @param options Window dimensions, panel schema, lining/panel properties.
+     * @param options Window dimensions, partition type, and semantic lining/panel properties.
      * @return IfcShapeRepresentation entity, or no result if creation fails.
      */
     addWindowRepresentation(file: IfcFile, options: IfcOpenShellGeometryAddWindowRepresentationOptions): Entity;
@@ -4218,7 +4377,7 @@ export interface GridApi {
      * @param grid_axis IfcGridAxis whose AxisCurve to set.
      * @param is_si True if p1/p2 are in SI metres; false if already in model units.
      */
-    createAxisCurve(file: IfcFile, p1: number[], p2: number[], grid_axis: Entity, is_si: boolean): void;
+    createAxisCurve(file: IfcFile, p1: [number, number, number], p2: [number, number, number], grid_axis: Entity, is_si: boolean): void;
     /**
      * Create an IfcGridAxis and append it to the specified grid axis aggregate.
      *
@@ -4763,7 +4922,7 @@ export interface PlacementApi {
      * @param instance IfcAxis2Placement entity.
      * @return 16-element row-major 4x4 matrix.
      */
-    getAxis2Placement(instance: Entity): number[];
+    getAxis2Placement(instance: Entity): [number, number, number, number, number, number, number, number, number, number, number, number, number, number, number, number];
     /**
      * Extract a 4x4 row-major matrix from an IfcCartesianTransformationOperator3D.
      *
@@ -4773,7 +4932,7 @@ export interface PlacementApi {
      * @param instance IfcCartesianTransformationOperator3D entity.
      * @return 16-element row-major 4x4 matrix.
      */
-    getCartesianXform3d(instance: Entity): number[];
+    getCartesianXform3d(instance: Entity): [number, number, number, number, number, number, number, number, number, number, number, number, number, number, number, number];
     /**
      * Compute the cumulative 4x4 row-major world matrix of an IfcLocalPlacement.
      *
@@ -4783,7 +4942,7 @@ export interface PlacementApi {
      * @param instance IfcLocalPlacement entity. When omitted, returns the identity matrix.
      * @return 16-element row-major 4x4 matrix.
      */
-    getLocalPlacement(instance: Entity | null): number[];
+    getLocalPlacement(instance: Entity | null): [number, number, number, number, number, number, number, number, number, number, number, number, number, number, number, number];
     /**
      * Compute the combined 4x4 row-major matrix for an IfcMappedItem.
      *
@@ -4794,7 +4953,7 @@ export interface PlacementApi {
      * @param instance IfcMappedItem entity.
      * @return 16-element row-major 4x4 matrix.
      */
-    getMappeditemXform(instance: Entity): number[];
+    getMappeditemXform(instance: Entity): [number, number, number, number, number, number, number, number, number, number, number, number, number, number, number, number];
     /**
      * Return the elevation of a building storey in model units.
      *
@@ -4814,7 +4973,7 @@ export interface PlacementApi {
      * @param x_axis Direction ratios for the X axis (Y is derived).
      * @return 16-element row-major 4x4 matrix.
      */
-    matrixFromAxes(origin: number[], z_axis: number[], x_axis: number[]): number[];
+    matrixFromAxes(origin: [number, number, number], z_axis: [number, number, number], x_axis: [number, number, number]): [number, number, number, number, number, number, number, number, number, number, number, number, number, number, number, number];
     /**
      * Build a 4x4 row-major rotation matrix about a principal axis.
      *
@@ -4822,7 +4981,7 @@ export interface PlacementApi {
      * @param axis Rotation axis: "X", "Y", or "Z" (case-insensitive).
      * @return 16-element row-major 4x4 rotation matrix.
      */
-    rotation(angle_rad: number, axis: string): number[];
+    rotation(angle_rad: number, axis: string): [number, number, number, number, number, number, number, number, number, number, number, number, number, number, number, number];
 }
 export interface ProfileApi {
     /**
@@ -4982,7 +5141,7 @@ export interface PsetApi {
      * "Q_LENGTH" for qtos. If primary_measure_type is omitted, defaults to
      * "IfcLabel" for psets.
      */
-    templateAddPropTemplate(file: IfcFile, pset_template: Entity, name: string, description: string, template_type: string, primary_measure_type: string): Entity;
+    templateAddPropTemplate(file: IfcFile, pset_template: Entity, name: string, description: string | null, template_type: string | null, primary_measure_type: string | null): Entity;
     /**
      * Create a new IfcPropertySetTemplate in the file.
      *
@@ -5018,14 +5177,14 @@ export interface PsetApi {
      * If neither flag is set, returns both types. When predefined_type or
      * schema_name is omitted, the default is used.
      */
-    templateGetApplicable(pqt: PsetTemplate, ifc_class: string, predefined_type: string, pset_only: boolean, qto_only: boolean, schema_name: string): Entity[];
+    templateGetApplicable(pqt: PsetTemplate, ifc_class: string | null, predefined_type: string | null, pset_only: boolean, qto_only: boolean, schema_name: string | null): Entity[];
     /**
      * Return names of property set templates applicable to an IFC class.
      *
      * Same filtering as pset_template_get_applicable but returns only the
      * Name strings.
      */
-    templateGetApplicableNames(pqt: PsetTemplate, ifc_class: string, predefined_type: string, pset_only: boolean, qto_only: boolean, schema_name: string): string[];
+    templateGetApplicableNames(pqt: PsetTemplate, ifc_class: string | null, predefined_type: string | null, pset_only: boolean, qto_only: boolean, schema_name: string | null): string[];
     /**
      * Look up a property set template by name.
      *
@@ -5098,7 +5257,7 @@ export interface PsetTemplateApi {
      * "Q_LENGTH" for qtos. If primary_measure_type is omitted, defaults to
      * "IfcLabel" for psets.
      */
-    addPropTemplate(file: IfcFile, pset_template: Entity, name: string, description: string, template_type: string, primary_measure_type: string): Entity;
+    addPropTemplate(file: IfcFile, pset_template: Entity, name: string, description: string | null, template_type: string | null, primary_measure_type: string | null): Entity;
     /**
      * Create a new IfcPropertySetTemplate in the file.
      *
@@ -5134,14 +5293,14 @@ export interface PsetTemplateApi {
      * If neither flag is set, returns both types. When predefined_type or
      * schema_name is omitted, the default is used.
      */
-    getApplicable(pqt: PsetTemplate, ifc_class: string, predefined_type: string, pset_only: boolean, qto_only: boolean, schema_name: string): Entity[];
+    getApplicable(pqt: PsetTemplate, ifc_class: string | null, predefined_type: string | null, pset_only: boolean, qto_only: boolean, schema_name: string | null): Entity[];
     /**
      * Return names of property set templates applicable to an IFC class.
      *
      * Same filtering as pset_template_get_applicable but returns only the
      * Name strings.
      */
-    getApplicableNames(pqt: PsetTemplate, ifc_class: string, predefined_type: string, pset_only: boolean, qto_only: boolean, schema_name: string): string[];
+    getApplicableNames(pqt: PsetTemplate, ifc_class: string | null, predefined_type: string | null, pset_only: boolean, qto_only: boolean, schema_name: string | null): string[];
     /**
      * Look up a property set template by name.
      *
@@ -5198,7 +5357,7 @@ export interface RegisterApi {
      * @param file The IFC file to register.
      * @return True after the file is registered.
      */
-    scratchFile(schema_name: string, file: IfcFile): boolean;
+    scratchFile(schema_name: string | null, file: IfcFile): boolean;
 }
 export interface RepresentationApi {
     /**
@@ -5214,7 +5373,7 @@ export interface RepresentationApi {
      * @param target_view Target view filter (e.g. "MODEL_VIEW", "GRAPH_VIEW").
      * @return The first matching context, or no result if none is found.
      */
-    getContext(file: IfcFile, context_type: string, subcontext: string, target_view: string): Entity;
+    getContext(file: IfcFile, context_type: string | null, subcontext: string | null, target_view: string | null): Entity;
     /**
      * Return all geometric representation contexts sorted by priority.
      *
@@ -5274,7 +5433,7 @@ export interface ResourceApi {
      * Unsupported combinations and schema-resolution failures are value errors
      * with distinct stable codes; diagnostic messages must not be parsed.
      */
-    addResourceQuantity(file: IfcFile, resource: Entity, ifc_class: string): Entity;
+    addResourceQuantity(file: IfcFile, resource: Entity, ifc_class?: string | null): Entity;
     /** Create an IfcResourceTime and replace the resource Usage reference. */
     addResourceTime(file: IfcFile, resource: Entity): Entity;
     /** Assign one product or actor to a resource, reusing its ordered relationship and suppressing duplicates. */
@@ -5448,7 +5607,7 @@ export interface SelectorApi {
      * @param value The value to set. When omitted, the target is unset.
      * @param concat When provided and non-empty, it is prepended to the value.
      */
-    setElementValue(file: IfcFile, element: Entity | null, query: string, value: ValueInput | null, concat: string): void;
+    setElementValue(file: IfcFile, element: Entity | null, query: string, value: ValueInput | null, concat: string | null): void;
 }
 export interface SequenceApi {
     /**
@@ -5924,7 +6083,7 @@ export interface ShapeApi {
      * @param radius Circle radius in model units.
      * @return IfcCircle entity.
      */
-    builderCircle(file: IfcFile, center: number[], radius: number): Entity;
+    builderCircle(file: IfcFile, center: [number, number], radius: number): Entity;
     /**
      * Create a 2D IfcIndexedPolyCurve arc between two points.
      *
@@ -5935,7 +6094,7 @@ export interface ShapeApi {
      * @param points Two XY endpoints.
      * @return IfcIndexedPolyCurve entity with one arc segment.
      */
-    builderCurveBetweenTwoPoints(file: IfcFile, points: number[][]): Entity;
+    builderCurveBetweenTwoPoints(file: IfcFile, points: [[number, number], [number, number]]): Entity;
     /**
      * Create an independent copy of an IFC entity and the entities it references.
      *
@@ -5954,7 +6113,7 @@ export interface ShapeApi {
      * @param end XYZ coordinates of the edge end.
      * @return IfcEdge entity.
      */
-    builderEdge(file: IfcFile, start: number[], end: number[]): Entity;
+    builderEdge(file: IfcFile, start: [number, number, number], end: [number, number, number]): Entity;
     /**
      * Create an IfcEllipse, optionally trimmed to an IfcTrimmedCurve.
      *
@@ -5981,7 +6140,7 @@ export interface ShapeApi {
      * @param points XYZ coordinates defining the face outer boundary.
      * @return IfcFace entity with an IfcFaceOuterBound.
      */
-    builderFace(file: IfcFile, points: number[][]): Entity;
+    builderFace(file: IfcFile, points: [number, number, number][]): Entity;
     /**
      * Create an IfcFacetedBrep from vertices and face index lists.
      *
@@ -5990,7 +6149,7 @@ export interface ShapeApi {
      * @param faces Face index lists (zero-based). Each face is a single outer loop.
      * @return IfcFacetedBrep entity with an IfcClosedShell.
      */
-    builderFacetedBrep(file: IfcFile, points: number[][], faces: number[][]): Entity;
+    builderFacetedBrep(file: IfcFile, points: [number, number, number][], faces: number[][]): Entity;
     /**
      * Read the coordinate list from an IfcPolyline or IfcIndexedPolyCurve.
      *
@@ -6009,15 +6168,11 @@ export interface ShapeApi {
     /**
      * Create a 2D IfcIndexedPolyCurve from explicit points and segment indices.
      *
-     * Segments with two indices are line segments; segments with three indices
-     * are arc segments.
-     *
      * @param file IFC file that receives the geometry.
-     * @param points XY coordinates for the point list.
-     * @param segments Segment index arrays (1-based).
+     * @param options XY points and explicit zero-based line or arc segments.
      * @return IfcIndexedPolyCurve entity.
      */
-    builderIndexedPolycurve2d(file: IfcFile, points: number[][], segments: number[][]): Entity;
+    builderIndexedPolycurve2d(file: IfcFile, options: IfcOpenShellShapeBuilderIndexedPolycurve2dOptions): Entity;
     /**
      * Build MEP bend geometry for a duct segment.
      *
@@ -6067,7 +6222,7 @@ export interface ShapeApi {
      * @param faces Face index lists (zero-based).
      * @return IfcPolygonalFaceSet or IfcFacetedBrep entity.
      */
-    builderMesh(file: IfcFile, points: number[][], faces: number[][]): Entity;
+    builderMesh(file: IfcFile, points: [number, number, number][], faces: number[][]): Entity;
     /**
      * Mirror a geometry item across 2D axes.
      *
@@ -6090,7 +6245,7 @@ export interface ShapeApi {
      * @param normal Direction ratios of the plane normal.
      * @return IfcPlane entity.
      */
-    builderPlane(file: IfcFile, location: number[], normal: number[]): Entity;
+    builderPlane(file: IfcFile, location: [number, number, number], normal: [number, number, number]): Entity;
     /**
      * Create an IfcPolygonalFaceSet from vertices and polygonal face loops.
      *
@@ -6102,12 +6257,12 @@ export interface ShapeApi {
      * @param faces Per-face loop index lists (zero-based).
      * @return IfcPolygonalFaceSet entity.
      */
-    builderPolygonalFaceSet(file: IfcFile, points: number[][], faces: number[][][]): Entity;
+    builderPolygonalFaceSet(file: IfcFile, points: [number, number, number][], faces: number[][][]): Entity;
     /**
      * Create a 2D or 3D polyline (IfcPolyline for IFC2X3, IfcIndexedPolyCurve otherwise).
      *
      * @param file IFC file that receives the geometry.
-     * @param options Points, closure, offset, and arc segment indices.
+     * @param options Points, optional offset, and explicit semantic segments.
      * @return IfcPolyline or IfcIndexedPolyCurve entity.
      */
     builderPolyline(file: IfcFile, options: IfcOpenShellShapeBuilderPolylineOptions): Entity;
@@ -6152,7 +6307,7 @@ export interface ShapeApi {
      * @param coords Replacement coordinates.
      * @return The modified polyline entity.
      */
-    builderSetPolylineCoords(file: IfcFile, polyline: Entity, coords: number[][]): Entity;
+    builderSetPolylineCoords(file: IfcFile, polyline: Entity, coords: [number, number][] | [number, number, number][]): Entity;
     /**
      * Create an IfcSphere.
      *
@@ -6190,7 +6345,7 @@ export interface ShapeApi {
      * @param faces Triangle index lists (zero-based, truncated to 3 vertices each).
      * @return IfcTriangulatedFaceSet entity.
      */
-    builderTriangulatedFaceSet(file: IfcFile, points: number[][], faces: number[][]): Entity;
+    builderTriangulatedFaceSet(file: IfcFile, points: [number, number, number][], faces: [number, number, number][]): Entity;
     /**
      * Create an IfcVertexPoint at the given position.
      *
@@ -6198,7 +6353,7 @@ export interface ShapeApi {
      * @param position XYZ coordinates of the vertex.
      * @return IfcVertexPoint entity.
      */
-    builderVertex(file: IfcFile, position: number[]): Entity;
+    builderVertex(file: IfcFile, position: [number, number, number]): Entity;
     /**
      * Check whether two floating-point values are approximately equal.
      *
@@ -6245,7 +6400,7 @@ export interface ShapeBuilderApi {
      * @param radius Circle radius in model units.
      * @return IfcCircle entity.
      */
-    circle(file: IfcFile, center: number[], radius: number): Entity;
+    circle(file: IfcFile, center: [number, number], radius: number): Entity;
     /**
      * Create a 2D IfcIndexedPolyCurve arc between two points.
      *
@@ -6256,7 +6411,7 @@ export interface ShapeBuilderApi {
      * @param points Two XY endpoints.
      * @return IfcIndexedPolyCurve entity with one arc segment.
      */
-    curveBetweenTwoPoints(file: IfcFile, points: number[][]): Entity;
+    curveBetweenTwoPoints(file: IfcFile, points: [[number, number], [number, number]]): Entity;
     /**
      * Create an independent copy of an IFC entity and the entities it references.
      *
@@ -6275,7 +6430,7 @@ export interface ShapeBuilderApi {
      * @param end XYZ coordinates of the edge end.
      * @return IfcEdge entity.
      */
-    edge(file: IfcFile, start: number[], end: number[]): Entity;
+    edge(file: IfcFile, start: [number, number, number], end: [number, number, number]): Entity;
     /**
      * Create an IfcEllipse, optionally trimmed to an IfcTrimmedCurve.
      *
@@ -6302,7 +6457,7 @@ export interface ShapeBuilderApi {
      * @param points XYZ coordinates defining the face outer boundary.
      * @return IfcFace entity with an IfcFaceOuterBound.
      */
-    face(file: IfcFile, points: number[][]): Entity;
+    face(file: IfcFile, points: [number, number, number][]): Entity;
     /**
      * Create an IfcFacetedBrep from vertices and face index lists.
      *
@@ -6311,7 +6466,7 @@ export interface ShapeBuilderApi {
      * @param faces Face index lists (zero-based). Each face is a single outer loop.
      * @return IfcFacetedBrep entity with an IfcClosedShell.
      */
-    facetedBrep(file: IfcFile, points: number[][], faces: number[][]): Entity;
+    facetedBrep(file: IfcFile, points: [number, number, number][], faces: number[][]): Entity;
     /**
      * Read the coordinate list from an IfcPolyline or IfcIndexedPolyCurve.
      *
@@ -6330,15 +6485,11 @@ export interface ShapeBuilderApi {
     /**
      * Create a 2D IfcIndexedPolyCurve from explicit points and segment indices.
      *
-     * Segments with two indices are line segments; segments with three indices
-     * are arc segments.
-     *
      * @param file IFC file that receives the geometry.
-     * @param points XY coordinates for the point list.
-     * @param segments Segment index arrays (1-based).
+     * @param options XY points and explicit zero-based line or arc segments.
      * @return IfcIndexedPolyCurve entity.
      */
-    indexedPolycurve2d(file: IfcFile, points: number[][], segments: number[][]): Entity;
+    indexedPolycurve2d(file: IfcFile, options: IfcOpenShellShapeBuilderIndexedPolycurve2dOptions): Entity;
     /**
      * Build MEP bend geometry for a duct segment.
      *
@@ -6388,7 +6539,7 @@ export interface ShapeBuilderApi {
      * @param faces Face index lists (zero-based).
      * @return IfcPolygonalFaceSet or IfcFacetedBrep entity.
      */
-    mesh(file: IfcFile, points: number[][], faces: number[][]): Entity;
+    mesh(file: IfcFile, points: [number, number, number][], faces: number[][]): Entity;
     /**
      * Mirror a geometry item across 2D axes.
      *
@@ -6411,7 +6562,7 @@ export interface ShapeBuilderApi {
      * @param normal Direction ratios of the plane normal.
      * @return IfcPlane entity.
      */
-    plane(file: IfcFile, location: number[], normal: number[]): Entity;
+    plane(file: IfcFile, location: [number, number, number], normal: [number, number, number]): Entity;
     /**
      * Create an IfcPolygonalFaceSet from vertices and polygonal face loops.
      *
@@ -6423,12 +6574,12 @@ export interface ShapeBuilderApi {
      * @param faces Per-face loop index lists (zero-based).
      * @return IfcPolygonalFaceSet entity.
      */
-    polygonalFaceSet(file: IfcFile, points: number[][], faces: number[][][]): Entity;
+    polygonalFaceSet(file: IfcFile, points: [number, number, number][], faces: number[][][]): Entity;
     /**
      * Create a 2D or 3D polyline (IfcPolyline for IFC2X3, IfcIndexedPolyCurve otherwise).
      *
      * @param file IFC file that receives the geometry.
-     * @param options Points, closure, offset, and arc segment indices.
+     * @param options Points, optional offset, and explicit semantic segments.
      * @return IfcPolyline or IfcIndexedPolyCurve entity.
      */
     polyline(file: IfcFile, options: IfcOpenShellShapeBuilderPolylineOptions): Entity;
@@ -6473,7 +6624,7 @@ export interface ShapeBuilderApi {
      * @param coords Replacement coordinates.
      * @return The modified polyline entity.
      */
-    setPolylineCoords(file: IfcFile, polyline: Entity, coords: number[][]): Entity;
+    setPolylineCoords(file: IfcFile, polyline: Entity, coords: [number, number][] | [number, number, number][]): Entity;
     /**
      * Create an IfcSphere.
      *
@@ -6511,7 +6662,7 @@ export interface ShapeBuilderApi {
      * @param faces Triangle index lists (zero-based, truncated to 3 vertices each).
      * @return IfcTriangulatedFaceSet entity.
      */
-    triangulatedFaceSet(file: IfcFile, points: number[][], faces: number[][]): Entity;
+    triangulatedFaceSet(file: IfcFile, points: [number, number, number][], faces: [number, number, number][]): Entity;
     /**
      * Create an IfcVertexPoint at the given position.
      *
@@ -6519,7 +6670,7 @@ export interface ShapeBuilderApi {
      * @param position XYZ coordinates of the vertex.
      * @return IfcVertexPoint entity.
      */
-    vertex(file: IfcFile, position: number[]): Entity;
+    vertex(file: IfcFile, position: [number, number, number]): Entity;
 }
 export interface SpatialApi {
     /**
@@ -6602,7 +6753,7 @@ export interface StructuralApi {
      * @param name Optional name for the load entity.
      * @return Newly created IfcStructuralLoad subclass.
      */
-    addStructuralLoad(file: IfcFile, ifc_class: string, name: string): Entity;
+    addStructuralLoad(file: IfcFile, ifc_class: string, name: string | null): Entity;
     /**
      * Create an IfcStructuralLoadCase entity.
      *
@@ -6707,7 +6858,7 @@ export interface StructuralApi {
      * @param axis 3-element direction ratios for the Axis attribute.
      * @param ref_direction 3-element direction ratios for the RefDirection attribute.
      */
-    editStructuralConnectionCs(file: IfcFile, structural_item: Entity, axis: number[], ref_direction: number[]): void;
+    editStructuralConnectionCs(file: IfcFile, structural_item: Entity, axis: [number, number, number], ref_direction: [number, number, number]): void;
     /**
      * Edit the Axis direction of a structural item.
      *
@@ -6719,7 +6870,7 @@ export interface StructuralApi {
      * @param structural_item Structural item with an Axis attribute.
      * @param axis 3-element direction ratios.
      */
-    editStructuralItemAxis(file: IfcFile, structural_item: Entity, axis: number[]): void;
+    editStructuralItemAxis(file: IfcFile, structural_item: Entity, axis: [number, number, number]): void;
     /** Edit an IfcStructuralLoad using the shared attribute property writer. */
     editStructuralLoad(file: IfcFile, structural_load: Entity, attributes: PsetProperties | PsetInput): void;
     /** Edit an IfcStructuralLoadCase using the shared attribute property writer. */
@@ -6804,7 +6955,7 @@ export interface StyleApi {
      * @param ifc_class IFC entity class (e.g. "IfcSurfaceStyle", "IfcFillAreaStyle").
      * @return Newly created style entity.
      */
-    addStyle(file: IfcFile, name: string, ifc_class: string): Entity;
+    addStyle(file: IfcFile, name: string | null, ifc_class: string): Entity;
     /**
      * Create and attach a surface-style presentation component.
      *
@@ -6813,7 +6964,7 @@ export interface StyleApi {
      * class are removed with nested cleanup before the new component is appended;
      * shading and rendering conflict in both directions.
      */
-    addSurfaceStyle(file: IfcFile, style: Entity, ifc_class: string, attributes: PsetProperties | PsetInput): Entity;
+    addSurfaceStyle(file: IfcFile, style: Entity, ifc_class: string | null, attributes: PsetProperties | PsetInput): Entity;
     /**
      * Create image textures and their coordinate mappings in descriptor order.
      *
@@ -7074,7 +7225,7 @@ export interface UnitApi {
      * @param exponents Exponent for each component unit (must match units in length).
      * @return Newly created IfcDerivedUnit.
      */
-    addDerivedUnit(file: IfcFile, unit_type: string, userdefinedtype: string, units: Entity[], exponents: bigint[]): Entity;
+    addDerivedUnit(file: IfcFile, unit_type: string, userdefinedtype: string | null, units: Entity[], exponents: bigint[]): Entity;
     /**
      * Create an IfcMonetaryUnit entity.
      *
@@ -7094,7 +7245,7 @@ export interface UnitApi {
      * @param prefix SI prefix (e.g. "KILO", "MILLI"). When omitted, the base unit is used.
      * @return Newly created IfcSIUnit.
      */
-    addSiUnit(file: IfcFile, unit_type: string, prefix: string): Entity;
+    addSiUnit(file: IfcFile, unit_type: string, prefix: string | null): Entity;
     /**
      * Assign explicit or convenience units to the first IfcProject.
      *
@@ -7465,7 +7616,7 @@ export function createApi(shell: IfcOpenShell): Api {
      * "Q_LENGTH" for qtos. If primary_measure_type is omitted, defaults to
      * "IfcLabel" for psets.
      */
-    addPropTemplate(file: IfcFile, pset_template: Entity, name: string, description: string, template_type: string, primary_measure_type: string): Entity {
+    addPropTemplate(file: IfcFile, pset_template: Entity, name: string, description: string | null, template_type: string | null, primary_measure_type: string | null): Entity {
       const temps: Disposable[] = [];
       try {
         const result = raw.pset_template.addPropTemplate(file.raw, pset_template.raw, name, description, template_type, primary_measure_type);
@@ -7539,7 +7690,7 @@ export function createApi(shell: IfcOpenShell): Api {
      * If neither flag is set, returns both types. When predefined_type or
      * schema_name is omitted, the default is used.
      */
-    getApplicable(pqt: PsetTemplate, ifc_class: string, predefined_type: string, pset_only: boolean, qto_only: boolean, schema_name: string): Entity[] {
+    getApplicable(pqt: PsetTemplate, ifc_class: string | null, predefined_type: string | null, pset_only: boolean, qto_only: boolean, schema_name: string | null): Entity[] {
       const temps: Disposable[] = [];
       try {
         const result = raw.pset_template.getApplicable(pqt, ifc_class, predefined_type, pset_only, qto_only, schema_name);
@@ -7554,7 +7705,7 @@ export function createApi(shell: IfcOpenShell): Api {
      * Same filtering as pset_template_get_applicable but returns only the
      * Name strings.
      */
-    getApplicableNames(pqt: PsetTemplate, ifc_class: string, predefined_type: string, pset_only: boolean, qto_only: boolean, schema_name: string): string[] {
+    getApplicableNames(pqt: PsetTemplate, ifc_class: string | null, predefined_type: string | null, pset_only: boolean, qto_only: boolean, schema_name: string | null): string[] {
       const temps: Disposable[] = [];
       try {
         const result = raw.pset_template.getApplicableNames(pqt, ifc_class, predefined_type, pset_only, qto_only, schema_name);
@@ -7672,7 +7823,7 @@ export function createApi(shell: IfcOpenShell): Api {
     axis2Placement2d(file: IfcFile, options: IfcOpenShellShapeBuilderAxis2Placement2dOptions): Entity {
       const temps: Disposable[] = [];
       try {
-        const result = raw.shape_builder.axis2Placement2d(file.raw, encodeOptions(options, {"position": "position", "xDirection": "x_direction"}, shell, temps));
+        const result = raw.shape_builder.axis2Placement2d(file.raw, encodeOptions(options, {"position": "position", "xDirection": "x_direction"}, shell, temps, [], [], {"position": [2], "xDirection": [2]}, {}, {}));
         return wrapEntity(shell, result) as Entity;
       } finally {
         disposeAll(temps);
@@ -7688,7 +7839,7 @@ export function createApi(shell: IfcOpenShell): Api {
     axis2Placement3d(file: IfcFile, options: IfcOpenShellShapeBuilderAxis2Placement3dOptions): Entity {
       const temps: Disposable[] = [];
       try {
-        const result = raw.shape_builder.axis2Placement3d(file.raw, encodeOptions(options, {"position": "position", "xAxis": "x_axis", "zAxis": "z_axis"}, shell, temps));
+        const result = raw.shape_builder.axis2Placement3d(file.raw, encodeOptions(options, {"position": "position", "xAxis": "x_axis", "zAxis": "z_axis"}, shell, temps, [], [], {"position": [3], "xAxis": [3], "zAxis": [3]}, {}, {}));
         return wrapEntity(shell, result) as Entity;
       } finally {
         disposeAll(temps);
@@ -7704,7 +7855,7 @@ export function createApi(shell: IfcOpenShell): Api {
     block(file: IfcFile, options: IfcOpenShellShapeBuilderBlockOptions): Entity {
       const temps: Disposable[] = [];
       try {
-        const result = raw.shape_builder.block(file.raw, encodeOptions(options, {"position": "position", "xLength": "x_length", "yLength": "y_length", "zLength": "z_length"}, shell, temps));
+        const result = raw.shape_builder.block(file.raw, encodeOptions(options, {"position": "position", "xLength": "x_length", "yLength": "y_length", "zLength": "z_length"}, shell, temps, [], [], {"position": [3]}, {}, {}));
         return wrapEntity(shell, result) as Entity;
       } finally {
         disposeAll(temps);
@@ -7718,10 +7869,10 @@ export function createApi(shell: IfcOpenShell): Api {
      * @param radius Circle radius in model units.
      * @return IfcCircle entity.
      */
-    circle(file: IfcFile, center: number[], radius: number): Entity {
+    circle(file: IfcFile, center: [number, number], radius: number): Entity {
       const temps: Disposable[] = [];
       try {
-        const result = raw.shape_builder.circle(file.raw, toRawSequence(center, shell, temps), radius);
+        const result = raw.shape_builder.circle(file.raw, encodeOptionValue("center", center, shell, temps, undefined, undefined, [2]), radius);
         return wrapEntity(shell, result) as Entity;
       } finally {
         disposeAll(temps);
@@ -7737,10 +7888,10 @@ export function createApi(shell: IfcOpenShell): Api {
      * @param points Two XY endpoints.
      * @return IfcIndexedPolyCurve entity with one arc segment.
      */
-    curveBetweenTwoPoints(file: IfcFile, points: number[][]): Entity {
+    curveBetweenTwoPoints(file: IfcFile, points: [[number, number], [number, number]]): Entity {
       const temps: Disposable[] = [];
       try {
-        const result = raw.shape_builder.curveBetweenTwoPoints(file.raw, toRawSequence(points, shell, temps));
+        const result = raw.shape_builder.curveBetweenTwoPoints(file.raw, encodeOptionValue("points", points, shell, temps, undefined, undefined, [2, 2]));
         return wrapEntity(shell, result) as Entity;
       } finally {
         disposeAll(temps);
@@ -7772,10 +7923,10 @@ export function createApi(shell: IfcOpenShell): Api {
      * @param end XYZ coordinates of the edge end.
      * @return IfcEdge entity.
      */
-    edge(file: IfcFile, start: number[], end: number[]): Entity {
+    edge(file: IfcFile, start: [number, number, number], end: [number, number, number]): Entity {
       const temps: Disposable[] = [];
       try {
-        const result = raw.shape_builder.edge(file.raw, toRawSequence(start, shell, temps), toRawSequence(end, shell, temps));
+        const result = raw.shape_builder.edge(file.raw, encodeOptionValue("start", start, shell, temps, undefined, undefined, [3]), encodeOptionValue("end", end, shell, temps, undefined, undefined, [3]));
         return wrapEntity(shell, result) as Entity;
       } finally {
         disposeAll(temps);
@@ -7791,7 +7942,7 @@ export function createApi(shell: IfcOpenShell): Api {
     ellipseCurve(file: IfcFile, options: IfcOpenShellShapeBuilderEllipseCurveOptions): Entity {
       const temps: Disposable[] = [];
       try {
-        const result = raw.shape_builder.ellipseCurve(file.raw, encodeOptions(options, {"position": "position", "refXDirection": "ref_x_direction", "trimPoints": "trim_points", "trimPointsMask": "trim_points_mask", "xAxisRadius": "x_axis_radius", "yAxisRadius": "y_axis_radius"}, shell, temps));
+        const result = raw.shape_builder.ellipseCurve(file.raw, encodeOptions(options, {"position": "position", "refXDirection": "ref_x_direction", "trim": "trim", "xAxisRadius": "x_axis_radius", "yAxisRadius": "y_axis_radius"}, shell, temps, [], [], {"position": [2], "refXDirection": [2]}, {}, {"trim": {"entities": [], "fields": {"value": "value"}, "fixed": {}, "pset": [], "records": {}, "sequenceDepth": 0, "variants": {"value": {"alternatives": [{"entities": [], "fields": {"points": "points"}, "fixed": {"points": [2, 2]}, "kind": 0, "mode": "record", "pset": [], "records": {}, "required": ["points"], "sequenceDepth": 0, "variants": {}}, {"entities": [], "fields": {"cardinalPoints": "cardinal_points"}, "fixed": {"cardinalPoints": [2]}, "kind": 1, "mode": "record", "pset": [], "records": {}, "required": ["cardinalPoints"], "sequenceDepth": 0, "variants": {}}], "sequenceDepth": 0}}}}));
         return wrapEntity(shell, result) as Entity;
       } finally {
         disposeAll(temps);
@@ -7810,7 +7961,7 @@ export function createApi(shell: IfcOpenShell): Api {
     extrude(file: IfcFile, options: IfcOpenShellShapeBuilderExtrudeOptions): Entity {
       const temps: Disposable[] = [];
       try {
-        const result = raw.shape_builder.extrude(file.raw, encodeOptions(options, {"extrusionVector": "extrusion_vector", "magnitude": "magnitude", "position": "position", "positionXAxis": "position_x_axis", "positionYAxis": "position_y_axis", "positionZAxis": "position_z_axis", "profileOrCurve": "profile_or_curve"}, shell, temps));
+        const result = raw.shape_builder.extrude(file.raw, encodeOptions(options, {"extrusionVector": "extrusion_vector", "magnitude": "magnitude", "position": "position", "positionXAxis": "position_x_axis", "positionYAxis": "position_y_axis", "positionZAxis": "position_z_axis", "profileOrCurve": "profile_or_curve"}, shell, temps, [], [], {"extrusionVector": [3], "position": [3], "positionXAxis": [3], "positionYAxis": [3], "positionZAxis": [3]}, {}, {}));
         return wrapEntity(shell, result) as Entity;
       } finally {
         disposeAll(temps);
@@ -7823,10 +7974,10 @@ export function createApi(shell: IfcOpenShell): Api {
      * @param points XYZ coordinates defining the face outer boundary.
      * @return IfcFace entity with an IfcFaceOuterBound.
      */
-    face(file: IfcFile, points: number[][]): Entity {
+    face(file: IfcFile, points: [number, number, number][]): Entity {
       const temps: Disposable[] = [];
       try {
-        const result = raw.shape_builder.face(file.raw, toRawSequence(points, shell, temps));
+        const result = raw.shape_builder.face(file.raw, encodeOptionValue("points", points, shell, temps, undefined, undefined, [null, 3]));
         return wrapEntity(shell, result) as Entity;
       } finally {
         disposeAll(temps);
@@ -7840,10 +7991,10 @@ export function createApi(shell: IfcOpenShell): Api {
      * @param faces Face index lists (zero-based). Each face is a single outer loop.
      * @return IfcFacetedBrep entity with an IfcClosedShell.
      */
-    facetedBrep(file: IfcFile, points: number[][], faces: number[][]): Entity {
+    facetedBrep(file: IfcFile, points: [number, number, number][], faces: number[][]): Entity {
       const temps: Disposable[] = [];
       try {
-        const result = raw.shape_builder.facetedBrep(file.raw, toRawSequence(points, shell, temps), toRawSequence(faces, shell, temps));
+        const result = raw.shape_builder.facetedBrep(file.raw, encodeOptionValue("points", points, shell, temps, undefined, undefined, [null, 3]), toRawSequence(faces, shell, temps));
         return wrapEntity(shell, result) as Entity;
       } finally {
         disposeAll(temps);
@@ -7883,18 +8034,14 @@ export function createApi(shell: IfcOpenShell): Api {
     /**
      * Create a 2D IfcIndexedPolyCurve from explicit points and segment indices.
      *
-     * Segments with two indices are line segments; segments with three indices
-     * are arc segments.
-     *
      * @param file IFC file that receives the geometry.
-     * @param points XY coordinates for the point list.
-     * @param segments Segment index arrays (1-based).
+     * @param options XY points and explicit zero-based line or arc segments.
      * @return IfcIndexedPolyCurve entity.
      */
-    indexedPolycurve2d(file: IfcFile, points: number[][], segments: number[][]): Entity {
+    indexedPolycurve2d(file: IfcFile, options: IfcOpenShellShapeBuilderIndexedPolycurve2dOptions): Entity {
       const temps: Disposable[] = [];
       try {
-        const result = raw.shape_builder.indexedPolycurve2d(file.raw, toRawSequence(points, shell, temps), toRawSequence(segments, shell, temps));
+        const result = raw.shape_builder.indexedPolycurve2d(file.raw, encodeOptions(options, {"points": "points", "segments": "segments"}, shell, temps, [], [], {"points": [null, 2]}, {"segments": {"alternatives": [{"entities": [], "fields": {"lineIndices": "line_indices"}, "fixed": {}, "kind": 0, "mode": "record", "pset": [], "records": {}, "required": ["lineIndices"], "sequenceDepth": 0, "variants": {}}, {"entities": [], "fields": {"arcIndices": "arc_indices"}, "fixed": {"arcIndices": [3]}, "kind": 1, "mode": "record", "pset": [], "records": {}, "required": ["arcIndices"], "sequenceDepth": 0, "variants": {}}], "sequenceDepth": 1}}, {}));
         return wrapEntity(shell, result) as Entity;
       } finally {
         disposeAll(temps);
@@ -7914,7 +8061,7 @@ export function createApi(shell: IfcOpenShell): Api {
     mepBendShape(file: IfcFile, options: IfcOpenShellShapeBuilderMepBendShapeOptions): IfcOpenShellShapeBuilderMepBendShapeResult {
       const temps: Disposable[] = [];
       try {
-        const result = raw.shape_builder.mepBendShape(file.raw, encodeOptions(options, {"angle": "angle", "bendVector": "bend_vector", "endLength": "end_length", "flipZAxis": "flip_z_axis", "radius": "radius", "segment": "segment", "startLength": "start_length"}, shell, temps));
+        const result = raw.shape_builder.mepBendShape(file.raw, encodeOptions(options, {"angle": "angle", "bendVector": "bend_vector", "endLength": "end_length", "flipZAxis": "flip_z_axis", "radius": "radius", "segment": "segment", "startLength": "start_length"}, shell, temps, [], [], {}, {}, {"bendVector": {"entities": [], "fields": {"x": "x", "y": "y"}, "fixed": {}, "pset": [], "records": {}, "sequenceDepth": 0, "variants": {}}}));
         const data = result as { representation: RawValue; start_length: number; end_length: number; radius: number; angle: number; lateral_axis: number; lateral_sign: number; z_axis_sign: number; main_profile_dimension: number };
         return { representation: wrapEntity(shell, data.representation), startLength: data.start_length as number, endLength: data.end_length as number, radius: data.radius as number, angle: data.angle as number, lateralAxis: data.lateral_axis as number, lateralSign: data.lateral_sign as number, zAxisSign: data.z_axis_sign as number, mainProfileDimension: data.main_profile_dimension as number } as IfcOpenShellShapeBuilderMepBendShapeResult;
       } finally {
@@ -7933,7 +8080,7 @@ export function createApi(shell: IfcOpenShell): Api {
     mepTransitionCalculate(options: IfcOpenShellShapeBuilderMepTransitionCalculateOptions): number {
       const temps: Disposable[] = [];
       try {
-        const result = raw.shape_builder.mepTransitionCalculate(encodeOptions(options, {"angle": "angle", "diff": "diff", "endHalfDim": "end_half_dim", "endProfile": "end_profile", "length": "length", "offset": "offset", "startHalfDim": "start_half_dim"}, shell, temps));
+        const result = raw.shape_builder.mepTransitionCalculate(encodeOptions(options, {"calculation": "calculation", "diff": "diff", "endHalfDim": "end_half_dim", "endProfile": "end_profile", "offset": "offset", "startHalfDim": "start_half_dim"}, shell, temps, [], [], {}, {"calculation": {"alternatives": [{"entities": [], "fields": {"length": "length"}, "fixed": {}, "kind": 0, "mode": "record", "pset": [], "records": {}, "required": ["length"], "sequenceDepth": 0, "variants": {}}, {"entities": [], "fields": {"angle": "angle"}, "fixed": {}, "kind": 1, "mode": "record", "pset": [], "records": {}, "required": ["angle"], "sequenceDepth": 0, "variants": {}}], "sequenceDepth": 0}}, {"diff": {"entities": [], "fields": {"x": "x", "y": "y"}, "fixed": {}, "pset": [], "records": {}, "sequenceDepth": 0, "variants": {}}, "endHalfDim": {"entities": [], "fields": {"depth": "depth", "halfX": "half_x", "halfY": "half_y"}, "fixed": {}, "pset": [], "records": {}, "sequenceDepth": 0, "variants": {}}, "offset": {"entities": [], "fields": {"x": "x", "y": "y"}, "fixed": {}, "pset": [], "records": {}, "sequenceDepth": 0, "variants": {}}, "startHalfDim": {"entities": [], "fields": {"depth": "depth", "halfX": "half_x", "halfY": "half_y"}, "fixed": {}, "pset": [], "records": {}, "sequenceDepth": 0, "variants": {}}}));
         return wrap(shell, result) as number;
       } finally {
         disposeAll(temps);
@@ -7948,7 +8095,7 @@ export function createApi(shell: IfcOpenShell): Api {
     mepTransitionLength(options: IfcOpenShellShapeBuilderMepTransitionLengthOptions): number {
       const temps: Disposable[] = [];
       try {
-        const result = raw.shape_builder.mepTransitionLength(encodeOptions(options, {"angle": "angle", "endHalfDim": "end_half_dim", "profileOffset": "profile_offset", "startHalfDim": "start_half_dim"}, shell, temps));
+        const result = raw.shape_builder.mepTransitionLength(encodeOptions(options, {"angle": "angle", "endHalfDim": "end_half_dim", "profileOffset": "profile_offset", "startHalfDim": "start_half_dim"}, shell, temps, [], [], {}, {}, {"endHalfDim": {"entities": [], "fields": {"depth": "depth", "halfX": "half_x", "halfY": "half_y"}, "fixed": {}, "pset": [], "records": {}, "sequenceDepth": 0, "variants": {}}, "profileOffset": {"entities": [], "fields": {"x": "x", "y": "y"}, "fixed": {}, "pset": [], "records": {}, "sequenceDepth": 0, "variants": {}}, "startHalfDim": {"entities": [], "fields": {"depth": "depth", "halfX": "half_x", "halfY": "half_y"}, "fixed": {}, "pset": [], "records": {}, "sequenceDepth": 0, "variants": {}}}));
         return wrap(shell, result) as number;
       } finally {
         disposeAll(temps);
@@ -7968,7 +8115,7 @@ export function createApi(shell: IfcOpenShell): Api {
     mepTransitionShape(file: IfcFile, options: IfcOpenShellShapeBuilderMepTransitionShapeOptions): IfcOpenShellShapeBuilderMepTransitionShapeResult | null {
       const temps: Disposable[] = [];
       try {
-        const result = raw.shape_builder.mepTransitionShape(file.raw, encodeOptions(options, {"angle": "angle", "endLength": "end_length", "endSegment": "end_segment", "profileOffset": "profile_offset", "startLength": "start_length", "startSegment": "start_segment"}, shell, temps));
+        const result = raw.shape_builder.mepTransitionShape(file.raw, encodeOptions(options, {"angle": "angle", "endLength": "end_length", "endSegment": "end_segment", "profileOffset": "profile_offset", "startLength": "start_length", "startSegment": "start_segment"}, shell, temps, [], [], {}, {}, {"profileOffset": {"entities": [], "fields": {"x": "x", "y": "y"}, "fixed": {}, "pset": [], "records": {}, "sequenceDepth": 0, "variants": {}}}));
         if (result === null) return null;
         const data = result as { representation: RawValue; start_length: number; end_length: number; angle: number; profile_offset: RawValue; transition_length: number; full_transition_length: number };
         return { representation: wrapEntity(shell, data.representation), startLength: data.start_length as number, endLength: data.end_length as number, angle: data.angle as number, profileOffset: wrap(shell, data.profile_offset), transitionLength: data.transition_length as number, fullTransitionLength: data.full_transition_length as number } as IfcOpenShellShapeBuilderMepTransitionShapeResult | null;
@@ -7984,10 +8131,10 @@ export function createApi(shell: IfcOpenShell): Api {
      * @param faces Face index lists (zero-based).
      * @return IfcPolygonalFaceSet or IfcFacetedBrep entity.
      */
-    mesh(file: IfcFile, points: number[][], faces: number[][]): Entity {
+    mesh(file: IfcFile, points: [number, number, number][], faces: number[][]): Entity {
       const temps: Disposable[] = [];
       try {
-        const result = raw.shape_builder.mesh(file.raw, toRawSequence(points, shell, temps), toRawSequence(faces, shell, temps));
+        const result = raw.shape_builder.mesh(file.raw, encodeOptionValue("points", points, shell, temps, undefined, undefined, [null, 3]), toRawSequence(faces, shell, temps));
         return wrapEntity(shell, result) as Entity;
       } finally {
         disposeAll(temps);
@@ -8007,7 +8154,7 @@ export function createApi(shell: IfcOpenShell): Api {
     mirror(file: IfcFile, options: IfcOpenShellShapeBuilderMirrorOptions): Entity {
       const temps: Disposable[] = [];
       try {
-        const result = raw.shape_builder.mirror(file.raw, encodeOptions(options, {"createCopy": "create_copy", "item": "item", "mirrorAxes": "mirror_axes", "mirrorPoint": "mirror_point", "placementMatrix": "placement_matrix"}, shell, temps));
+        const result = raw.shape_builder.mirror(file.raw, encodeOptions(options, {"createCopy": "create_copy", "item": "item", "mirrorAxes": "mirror_axes", "mirrorPoint": "mirror_point", "placementMatrix": "placement_matrix"}, shell, temps, [], [], {"mirrorAxes": [2], "mirrorPoint": [2]}, {"placementMatrix": {"alternatives": [{"fixedLengths": [9], "kind": 0, "mode": "sequence"}, {"fixedLengths": [16], "kind": 1, "mode": "sequence"}], "sequenceDepth": 0}}, {}));
         return wrapEntity(shell, result) as Entity;
       } finally {
         disposeAll(temps);
@@ -8023,10 +8170,10 @@ export function createApi(shell: IfcOpenShell): Api {
      * @param normal Direction ratios of the plane normal.
      * @return IfcPlane entity.
      */
-    plane(file: IfcFile, location: number[], normal: number[]): Entity {
+    plane(file: IfcFile, location: [number, number, number], normal: [number, number, number]): Entity {
       const temps: Disposable[] = [];
       try {
-        const result = raw.shape_builder.plane(file.raw, toRawSequence(location, shell, temps), toRawSequence(normal, shell, temps));
+        const result = raw.shape_builder.plane(file.raw, encodeOptionValue("location", location, shell, temps, undefined, undefined, [3]), encodeOptionValue("normal", normal, shell, temps, undefined, undefined, [3]));
         return wrapEntity(shell, result) as Entity;
       } finally {
         disposeAll(temps);
@@ -8043,10 +8190,10 @@ export function createApi(shell: IfcOpenShell): Api {
      * @param faces Per-face loop index lists (zero-based).
      * @return IfcPolygonalFaceSet entity.
      */
-    polygonalFaceSet(file: IfcFile, points: number[][], faces: number[][][]): Entity {
+    polygonalFaceSet(file: IfcFile, points: [number, number, number][], faces: number[][][]): Entity {
       const temps: Disposable[] = [];
       try {
-        const result = raw.shape_builder.polygonalFaceSet(file.raw, toRawSequence(points, shell, temps), toRawSequence(faces, shell, temps));
+        const result = raw.shape_builder.polygonalFaceSet(file.raw, encodeOptionValue("points", points, shell, temps, undefined, undefined, [null, 3]), toRawSequence(faces, shell, temps));
         return wrapEntity(shell, result) as Entity;
       } finally {
         disposeAll(temps);
@@ -8056,13 +8203,13 @@ export function createApi(shell: IfcOpenShell): Api {
      * Create a 2D or 3D polyline (IfcPolyline for IFC2X3, IfcIndexedPolyCurve otherwise).
      *
      * @param file IFC file that receives the geometry.
-     * @param options Points, closure, offset, and arc segment indices.
+     * @param options Points, optional offset, and explicit semantic segments.
      * @return IfcPolyline or IfcIndexedPolyCurve entity.
      */
     polyline(file: IfcFile, options: IfcOpenShellShapeBuilderPolylineOptions): Entity {
       const temps: Disposable[] = [];
       try {
-        const result = raw.shape_builder.polyline(file.raw, encodeOptions(options, {"arcPoints": "arc_points", "closed": "closed", "points": "points", "positionOffset": "position_offset"}, shell, temps));
+        const result = raw.shape_builder.polyline(file.raw, encodeOptions(options, {"points": "points", "positionOffset": "position_offset", "segments": "segments"}, shell, temps, [], [], {}, {"points": {"alternatives": [{"fixedLengths": [null, 2], "kind": 0, "mode": "sequence"}, {"fixedLengths": [null, 3], "kind": 1, "mode": "sequence"}], "sequenceDepth": 0}, "positionOffset": {"alternatives": [{"fixedLengths": [2], "kind": 0, "mode": "sequence"}, {"fixedLengths": [3], "kind": 1, "mode": "sequence"}], "sequenceDepth": 0}, "segments": {"alternatives": [{"entities": [], "fields": {"lineIndices": "line_indices"}, "fixed": {}, "kind": 0, "mode": "record", "pset": [], "records": {}, "required": ["lineIndices"], "sequenceDepth": 0, "variants": {}}, {"entities": [], "fields": {"arcIndices": "arc_indices"}, "fixed": {"arcIndices": [3]}, "kind": 1, "mode": "record", "pset": [], "records": {}, "required": ["arcIndices"], "sequenceDepth": 0, "variants": {}}], "sequenceDepth": 1}}, {}));
         return wrapEntity(shell, result) as Entity;
       } finally {
         disposeAll(temps);
@@ -8117,7 +8264,7 @@ export function createApi(shell: IfcOpenShell): Api {
     rotate(file: IfcFile, options: IfcOpenShellShapeBuilderRotateOptions): Entity {
       const temps: Disposable[] = [];
       try {
-        const result = raw.shape_builder.rotate(file.raw, encodeOptions(options, {"angle": "angle", "counterClockwise": "counter_clockwise", "createCopy": "create_copy", "item": "item", "pivotPoint": "pivot_point"}, shell, temps));
+        const result = raw.shape_builder.rotate(file.raw, encodeOptions(options, {"angle": "angle", "counterClockwise": "counter_clockwise", "createCopy": "create_copy", "item": "item", "pivotPoint": "pivot_point"}, shell, temps, [], [], {"pivotPoint": [2]}, {}, {}));
         return wrapEntity(shell, result) as Entity;
       } finally {
         disposeAll(temps);
@@ -8133,10 +8280,10 @@ export function createApi(shell: IfcOpenShell): Api {
      * @param coords Replacement coordinates.
      * @return The modified polyline entity.
      */
-    setPolylineCoords(file: IfcFile, polyline: Entity, coords: number[][]): Entity {
+    setPolylineCoords(file: IfcFile, polyline: Entity, coords: [number, number][] | [number, number, number][]): Entity {
       const temps: Disposable[] = [];
       try {
-        const result = raw.shape_builder.setPolylineCoords(file.raw, polyline.raw, toRawSequence(coords, shell, temps));
+        const result = raw.shape_builder.setPolylineCoords(file.raw, polyline.raw, encodeOptionValue("coords", coords, shell, temps, undefined, undefined, undefined, {"alternatives": [{"fixedLengths": [null, 2], "kind": 0, "mode": "sequence"}, {"fixedLengths": [null, 3], "kind": 1, "mode": "sequence"}], "sequenceDepth": 0}));
         return wrapEntity(shell, result) as Entity;
       } finally {
         disposeAll(temps);
@@ -8152,7 +8299,7 @@ export function createApi(shell: IfcOpenShell): Api {
     sphere(file: IfcFile, options: IfcOpenShellShapeBuilderSphereOptions): Entity {
       const temps: Disposable[] = [];
       try {
-        const result = raw.shape_builder.sphere(file.raw, encodeOptions(options, {"center": "center", "radius": "radius"}, shell, temps));
+        const result = raw.shape_builder.sphere(file.raw, encodeOptions(options, {"center": "center", "radius": "radius"}, shell, temps, [], [], {"center": [3]}, {}, {}));
         return wrapEntity(shell, result) as Entity;
       } finally {
         disposeAll(temps);
@@ -8189,7 +8336,7 @@ export function createApi(shell: IfcOpenShell): Api {
     translate(file: IfcFile, options: IfcOpenShellShapeBuilderTranslateOptions): Entity {
       const temps: Disposable[] = [];
       try {
-        const result = raw.shape_builder.translate(file.raw, encodeOptions(options, {"createCopy": "create_copy", "item": "item", "translation": "translation"}, shell, temps));
+        const result = raw.shape_builder.translate(file.raw, encodeOptions(options, {"createCopy": "create_copy", "item": "item", "translation": "translation"}, shell, temps, [], [], {}, {"translation": {"alternatives": [{"fixedLengths": [2], "kind": 0, "mode": "sequence"}, {"fixedLengths": [3], "kind": 1, "mode": "sequence"}], "sequenceDepth": 0}}, {}));
         return wrapEntity(shell, result) as Entity;
       } finally {
         disposeAll(temps);
@@ -8203,10 +8350,10 @@ export function createApi(shell: IfcOpenShell): Api {
      * @param faces Triangle index lists (zero-based, truncated to 3 vertices each).
      * @return IfcTriangulatedFaceSet entity.
      */
-    triangulatedFaceSet(file: IfcFile, points: number[][], faces: number[][]): Entity {
+    triangulatedFaceSet(file: IfcFile, points: [number, number, number][], faces: [number, number, number][]): Entity {
       const temps: Disposable[] = [];
       try {
-        const result = raw.shape_builder.triangulatedFaceSet(file.raw, toRawSequence(points, shell, temps), toRawSequence(faces, shell, temps));
+        const result = raw.shape_builder.triangulatedFaceSet(file.raw, encodeOptionValue("points", points, shell, temps, undefined, undefined, [null, 3]), encodeOptionValue("faces", faces, shell, temps, undefined, undefined, [null, 3]));
         return wrapEntity(shell, result) as Entity;
       } finally {
         disposeAll(temps);
@@ -8219,10 +8366,10 @@ export function createApi(shell: IfcOpenShell): Api {
      * @param position XYZ coordinates of the vertex.
      * @return IfcVertexPoint entity.
      */
-    vertex(file: IfcFile, position: number[]): Entity {
+    vertex(file: IfcFile, position: [number, number, number]): Entity {
       const temps: Disposable[] = [];
       try {
-        const result = raw.shape_builder.vertex(file.raw, toRawSequence(position, shell, temps));
+        const result = raw.shape_builder.vertex(file.raw, encodeOptionValue("position", position, shell, temps, undefined, undefined, [3]));
         return wrapEntity(shell, result) as Entity;
       } finally {
         disposeAll(temps);
@@ -8339,7 +8486,7 @@ export function createApi(shell: IfcOpenShell): Api {
     createByPiMethod(file: IfcFile, options: IfcOpenShellAlignmentCreateByPiMethodOptions): Entity {
       const temps: Disposable[] = [];
       try {
-        const result = raw.alignment.createByPiMethod(file.raw, encodeOptions(options, {"application": "application", "horizontalPoints": "horizontal_points", "name": "name", "ownerHistory": "owner_history", "radii": "radii", "startStation": "start_station", "user": "user", "verticalLengths": "vertical_lengths", "verticalPoints": "vertical_points"}, shell, temps));
+        const result = raw.alignment.createByPiMethod(file.raw, encodeOptions(options, {"application": "application", "horizontal": "horizontal", "name": "name", "ownerHistory": "owner_history", "startStation": "start_station", "user": "user", "vertical": "vertical"}, shell, temps, [], [], {}, {}, {"horizontal": {"entities": [], "fields": {"endPoint": "end_point", "intersections": "intersections", "startPoint": "start_point"}, "fixed": {"endPoint": [2], "startPoint": [2]}, "pset": [], "records": {"intersections": {"entities": [], "fields": {"point": "point", "radius": "radius"}, "fixed": {"point": [2]}, "pset": [], "records": {}, "sequenceDepth": 1, "variants": {}}}, "sequenceDepth": 0, "variants": {}}, "vertical": {"entities": [], "fields": {"endPoint": "end_point", "intersections": "intersections", "startPoint": "start_point"}, "fixed": {"endPoint": [2], "startPoint": [2]}, "pset": [], "records": {"intersections": {"entities": [], "fields": {"curveLength": "curve_length", "point": "point"}, "fixed": {"point": [2]}, "pset": [], "records": {}, "sequenceDepth": 1, "variants": {}}}, "sequenceDepth": 0, "variants": {}}}));
         return wrapEntity(shell, result) as Entity;
       } finally {
         disposeAll(temps);
@@ -8501,7 +8648,7 @@ export function createApi(shell: IfcOpenShell): Api {
         disposeAll(temps);
       }
     },
-    getCurveSegmentTransitionCode(segment: Entity, next_segment: Entity, position_tolerance: number): string {
+    getCurveSegmentTransitionCode(segment: Entity, next_segment: Entity, position_tolerance?: number | null): string {
       const temps: Disposable[] = [];
       try {
         const result = raw.alignment.getCurveSegmentTransitionCode(segment.raw, next_segment.raw, position_tolerance);
@@ -8591,18 +8738,18 @@ export function createApi(shell: IfcOpenShell): Api {
         disposeAll(temps);
       }
     },
-    layoutHorizontalByPiMethod(file: IfcFile, layout: Entity, points: number[][], radii: number[]): void {
+    layoutHorizontalByPiMethod(file: IfcFile, layout: Entity, options: IfcOpenShellAlignmentLayoutHorizontalByPiMethodOptions): void {
       const temps: Disposable[] = [];
       try {
-        raw.alignment.layoutHorizontalByPiMethod(file.raw, layout.raw, toRawSequence(points, shell, temps), toRawSequence(radii, shell, temps));
+        raw.alignment.layoutHorizontalByPiMethod(file.raw, layout.raw, encodeOptions(options, {"pis": "pis"}, shell, temps, [], [], {}, {}, {"pis": {"entities": [], "fields": {"endPoint": "end_point", "intersections": "intersections", "startPoint": "start_point"}, "fixed": {"endPoint": [2], "startPoint": [2]}, "pset": [], "records": {"intersections": {"entities": [], "fields": {"point": "point", "radius": "radius"}, "fixed": {"point": [2]}, "pset": [], "records": {}, "sequenceDepth": 1, "variants": {}}}, "sequenceDepth": 0, "variants": {}}}));
       } finally {
         disposeAll(temps);
       }
     },
-    layoutVerticalByPiMethod(file: IfcFile, layout: Entity, points: number[][], lengths: number[]): void {
+    layoutVerticalByPiMethod(file: IfcFile, layout: Entity, options: IfcOpenShellAlignmentLayoutVerticalByPiMethodOptions): void {
       const temps: Disposable[] = [];
       try {
-        raw.alignment.layoutVerticalByPiMethod(file.raw, layout.raw, toRawSequence(points, shell, temps), toRawSequence(lengths, shell, temps));
+        raw.alignment.layoutVerticalByPiMethod(file.raw, layout.raw, encodeOptions(options, {"pis": "pis"}, shell, temps, [], [], {}, {}, {"pis": {"entities": [], "fields": {"endPoint": "end_point", "intersections": "intersections", "startPoint": "start_point"}, "fixed": {"endPoint": [2], "startPoint": [2]}, "pset": [], "records": {"intersections": {"entities": [], "fields": {"curveLength": "curve_length", "point": "point"}, "fixed": {"point": [2]}, "pset": [], "records": {}, "sequenceDepth": 1, "variants": {}}}, "sequenceDepth": 0, "variants": {}}}));
       } finally {
         disposeAll(temps);
       }
@@ -8634,7 +8781,7 @@ export function createApi(shell: IfcOpenShell): Api {
         disposeAll(temps);
       }
     },
-    updateCurveSegmentTransitionCode(segment: Entity, next_segment: Entity, position_tolerance: number): void {
+    updateCurveSegmentTransitionCode(segment: Entity, next_segment: Entity, position_tolerance?: number | null): void {
       const temps: Disposable[] = [];
       try {
         raw.alignment.updateCurveSegmentTransitionCode(segment.raw, next_segment.raw, position_tolerance);
@@ -8684,7 +8831,7 @@ export function createApi(shell: IfcOpenShell): Api {
     assignConnectionGeometry(file: IfcFile, rel_space_boundary: Entity, options: IfcOpenShellBoundaryAssignConnectionGeometryOptions): void {
       const temps: Disposable[] = [];
       try {
-        raw.boundary.assignConnectionGeometry(file.raw, rel_space_boundary.raw, encodeOptions(options, {"axis": "axis", "innerBoundaries": "inner_boundaries", "location": "location", "outerBoundary": "outer_boundary", "refDirection": "ref_direction", "unitScale": "unit_scale"}, shell, temps));
+        raw.boundary.assignConnectionGeometry(file.raw, rel_space_boundary.raw, encodeOptions(options, {"axis": "axis", "innerBoundaries": "inner_boundaries", "location": "location", "outerBoundary": "outer_boundary", "refDirection": "ref_direction", "unitScale": "unit_scale"}, shell, temps, [], [], {"axis": [3], "innerBoundaries": [null, null, 2], "location": [3], "outerBoundary": [null, 2], "refDirection": [3]}, {}, {}));
       } finally {
         disposeAll(temps);
       }
@@ -9201,7 +9348,7 @@ export function createApi(shell: IfcOpenShell): Api {
      * @param owner_history Owner history for the new entity. When omitted, no owner history is assigned.
      * @return Newly created IfcCostSchedule.
      */
-    addCostSchedule(file: IfcFile, name: string, predefined_type: string, update_date: string, owner_history: Entity | null): Entity {
+    addCostSchedule(file: IfcFile, name: string | null, predefined_type: string, update_date: string, owner_history: Entity | null): Entity {
       const temps: Disposable[] = [];
       try {
         const result = raw.cost.addCostSchedule(file.raw, name, predefined_type, update_date, owner_history == null ? null : owner_history.raw);
@@ -9246,7 +9393,7 @@ export function createApi(shell: IfcOpenShell): Api {
      * @param prop_name Quantity property name to match. When omitted, no named quantity is collected.
      * @param options Ownership options for the assignment relationship.
      */
-    assignCostItemQuantity(file: IfcFile, cost_item: Entity, products: Entity[], prop_name: string, options: IfcOpenShellCostAssignCostItemQuantityOptions): void {
+    assignCostItemQuantity(file: IfcFile, cost_item: Entity, products: Entity[], prop_name: string | null, options: IfcOpenShellCostAssignCostItemQuantityOptions): void {
       const temps: Disposable[] = [];
       try {
         raw.cost.assignCostItemQuantity(file.raw, cost_item.raw, toRawSequence(products, shell, temps), prop_name, encodeOptions(options, {"application": "application", "ownerHistory": "owner_history", "user": "user"}, shell, temps));
@@ -10372,10 +10519,10 @@ export function createApi(shell: IfcOpenShell): Api {
      * @param axis Ordered XY or XYZ points defining the axis curve.
      * @return IfcShapeRepresentation entity, or no result if creation fails.
      */
-    addAxisRepresentation(file: IfcFile, context: Entity, axis: number[][]): Entity {
+    addAxisRepresentation(file: IfcFile, context: Entity, axis: [number, number][] | [number, number, number][]): Entity {
       const temps: Disposable[] = [];
       try {
-        const result = raw.geometry.addAxisRepresentation(file.raw, context.raw, toRawSequence(axis, shell, temps));
+        const result = raw.geometry.addAxisRepresentation(file.raw, context.raw, encodeOptionValue("axis", axis, shell, temps, undefined, undefined, undefined, {"alternatives": [{"fixedLengths": [null, 2], "kind": 0, "mode": "sequence"}, {"fixedLengths": [null, 3], "kind": 1, "mode": "sequence"}], "sequenceDepth": 0}));
         return wrapEntity(shell, result) as Entity;
       } finally {
         disposeAll(temps);
@@ -10413,7 +10560,7 @@ export function createApi(shell: IfcOpenShell): Api {
     addDoorRepresentation(file: IfcFile, options: IfcOpenShellGeometryAddDoorRepresentationOptions): Entity {
       const temps: Disposable[] = [];
       try {
-        const result = raw.geometry.addDoorRepresentation(file.raw, encodeOptions(options, {"context": "context", "liningProperties": "lining_properties", "operationType": "operation_type", "overallHeight": "overall_height", "overallWidth": "overall_width", "panelProperties": "panel_properties", "partOfProduct": "part_of_product", "unitScale": "unit_scale"}, shell, temps));
+        const result = raw.geometry.addDoorRepresentation(file.raw, encodeOptions(options, {"context": "context", "liningProperties": "lining_properties", "operationType": "operation_type", "overallHeight": "overall_height", "overallWidth": "overall_width", "panelProperties": "panel_properties", "partOfProduct": "part_of_product", "unitScale": "unit_scale"}, shell, temps, [], [], {}, {}, {"liningProperties": {"entities": [], "fields": {"casingDepth": "casing_depth", "casingThickness": "casing_thickness", "liningDepth": "lining_depth", "liningOffset": "lining_offset", "liningThickness": "lining_thickness", "liningToPanelOffsetX": "lining_to_panel_offset_x", "liningToPanelOffsetY": "lining_to_panel_offset_y", "thresholdDepth": "threshold_depth", "thresholdOffset": "threshold_offset", "thresholdThickness": "threshold_thickness", "transomOffset": "transom_offset", "transomThickness": "transom_thickness"}, "fixed": {}, "pset": [], "records": {}, "sequenceDepth": 0, "variants": {}}, "panelProperties": {"entities": [], "fields": {"frameDepth": "frame_depth", "frameThickness": "frame_thickness", "panelDepth": "panel_depth", "panelWidth": "panel_width"}, "fixed": {}, "pset": [], "records": {}, "sequenceDepth": 0, "variants": {}}}));
         return wrapEntity(shell, result) as Entity;
       } finally {
         disposeAll(temps);
@@ -10444,13 +10591,21 @@ export function createApi(shell: IfcOpenShell): Api {
      *
      * @param file IFC file that receives the representation.
      * @param context IfcGeometricRepresentationContext.
-     * @param options Vertices, faces, and optional faceted BRep override.
+     * Each item binds its vertex list to its faces. Face indices are zero-based.
+     * Polygonal face sets support optional inner loops; IFC2X3 and forced faceted
+     * BReps reject inner loops. Edges without faces are not supported upstream and
+     * are intentionally absent from this native contract.
+     *
+     * Vertices are divided by unit_scale, then coordinate_offset (in project
+     * units) is added. If omitted, unit_scale is calculated from the file.
+     *
+     * @param options Mesh items, coordinate conversion, and optional faceted BRep override.
      * @return IfcShapeRepresentation entity, or no result if creation fails.
      */
     addMeshRepresentation(file: IfcFile, context: Entity, options: IfcOpenShellGeometryAddMeshRepresentationOptions): Entity {
       const temps: Disposable[] = [];
       try {
-        const result = raw.geometry.addMeshRepresentation(file.raw, context.raw, encodeOptions(options, {"faces": "faces", "forceFacetedBrep": "force_faceted_brep", "vertices": "vertices"}, shell, temps));
+        const result = raw.geometry.addMeshRepresentation(file.raw, context.raw, encodeOptions(options, {"coordinateOffset": "coordinate_offset", "forceFacetedBrep": "force_faceted_brep", "items": "items", "unitScale": "unit_scale"}, shell, temps, [], [], {"coordinateOffset": [3]}, {}, {"items": {"entities": [], "fields": {"faces": "faces", "vertices": "vertices"}, "fixed": {"vertices": [null, 3]}, "pset": [], "records": {"faces": {"entities": [], "fields": {"innerLoops": "inner_loops", "outer": "outer"}, "fixed": {}, "pset": [], "records": {}, "sequenceDepth": 1, "variants": {}}}, "sequenceDepth": 1, "variants": {}}}));
         return wrapEntity(shell, result) as Entity;
       } finally {
         disposeAll(temps);
@@ -10473,7 +10628,7 @@ export function createApi(shell: IfcOpenShell): Api {
     addProfileRepresentation(file: IfcFile, options: IfcOpenShellGeometryAddProfileRepresentationOptions): Entity {
       const temps: Disposable[] = [];
       try {
-        const result = raw.geometry.addProfileRepresentation(file.raw, encodeOptions(options, {"cardinalPoint": "cardinal_point", "clippingEntities": "clipping_entities", "clippingKinds": "clipping_kinds", "clippingLocations": "clipping_locations", "clippingNormals": "clipping_normals", "context": "context", "depth": "depth", "placementXAxis": "placement_x_axis", "placementZAxis": "placement_z_axis", "profile": "profile"}, shell, temps, [], ["clippingEntities"]));
+        const result = raw.geometry.addProfileRepresentation(file.raw, encodeOptions(options, {"cardinalPoint": "cardinal_point", "clippings": "clippings", "context": "context", "depth": "depth", "placementXAxis": "placement_x_axis", "placementZAxis": "placement_z_axis", "profile": "profile"}, shell, temps, [], [], {"placementXAxis": [3], "placementZAxis": [3]}, {"clippings": {"alternatives": [{"entities": [], "fields": {"location": "location", "normal": "normal"}, "fixed": {"location": [3], "normal": [3]}, "kind": 0, "mode": "record", "pset": [], "records": {}, "required": ["location", "normal"], "sequenceDepth": 0, "variants": {}}, {"entities": [], "fields": {"entity": "entity"}, "fixed": {}, "kind": 1, "mode": "record", "pset": [], "records": {}, "required": ["entity"], "sequenceDepth": 0, "variants": {}}], "sequenceDepth": 1}}, {}));
         return wrapEntity(shell, result) as Entity;
       } finally {
         disposeAll(temps);
@@ -10489,7 +10644,7 @@ export function createApi(shell: IfcOpenShell): Api {
     addRailingRepresentation(file: IfcFile, options: IfcOpenShellGeometryAddRailingRepresentationOptions): Entity {
       const temps: Disposable[] = [];
       try {
-        const result = raw.geometry.addRailingRepresentation(file.raw, encodeOptions(options, {"clearWidth": "clear_width", "context": "context", "height": "height", "loopedPath": "looped_path", "railingDiameter": "railing_diameter", "railingPath": "railing_path", "supportSpacing": "support_spacing", "terminalType": "terminal_type", "unitScale": "unit_scale", "useManualSupports": "use_manual_supports"}, shell, temps));
+        const result = raw.geometry.addRailingRepresentation(file.raw, encodeOptions(options, {"clearWidth": "clear_width", "context": "context", "height": "height", "loopedPath": "looped_path", "railingDiameter": "railing_diameter", "railingPath": "railing_path", "supportSpacing": "support_spacing", "terminalType": "terminal_type", "unitScale": "unit_scale", "useManualSupports": "use_manual_supports"}, shell, temps, [], [], {"railingPath": [null, 3]}, {}, {}));
         return wrapEntity(shell, result) as Entity;
       } finally {
         disposeAll(temps);
@@ -10524,7 +10679,7 @@ export function createApi(shell: IfcOpenShell): Api {
     addSlabRepresentation(file: IfcFile, options: IfcOpenShellGeometryAddSlabRepresentationOptions): Entity {
       const temps: Disposable[] = [];
       try {
-        const result = raw.geometry.addSlabRepresentation(file.raw, encodeOptions(options, {"clippingEntities": "clipping_entities", "clippingKinds": "clipping_kinds", "clippingLocations": "clipping_locations", "clippingNormals": "clipping_normals", "context": "context", "depth": "depth", "directionSense": "direction_sense", "offset": "offset", "polyline": "polyline", "xAngle": "x_angle"}, shell, temps, [], ["clippingEntities"]));
+        const result = raw.geometry.addSlabRepresentation(file.raw, encodeOptions(options, {"clippings": "clippings", "context": "context", "depth": "depth", "directionSense": "direction_sense", "offset": "offset", "polyline": "polyline", "xAngle": "x_angle"}, shell, temps, [], [], {}, {"clippings": {"alternatives": [{"entities": [], "fields": {"location": "location", "normal": "normal"}, "fixed": {"location": [3], "normal": [3]}, "kind": 0, "mode": "record", "pset": [], "records": {}, "required": ["location", "normal"], "sequenceDepth": 0, "variants": {}}, {"entities": [], "fields": {"entity": "entity"}, "fixed": {}, "kind": 1, "mode": "record", "pset": [], "records": {}, "required": ["entity"], "sequenceDepth": 0, "variants": {}}], "sequenceDepth": 1}}, {}));
         return wrapEntity(shell, result) as Entity;
       } finally {
         disposeAll(temps);
@@ -10556,7 +10711,7 @@ export function createApi(shell: IfcOpenShell): Api {
     addWallRepresentation(file: IfcFile, options: IfcOpenShellGeometryAddWallRepresentationOptions): Entity {
       const temps: Disposable[] = [];
       try {
-        const result = raw.geometry.addWallRepresentation(file.raw, encodeOptions(options, {"booleans": "booleans", "clippingEntities": "clipping_entities", "clippingKinds": "clipping_kinds", "clippingLocations": "clipping_locations", "clippingNormals": "clipping_normals", "context": "context", "directionSense": "direction_sense", "height": "height", "length": "length", "offset": "offset", "thickness": "thickness", "xAngle": "x_angle"}, shell, temps, [], ["booleans", "clippingEntities"]));
+        const result = raw.geometry.addWallRepresentation(file.raw, encodeOptions(options, {"booleans": "booleans", "clippings": "clippings", "context": "context", "directionSense": "direction_sense", "height": "height", "length": "length", "offset": "offset", "thickness": "thickness", "xAngle": "x_angle"}, shell, temps, [], ["booleans"], {}, {"clippings": {"alternatives": [{"entities": [], "fields": {"location": "location", "normal": "normal"}, "fixed": {"location": [3], "normal": [3]}, "kind": 0, "mode": "record", "pset": [], "records": {}, "required": ["location", "normal"], "sequenceDepth": 0, "variants": {}}, {"entities": [], "fields": {"entity": "entity"}, "fixed": {}, "kind": 1, "mode": "record", "pset": [], "records": {}, "required": ["entity"], "sequenceDepth": 0, "variants": {}}], "sequenceDepth": 1}}, {}));
         return wrapEntity(shell, result) as Entity;
       } finally {
         disposeAll(temps);
@@ -10566,13 +10721,13 @@ export function createApi(shell: IfcOpenShell): Api {
      * Create a window representation with lining and panel geometry.
      *
      * @param file IFC file that receives the representation.
-     * @param options Window dimensions, panel schema, lining/panel properties.
+     * @param options Window dimensions, partition type, and semantic lining/panel properties.
      * @return IfcShapeRepresentation entity, or no result if creation fails.
      */
     addWindowRepresentation(file: IfcFile, options: IfcOpenShellGeometryAddWindowRepresentationOptions): Entity {
       const temps: Disposable[] = [];
       try {
-        const result = raw.geometry.addWindowRepresentation(file.raw, encodeOptions(options, {"context": "context", "glassThickness": "glass_thickness", "liningProperties": "lining_properties", "overallHeight": "overall_height", "overallWidth": "overall_width", "panelProperties": "panel_properties", "panelSchema": "panel_schema", "partOfProduct": "part_of_product"}, shell, temps));
+        const result = raw.geometry.addWindowRepresentation(file.raw, encodeOptions(options, {"context": "context", "liningProperties": "lining_properties", "overallHeight": "overall_height", "overallWidth": "overall_width", "panelProperties": "panel_properties", "partOfProduct": "part_of_product", "partitionType": "partition_type", "unitScale": "unit_scale"}, shell, temps, [], [], {}, {}, {"liningProperties": {"entities": [], "fields": {"firstMullionOffset": "first_mullion_offset", "firstTransomOffset": "first_transom_offset", "liningDepth": "lining_depth", "liningOffset": "lining_offset", "liningThickness": "lining_thickness", "liningToPanelOffsetX": "lining_to_panel_offset_x", "liningToPanelOffsetY": "lining_to_panel_offset_y", "mullionThickness": "mullion_thickness", "secondMullionOffset": "second_mullion_offset", "secondTransomOffset": "second_transom_offset", "transomThickness": "transom_thickness"}, "fixed": {}, "pset": [], "records": {}, "sequenceDepth": 0, "variants": {}}, "panelProperties": {"entities": [], "fields": {"frameDepth": "frame_depth", "frameThickness": "frame_thickness"}, "fixed": {}, "pset": [], "records": {}, "sequenceDepth": 1, "variants": {}}}));
         return wrapEntity(shell, result) as Entity;
       } finally {
         disposeAll(temps);
@@ -10615,7 +10770,7 @@ export function createApi(shell: IfcOpenShell): Api {
     clipSolid(file: IfcFile, options: IfcOpenShellGeometryClipSolidOptions): Entity {
       const temps: Disposable[] = [];
       try {
-        const result = raw.geometry.clipSolid(file.raw, encodeOptions(options, {"application": "application", "element": "element", "item": "item", "location": "location", "normal": "normal", "ownerHistory": "owner_history", "user": "user"}, shell, temps));
+        const result = raw.geometry.clipSolid(file.raw, encodeOptions(options, {"application": "application", "element": "element", "item": "item", "location": "location", "normal": "normal", "ownerHistory": "owner_history", "user": "user"}, shell, temps, [], [], {"location": [3], "normal": [3]}, {}, {}));
         return wrapEntity(shell, result) as Entity;
       } finally {
         disposeAll(temps);
@@ -10634,7 +10789,7 @@ export function createApi(shell: IfcOpenShell): Api {
     clipSolidBounded(file: IfcFile, options: IfcOpenShellGeometryClipSolidBoundedOptions): Entity {
       const temps: Disposable[] = [];
       try {
-        const result = raw.geometry.clipSolidBounded(file.raw, encodeOptions(options, {"application": "application", "boundaryPoints": "boundary_points", "boundaryPosition": "boundary_position", "element": "element", "item": "item", "location": "location", "normal": "normal", "ownerHistory": "owner_history", "user": "user"}, shell, temps));
+        const result = raw.geometry.clipSolidBounded(file.raw, encodeOptions(options, {"application": "application", "boundaryPoints": "boundary_points", "boundaryPosition": "boundary_position", "element": "element", "item": "item", "location": "location", "normal": "normal", "ownerHistory": "owner_history", "user": "user"}, shell, temps, [], [], {"boundaryPoints": [null, 2], "boundaryPosition": [3], "location": [3], "normal": [3]}, {}, {}));
         return wrapEntity(shell, result) as Entity;
       } finally {
         disposeAll(temps);
@@ -10655,7 +10810,7 @@ export function createApi(shell: IfcOpenShell): Api {
     computeWallMountedHandrailGeometry(options: IfcOpenShellGeometryComputeWallMountedHandrailOptions): IfcOpenShellGeometryWallMountedHandrailResult {
       const temps: Disposable[] = [];
       try {
-        const result = raw.geometry.computeWallMountedHandrailGeometry(encodeOptions(options, {"clearWidth": "clear_width", "height": "height", "loopedPath": "looped_path", "railingDiameter": "railing_diameter", "railingPath": "railing_path", "supportSpacing": "support_spacing", "terminalType": "terminal_type", "unitScale": "unit_scale", "useManualSupports": "use_manual_supports"}, shell, temps));
+        const result = raw.geometry.computeWallMountedHandrailGeometry(encodeOptions(options, {"clearWidth": "clear_width", "height": "height", "loopedPath": "looped_path", "railingDiameter": "railing_diameter", "railingPath": "railing_path", "supportSpacing": "support_spacing", "terminalType": "terminal_type", "unitScale": "unit_scale", "useManualSupports": "use_manual_supports"}, shell, temps, [], [], {"railingPath": [null, 3]}, {}, {}));
         const data = result as { handrail_polyline: RawValue; handrail_arc_point_indices: RawValue; handrail_radius: number; supports: RawValue };
         return { handrailPolyline: wrap(shell, data.handrail_polyline), handrailArcPointIndices: wrap(shell, data.handrail_arc_point_indices), handrailRadius: data.handrail_radius as number, supports: (data.supports as RawValue[]).map((item) => (() => { const itemData = item as { arc_polyline: RawValue; arc_radius: number; disk_position: RawValue; disk_radius: number; disk_depth: number; disk_z_rotation: number }; return { arcPolyline: wrap(shell, itemData.arc_polyline), arcRadius: itemData.arc_radius as number, diskPosition: wrap(shell, itemData.disk_position), diskRadius: itemData.disk_radius as number, diskDepth: itemData.disk_depth as number, diskZRotation: itemData.disk_z_rotation as number }; })()) } as IfcOpenShellGeometryWallMountedHandrailResult;
       } finally {
@@ -10756,7 +10911,7 @@ export function createApi(shell: IfcOpenShell): Api {
     create2ptWall(file: IfcFile, options: IfcOpenShellGeometryCreate2PtWallOptions): Entity {
       const temps: Disposable[] = [];
       try {
-        const result = raw.geometry.create2ptWall(file.raw, encodeOptions(options, {"context": "context", "element": "element", "elevation": "elevation", "end": "end", "height": "height", "isSi": "is_si", "start": "start", "thickness": "thickness"}, shell, temps));
+        const result = raw.geometry.create2ptWall(file.raw, encodeOptions(options, {"context": "context", "element": "element", "elevation": "elevation", "end": "end", "height": "height", "isSi": "is_si", "start": "start", "thickness": "thickness"}, shell, temps, [], [], {"end": [2], "start": [2]}, {}, {}));
         return wrapEntity(shell, result) as Entity;
       } finally {
         disposeAll(temps);
@@ -10814,7 +10969,7 @@ export function createApi(shell: IfcOpenShell): Api {
     editObjectPlacement(file: IfcFile, options: IfcOpenShellGeometryEditObjectPlacementOptions): Entity {
       const temps: Disposable[] = [];
       try {
-        const result = raw.geometry.editObjectPlacement(file.raw, encodeOptions(options, {"isSi": "is_si", "matrix": "matrix", "product": "product", "shouldTransformChildren": "should_transform_children"}, shell, temps));
+        const result = raw.geometry.editObjectPlacement(file.raw, encodeOptions(options, {"isSi": "is_si", "matrix": "matrix", "product": "product", "shouldTransformChildren": "should_transform_children"}, shell, temps, [], [], {"matrix": [16]}, {}, {}));
         return wrapEntity(shell, result) as Entity;
       } finally {
         disposeAll(temps);
@@ -11014,7 +11169,7 @@ export function createApi(shell: IfcOpenShell): Api {
     editTrueNorth(file: IfcFile, options: IfcOpenShellGeoreferenceEditTrueNorthOptions): void {
       const temps: Disposable[] = [];
       try {
-        raw.georeference.editTrueNorth(file.raw, encodeOptions(options, {"trueNorth": "true_north"}, shell, temps));
+        raw.georeference.editTrueNorth(file.raw, encodeOptions(options, {"trueNorth": "true_north"}, shell, temps, [], [], {"trueNorth": [2]}, {}, {}));
       } finally {
         disposeAll(temps);
       }
@@ -11072,10 +11227,10 @@ export function createApi(shell: IfcOpenShell): Api {
      * @param grid_axis IfcGridAxis whose AxisCurve to set.
      * @param is_si True if p1/p2 are in SI metres; false if already in model units.
      */
-    createAxisCurve(file: IfcFile, p1: number[], p2: number[], grid_axis: Entity, is_si: boolean): void {
+    createAxisCurve(file: IfcFile, p1: [number, number, number], p2: [number, number, number], grid_axis: Entity, is_si: boolean): void {
       const temps: Disposable[] = [];
       try {
-        raw.grid.createAxisCurve(file.raw, toRawSequence(p1, shell, temps), toRawSequence(p2, shell, temps), grid_axis.raw, is_si);
+        raw.grid.createAxisCurve(file.raw, encodeOptionValue("p1", p1, shell, temps, undefined, undefined, [3]), encodeOptionValue("p2", p2, shell, temps, undefined, undefined, [3]), grid_axis.raw, is_si);
       } finally {
         disposeAll(temps);
       }
@@ -12207,11 +12362,11 @@ export function createApi(shell: IfcOpenShell): Api {
      * @param instance IfcAxis2Placement entity.
      * @return 16-element row-major 4x4 matrix.
      */
-    getAxis2Placement(instance: Entity): number[] {
+    getAxis2Placement(instance: Entity): [number, number, number, number, number, number, number, number, number, number, number, number, number, number, number, number] {
       const temps: Disposable[] = [];
       try {
         const result = raw.placement.getAxis2Placement(instance.raw);
-        return wrap(shell, result) as number[];
+        return wrap(shell, result) as [number, number, number, number, number, number, number, number, number, number, number, number, number, number, number, number];
       } finally {
         disposeAll(temps);
       }
@@ -12225,11 +12380,11 @@ export function createApi(shell: IfcOpenShell): Api {
      * @param instance IfcCartesianTransformationOperator3D entity.
      * @return 16-element row-major 4x4 matrix.
      */
-    getCartesianXform3d(instance: Entity): number[] {
+    getCartesianXform3d(instance: Entity): [number, number, number, number, number, number, number, number, number, number, number, number, number, number, number, number] {
       const temps: Disposable[] = [];
       try {
         const result = raw.placement.getCartesianXform3d(instance.raw);
-        return wrap(shell, result) as number[];
+        return wrap(shell, result) as [number, number, number, number, number, number, number, number, number, number, number, number, number, number, number, number];
       } finally {
         disposeAll(temps);
       }
@@ -12243,11 +12398,11 @@ export function createApi(shell: IfcOpenShell): Api {
      * @param instance IfcLocalPlacement entity. When omitted, returns the identity matrix.
      * @return 16-element row-major 4x4 matrix.
      */
-    getLocalPlacement(instance: Entity | null): number[] {
+    getLocalPlacement(instance: Entity | null): [number, number, number, number, number, number, number, number, number, number, number, number, number, number, number, number] {
       const temps: Disposable[] = [];
       try {
         const result = raw.placement.getLocalPlacement(instance == null ? null : instance.raw);
-        return wrap(shell, result) as number[];
+        return wrap(shell, result) as [number, number, number, number, number, number, number, number, number, number, number, number, number, number, number, number];
       } finally {
         disposeAll(temps);
       }
@@ -12262,11 +12417,11 @@ export function createApi(shell: IfcOpenShell): Api {
      * @param instance IfcMappedItem entity.
      * @return 16-element row-major 4x4 matrix.
      */
-    getMappeditemXform(instance: Entity): number[] {
+    getMappeditemXform(instance: Entity): [number, number, number, number, number, number, number, number, number, number, number, number, number, number, number, number] {
       const temps: Disposable[] = [];
       try {
         const result = raw.placement.getMappeditemXform(instance.raw);
-        return wrap(shell, result) as number[];
+        return wrap(shell, result) as [number, number, number, number, number, number, number, number, number, number, number, number, number, number, number, number];
       } finally {
         disposeAll(temps);
       }
@@ -12298,11 +12453,11 @@ export function createApi(shell: IfcOpenShell): Api {
      * @param x_axis Direction ratios for the X axis (Y is derived).
      * @return 16-element row-major 4x4 matrix.
      */
-    matrixFromAxes(origin: number[], z_axis: number[], x_axis: number[]): number[] {
+    matrixFromAxes(origin: [number, number, number], z_axis: [number, number, number], x_axis: [number, number, number]): [number, number, number, number, number, number, number, number, number, number, number, number, number, number, number, number] {
       const temps: Disposable[] = [];
       try {
-        const result = raw.placement.matrixFromAxes(toRawSequence(origin, shell, temps), toRawSequence(z_axis, shell, temps), toRawSequence(x_axis, shell, temps));
-        return wrap(shell, result) as number[];
+        const result = raw.placement.matrixFromAxes(encodeOptionValue("origin", origin, shell, temps, undefined, undefined, [3]), encodeOptionValue("z_axis", z_axis, shell, temps, undefined, undefined, [3]), encodeOptionValue("x_axis", x_axis, shell, temps, undefined, undefined, [3]));
+        return wrap(shell, result) as [number, number, number, number, number, number, number, number, number, number, number, number, number, number, number, number];
       } finally {
         disposeAll(temps);
       }
@@ -12314,11 +12469,11 @@ export function createApi(shell: IfcOpenShell): Api {
      * @param axis Rotation axis: "X", "Y", or "Z" (case-insensitive).
      * @return 16-element row-major 4x4 rotation matrix.
      */
-    rotation(angle_rad: number, axis: string): number[] {
+    rotation(angle_rad: number, axis: string): [number, number, number, number, number, number, number, number, number, number, number, number, number, number, number, number] {
       const temps: Disposable[] = [];
       try {
         const result = raw.placement.rotation(angle_rad, axis);
-        return wrap(shell, result) as number[];
+        return wrap(shell, result) as [number, number, number, number, number, number, number, number, number, number, number, number, number, number, number, number];
       } finally {
         disposeAll(temps);
       }
@@ -12339,7 +12494,7 @@ export function createApi(shell: IfcOpenShell): Api {
     addArbitraryProfile(file: IfcFile, options: IfcOpenShellProfileAddArbitraryProfileOptions): Entity {
       const temps: Disposable[] = [];
       try {
-        const result = raw.profile.addArbitraryProfile(file.raw, encodeOptions(options, {"name": "name", "profile": "profile"}, shell, temps));
+        const result = raw.profile.addArbitraryProfile(file.raw, encodeOptions(options, {"name": "name", "profile": "profile"}, shell, temps, [], [], {}, {"profile": {"alternatives": [{"fixedLengths": [null, 2], "kind": 0, "mode": "sequence"}, {"fixedLengths": [null, 3], "kind": 1, "mode": "sequence"}], "sequenceDepth": 0}}, {}));
         return wrapEntity(shell, result) as Entity;
       } finally {
         disposeAll(temps);
@@ -12358,7 +12513,7 @@ export function createApi(shell: IfcOpenShell): Api {
     addArbitraryProfileWithVoids(file: IfcFile, options: IfcOpenShellProfileAddArbitraryProfileWithVoidsOptions): Entity {
       const temps: Disposable[] = [];
       try {
-        const result = raw.profile.addArbitraryProfileWithVoids(file.raw, encodeOptions(options, {"innerProfiles": "inner_profiles", "name": "name", "outerProfile": "outer_profile"}, shell, temps));
+        const result = raw.profile.addArbitraryProfileWithVoids(file.raw, encodeOptions(options, {"innerProfiles": "inner_profiles", "name": "name", "outerProfile": "outer_profile"}, shell, temps, [], [], {}, {"innerProfiles": {"alternatives": [{"fixedLengths": [null, 2], "kind": 0, "mode": "sequence"}, {"fixedLengths": [null, 3], "kind": 1, "mode": "sequence"}], "sequenceDepth": 1}, "outerProfile": {"alternatives": [{"fixedLengths": [null, 2], "kind": 0, "mode": "sequence"}, {"fixedLengths": [null, 3], "kind": 1, "mode": "sequence"}], "sequenceDepth": 0}}, {}));
         return wrapEntity(shell, result) as Entity;
       } finally {
         disposeAll(temps);
@@ -12629,7 +12784,7 @@ export function createApi(shell: IfcOpenShell): Api {
      * "Q_LENGTH" for qtos. If primary_measure_type is omitted, defaults to
      * "IfcLabel" for psets.
      */
-    templateAddPropTemplate(file: IfcFile, pset_template: Entity, name: string, description: string, template_type: string, primary_measure_type: string): Entity {
+    templateAddPropTemplate(file: IfcFile, pset_template: Entity, name: string, description: string | null, template_type: string | null, primary_measure_type: string | null): Entity {
       const temps: Disposable[] = [];
       try {
         const result = raw.pset.templateAddPropTemplate(file.raw, pset_template.raw, name, description, template_type, primary_measure_type);
@@ -12703,7 +12858,7 @@ export function createApi(shell: IfcOpenShell): Api {
      * If neither flag is set, returns both types. When predefined_type or
      * schema_name is omitted, the default is used.
      */
-    templateGetApplicable(pqt: PsetTemplate, ifc_class: string, predefined_type: string, pset_only: boolean, qto_only: boolean, schema_name: string): Entity[] {
+    templateGetApplicable(pqt: PsetTemplate, ifc_class: string | null, predefined_type: string | null, pset_only: boolean, qto_only: boolean, schema_name: string | null): Entity[] {
       const temps: Disposable[] = [];
       try {
         const result = raw.pset.templateGetApplicable(pqt, ifc_class, predefined_type, pset_only, qto_only, schema_name);
@@ -12718,7 +12873,7 @@ export function createApi(shell: IfcOpenShell): Api {
      * Same filtering as pset_template_get_applicable but returns only the
      * Name strings.
      */
-    templateGetApplicableNames(pqt: PsetTemplate, ifc_class: string, predefined_type: string, pset_only: boolean, qto_only: boolean, schema_name: string): string[] {
+    templateGetApplicableNames(pqt: PsetTemplate, ifc_class: string | null, predefined_type: string | null, pset_only: boolean, qto_only: boolean, schema_name: string | null): string[] {
       const temps: Disposable[] = [];
       try {
         const result = raw.pset.templateGetApplicableNames(pqt, ifc_class, predefined_type, pset_only, qto_only, schema_name);
@@ -12871,7 +13026,7 @@ export function createApi(shell: IfcOpenShell): Api {
      * @param file The IFC file to register.
      * @return True after the file is registered.
      */
-    scratchFile(schema_name: string, file: IfcFile): boolean {
+    scratchFile(schema_name: string | null, file: IfcFile): boolean {
       const temps: Disposable[] = [];
       try {
         const result = raw.register.scratchFile(schema_name, file.raw);
@@ -12895,7 +13050,7 @@ export function createApi(shell: IfcOpenShell): Api {
      * @param target_view Target view filter (e.g. "MODEL_VIEW", "GRAPH_VIEW").
      * @return The first matching context, or no result if none is found.
      */
-    getContext(file: IfcFile, context_type: string, subcontext: string, target_view: string): Entity {
+    getContext(file: IfcFile, context_type: string | null, subcontext: string | null, target_view: string | null): Entity {
       const temps: Disposable[] = [];
       try {
         const result = raw.representation.getContext(file.raw, context_type, subcontext, target_view);
@@ -13003,7 +13158,7 @@ export function createApi(shell: IfcOpenShell): Api {
      * Unsupported combinations and schema-resolution failures are value errors
      * with distinct stable codes; diagnostic messages must not be parsed.
      */
-    addResourceQuantity(file: IfcFile, resource: Entity, ifc_class: string): Entity {
+    addResourceQuantity(file: IfcFile, resource: Entity, ifc_class?: string | null): Entity {
       const temps: Disposable[] = [];
       try {
         const result = raw.resource.addResourceQuantity(file.raw, resource.raw, ifc_class);
@@ -13328,7 +13483,7 @@ export function createApi(shell: IfcOpenShell): Api {
      * @param value The value to set. When omitted, the target is unset.
      * @param concat When provided and non-empty, it is prepended to the value.
      */
-    setElementValue(file: IfcFile, element: Entity | null, query: string, value: ValueInput | null, concat: string): void {
+    setElementValue(file: IfcFile, element: Entity | null, query: string, value: ValueInput | null, concat: string | null): void {
       const temps: Disposable[] = [];
       try {
         raw.selector.setElementValue(file.raw, element == null ? null : element.raw, query, value == null ? null : toRawValue(shell, value, temps), concat);
@@ -14088,7 +14243,7 @@ export function createApi(shell: IfcOpenShell): Api {
     builderAxis2Placement2d(file: IfcFile, options: IfcOpenShellShapeBuilderAxis2Placement2dOptions): Entity {
       const temps: Disposable[] = [];
       try {
-        const result = raw.shape.builderAxis2Placement2d(file.raw, encodeOptions(options, {"position": "position", "xDirection": "x_direction"}, shell, temps));
+        const result = raw.shape.builderAxis2Placement2d(file.raw, encodeOptions(options, {"position": "position", "xDirection": "x_direction"}, shell, temps, [], [], {"position": [2], "xDirection": [2]}, {}, {}));
         return wrapEntity(shell, result) as Entity;
       } finally {
         disposeAll(temps);
@@ -14104,7 +14259,7 @@ export function createApi(shell: IfcOpenShell): Api {
     builderAxis2Placement3d(file: IfcFile, options: IfcOpenShellShapeBuilderAxis2Placement3dOptions): Entity {
       const temps: Disposable[] = [];
       try {
-        const result = raw.shape.builderAxis2Placement3d(file.raw, encodeOptions(options, {"position": "position", "xAxis": "x_axis", "zAxis": "z_axis"}, shell, temps));
+        const result = raw.shape.builderAxis2Placement3d(file.raw, encodeOptions(options, {"position": "position", "xAxis": "x_axis", "zAxis": "z_axis"}, shell, temps, [], [], {"position": [3], "xAxis": [3], "zAxis": [3]}, {}, {}));
         return wrapEntity(shell, result) as Entity;
       } finally {
         disposeAll(temps);
@@ -14120,7 +14275,7 @@ export function createApi(shell: IfcOpenShell): Api {
     builderBlock(file: IfcFile, options: IfcOpenShellShapeBuilderBlockOptions): Entity {
       const temps: Disposable[] = [];
       try {
-        const result = raw.shape.builderBlock(file.raw, encodeOptions(options, {"position": "position", "xLength": "x_length", "yLength": "y_length", "zLength": "z_length"}, shell, temps));
+        const result = raw.shape.builderBlock(file.raw, encodeOptions(options, {"position": "position", "xLength": "x_length", "yLength": "y_length", "zLength": "z_length"}, shell, temps, [], [], {"position": [3]}, {}, {}));
         return wrapEntity(shell, result) as Entity;
       } finally {
         disposeAll(temps);
@@ -14134,10 +14289,10 @@ export function createApi(shell: IfcOpenShell): Api {
      * @param radius Circle radius in model units.
      * @return IfcCircle entity.
      */
-    builderCircle(file: IfcFile, center: number[], radius: number): Entity {
+    builderCircle(file: IfcFile, center: [number, number], radius: number): Entity {
       const temps: Disposable[] = [];
       try {
-        const result = raw.shape.builderCircle(file.raw, toRawSequence(center, shell, temps), radius);
+        const result = raw.shape.builderCircle(file.raw, encodeOptionValue("center", center, shell, temps, undefined, undefined, [2]), radius);
         return wrapEntity(shell, result) as Entity;
       } finally {
         disposeAll(temps);
@@ -14153,10 +14308,10 @@ export function createApi(shell: IfcOpenShell): Api {
      * @param points Two XY endpoints.
      * @return IfcIndexedPolyCurve entity with one arc segment.
      */
-    builderCurveBetweenTwoPoints(file: IfcFile, points: number[][]): Entity {
+    builderCurveBetweenTwoPoints(file: IfcFile, points: [[number, number], [number, number]]): Entity {
       const temps: Disposable[] = [];
       try {
-        const result = raw.shape.builderCurveBetweenTwoPoints(file.raw, toRawSequence(points, shell, temps));
+        const result = raw.shape.builderCurveBetweenTwoPoints(file.raw, encodeOptionValue("points", points, shell, temps, undefined, undefined, [2, 2]));
         return wrapEntity(shell, result) as Entity;
       } finally {
         disposeAll(temps);
@@ -14188,10 +14343,10 @@ export function createApi(shell: IfcOpenShell): Api {
      * @param end XYZ coordinates of the edge end.
      * @return IfcEdge entity.
      */
-    builderEdge(file: IfcFile, start: number[], end: number[]): Entity {
+    builderEdge(file: IfcFile, start: [number, number, number], end: [number, number, number]): Entity {
       const temps: Disposable[] = [];
       try {
-        const result = raw.shape.builderEdge(file.raw, toRawSequence(start, shell, temps), toRawSequence(end, shell, temps));
+        const result = raw.shape.builderEdge(file.raw, encodeOptionValue("start", start, shell, temps, undefined, undefined, [3]), encodeOptionValue("end", end, shell, temps, undefined, undefined, [3]));
         return wrapEntity(shell, result) as Entity;
       } finally {
         disposeAll(temps);
@@ -14207,7 +14362,7 @@ export function createApi(shell: IfcOpenShell): Api {
     builderEllipseCurve(file: IfcFile, options: IfcOpenShellShapeBuilderEllipseCurveOptions): Entity {
       const temps: Disposable[] = [];
       try {
-        const result = raw.shape.builderEllipseCurve(file.raw, encodeOptions(options, {"position": "position", "refXDirection": "ref_x_direction", "trimPoints": "trim_points", "trimPointsMask": "trim_points_mask", "xAxisRadius": "x_axis_radius", "yAxisRadius": "y_axis_radius"}, shell, temps));
+        const result = raw.shape.builderEllipseCurve(file.raw, encodeOptions(options, {"position": "position", "refXDirection": "ref_x_direction", "trim": "trim", "xAxisRadius": "x_axis_radius", "yAxisRadius": "y_axis_radius"}, shell, temps, [], [], {"position": [2], "refXDirection": [2]}, {}, {"trim": {"entities": [], "fields": {"value": "value"}, "fixed": {}, "pset": [], "records": {}, "sequenceDepth": 0, "variants": {"value": {"alternatives": [{"entities": [], "fields": {"points": "points"}, "fixed": {"points": [2, 2]}, "kind": 0, "mode": "record", "pset": [], "records": {}, "required": ["points"], "sequenceDepth": 0, "variants": {}}, {"entities": [], "fields": {"cardinalPoints": "cardinal_points"}, "fixed": {"cardinalPoints": [2]}, "kind": 1, "mode": "record", "pset": [], "records": {}, "required": ["cardinalPoints"], "sequenceDepth": 0, "variants": {}}], "sequenceDepth": 0}}}}));
         return wrapEntity(shell, result) as Entity;
       } finally {
         disposeAll(temps);
@@ -14226,7 +14381,7 @@ export function createApi(shell: IfcOpenShell): Api {
     builderExtrude(file: IfcFile, options: IfcOpenShellShapeBuilderExtrudeOptions): Entity {
       const temps: Disposable[] = [];
       try {
-        const result = raw.shape.builderExtrude(file.raw, encodeOptions(options, {"extrusionVector": "extrusion_vector", "magnitude": "magnitude", "position": "position", "positionXAxis": "position_x_axis", "positionYAxis": "position_y_axis", "positionZAxis": "position_z_axis", "profileOrCurve": "profile_or_curve"}, shell, temps));
+        const result = raw.shape.builderExtrude(file.raw, encodeOptions(options, {"extrusionVector": "extrusion_vector", "magnitude": "magnitude", "position": "position", "positionXAxis": "position_x_axis", "positionYAxis": "position_y_axis", "positionZAxis": "position_z_axis", "profileOrCurve": "profile_or_curve"}, shell, temps, [], [], {"extrusionVector": [3], "position": [3], "positionXAxis": [3], "positionYAxis": [3], "positionZAxis": [3]}, {}, {}));
         return wrapEntity(shell, result) as Entity;
       } finally {
         disposeAll(temps);
@@ -14239,10 +14394,10 @@ export function createApi(shell: IfcOpenShell): Api {
      * @param points XYZ coordinates defining the face outer boundary.
      * @return IfcFace entity with an IfcFaceOuterBound.
      */
-    builderFace(file: IfcFile, points: number[][]): Entity {
+    builderFace(file: IfcFile, points: [number, number, number][]): Entity {
       const temps: Disposable[] = [];
       try {
-        const result = raw.shape.builderFace(file.raw, toRawSequence(points, shell, temps));
+        const result = raw.shape.builderFace(file.raw, encodeOptionValue("points", points, shell, temps, undefined, undefined, [null, 3]));
         return wrapEntity(shell, result) as Entity;
       } finally {
         disposeAll(temps);
@@ -14256,10 +14411,10 @@ export function createApi(shell: IfcOpenShell): Api {
      * @param faces Face index lists (zero-based). Each face is a single outer loop.
      * @return IfcFacetedBrep entity with an IfcClosedShell.
      */
-    builderFacetedBrep(file: IfcFile, points: number[][], faces: number[][]): Entity {
+    builderFacetedBrep(file: IfcFile, points: [number, number, number][], faces: number[][]): Entity {
       const temps: Disposable[] = [];
       try {
-        const result = raw.shape.builderFacetedBrep(file.raw, toRawSequence(points, shell, temps), toRawSequence(faces, shell, temps));
+        const result = raw.shape.builderFacetedBrep(file.raw, encodeOptionValue("points", points, shell, temps, undefined, undefined, [null, 3]), toRawSequence(faces, shell, temps));
         return wrapEntity(shell, result) as Entity;
       } finally {
         disposeAll(temps);
@@ -14299,18 +14454,14 @@ export function createApi(shell: IfcOpenShell): Api {
     /**
      * Create a 2D IfcIndexedPolyCurve from explicit points and segment indices.
      *
-     * Segments with two indices are line segments; segments with three indices
-     * are arc segments.
-     *
      * @param file IFC file that receives the geometry.
-     * @param points XY coordinates for the point list.
-     * @param segments Segment index arrays (1-based).
+     * @param options XY points and explicit zero-based line or arc segments.
      * @return IfcIndexedPolyCurve entity.
      */
-    builderIndexedPolycurve2d(file: IfcFile, points: number[][], segments: number[][]): Entity {
+    builderIndexedPolycurve2d(file: IfcFile, options: IfcOpenShellShapeBuilderIndexedPolycurve2dOptions): Entity {
       const temps: Disposable[] = [];
       try {
-        const result = raw.shape.builderIndexedPolycurve2d(file.raw, toRawSequence(points, shell, temps), toRawSequence(segments, shell, temps));
+        const result = raw.shape.builderIndexedPolycurve2d(file.raw, encodeOptions(options, {"points": "points", "segments": "segments"}, shell, temps, [], [], {"points": [null, 2]}, {"segments": {"alternatives": [{"entities": [], "fields": {"lineIndices": "line_indices"}, "fixed": {}, "kind": 0, "mode": "record", "pset": [], "records": {}, "required": ["lineIndices"], "sequenceDepth": 0, "variants": {}}, {"entities": [], "fields": {"arcIndices": "arc_indices"}, "fixed": {"arcIndices": [3]}, "kind": 1, "mode": "record", "pset": [], "records": {}, "required": ["arcIndices"], "sequenceDepth": 0, "variants": {}}], "sequenceDepth": 1}}, {}));
         return wrapEntity(shell, result) as Entity;
       } finally {
         disposeAll(temps);
@@ -14330,7 +14481,7 @@ export function createApi(shell: IfcOpenShell): Api {
     builderMepBendShape(file: IfcFile, options: IfcOpenShellShapeBuilderMepBendShapeOptions): IfcOpenShellShapeBuilderMepBendShapeResult {
       const temps: Disposable[] = [];
       try {
-        const result = raw.shape.builderMepBendShape(file.raw, encodeOptions(options, {"angle": "angle", "bendVector": "bend_vector", "endLength": "end_length", "flipZAxis": "flip_z_axis", "radius": "radius", "segment": "segment", "startLength": "start_length"}, shell, temps));
+        const result = raw.shape.builderMepBendShape(file.raw, encodeOptions(options, {"angle": "angle", "bendVector": "bend_vector", "endLength": "end_length", "flipZAxis": "flip_z_axis", "radius": "radius", "segment": "segment", "startLength": "start_length"}, shell, temps, [], [], {}, {}, {"bendVector": {"entities": [], "fields": {"x": "x", "y": "y"}, "fixed": {}, "pset": [], "records": {}, "sequenceDepth": 0, "variants": {}}}));
         const data = result as { representation: RawValue; start_length: number; end_length: number; radius: number; angle: number; lateral_axis: number; lateral_sign: number; z_axis_sign: number; main_profile_dimension: number };
         return { representation: wrapEntity(shell, data.representation), startLength: data.start_length as number, endLength: data.end_length as number, radius: data.radius as number, angle: data.angle as number, lateralAxis: data.lateral_axis as number, lateralSign: data.lateral_sign as number, zAxisSign: data.z_axis_sign as number, mainProfileDimension: data.main_profile_dimension as number } as IfcOpenShellShapeBuilderMepBendShapeResult;
       } finally {
@@ -14349,7 +14500,7 @@ export function createApi(shell: IfcOpenShell): Api {
     builderMepTransitionCalculate(options: IfcOpenShellShapeBuilderMepTransitionCalculateOptions): number {
       const temps: Disposable[] = [];
       try {
-        const result = raw.shape.builderMepTransitionCalculate(encodeOptions(options, {"angle": "angle", "diff": "diff", "endHalfDim": "end_half_dim", "endProfile": "end_profile", "length": "length", "offset": "offset", "startHalfDim": "start_half_dim"}, shell, temps));
+        const result = raw.shape.builderMepTransitionCalculate(encodeOptions(options, {"calculation": "calculation", "diff": "diff", "endHalfDim": "end_half_dim", "endProfile": "end_profile", "offset": "offset", "startHalfDim": "start_half_dim"}, shell, temps, [], [], {}, {"calculation": {"alternatives": [{"entities": [], "fields": {"length": "length"}, "fixed": {}, "kind": 0, "mode": "record", "pset": [], "records": {}, "required": ["length"], "sequenceDepth": 0, "variants": {}}, {"entities": [], "fields": {"angle": "angle"}, "fixed": {}, "kind": 1, "mode": "record", "pset": [], "records": {}, "required": ["angle"], "sequenceDepth": 0, "variants": {}}], "sequenceDepth": 0}}, {"diff": {"entities": [], "fields": {"x": "x", "y": "y"}, "fixed": {}, "pset": [], "records": {}, "sequenceDepth": 0, "variants": {}}, "endHalfDim": {"entities": [], "fields": {"depth": "depth", "halfX": "half_x", "halfY": "half_y"}, "fixed": {}, "pset": [], "records": {}, "sequenceDepth": 0, "variants": {}}, "offset": {"entities": [], "fields": {"x": "x", "y": "y"}, "fixed": {}, "pset": [], "records": {}, "sequenceDepth": 0, "variants": {}}, "startHalfDim": {"entities": [], "fields": {"depth": "depth", "halfX": "half_x", "halfY": "half_y"}, "fixed": {}, "pset": [], "records": {}, "sequenceDepth": 0, "variants": {}}}));
         return wrap(shell, result) as number;
       } finally {
         disposeAll(temps);
@@ -14364,7 +14515,7 @@ export function createApi(shell: IfcOpenShell): Api {
     builderMepTransitionLength(options: IfcOpenShellShapeBuilderMepTransitionLengthOptions): number {
       const temps: Disposable[] = [];
       try {
-        const result = raw.shape.builderMepTransitionLength(encodeOptions(options, {"angle": "angle", "endHalfDim": "end_half_dim", "profileOffset": "profile_offset", "startHalfDim": "start_half_dim"}, shell, temps));
+        const result = raw.shape.builderMepTransitionLength(encodeOptions(options, {"angle": "angle", "endHalfDim": "end_half_dim", "profileOffset": "profile_offset", "startHalfDim": "start_half_dim"}, shell, temps, [], [], {}, {}, {"endHalfDim": {"entities": [], "fields": {"depth": "depth", "halfX": "half_x", "halfY": "half_y"}, "fixed": {}, "pset": [], "records": {}, "sequenceDepth": 0, "variants": {}}, "profileOffset": {"entities": [], "fields": {"x": "x", "y": "y"}, "fixed": {}, "pset": [], "records": {}, "sequenceDepth": 0, "variants": {}}, "startHalfDim": {"entities": [], "fields": {"depth": "depth", "halfX": "half_x", "halfY": "half_y"}, "fixed": {}, "pset": [], "records": {}, "sequenceDepth": 0, "variants": {}}}));
         return wrap(shell, result) as number;
       } finally {
         disposeAll(temps);
@@ -14384,7 +14535,7 @@ export function createApi(shell: IfcOpenShell): Api {
     builderMepTransitionShape(file: IfcFile, options: IfcOpenShellShapeBuilderMepTransitionShapeOptions): IfcOpenShellShapeBuilderMepTransitionShapeResult | null {
       const temps: Disposable[] = [];
       try {
-        const result = raw.shape.builderMepTransitionShape(file.raw, encodeOptions(options, {"angle": "angle", "endLength": "end_length", "endSegment": "end_segment", "profileOffset": "profile_offset", "startLength": "start_length", "startSegment": "start_segment"}, shell, temps));
+        const result = raw.shape.builderMepTransitionShape(file.raw, encodeOptions(options, {"angle": "angle", "endLength": "end_length", "endSegment": "end_segment", "profileOffset": "profile_offset", "startLength": "start_length", "startSegment": "start_segment"}, shell, temps, [], [], {}, {}, {"profileOffset": {"entities": [], "fields": {"x": "x", "y": "y"}, "fixed": {}, "pset": [], "records": {}, "sequenceDepth": 0, "variants": {}}}));
         if (result === null) return null;
         const data = result as { representation: RawValue; start_length: number; end_length: number; angle: number; profile_offset: RawValue; transition_length: number; full_transition_length: number };
         return { representation: wrapEntity(shell, data.representation), startLength: data.start_length as number, endLength: data.end_length as number, angle: data.angle as number, profileOffset: wrap(shell, data.profile_offset), transitionLength: data.transition_length as number, fullTransitionLength: data.full_transition_length as number } as IfcOpenShellShapeBuilderMepTransitionShapeResult | null;
@@ -14400,10 +14551,10 @@ export function createApi(shell: IfcOpenShell): Api {
      * @param faces Face index lists (zero-based).
      * @return IfcPolygonalFaceSet or IfcFacetedBrep entity.
      */
-    builderMesh(file: IfcFile, points: number[][], faces: number[][]): Entity {
+    builderMesh(file: IfcFile, points: [number, number, number][], faces: number[][]): Entity {
       const temps: Disposable[] = [];
       try {
-        const result = raw.shape.builderMesh(file.raw, toRawSequence(points, shell, temps), toRawSequence(faces, shell, temps));
+        const result = raw.shape.builderMesh(file.raw, encodeOptionValue("points", points, shell, temps, undefined, undefined, [null, 3]), toRawSequence(faces, shell, temps));
         return wrapEntity(shell, result) as Entity;
       } finally {
         disposeAll(temps);
@@ -14423,7 +14574,7 @@ export function createApi(shell: IfcOpenShell): Api {
     builderMirror(file: IfcFile, options: IfcOpenShellShapeBuilderMirrorOptions): Entity {
       const temps: Disposable[] = [];
       try {
-        const result = raw.shape.builderMirror(file.raw, encodeOptions(options, {"createCopy": "create_copy", "item": "item", "mirrorAxes": "mirror_axes", "mirrorPoint": "mirror_point", "placementMatrix": "placement_matrix"}, shell, temps));
+        const result = raw.shape.builderMirror(file.raw, encodeOptions(options, {"createCopy": "create_copy", "item": "item", "mirrorAxes": "mirror_axes", "mirrorPoint": "mirror_point", "placementMatrix": "placement_matrix"}, shell, temps, [], [], {"mirrorAxes": [2], "mirrorPoint": [2]}, {"placementMatrix": {"alternatives": [{"fixedLengths": [9], "kind": 0, "mode": "sequence"}, {"fixedLengths": [16], "kind": 1, "mode": "sequence"}], "sequenceDepth": 0}}, {}));
         return wrapEntity(shell, result) as Entity;
       } finally {
         disposeAll(temps);
@@ -14439,10 +14590,10 @@ export function createApi(shell: IfcOpenShell): Api {
      * @param normal Direction ratios of the plane normal.
      * @return IfcPlane entity.
      */
-    builderPlane(file: IfcFile, location: number[], normal: number[]): Entity {
+    builderPlane(file: IfcFile, location: [number, number, number], normal: [number, number, number]): Entity {
       const temps: Disposable[] = [];
       try {
-        const result = raw.shape.builderPlane(file.raw, toRawSequence(location, shell, temps), toRawSequence(normal, shell, temps));
+        const result = raw.shape.builderPlane(file.raw, encodeOptionValue("location", location, shell, temps, undefined, undefined, [3]), encodeOptionValue("normal", normal, shell, temps, undefined, undefined, [3]));
         return wrapEntity(shell, result) as Entity;
       } finally {
         disposeAll(temps);
@@ -14459,10 +14610,10 @@ export function createApi(shell: IfcOpenShell): Api {
      * @param faces Per-face loop index lists (zero-based).
      * @return IfcPolygonalFaceSet entity.
      */
-    builderPolygonalFaceSet(file: IfcFile, points: number[][], faces: number[][][]): Entity {
+    builderPolygonalFaceSet(file: IfcFile, points: [number, number, number][], faces: number[][][]): Entity {
       const temps: Disposable[] = [];
       try {
-        const result = raw.shape.builderPolygonalFaceSet(file.raw, toRawSequence(points, shell, temps), toRawSequence(faces, shell, temps));
+        const result = raw.shape.builderPolygonalFaceSet(file.raw, encodeOptionValue("points", points, shell, temps, undefined, undefined, [null, 3]), toRawSequence(faces, shell, temps));
         return wrapEntity(shell, result) as Entity;
       } finally {
         disposeAll(temps);
@@ -14472,13 +14623,13 @@ export function createApi(shell: IfcOpenShell): Api {
      * Create a 2D or 3D polyline (IfcPolyline for IFC2X3, IfcIndexedPolyCurve otherwise).
      *
      * @param file IFC file that receives the geometry.
-     * @param options Points, closure, offset, and arc segment indices.
+     * @param options Points, optional offset, and explicit semantic segments.
      * @return IfcPolyline or IfcIndexedPolyCurve entity.
      */
     builderPolyline(file: IfcFile, options: IfcOpenShellShapeBuilderPolylineOptions): Entity {
       const temps: Disposable[] = [];
       try {
-        const result = raw.shape.builderPolyline(file.raw, encodeOptions(options, {"arcPoints": "arc_points", "closed": "closed", "points": "points", "positionOffset": "position_offset"}, shell, temps));
+        const result = raw.shape.builderPolyline(file.raw, encodeOptions(options, {"points": "points", "positionOffset": "position_offset", "segments": "segments"}, shell, temps, [], [], {}, {"points": {"alternatives": [{"fixedLengths": [null, 2], "kind": 0, "mode": "sequence"}, {"fixedLengths": [null, 3], "kind": 1, "mode": "sequence"}], "sequenceDepth": 0}, "positionOffset": {"alternatives": [{"fixedLengths": [2], "kind": 0, "mode": "sequence"}, {"fixedLengths": [3], "kind": 1, "mode": "sequence"}], "sequenceDepth": 0}, "segments": {"alternatives": [{"entities": [], "fields": {"lineIndices": "line_indices"}, "fixed": {}, "kind": 0, "mode": "record", "pset": [], "records": {}, "required": ["lineIndices"], "sequenceDepth": 0, "variants": {}}, {"entities": [], "fields": {"arcIndices": "arc_indices"}, "fixed": {"arcIndices": [3]}, "kind": 1, "mode": "record", "pset": [], "records": {}, "required": ["arcIndices"], "sequenceDepth": 0, "variants": {}}], "sequenceDepth": 1}}, {}));
         return wrapEntity(shell, result) as Entity;
       } finally {
         disposeAll(temps);
@@ -14533,7 +14684,7 @@ export function createApi(shell: IfcOpenShell): Api {
     builderRotate(file: IfcFile, options: IfcOpenShellShapeBuilderRotateOptions): Entity {
       const temps: Disposable[] = [];
       try {
-        const result = raw.shape.builderRotate(file.raw, encodeOptions(options, {"angle": "angle", "counterClockwise": "counter_clockwise", "createCopy": "create_copy", "item": "item", "pivotPoint": "pivot_point"}, shell, temps));
+        const result = raw.shape.builderRotate(file.raw, encodeOptions(options, {"angle": "angle", "counterClockwise": "counter_clockwise", "createCopy": "create_copy", "item": "item", "pivotPoint": "pivot_point"}, shell, temps, [], [], {"pivotPoint": [2]}, {}, {}));
         return wrapEntity(shell, result) as Entity;
       } finally {
         disposeAll(temps);
@@ -14549,10 +14700,10 @@ export function createApi(shell: IfcOpenShell): Api {
      * @param coords Replacement coordinates.
      * @return The modified polyline entity.
      */
-    builderSetPolylineCoords(file: IfcFile, polyline: Entity, coords: number[][]): Entity {
+    builderSetPolylineCoords(file: IfcFile, polyline: Entity, coords: [number, number][] | [number, number, number][]): Entity {
       const temps: Disposable[] = [];
       try {
-        const result = raw.shape.builderSetPolylineCoords(file.raw, polyline.raw, toRawSequence(coords, shell, temps));
+        const result = raw.shape.builderSetPolylineCoords(file.raw, polyline.raw, encodeOptionValue("coords", coords, shell, temps, undefined, undefined, undefined, {"alternatives": [{"fixedLengths": [null, 2], "kind": 0, "mode": "sequence"}, {"fixedLengths": [null, 3], "kind": 1, "mode": "sequence"}], "sequenceDepth": 0}));
         return wrapEntity(shell, result) as Entity;
       } finally {
         disposeAll(temps);
@@ -14568,7 +14719,7 @@ export function createApi(shell: IfcOpenShell): Api {
     builderSphere(file: IfcFile, options: IfcOpenShellShapeBuilderSphereOptions): Entity {
       const temps: Disposable[] = [];
       try {
-        const result = raw.shape.builderSphere(file.raw, encodeOptions(options, {"center": "center", "radius": "radius"}, shell, temps));
+        const result = raw.shape.builderSphere(file.raw, encodeOptions(options, {"center": "center", "radius": "radius"}, shell, temps, [], [], {"center": [3]}, {}, {}));
         return wrapEntity(shell, result) as Entity;
       } finally {
         disposeAll(temps);
@@ -14605,7 +14756,7 @@ export function createApi(shell: IfcOpenShell): Api {
     builderTranslate(file: IfcFile, options: IfcOpenShellShapeBuilderTranslateOptions): Entity {
       const temps: Disposable[] = [];
       try {
-        const result = raw.shape.builderTranslate(file.raw, encodeOptions(options, {"createCopy": "create_copy", "item": "item", "translation": "translation"}, shell, temps));
+        const result = raw.shape.builderTranslate(file.raw, encodeOptions(options, {"createCopy": "create_copy", "item": "item", "translation": "translation"}, shell, temps, [], [], {}, {"translation": {"alternatives": [{"fixedLengths": [2], "kind": 0, "mode": "sequence"}, {"fixedLengths": [3], "kind": 1, "mode": "sequence"}], "sequenceDepth": 0}}, {}));
         return wrapEntity(shell, result) as Entity;
       } finally {
         disposeAll(temps);
@@ -14619,10 +14770,10 @@ export function createApi(shell: IfcOpenShell): Api {
      * @param faces Triangle index lists (zero-based, truncated to 3 vertices each).
      * @return IfcTriangulatedFaceSet entity.
      */
-    builderTriangulatedFaceSet(file: IfcFile, points: number[][], faces: number[][]): Entity {
+    builderTriangulatedFaceSet(file: IfcFile, points: [number, number, number][], faces: [number, number, number][]): Entity {
       const temps: Disposable[] = [];
       try {
-        const result = raw.shape.builderTriangulatedFaceSet(file.raw, toRawSequence(points, shell, temps), toRawSequence(faces, shell, temps));
+        const result = raw.shape.builderTriangulatedFaceSet(file.raw, encodeOptionValue("points", points, shell, temps, undefined, undefined, [null, 3]), encodeOptionValue("faces", faces, shell, temps, undefined, undefined, [null, 3]));
         return wrapEntity(shell, result) as Entity;
       } finally {
         disposeAll(temps);
@@ -14635,10 +14786,10 @@ export function createApi(shell: IfcOpenShell): Api {
      * @param position XYZ coordinates of the vertex.
      * @return IfcVertexPoint entity.
      */
-    builderVertex(file: IfcFile, position: number[]): Entity {
+    builderVertex(file: IfcFile, position: [number, number, number]): Entity {
       const temps: Disposable[] = [];
       try {
-        const result = raw.shape.builderVertex(file.raw, toRawSequence(position, shell, temps));
+        const result = raw.shape.builderVertex(file.raw, encodeOptionValue("position", position, shell, temps, undefined, undefined, [3]));
         return wrapEntity(shell, result) as Entity;
       } finally {
         disposeAll(temps);
@@ -14802,7 +14953,7 @@ export function createApi(shell: IfcOpenShell): Api {
      * @param name Optional name for the load entity.
      * @return Newly created IfcStructuralLoad subclass.
      */
-    addStructuralLoad(file: IfcFile, ifc_class: string, name: string): Entity {
+    addStructuralLoad(file: IfcFile, ifc_class: string, name: string | null): Entity {
       const temps: Disposable[] = [];
       try {
         const result = raw.structural.addStructuralLoad(file.raw, ifc_class, name);
@@ -14977,10 +15128,10 @@ export function createApi(shell: IfcOpenShell): Api {
      * @param axis 3-element direction ratios for the Axis attribute.
      * @param ref_direction 3-element direction ratios for the RefDirection attribute.
      */
-    editStructuralConnectionCs(file: IfcFile, structural_item: Entity, axis: number[], ref_direction: number[]): void {
+    editStructuralConnectionCs(file: IfcFile, structural_item: Entity, axis: [number, number, number], ref_direction: [number, number, number]): void {
       const temps: Disposable[] = [];
       try {
-        raw.structural.editStructuralConnectionCs(file.raw, structural_item.raw, toRawSequence(axis, shell, temps), toRawSequence(ref_direction, shell, temps));
+        raw.structural.editStructuralConnectionCs(file.raw, structural_item.raw, encodeOptionValue("axis", axis, shell, temps, undefined, undefined, [3]), encodeOptionValue("ref_direction", ref_direction, shell, temps, undefined, undefined, [3]));
       } finally {
         disposeAll(temps);
       }
@@ -14996,10 +15147,10 @@ export function createApi(shell: IfcOpenShell): Api {
      * @param structural_item Structural item with an Axis attribute.
      * @param axis 3-element direction ratios.
      */
-    editStructuralItemAxis(file: IfcFile, structural_item: Entity, axis: number[]): void {
+    editStructuralItemAxis(file: IfcFile, structural_item: Entity, axis: [number, number, number]): void {
       const temps: Disposable[] = [];
       try {
-        raw.structural.editStructuralItemAxis(file.raw, structural_item.raw, toRawSequence(axis, shell, temps));
+        raw.structural.editStructuralItemAxis(file.raw, structural_item.raw, encodeOptionValue("axis", axis, shell, temps, undefined, undefined, [3]));
       } finally {
         disposeAll(temps);
       }
@@ -15151,7 +15302,7 @@ export function createApi(shell: IfcOpenShell): Api {
      * @param ifc_class IFC entity class (e.g. "IfcSurfaceStyle", "IfcFillAreaStyle").
      * @return Newly created style entity.
      */
-    addStyle(file: IfcFile, name: string, ifc_class: string): Entity {
+    addStyle(file: IfcFile, name: string | null, ifc_class: string): Entity {
       const temps: Disposable[] = [];
       try {
         const result = raw.style.addStyle(file.raw, name, ifc_class);
@@ -15168,7 +15319,7 @@ export function createApi(shell: IfcOpenShell): Api {
      * class are removed with nested cleanup before the new component is appended;
      * shading and rendering conflict in both directions.
      */
-    addSurfaceStyle(file: IfcFile, style: Entity, ifc_class: string, attributes: PsetProperties | PsetInput): Entity {
+    addSurfaceStyle(file: IfcFile, style: Entity, ifc_class: string | null, attributes: PsetProperties | PsetInput): Entity {
       const temps: Disposable[] = [];
       try {
         const result = raw.style.addSurfaceStyle(file.raw, style.raw, ifc_class, toRawPsetProperties(shell, attributes as PsetProperties | PsetInput, temps));
@@ -15645,7 +15796,7 @@ export function createApi(shell: IfcOpenShell): Api {
      * @param exponents Exponent for each component unit (must match units in length).
      * @return Newly created IfcDerivedUnit.
      */
-    addDerivedUnit(file: IfcFile, unit_type: string, userdefinedtype: string, units: Entity[], exponents: bigint[]): Entity {
+    addDerivedUnit(file: IfcFile, unit_type: string, userdefinedtype: string | null, units: Entity[], exponents: bigint[]): Entity {
       const temps: Disposable[] = [];
       try {
         const result = raw.unit.addDerivedUnit(file.raw, unit_type, userdefinedtype, toRawSequence(units, shell, temps), toRawSequence(exponents, shell, temps));
@@ -15681,7 +15832,7 @@ export function createApi(shell: IfcOpenShell): Api {
      * @param prefix SI prefix (e.g. "KILO", "MILLI"). When omitted, the base unit is used.
      * @return Newly created IfcSIUnit.
      */
-    addSiUnit(file: IfcFile, unit_type: string, prefix: string): Entity {
+    addSiUnit(file: IfcFile, unit_type: string, prefix: string | null): Entity {
       const temps: Disposable[] = [];
       try {
         const result = raw.unit.addSiUnit(file.raw, unit_type, prefix);
@@ -16239,6 +16390,9 @@ function encodeOptions(
   temps: Disposable[],
   psetFields?: string[],
   entityListFields?: string[],
+  fixedFields?: Record<string, FixedLength[]>,
+  variantFields?: Record<string, VariantDescriptor>,
+  recordFields?: Record<string, RecordDescriptor>,
 ): Record<string, RawValue> {
   const data = value as Record<string, ApiInput | undefined>;
   const psetFieldSet = psetFields ? new Set(psetFields) : undefined;
@@ -16246,7 +16400,7 @@ function encodeOptions(
   return Object.fromEntries(
     Object.entries(fields)
       .filter(([publicName]) => data[publicName] !== undefined)
-      .map(([publicName, nativeName]) => [nativeName, encodeOptionValue(publicName, data[publicName] as ApiInput, shell, temps, psetFieldSet, entityListFieldSet)]),
+      .map(([publicName, nativeName]) => [nativeName, encodeOptionValue(publicName, data[publicName] as ApiInput, shell, temps, psetFieldSet, entityListFieldSet, fixedFields?.[publicName], variantFields?.[publicName], recordFields?.[publicName])]),
   ) as Record<string, RawValue>;
 }
 
@@ -16286,7 +16440,46 @@ function toRawEntityList(value: ApiInput, shell: IfcOpenShell, temps: Disposable
   return raw;
 }
 
-function encodeOptionValue(publicName: string, value: ApiInput, shell: IfcOpenShell, temps: Disposable[], psetFields?: Set<string>, entityListFields?: Set<string>): RawValue {
+type RecordDescriptor = { sequenceDepth: number; fields: Record<string, string>; pset: string[]; entities: string[]; fixed: Record<string, FixedLength[]>; variants: Record<string, VariantDescriptor>; records: Record<string, RecordDescriptor> };
+type VariantAlternative = (RecordDescriptor & { kind: number; mode: 'record'; required: string[] }) | { kind: number; mode: 'sequence'; fixedLengths: FixedLength[] };
+type VariantDescriptor = { sequenceDepth: number; alternatives: VariantAlternative[] };
+
+function encodeOptionValue(publicName: string, value: ApiInput, shell: IfcOpenShell, temps: Disposable[], psetFields?: Set<string>, entityListFields?: Set<string>, fixedLengths?: FixedLength[], variantDescriptor?: VariantDescriptor, record?: RecordDescriptor): RawValue {
+  if (variantDescriptor) {
+    const encodeVariant = (item: ApiInput, depth: number): RawValue => {
+      if (depth < variantDescriptor.sequenceDepth) {
+        if (!Array.isArray(item)) throw new TypeError(`Expected ${publicName} to be an array.`);
+        return item.map((nested) => encodeVariant(nested, depth + 1));
+      }
+      const matches = variantDescriptor.alternatives.filter((alternative) => {
+        if (alternative.mode === 'sequence') return matchesFixedLengths(item, alternative.fixedLengths);
+        return isPlainObject(item) && alternative.required.every((name) => Object.prototype.hasOwnProperty.call(item, name));
+      });
+      if (matches.length !== 1) throw new TypeError(`Expected ${publicName} to match exactly one variant alternative.`);
+      const alternative = matches[0]!;
+      if (alternative.mode === 'sequence') {
+        return { kind: alternative.kind, [`value_${alternative.kind}`]: toRaw(item, shell, temps) };
+      }
+      if (!isPlainObject(item)) throw new TypeError(`Expected ${publicName} to be an object.`);
+      return {
+        kind: alternative.kind,
+        [`value_${alternative.kind}`]: encodeOptions(item, alternative.fields, shell, temps, alternative.pset, alternative.entities, alternative.fixed, alternative.variants, alternative.records),
+      };
+    };
+    return encodeVariant(value, 0);
+  }
+  if (record) {
+    const encodeRecord = (item: ApiInput, depth: number): RawValue => {
+      if (depth < record.sequenceDepth) {
+        if (!Array.isArray(item)) throw new TypeError(`Expected ${publicName} to be an array.`);
+        return item.map((nested) => encodeRecord(nested, depth + 1));
+      }
+      if (!isPlainObject(item)) throw new TypeError(`Expected ${publicName} to be an object.`);
+      return encodeOptions(item, record.fields, shell, temps, record.pset, record.entities, record.fixed, record.variants, record.records);
+    };
+    return encodeRecord(value, 0);
+  }
+  if (fixedLengths) validateFixedLengths(publicName, value, fixedLengths);
   if (psetFields?.has(publicName)) {
     return toRawPsetProperties(shell, value as PsetProperties | PsetInput, temps);
   }
@@ -16294,6 +16487,28 @@ function encodeOptionValue(publicName: string, value: ApiInput, shell: IfcOpenSh
     return toRawEntityList(value, shell, temps);
   }
   return toRaw(value, shell, temps);
+}
+
+function validateFixedLengths(publicName: string, value: ApiInput, lengths: FixedLength[]): void {
+  const visit = (level: ApiInput, depth: number): void => {
+    if (depth >= lengths.length) return;
+    if (!Array.isArray(level)) throw new TypeError(`Expected ${publicName} to be an array.`);
+    const expected = lengths[depth];
+    if (expected !== null && expected !== undefined && level.length !== expected) {
+      throw new TypeError(`Expected ${publicName} to contain ${expected} items.`);
+    }
+    for (const item of level) visit(item as ApiInput, depth + 1);
+  };
+  visit(value, 0);
+}
+
+function matchesFixedLengths(value: ApiInput, lengths: FixedLength[]): boolean {
+  try {
+    validateFixedLengths('variant', value, lengths);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 function wrapEntities(shell: IfcOpenShell, value: RawValue): Entity[] {

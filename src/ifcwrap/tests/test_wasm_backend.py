@@ -145,6 +145,635 @@ def _make_metadata(
     )
 
 
+def test_typescript_preserves_fixed_aliases_and_enum_literals() -> None:
+    metadata = _make_metadata(
+        c_prefix="ifcopenshell",
+        option_structs={
+            "TransformOptions": COptionIR(
+                name="TransformOptions",
+                c_type="ifcopenshell_demo_transform_options_t",
+                fields=(
+                    COptionFieldIR(
+                        name="origin",
+                        type=TypeSpec(
+                            kind="double",
+                            sequence_depth=1,
+                            alias="Vec3",
+                            fixed_lengths=(3,),
+                        ),
+                        c_type="const ifcopenshell_double_list_t*",
+                    ),
+                    COptionFieldIR(
+                        name="direction",
+                        type=TypeSpec(
+                            kind="int32",
+                            alias="Direction",
+                            enum_values=("Positive", "Negative"),
+                            enum_numeric_values=(1, -1),
+                        ),
+                        c_type="int32_t",
+                    ),
+                ),
+            ),
+            "PlaneClipping": COptionIR(
+                name="PlaneClipping",
+                c_type="ifcopenshell_demo_plane_clipping_t",
+                fields=(
+                    COptionFieldIR(
+                        name="location",
+                        type=TypeSpec(
+                            kind="double",
+                            sequence_depth=1,
+                            alias="Vec3",
+                            fixed_lengths=(3,),
+                        ),
+                        c_type="const ifcopenshell_double_list_t*",
+                    ),
+                ),
+            ),
+            "EntityClipping": COptionIR(
+                name="EntityClipping",
+                c_type="ifcopenshell_demo_entity_clipping_t",
+                fields=(
+                    COptionFieldIR(
+                        name="entity_id",
+                        type=TypeSpec(kind="int32"),
+                        c_type="int32_t",
+                    ),
+                ),
+            ),
+            "ApplyOptions": COptionIR(
+                name="ApplyOptions",
+                c_type="ifcopenshell_demo_apply_options_t",
+                fields=(
+                    COptionFieldIR(
+                        name="clipping",
+                        type=TypeSpec(
+                            kind="variant",
+                            variants=(
+                                TypeSpec(kind="option", struct="PlaneClipping"),
+                                TypeSpec(kind="option", struct="EntityClipping"),
+                            ),
+                        ),
+                        c_type="const ifcopenshell_demo_clipping_variant_t*",
+                    ),
+                ),
+            ),
+        },
+        functions={
+            "ifcopenshell_demo_transform": _make_function(
+                c_name="ifcopenshell_demo_transform",
+                params=(
+                    CParamIR(
+                        name="options",
+                        c_type="const ifcopenshell_demo_transform_options_t*",
+                        role="param",
+                        type_kind="option",
+                    ),
+                ),
+                public_module="demo",
+            ),
+            "ifcopenshell_demo_apply": _make_function(
+                c_name="ifcopenshell_demo_apply",
+                params=(
+                    CParamIR(
+                        name="options",
+                        c_type="const ifcopenshell_demo_apply_options_t*",
+                        role="param",
+                        type_kind="option",
+                    ),
+                ),
+                public_module="demo",
+            ),
+        },
+    )
+
+    declarations = render_typescript_declarations(metadata)
+    direct = render_api_direct(metadata)
+
+    for code in (declarations, direct):
+        assert "export type Vec3 = [number, number, number];" in code
+        assert "export type Direction = 'Positive' | 'Negative';" in code
+        assert "origin: Vec3;" in code
+        assert "direction: Direction;" in code
+    assert (
+        "clipping: IfcOpenshellDemoPlaneClipping | IfcOpenshellDemoEntityClipping;"
+        in declarations
+    )
+    assert (
+        "clipping: IfcOpenShellDemoPlaneClipping | IfcOpenShellDemoEntityClipping;"
+        in direct
+    )
+    assert '"origin": [3]' in direct
+    assert "validateFixedLengths(publicName, value, fixedLengths)" in direct
+    assert '"required": ["location"]' in direct
+    assert '"required": ["entityId"]' in direct
+    assert "match exactly one variant alternative" in direct
+
+
+def test_typescript_and_js_preserve_native_default_omission() -> None:
+    function = _make_function(
+        c_name="ifcopenshell_demo_update",
+        params=(
+            CParamIR(
+                "tolerance",
+                "const double*",
+                "param",
+                "double",
+                nullable=True,
+                has_default=True,
+            ),
+            CParamIR(
+                "label",
+                "const char*",
+                "param",
+                "string",
+                nullable=True,
+                has_default=True,
+            ),
+        ),
+        returns=TypeSpec(kind="bool"),
+        public_module="demo",
+    )
+    metadata = _make_metadata(
+        c_prefix="ifcopenshell",
+        option_structs={
+            "DefaultsOptions": COptionIR(
+                "DefaultsOptions",
+                "ifcopenshell_demo_defaults_options_t",
+                (
+                    COptionFieldIR(
+                        "unit_scale",
+                        TypeSpec(kind="double", nullable=True),
+                        "double",
+                        presence_field="has_unit_scale",
+                        has_default=True,
+                    ),
+                    COptionFieldIR(
+                        "required_zero",
+                        TypeSpec(kind="double"),
+                        "double",
+                    ),
+                ),
+            )
+        },
+        functions={function.c_name: function},
+    )
+
+    declarations = render_typescript_declarations(metadata)
+    direct = render_api_direct(metadata)
+    glue = render_js_glue(metadata)
+
+    signature = "update(tolerance?: number | null, label?: string | null): boolean;"
+    assert signature in declarations
+    assert signature in direct
+    assert (
+        "update: (tolerance?: number | null, label?: string | null) => boolean;"
+        in direct
+    )
+    assert "unit_scale?: number;" in declarations
+    assert "required_zero: number;" in declarations
+    assert "tolerance == null ? 0 : module._malloc(8)" in glue
+    assert 'module.setValue(_tolerancePtr, tolerance, "double")' in glue
+
+
+def test_direct_api_preserves_fixed_sequence_variant_contracts() -> None:
+    points_type = TypeSpec(
+        kind="variant",
+        variants=(
+            TypeSpec(
+                kind="double",
+                sequence_depth=2,
+                fixed_lengths=(None, 2),
+            ),
+            TypeSpec(
+                kind="double",
+                sequence_depth=2,
+                fixed_lengths=(None, 3),
+            ),
+        ),
+    )
+    function = _make_function(
+        c_name="ifcopenshell_demo_transform",
+        params=(
+            CParamIR(
+                "points",
+                "const ifcopenshell_demo_points_variant_t*",
+                "param",
+                "variant",
+                type=points_type,
+            ),
+            CParamIR(
+                "origin",
+                "const ifcopenshell_double_list_t*",
+                "param",
+                "sequence",
+                type=TypeSpec(
+                    kind="double",
+                    sequence_depth=1,
+                    fixed_lengths=(3,),
+                ),
+            ),
+        ),
+        returns=TypeSpec(
+            kind="double",
+            sequence_depth=1,
+            fixed_lengths=(16,),
+        ),
+        public_module="demo",
+    )
+    metadata = _make_metadata(
+        c_prefix="ifcopenshell",
+        value_types={
+            "double_list": CTypeIR(
+                c_type="ifcopenshell_double_list_t",
+                kind="sequence",
+                fields=(
+                    CFieldIR("items", "double*"),
+                    CFieldIR("size", "size_t"),
+                    CFieldIR("owner", "void*"),
+                ),
+                destroy_function=None,
+                element_type="double",
+                sequence_depth=1,
+            ),
+            "double_list_list": CTypeIR(
+                c_type="ifcopenshell_double_list_list_t",
+                kind="sequence",
+                fields=(
+                    CFieldIR("items", "ifcopenshell_double_list_t*"),
+                    CFieldIR("size", "size_t"),
+                    CFieldIR("owner", "void*"),
+                ),
+                destroy_function=None,
+                element_type="ifcopenshell_double_list_t",
+                sequence_depth=2,
+            ),
+            "points_variant": CTypeIR(
+                c_type="ifcopenshell_demo_points_variant_t",
+                kind="variant",
+                fields=(
+                    CFieldIR("kind", "int32_t"),
+                    CFieldIR("value_0", "ifcopenshell_double_list_list_t"),
+                    CFieldIR("value_1", "ifcopenshell_double_list_list_t"),
+                ),
+                destroy_function="ifcopenshell_demo_points_variant_destroy",
+                element_type=points_type.cpp_type,
+            ),
+        },
+        functions={function.c_name: function},
+    )
+
+    declarations = render_typescript_declarations(metadata)
+    direct = render_api_direct(metadata)
+
+    assert (
+        "transform(points: [number, number][] | [number, number, number][], "
+        "origin: [number, number, number]): "
+        "[number, number, number, number, number, number, number, number, "
+        "number, number, number, number, number, number, number, number];"
+        in declarations
+    )
+    assert (
+        "transform(points: [number, number][] | [number, number, number][], "
+        "origin: [number, number, number]): "
+        "[number, number, number, number, number, number, number, number, "
+        "number, number, number, number, number, number, number, number];" in direct
+    )
+    assert '"fixedLengths": [null, 2]' in direct
+    assert '"fixedLengths": [null, 3]' in direct
+    assert '"mode": "sequence"' in direct
+    assert 'encodeOptionValue("origin", origin' in direct
+    assert "[3]" in direct
+    glue = render_js_glue(metadata)
+    assert (
+        "var _pointsPtr = _allocInputVariant(module, points, "
+        '"ifcopenshell_demo_points_variant_t");' in glue
+    )
+    assert (
+        "if (_pointsPtr) _freeInputVariant(module, _pointsPtr, "
+        '"ifcopenshell_demo_points_variant_t");' in glue
+    )
+
+
+def test_sequence_types_preserve_enum_and_literal_domains() -> None:
+    modes = TypeSpec(
+        kind="int32",
+        sequence_depth=1,
+        enum_values=("WALL", "SLAB"),
+        enum_numeric_values=(0, 1),
+    )
+    labels = TypeSpec(
+        kind="string",
+        sequence_depth=1,
+        literal_value="ACTIVE",
+    )
+    function = _make_function(
+        c_name="ifcopenshell_demo_domains",
+        params=(
+            CParamIR(
+                "modes",
+                "const ifcopenshell_int32_list_t*",
+                "param",
+                "sequence",
+                type=modes,
+            ),
+            CParamIR(
+                "labels",
+                "const ifcopenshell_string_list_t*",
+                "param",
+                "sequence",
+                type=labels,
+            ),
+        ),
+        returns=modes,
+        public_module="demo",
+    )
+    aliased_modes = replace(modes, alias="Mode")
+    aliased_function = _make_function(
+        c_name="ifcopenshell_demo_aliased_domains",
+        params=(
+            CParamIR(
+                "modes",
+                "const ifcopenshell_int32_list_t*",
+                "param",
+                "sequence",
+                type=aliased_modes,
+            ),
+        ),
+        returns=TypeSpec(kind="void"),
+        public_module="demo",
+    )
+    metadata = _make_metadata(
+        c_prefix="ifcopenshell",
+        functions={
+            function.c_name: function,
+            aliased_function.c_name: aliased_function,
+        },
+    )
+
+    declarations = render_typescript_declarations(metadata)
+    direct = render_api_direct(metadata)
+
+    assert (
+        "domains(modes: ('WALL' | 'SLAB')[], labels: 'ACTIVE'[]): "
+        "('WALL' | 'SLAB')[];" in declarations
+    )
+    assert "modes: ('WALL' | 'SLAB')[]" in direct
+    assert "labels: 'ACTIVE'[]" in direct
+    assert "): ('WALL' | 'SLAB')[];" in direct
+    assert "export type Mode = 'WALL' | 'SLAB';" in declarations
+    assert "aliasedDomains(modes: Mode[]): void;" in declarations
+    assert "export type Mode = 'WALL' | 'SLAB';" in direct
+    assert "aliasedDomains(modes: Mode[]): void;" in direct
+
+
+def test_js_glue_marshals_enum_domains_at_the_native_boundary() -> None:
+    mode = TypeSpec(
+        kind="int32",
+        enum_values=("WALL", "SLAB"),
+        enum_numeric_values=(0, 1),
+    )
+    modes = replace(mode, sequence_depth=1)
+    scalar_function = _make_function(
+        c_name="ifcopenshell_demo_round_trip_mode",
+        params=(CParamIR("mode", "int32_t", "param", "int32", type=mode),),
+        returns=mode,
+    )
+    sequence_function = _make_function(
+        c_name="ifcopenshell_demo_round_trip_modes",
+        params=(
+            CParamIR(
+                "modes",
+                "const ifcopenshell_int32_list_t*",
+                "param",
+                "sequence",
+                type=modes,
+            ),
+        ),
+        returns=modes,
+    )
+    option = COptionIR(
+        "ModeOptions",
+        "ifcopenshell_demo_mode_options_t",
+        (COptionFieldIR("mode", mode, "int32_t"),),
+    )
+    option_function = _make_function(
+        c_name="ifcopenshell_demo_set_mode",
+        params=(
+            CParamIR(
+                "options",
+                "const ifcopenshell_demo_mode_options_t*",
+                "param",
+                "option",
+            ),
+        ),
+        returns=TypeSpec(kind="void"),
+    )
+    metadata = _make_metadata(
+        value_types={
+            "int32_list": CTypeIR(
+                c_type="ifcopenshell_int32_list_t",
+                kind="sequence",
+                fields=(
+                    CFieldIR("items", "int32_t*"),
+                    CFieldIR("size", "size_t"),
+                    CFieldIR("owner", "void*"),
+                ),
+                destroy_function="ifcopenshell_int32_list_destroy",
+                element_type="int32_t",
+                sequence_depth=1,
+            ),
+        },
+        option_structs={option.name: option},
+        functions={
+            scalar_function.c_name: scalar_function,
+            sequence_function.c_name: sequence_function,
+            option_function.c_name: option_function,
+        },
+    )
+
+    glue = render_js_glue(metadata)
+
+    assert '_enumInputValue(mode, {"WALL": 0, "SLAB": 1}, "mode")' in glue
+    assert '_mapEnumInput(modes, {"WALL": 0, "SLAB": 1}, 1, "modes")' in glue
+    assert (
+        '_enumOutputValue(module.getValue(outResultPtr, \'i32\'), {"0": "WALL", "1": "SLAB"}, \'result\')'
+        in glue
+    )
+    assert "_mapEnumOutput(_readValueType(module, outResultPtr" in glue
+    assert '"enumValues": {' in glue
+    assert "if (field.enumValues) value = field.sequenceDepth > 0" in glue
+    assert "Invalid literal for ${name}: ${String(value)}" in glue
+
+
+def test_direct_api_recursively_encodes_nested_option_records() -> None:
+    nested = COptionIR(
+        "PanelProperties",
+        "ifcopenshell_demo_panel_properties_t",
+        (
+            COptionFieldIR(
+                "panel_width",
+                TypeSpec(kind="double", nullable=True),
+                "double",
+                presence_field="has_panel_width",
+            ),
+        ),
+    )
+    parent = COptionIR(
+        "DoorOptions",
+        "ifcopenshell_demo_door_options_t",
+        (
+            COptionFieldIR(
+                "panel_properties",
+                TypeSpec(
+                    kind="option",
+                    struct="PanelProperties",
+                    nullable=True,
+                    sequence_depth=1,
+                ),
+                "const ifcopenshell_demo_panel_properties_t*",
+                presence_field="has_panel_properties",
+            ),
+        ),
+    )
+    function = _make_function(
+        c_name="ifcopenshell_demo_add_door",
+        params=(
+            CParamIR(
+                "options",
+                "const ifcopenshell_demo_door_options_t*",
+                "param",
+                "option",
+            ),
+        ),
+        returns=TypeSpec(kind="bool"),
+        public_module="demo",
+    )
+    metadata = _make_metadata(
+        c_prefix="ifcopenshell",
+        option_structs={"DoorOptions": parent, "PanelProperties": nested},
+        functions={function.c_name: function},
+    )
+
+    direct = render_api_direct(metadata)
+
+    assert "panelProperties?: IfcOpenShellDemoPanelProperties[];" in direct
+    assert '"panelWidth": "panel_width"' in direct
+    assert '"panelProperties": {' in direct
+    assert '"sequenceDepth": 1' in direct
+    assert "if (record)" in direct
+    assert "return item.map((nested) => encodeRecord(nested, depth + 1));" in direct
+    assert "record.records" in direct
+
+
+def test_direct_api_encodes_semantic_variant_sequences() -> None:
+    plane = COptionIR(
+        "PlaneClipping",
+        "ifcopenshell_demo_plane_clipping_t",
+        (
+            COptionFieldIR(
+                "location",
+                TypeSpec(kind="double", sequence_depth=1),
+                "const ifcopenshell_double_list_t*",
+            ),
+        ),
+    )
+    entity = COptionIR(
+        "EntityClipping",
+        "ifcopenshell_demo_entity_clipping_t",
+        (
+            COptionFieldIR(
+                "entity",
+                TypeSpec(kind="handle", handle="instance"),
+                "ifcopenshell_instance_t*",
+            ),
+        ),
+    )
+    clipping_type = TypeSpec(
+        kind="variant",
+        nullable=True,
+        sequence_depth=1,
+        variants=(
+            TypeSpec(kind="option", struct="PlaneClipping"),
+            TypeSpec(kind="option", struct="EntityClipping"),
+        ),
+    )
+    parent = COptionIR(
+        "ApplyOptions",
+        "ifcopenshell_demo_apply_options_t",
+        (
+            COptionFieldIR(
+                "clippings",
+                clipping_type,
+                "const ifcopenshell_demo_clipping_variant_list_t*",
+                presence_field="has_clippings",
+            ),
+        ),
+    )
+    variant = CTypeIR(
+        c_type="ifcopenshell_demo_clipping_variant_t",
+        kind="variant",
+        fields=(
+            CFieldIR("kind", "int32_t"),
+            CFieldIR("value_0", "const ifcopenshell_demo_plane_clipping_t*"),
+            CFieldIR("value_1", "const ifcopenshell_demo_entity_clipping_t*"),
+        ),
+        destroy_function=None,
+    )
+    variant_list = CTypeIR(
+        c_type="ifcopenshell_demo_clipping_variant_list_t",
+        kind="input_variant_sequence",
+        fields=(
+            CFieldIR("items", "ifcopenshell_demo_clipping_variant_t*"),
+            CFieldIR("size", "size_t"),
+        ),
+        destroy_function=None,
+        element_type="ifcopenshell_demo_clipping_variant_t",
+        sequence_depth=1,
+    )
+    function = _make_function(
+        c_name="ifcopenshell_demo_apply",
+        params=(
+            CParamIR(
+                "options", "const ifcopenshell_demo_apply_options_t*", "param", "option"
+            ),
+        ),
+        public_module="demo",
+    )
+    metadata = _make_metadata(
+        c_prefix="ifcopenshell",
+        handles={"instance": _make_handle("ifcopenshell_instance_t")},
+        value_types={
+            "demo_clipping_variant": variant,
+            "demo_clipping_variant_list": variant_list,
+        },
+        option_structs={
+            "ApplyOptions": parent,
+            "PlaneClipping": plane,
+            "EntityClipping": entity,
+        },
+        functions={function.c_name: function},
+    )
+
+    direct = render_api_direct(metadata)
+    javascript, _ = render_wasm_bindings(metadata)
+
+    assert (
+        "clippings?: (IfcOpenShellDemoPlaneClipping | IfcOpenShellDemoEntityClipping)[];"
+        in direct
+    )
+    assert '"sequenceDepth": 1' in direct
+    assert "return item.map((nested) => encodeVariant(nested, depth + 1));" in direct
+    assert "input_variant_sequence" in javascript
+    assert "_writeInputVariant(module, itemPtr" in javascript
+    assert (
+        "const layout = _getStructLayout(metadata);\n    const kind = value?.kind;"
+        in javascript
+    )
+    assert "Invalid variant alternative for ${metadata.cType}." in javascript
+
+
 class TestHostMetadata:
     def test_finalize_function_preserves_param_semantics(self):
         call = CallIR(
@@ -220,11 +849,28 @@ class TestWasmTypescript:
             element_type="ifcopenshell_demo_texture_options_t",
             sequence_depth=1,
         )
+        batch = COptionIR(
+            name="BatchOptions",
+            c_type="ifcopenshell_demo_batch_options_t",
+            fields=(
+                COptionFieldIR(
+                    "textures",
+                    TypeSpec(
+                        kind="option",
+                        struct="TextureOptions",
+                        sequence_depth=1,
+                        nullable=True,
+                    ),
+                    "const ifcopenshell_demo_texture_options_list_t*",
+                    presence_field="has_textures",
+                ),
+            ),
+        )
         metadata = _make_metadata(
             c_prefix="ifcopenshell",
             handles={"instance": _make_handle("ifcopenshell_instance_t")},
             value_types={"texture_options_list": record_list},
-            option_structs={"TextureOptions": option},
+            option_structs={"BatchOptions": batch, "TextureOptions": option},
             functions={
                 "ifcopenshell_style_add_textures": _make_function(
                     c_name="ifcopenshell_style_add_textures",
@@ -260,6 +906,7 @@ class TestWasmTypescript:
             '"parameter": "parameter", "repeatS": "repeat_s", '
             '"transform": "transform"}, shell, temps))' in bridge
         )
+        assert "textures?: IfcOpenShellDemoTextureOptions[];" in bridge
 
     def test_maps_scalar_and_handle_types(self):
         metadata = _make_metadata(

@@ -9,7 +9,9 @@
 #include "ifcparse/express.h"
 #include "ifcparse/file.h"
 
+#include <array>
 #include <stdexcept>
+#include <variant>
 #include <vector>
 
 namespace ifcapi {
@@ -29,6 +31,46 @@ inline std::vector<double> v3(double x, double y, double z) {
 
 inline std::vector<double> add3(const std::vector<double>& a, const std::vector<double>& b) {
     return {a.at(0) + b.at(0), a.at(1) + b.at(1), a.at(2) + b.at(2)};
+}
+
+inline ifcapi::bindings::Vec3 fixed_vec3(const std::vector<double>& values) {
+    if (values.size() != 3) throw std::invalid_argument("Expected an XYZ vector");
+    return {values[0], values[1], values[2]};
+}
+
+inline ifcapi::bindings::Vec2 fixed_vec2(const std::vector<double>& values) {
+    if (values.size() != 2) throw std::invalid_argument("Expected an XY vector");
+    return {values[0], values[1]};
+}
+
+inline ifcapi::bindings::Vec2OrVec3 fixed_vec2_or_vec3(const std::vector<double>& values) {
+    if (values.size() == 2) return ifcapi::bindings::Vec2{values[0], values[1]};
+    if (values.size() == 3) return ifcapi::bindings::Vec3{values[0], values[1], values[2]};
+    throw std::invalid_argument("Expected an XY or XYZ vector");
+}
+
+inline ifcapi::bindings::Vec2OrVec3List fixed_vec2_or_vec3_list(
+    const std::vector<std::vector<double>>& points)
+{
+    if (points.empty() || points.front().size() == 2) {
+        std::vector<ifcapi::bindings::Vec2> result;
+        result.reserve(points.size());
+        for (const auto& point : points) {
+            if (point.size() != 2) throw std::invalid_argument("Polyline points must all be XY or all be XYZ");
+            result.push_back({point[0], point[1]});
+        }
+        return result;
+    }
+    if (points.front().size() == 3) {
+        std::vector<ifcapi::bindings::Vec3> result;
+        result.reserve(points.size());
+        for (const auto& point : points) {
+            if (point.size() != 3) throw std::invalid_argument("Polyline points must all be XY or all be XYZ");
+            result.push_back({point[0], point[1], point[2]});
+        }
+        return result;
+    }
+    throw std::invalid_argument("Polyline points must all be XY or all be XYZ");
 }
 
 inline std::vector<std::vector<double>> rectangle_coords(
@@ -63,9 +105,18 @@ inline express::Base polyline(
     const std::vector<std::vector<double>>& points,
     bool closed = true)
 {
+    std::optional<std::vector<ifcapi::bindings::ShapeBuilderCurveSegment>> segments;
+    if (closed && !points.empty()) {
+        std::vector<std::uint32_t> indices;
+        for (std::uint32_t index = 0; index < points.size(); ++index) indices.push_back(index);
+        indices.push_back(0);
+        segments = std::vector<ifcapi::bindings::ShapeBuilderCurveSegment>{
+            ifcapi::bindings::ShapeBuilderLineSegment{std::move(indices)}};
+    }
     return ifcapi::bindings::shape_builder_polyline(
         file,
-        ifcapi::bindings::ShapeBuilderPolylineOptions{points, closed, {}, {}});
+        ifcapi::bindings::ShapeBuilderPolylineOptions{
+            fixed_vec2_or_vec3_list(points), {}, std::move(segments)});
 }
 
 inline express::Base rectangle(
@@ -88,10 +139,10 @@ inline express::Base extrude_y(
         ifcapi::bindings::ShapeBuilderExtrudeOptions{
             profile_or_curve,
             magnitude,
-            position,
-            {0.0, 0.0, -1.0},
-            {0.0, -1.0, 0.0},
-            {1.0, 0.0, 0.0},
+            fixed_vec3(position),
+            ifcapi::bindings::Vec3{0.0, 0.0, -1.0},
+            ifcapi::bindings::Vec3{0.0, -1.0, 0.0},
+            ifcapi::bindings::Vec3{1.0, 0.0, 0.0},
             {}});
 }
 
@@ -106,10 +157,10 @@ inline express::Base extrude_z(
         ifcapi::bindings::ShapeBuilderExtrudeOptions{
             profile_or_curve,
             magnitude,
-            position,
-            {0.0, 0.0, 1.0},
-            {0.0, 0.0, 1.0},
-            {1.0, 0.0, 0.0},
+            fixed_vec3(position),
+            ifcapi::bindings::Vec3{0.0, 0.0, 1.0},
+            ifcapi::bindings::Vec3{0.0, 0.0, 1.0},
+            ifcapi::bindings::Vec3{1.0, 0.0, 0.0},
             {}});
 }
 
@@ -121,7 +172,8 @@ inline void translate_items(
     for (auto item : items) {
         ifcapi::bindings::shape_builder_translate(
             file,
-            ifcapi::bindings::ShapeBuilderTranslateOptions{item, translation, false});
+            ifcapi::bindings::ShapeBuilderTranslateOptions{
+                item, fixed_vec2_or_vec3(translation), false});
     }
 }
 

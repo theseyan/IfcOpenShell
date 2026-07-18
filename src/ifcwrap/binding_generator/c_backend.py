@@ -96,6 +96,7 @@ def _render_cpp(ir: BindingIR, header_name: str) -> str:
 #include "{internal_header_name}"
 
 #include <algorithm>
+#include <array>
 #include <cstring>
 #include <fstream>
 #include <iterator>

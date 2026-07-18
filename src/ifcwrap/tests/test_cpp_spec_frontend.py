@@ -303,7 +303,7 @@ def test_cpp_spec_frontend_discovers_option_structs(tmp_path: Path) -> None:
                  */
                 std::string ifc_class;
                 /// Optional predefined type.
-                std::optional<std::string> predefined_type;
+                std::optional<std::string> predefined_type = std::string("NOTDEFINED");
                 std::optional<std::string> name;
             };
 
@@ -342,9 +342,283 @@ def test_cpp_spec_frontend_discovers_option_structs(tmp_path: Path) -> None:
     assert fields["predefined_type"].type.kind == "string"
     assert fields["predefined_type"].type.nullable is True
     assert fields["predefined_type"].doc == "Optional predefined type."
+    assert fields["predefined_type"].has_default is True
     assert fields["name"].type.kind == "string"
     assert fields["name"].type.nullable is True
     assert fields["name"].doc is None
+    assert fields["name"].has_default is False
+
+
+def test_cpp_spec_frontend_preserves_fixed_aliases_and_enum_literals(
+    tmp_path: Path,
+) -> None:
+    spec_path = tmp_path / "demo_spec.cpp"
+    spec_path.write_text(
+        dedent(
+            """
+            #include <array>
+            #include <optional>
+
+            namespace demo {
+            using Vec3 = std::array<double, 3>;
+            enum class Direction { Positive = 1, Negative = -1 };
+
+            struct TransformOptions {
+                Vec3 origin;
+                Direction direction;
+                std::optional<Direction> optional_direction = std::nullopt;
+            };
+
+            inline void transform(const TransformOptions& options) { (void)options; }
+            }
+            """
+        ),
+        encoding="utf-8",
+    )
+    environment = _environment(tmp_path)
+    functions = discover_cpp_spec_functions(environment, spec_path, "demo")
+
+    options = discover_cpp_spec_option_structs(
+        environment,
+        spec_path,
+        functions,
+        {},
+        c_prefix="ifcopenshell_demo",
+    )["TransformOptions"]
+    fields = {field.name: field.type for field in options.fields}
+
+    assert fields["origin"].kind == "double"
+    assert fields["origin"].sequence_depth == 1
+    assert fields["origin"].fixed_lengths == (3,)
+    assert fields["origin"].alias == "Vec3"
+    assert fields["direction"].kind == "int32"
+    assert fields["direction"].alias == "Direction"
+    assert fields["direction"].enum_values == ("Positive", "Negative")
+    assert fields["direction"].enum_numeric_values == (1, -1)
+    assert fields["optional_direction"].kind == "int32"
+    assert fields["optional_direction"].nullable is True
+    assert fields["optional_direction"].enum_values == ("Positive", "Negative")
+
+    header_out = tmp_path / "demo_api.h"
+    cpp_out = tmp_path / "demo_api.cpp"
+    generate_cpp_specs(
+        [spec_path],
+        ["demo"],
+        "demo",
+        "ifcopenshell_demo",
+        header_out,
+        cpp_out,
+        discovery_include_dirs=(tmp_path,),
+    )
+    generated_cpp = cpp_out.read_text(encoding="utf-8")
+    assert "to_fixed_array<3>(to_cpp_double_list(options->origin))" in generated_cpp
+    assert "static_cast<demo::Direction>(options->direction)" in generated_cpp
+    assert "static_cast<demo::Direction>(options->optional_direction)" in generated_cpp
+
+
+def test_cpp_spec_frontend_discovers_input_variant_records(tmp_path: Path) -> None:
+    spec_path = tmp_path / "demo_spec.cpp"
+    spec_path.write_text(
+        dedent(
+            """
+            #include <array>
+            #include <optional>
+            #include <variant>
+            #include <vector>
+
+            namespace demo {
+            using Vec3 = std::array<double, 3>;
+            struct PlaneClipping { Vec3 location; Vec3 normal; };
+            struct EntityClipping { int entity_id; };
+            using Clipping = std::variant<PlaneClipping, EntityClipping>;
+            using Clippings = std::vector<Clipping>;
+            struct ApplyOptions { std::optional<Clippings> clippings; };
+            inline void apply(const ApplyOptions& options) { (void)options; }
+            }
+            """
+        ),
+        encoding="utf-8",
+    )
+    environment = _environment(tmp_path)
+    functions = discover_cpp_spec_functions(environment, spec_path, "demo")
+
+    records = discover_cpp_spec_option_structs(
+        environment,
+        spec_path,
+        functions,
+        {},
+        c_prefix="ifcopenshell_demo",
+    )
+
+    assert set(records) == {"ApplyOptions", "PlaneClipping", "EntityClipping"}
+    clipping = records["ApplyOptions"].fields[0].type
+    assert clipping.kind == "variant"
+    assert clipping.nullable is True
+    assert clipping.sequence_depth == 1
+    assert [(item.kind, item.struct) for item in clipping.variants] == [
+        ("option", "PlaneClipping"),
+        ("option", "EntityClipping"),
+    ]
+    plane_fields = {field.name: field.type for field in records["PlaneClipping"].fields}
+    assert plane_fields["location"].alias == "Vec3"
+    assert plane_fields["normal"].fixed_lengths == (3,)
+
+    header_out = tmp_path / "demo_api.h"
+    cpp_out = tmp_path / "demo_api.cpp"
+    generate_cpp_specs(
+        [spec_path],
+        ["demo"],
+        "demo",
+        "ifcopenshell_demo",
+        header_out,
+        cpp_out,
+        discovery_include_dirs=(tmp_path,),
+    )
+    generated_header = header_out.read_text(encoding="utf-8")
+    generated_cpp = cpp_out.read_text(encoding="utf-8")
+    assert "variant_list_t" in generated_header
+    assert (
+        "std::vector<std::variant<demo::PlaneClipping, demo::EntityClipping>> "
+        "nested_values_options_cpp_clippings" in generated_cpp
+    )
+    assert (
+        "nested_values_options_cpp_clippings.reserve(options->clippings->size)"
+        in generated_cpp
+    )
+
+
+def test_cpp_spec_frontend_discovers_nested_mesh_items(tmp_path: Path) -> None:
+    spec_path = tmp_path / "demo_spec.cpp"
+    spec_path.write_text(
+        dedent(
+            """
+            #include <array>
+            #include <cstdint>
+            #include <optional>
+            #include <vector>
+
+            namespace demo {
+            struct MeshFace {
+                std::vector<std::uint32_t> outer;
+                std::optional<std::vector<std::vector<std::uint32_t>>> inner_loops;
+            };
+            struct MeshItem {
+                std::vector<std::array<double, 3>> vertices;
+                std::vector<MeshFace> faces;
+            };
+            struct MeshOptions { std::vector<MeshItem> items; };
+            inline void mesh(const MeshOptions& options) { (void)options; }
+            }
+            """
+        ),
+        encoding="utf-8",
+    )
+    environment = _environment(tmp_path)
+    functions = discover_cpp_spec_functions(environment, spec_path, "demo")
+    records = discover_cpp_spec_option_structs(
+        environment,
+        spec_path,
+        functions,
+        {},
+        c_prefix="ifcopenshell_demo",
+    )
+
+    assert set(records) == {"MeshOptions", "MeshItem", "MeshFace"}
+    options_fields = {field.name: field.type for field in records["MeshOptions"].fields}
+    item_fields = {field.name: field.type for field in records["MeshItem"].fields}
+    face_fields = {field.name: field.type for field in records["MeshFace"].fields}
+    assert (options_fields["items"].kind, options_fields["items"].struct) == (
+        "option",
+        "MeshItem",
+    )
+    assert options_fields["items"].sequence_depth == 1
+    assert item_fields["vertices"].fixed_lengths == (None, 3)
+    assert (item_fields["faces"].kind, item_fields["faces"].struct) == (
+        "option",
+        "MeshFace",
+    )
+    assert item_fields["faces"].sequence_depth == 1
+    assert face_fields["outer"].kind == "uint32"
+    assert face_fields["outer"].sequence_depth == 1
+    assert face_fields["inner_loops"].kind == "uint32"
+    assert face_fields["inner_loops"].sequence_depth == 2
+    assert face_fields["inner_loops"].nullable is True
+
+    header_out = tmp_path / "demo_api.h"
+    cpp_out = tmp_path / "demo_api.cpp"
+    generate_cpp_specs(
+        [spec_path],
+        ["demo"],
+        "demo",
+        "ifcopenshell_demo",
+        header_out,
+        cpp_out,
+        discovery_include_dirs=(tmp_path,),
+    )
+    generated_cpp = cpp_out.read_text(encoding="utf-8")
+    assert "nested_values_options_cpp_items" in generated_cpp
+    assert "nested_values_nested_value_options_cpp_items_faces" in generated_cpp
+    assert "const auto* item_nested_value_options_cpp_items_faces" in generated_cpp
+
+
+def test_cpp_spec_frontend_generates_fixed_sequence_variant_parameters(
+    tmp_path: Path,
+) -> None:
+    spec_path = tmp_path / "demo_spec.cpp"
+    spec_path.write_text(
+        dedent(
+            """
+            #include <array>
+            #include <variant>
+            #include <vector>
+
+            namespace demo {
+            using Vec2 = std::array<double, 2>;
+            using Vec3 = std::array<double, 3>;
+            using Points = std::variant<std::vector<Vec2>, std::vector<Vec3>>;
+
+            inline std::array<double, 16> transform(
+                const Points& points,
+                const Vec3& origin) {
+                (void)points;
+                (void)origin;
+                return {};
+            }
+            }
+            """
+        ),
+        encoding="utf-8",
+    )
+    environment = _environment(tmp_path)
+    functions = discover_cpp_spec_functions(environment, spec_path, "demo")
+    transform = lower_cpp_spec_functions_to_calls(functions, {})[0]
+
+    points = transform.params[0].type
+    assert points.kind == "variant"
+    assert [(item.sequence_depth, item.fixed_lengths) for item in points.variants] == [
+        (2, (None, 2)),
+        (2, (None, 3)),
+    ]
+    assert transform.params[1].type.fixed_lengths == (3,)
+    assert transform.returns.fixed_lengths == (16,)
+
+    header_out = tmp_path / "demo_api.h"
+    cpp_out = tmp_path / "demo_api.cpp"
+    generate_cpp_specs(
+        [spec_path],
+        ["demo"],
+        "demo",
+        "ifcopenshell_demo",
+        header_out,
+        cpp_out,
+        discovery_include_dirs=(tmp_path,),
+    )
+    generated_header = header_out.read_text(encoding="utf-8")
+    generated_cpp = cpp_out.read_text(encoding="utf-8")
+    assert "variant_t" in generated_header
+    assert "std::variant<std::vector<std::array<double, 2>>" in generated_cpp
+    assert "to_fixed_array<3>(to_cpp_double_list(origin))" in generated_cpp
+    assert "make_double_list(transform_sequence(demo::transform" in generated_cpp
 
 
 def test_cpp_spec_result_field_docs_come_from_semantic_type(tmp_path: Path) -> None:
@@ -410,17 +684,38 @@ def test_c_header_renders_option_structs() -> None:
                             OptionStructFieldSpec(
                                 "name", TypeSpec(kind="string", nullable=True)
                             ),
+                            OptionStructFieldSpec(
+                                "properties",
+                                TypeSpec(
+                                    kind="option",
+                                    struct="NestedProperties",
+                                    nullable=True,
+                                ),
+                            ),
                         ),
-                    )
+                    ),
+                    "NestedProperties": OptionStructSpec(
+                        name="NestedProperties",
+                        cpp_type="demo::NestedProperties",
+                        c_type="ifcopenshell_demo_nested_properties_t",
+                        fields=(
+                            OptionStructFieldSpec("depth", TypeSpec(kind="double")),
+                        ),
+                    ),
                 },
             )
         )
     )
 
     assert "typedef struct ifcopenshell_demo_create_entity_options_t {" in code
+    assert (
+        "typedef struct ifcopenshell_demo_nested_properties_t ifcopenshell_demo_nested_properties_t;"
+        in code
+    )
     assert "    const char* ifc_class;" in code
     assert "    const char* name;" in code
     assert "    bool has_name;" in code
+    assert "    const ifcopenshell_demo_nested_properties_t* properties;" in code
     assert "} ifcopenshell_demo_create_entity_options_t;" in code
 
 
@@ -1111,8 +1406,16 @@ def test_cpp_spec_generation_lowers_input_record_sequences(tmp_path: Path) -> No
                 std::optional<std::vector<std::string>> tags;
             };
 
+            struct BatchOptions {
+                std::optional<std::vector<ItemOptions>> items = std::nullopt;
+            };
+
             inline int consume(const std::vector<ItemOptions>& items) {
                 return static_cast<int>(items.size());
+            }
+
+            inline int consume_batch(const BatchOptions& options) {
+                return options.items ? static_cast<int>(options.items->size()) : 0;
             }
             }
             """
@@ -1142,6 +1445,23 @@ def test_cpp_spec_generation_lowers_input_record_sequences(tmp_path: Path) -> No
     assert "value.label = std::string(item->label);" in generated_cpp
     assert "value.value = item->value->value;" in generated_cpp
     assert "value.tags = to_cpp_string_list(item->tags);" in generated_cpp
+    assert "const ifcopenshell_demo_item_options_list_t* items;" in header
+    assert "bool has_items;" in header
+    assert header.index(
+        "typedef struct ifcopenshell_demo_item_options_list_t ifcopenshell_demo_item_options_list_t;"
+    ) < header.index("typedef struct ifcopenshell_demo_batch_options_t {")
+    assert (
+        "std::vector<demo::ItemOptions> nested_values_options_cpp_items;"
+        in generated_cpp
+    )
+    assert (
+        "nested_values_options_cpp_items.reserve(options->items->size);"
+        in generated_cpp
+    )
+    assert (
+        "options_cpp.items = std::move(nested_values_options_cpp_items);"
+        in generated_cpp
+    )
 
 
 def test_cpp_spec_generation_lowers_std_optional_option_fields(tmp_path: Path) -> None:
@@ -1290,6 +1610,56 @@ def test_cpp_spec_generation_tracks_default_parameters(tmp_path: Path) -> None:
     assert params["value"].has_default is False
     assert params["suffix"].nullable is True
     assert params["suffix"].has_default is True
+
+
+def test_cpp_spec_generation_preserves_omittable_native_defaults(
+    tmp_path: Path,
+) -> None:
+    spec_path = tmp_path / "demo_spec.cpp"
+    spec_path.write_text(
+        dedent(
+            """
+            #include <optional>
+            #include <string>
+            #include <vector>
+
+            namespace demo {
+            enum class Mode { Fast, Exact };
+            inline bool update(
+                std::optional<double> tolerance = std::nullopt,
+                std::optional<std::string> label = std::nullopt,
+                std::optional<Mode> mode = std::nullopt,
+                std::optional<std::vector<double>> offsets = std::nullopt) {
+                return tolerance || label || mode || offsets;
+            }
+            }
+            """
+        ),
+        encoding="utf-8",
+    )
+    header_out = tmp_path / "demo_api.h"
+    cpp_out = tmp_path / "demo_api.cpp"
+
+    generate_cpp_specs(
+        [spec_path],
+        ["demo"],
+        "demo",
+        "ifcopenshell_demo",
+        header_out,
+        cpp_out,
+        discovery_include_dirs=(tmp_path,),
+    )
+
+    header = header_out.read_text(encoding="utf-8")
+    generated_cpp = cpp_out.read_text(encoding="utf-8")
+    assert "const double* tolerance" in header
+    assert "const char* label" in header
+    assert "const int32_t* mode" in header
+    assert "const ifcopenshell_double_list_t* offsets" in header
+    assert "if (tolerance != nullptr)" in generated_cpp
+    assert "if (label != nullptr)" in generated_cpp
+    assert "if (mode != nullptr)" in generated_cpp
+    assert "if (offsets != nullptr)" in generated_cpp
 
 
 def test_cpp_spec_generation_lowers_optional_owned_handle_returns(

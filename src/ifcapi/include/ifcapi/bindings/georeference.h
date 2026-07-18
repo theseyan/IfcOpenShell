@@ -5,6 +5,7 @@
 #define IFCAPI_BINDINGS_GEOREFERENCE_H
 
 #include "ifcapi/bindings/contract.h"
+#include "ifcapi/bindings/types.h"
 
 #include "ifcparse/express.h"
 #include "ifcparse/file.h"
@@ -59,7 +60,7 @@ IFCAPI_BINDING void georeference_add_georeferencing(
  */
 struct GeoreferenceEditTrueNorthOptions {
     /// Direction ratios (X, Y) for true north. When omitted, true north is removed.
-    std::optional<std::vector<double>> true_north;
+    std::optional<std::array<double, 2>> true_north;
 };
 
 /**

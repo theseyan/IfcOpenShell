@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Iterable
 
 from ...abi_ir import (
     BindingABI,
@@ -19,6 +20,7 @@ from .._shared import (
     _public_module_members,
     _public_name,
     _public_params,
+    _sequence_leaf_type,
     _snake_name,
     _type_name,
     _typed_buffer_element,
@@ -185,20 +187,33 @@ def _native_typed_array(element_type: str) -> str:
 
 def _ts_type(type_spec: TypeSpec, metadata: BindingABI) -> str:
     if type_spec.sequence_depth > 0:
+        inner_spec = _sequence_leaf_type(type_spec)
         inner = _ts_type(
-            TypeSpec(
-                kind=type_spec.kind,
-                handle=type_spec.handle,
-                struct=type_spec.struct,
-                variants=type_spec.variants,
-            ),
+            inner_spec,
             metadata,
         )
-        for _ in range(type_spec.sequence_depth):
-            inner = f"{inner}[]"
-        return inner
-    if type_spec.kind == "bool":
+        if " | " in inner:
+            inner = f"({inner})"
+        lengths = type_spec.fixed_lengths or (None,) * type_spec.sequence_depth
+        dimensions = list(lengths)
+        if type_spec.alias and dimensions and dimensions[-1] is not None:
+            inner = type_spec.alias
+            dimensions.pop()
+        for length in reversed(dimensions):
+            inner = (
+                "[" + ", ".join(inner for _ in range(length)) + "]"
+                if length is not None
+                else f"{inner}[]"
+            )
+        return f"{inner} | null" if type_spec.nullable else inner
+    if type_spec.literal_value is not None:
+        result = repr(type_spec.literal_value)
+    elif type_spec.kind == "bool":
         result = "boolean"
+    elif type_spec.enum_values:
+        result = type_spec.alias or " | ".join(
+            repr(value) for value in type_spec.enum_values
+        )
     elif type_spec.kind in {"double", "int32", "uint32", "size", "uint8", "opaque_ptr"}:
         result = "number"
     elif type_spec.kind == "int64":
@@ -227,6 +242,46 @@ def _ts_type(type_spec: TypeSpec, metadata: BindingABI) -> str:
     return result
 
 
+def _iter_type_specs(metadata: BindingABI) -> Iterable[TypeSpec]:
+    def walk(type_spec: TypeSpec) -> Iterable[TypeSpec]:
+        yield type_spec
+        for alternative in type_spec.variants:
+            yield from walk(alternative)
+
+    for function in metadata.functions.values():
+        yield from walk(function.returns)
+        for param in function.params:
+            if param.type is not None:
+                yield from walk(param.type)
+    for option in metadata.option_structs.values():
+        for field in option.fields:
+            yield from walk(field.type)
+
+
+def _render_semantic_aliases(metadata: BindingABI, *, indent: str = "") -> str:
+    aliases: dict[str, str] = {}
+    for type_spec in _iter_type_specs(metadata):
+        if not type_spec.alias:
+            continue
+        if type_spec.enum_values:
+            declaration = " | ".join(repr(value) for value in type_spec.enum_values)
+        elif type_spec.sequence_depth and type_spec.fixed_lengths:
+            length = type_spec.fixed_lengths[-1]
+            if length is None:
+                continue
+            element = _ts_type(_sequence_leaf_type(type_spec), metadata)
+            declaration = "[" + ", ".join(element for _ in range(length)) + "]"
+        else:
+            continue
+        previous = aliases.setdefault(type_spec.alias, declaration)
+        if previous != declaration:
+            raise ValueError(f"Conflicting semantic alias '{type_spec.alias}'")
+    return "\n".join(
+        f"{indent}export type {name} = {declaration};"
+        for name, declaration in sorted(aliases.items())
+    )
+
+
 def _render_struct_interfaces(metadata: BindingABI) -> str:
     chunks: list[str] = []
     for name, struct in sorted(metadata.value_types.items()):
@@ -248,7 +303,7 @@ def _render_option_struct_interfaces(metadata: BindingABI) -> str:
         metadata.option_structs.values(), key=lambda item: item.c_type
     ):
         fields = "\n".join(
-            f"    {field.name}{'?' if field.type.nullable else ''}: "
+            f"    {field.name}{'?' if field.type.nullable or field.has_default else ''}: "
             f"{_ts_type(field.type, metadata).removesuffix(' | null')};"
             for field in option.fields
         )
@@ -284,13 +339,7 @@ def _render_function_signature(
     name: str, function: CFunctionIR, metadata: BindingABI
 ) -> str:
     params = ", ".join(
-        f"{param.name}: {_ts_type_from_c_type(param.c_type, metadata)}"
-        + (
-            " | null"
-            if param.nullable
-            and "null" not in _ts_type_from_c_type(param.c_type, metadata)
-            else ""
-        )
+        f"{param.name}{'?' if param.has_default else ''}: {_param_ts_type(param, metadata)}"
         for param in _public_params(function)
     )
     buffer_element = _typed_buffer_element(function, metadata)
@@ -306,6 +355,30 @@ def _render_function_signature(
     if not function.doc:
         return signature
     return _render_doc_comment(function.doc, "    ") + "\n" + signature
+
+
+def _param_ts_type(param: CParamIR, metadata: BindingABI) -> str:
+    if param.type is not None:
+        return _ts_type(param.type, metadata)
+    if param.nullable and param.type_kind in {
+        "bool",
+        "int32",
+        "uint32",
+        "size",
+        "double",
+        "int64",
+    }:
+        scalar = {
+            "bool": "boolean",
+            "int32": "number",
+            "uint32": "number",
+            "size": "number",
+            "double": "number",
+            "int64": "bigint",
+        }[param.type_kind]
+        return f"{scalar} | null"
+    result = _ts_type_from_c_type(param.c_type, metadata)
+    return f"{result} | null" if param.nullable and "null" not in result else result
 
 
 def _render_doc_comment(doc: str, indent: str) -> str:
@@ -400,6 +473,7 @@ def render_typescript_declarations(
     del handles
     struct_interfaces = _render_struct_interfaces(metadata)
     option_struct_interfaces = _render_option_struct_interfaces(metadata)
+    semantic_aliases = _render_semantic_aliases(metadata, indent="  ")
     handle_classes = _render_handle_classes(metadata)
     module_members = _collect_module_members(metadata)
     nested_module_interfaces = _render_nested_module_interfaces(metadata)
@@ -435,6 +509,8 @@ def render_typescript_declarations(
     ]
     if struct_interfaces:
         sections.extend([struct_interfaces, ""])
+    if semantic_aliases:
+        sections.extend([semantic_aliases, ""])
     if option_struct_interfaces:
         sections.extend([option_struct_interfaces, ""])
     if handle_classes:

@@ -6,6 +6,7 @@ import re
 from pathlib import Path
 
 from ...abi_ir import BindingABI, CFunctionIR, COptionIR, CParamIR, CTypeIR
+from ...binding_model import TypeSpec
 from .._shared import _buffer_size_function, _method_name, _snake_name, _type_name
 
 _SCALAR_DECLS = {
@@ -523,6 +524,7 @@ def _is_input_sequence(struct: CTypeIR | None) -> bool:
         "sequence",
         "handle_sequence",
         "input_record_sequence",
+        "input_variant_sequence",
     }
 
 
@@ -703,7 +705,15 @@ def _render_value_converters(metadata: BindingABI, handles: dict[str, CTypeIR]) 
     optional_result_structs = [
         s for s in metadata.value_types.values() if s.kind == "optional_result_struct"
     ]
-    variants = [s for s in metadata.value_types.values() if s.kind == "variant"]
+    variants = [
+        struct
+        for struct in metadata.value_types.values()
+        if struct.kind == "variant"
+        and not all(
+            _option_by_c_type(field.c_type, metadata) is not None
+            for field in struct.fields[1:]
+        )
+    ]
     forward_declarations = "\n".join(
         f"static PyObject *convert_{_snake_name(struct.c_type)}({struct.c_type} *value, int owned);"
         for struct in (*sequences, *result_structs, *optional_result_structs, *variants)
@@ -785,13 +795,171 @@ static PyObject *wrap_{snake}({handle.c_type} *handle, int owned) {{
 def _render_input_sequence_helpers(
     metadata: BindingABI, handles: dict[str, CTypeIR]
 ) -> str:
-    helpers = []
+    helpers = [
+        _render_input_shape_match_helper(),
+        *[
+            _render_input_variant_helper(struct, metadata)
+            for struct in metadata.value_types.values()
+            if struct.kind == "variant"
+        ],
+    ]
     for struct in sorted(
         (s for s in metadata.value_types.values() if _is_input_sequence(s)),
         key=lambda s: s.sequence_depth,
     ):
         helpers.append(_render_input_sequence_helper(struct, metadata, handles))
     return "\n".join(helpers)
+
+
+def _render_input_shape_match_helper() -> str:
+    return """\
+static int matches_input_shape(PyObject *obj, const Py_ssize_t *lengths, size_t length_count, size_t depth) {
+    if (depth >= length_count) return 1;
+    PyObject *seq = PySequence_Fast(obj, NULL);
+    if (!seq) {
+        PyErr_Clear();
+        return 0;
+    }
+    const Py_ssize_t size = PySequence_Fast_GET_SIZE(seq);
+    if (lengths[depth] >= 0 && size != lengths[depth]) {
+        Py_DECREF(seq);
+        return 0;
+    }
+    for (Py_ssize_t i = 0; i < size; ++i) {
+        if (!matches_input_shape(PySequence_Fast_GET_ITEM(seq, i), lengths, length_count, depth + 1)) {
+            Py_DECREF(seq);
+            return 0;
+        }
+    }
+    Py_DECREF(seq);
+    return 1;
+}
+"""
+
+
+def _render_input_variant_helper(struct: CTypeIR, metadata: BindingABI) -> str:
+    name = _snake_name(struct.c_type)
+    alternatives: list[tuple[int, COptionIR | CTypeIR, TypeSpec]] = []
+    for index, field in enumerate(struct.fields[1:]):
+        option = _option_by_c_type(field.c_type, metadata)
+        sequence = metadata.value_types.get(_snake_name(field.c_type))
+        if option is not None:
+            alternatives.append(
+                (index, option, TypeSpec(kind="option", struct=option.name))
+            )
+        elif sequence is not None and _is_input_sequence(sequence):
+            if index >= len(struct.variants):
+                return ""
+            type_spec = struct.variants[index]
+            alternatives.append((index, sequence, type_spec))
+        else:
+            return ""
+
+    shape_declarations = []
+    sequence_declarations = []
+    match_blocks = []
+    case_blocks = []
+    free_cases = []
+    for index, alternative, type_spec in alternatives:
+        if isinstance(alternative, CTypeIR):
+            lengths = type_spec.fixed_lengths or (None,) * type_spec.sequence_depth
+            rendered_lengths = ", ".join(
+                "-1" if item is None else str(item) for item in lengths
+            )
+            shape_declarations.append(
+                f"    static const Py_ssize_t shape_{index}[] = {{{rendered_lengths}}};"
+            )
+            match_blocks.append(
+                f"    if (matches_input_shape(obj, shape_{index}, {len(lengths)}, 0)) {{ selected = {index}; ++matches; }}"
+            )
+            sequence_name = _snake_name(alternative.c_type)
+            sequence_declarations.extend(
+                [
+                    f"static int make_input_{sequence_name}(PyObject *obj, {alternative.c_type} *out, option_ref_owner *refs);",
+                    f"static void free_input_{sequence_name}({alternative.c_type} *value);",
+                ]
+            )
+            case_blocks.append(
+                f"""\
+    case {index}:
+        if (!make_input_{sequence_name}(obj, &out->value_{index}, refs)) return 0;
+        out->kind = {index};
+        return 1;"""
+            )
+            free_cases.append(
+                f"""\
+    case {index}:
+        free_input_{sequence_name}(&value->value_{index});
+        break;"""
+            )
+            continue
+        option = alternative
+        required = [field.name for field in option.fields if not field.type.nullable]
+        condition = (
+            " && ".join(
+                f'PyMapping_HasKeyString(obj, "{field_name}")'
+                for field_name in required
+            )
+            or "1"
+        )
+        condition = f"PyMapping_Check(obj) && ({condition})"
+        match_blocks.append(
+            f"    if ({condition}) {{ selected = {index}; ++matches; }}"
+        )
+        option_name = _snake_name(option.c_type)
+        case_blocks.append(
+            f"""\
+    case {index}: {{
+        {option.c_type} *value = ({option.c_type} *)PyMem_Calloc(1, sizeof({option.c_type}));
+        if (!value) {{ PyErr_NoMemory(); return 0; }}
+        if (!fill_input_{option_name}(obj, value, refs)) {{
+            free_input_{option_name}(value);
+            PyMem_Free(value);
+            return 0;
+        }}
+        out->kind = {index};
+        out->value_{index} = value;
+        return 1;
+    }}"""
+        )
+        free_cases.append(
+            f"""\
+    case {index}:
+        if (value->value_{index}) {{
+            free_input_{option_name}(({option.c_type} *)value->value_{index});
+            PyMem_Free((void *)value->value_{index});
+            value->value_{index} = NULL;
+        }}
+        break;"""
+        )
+
+    return f"""\
+{chr(10).join(dict.fromkeys(sequence_declarations))}
+static void free_input_{name}({struct.c_type} *value) {{
+    switch (value->kind) {{
+{chr(10).join(free_cases)}
+    default: break;
+    }}
+}}
+
+static int make_input_{name}(PyObject *obj, {struct.c_type} *out, option_ref_owner *refs) {{
+    (void)refs;
+    int selected = -1;
+    int matches = 0;
+{chr(10).join(shape_declarations)}
+{chr(10).join(match_blocks)}
+    if (matches != 1) {{
+        PyErr_SetString(PyExc_TypeError, "Expected exactly one variant alternative");
+        return 0;
+    }}
+    switch (selected) {{
+{chr(10).join(case_blocks)}
+    default:
+        PyErr_SetString(PyExc_TypeError, "Invalid variant alternative");
+        return 0;
+    }}
+}}
+"""
 
 
 def _render_input_sequence_helper(
@@ -802,17 +970,14 @@ def _render_input_sequence_helper(
     name = _snake_name(struct.c_type)
     elem = (struct.element_type or "").removeprefix("const ").removesuffix("*").strip()
     option = _option_by_c_type(elem, metadata)
+    variant = metadata.value_types.get(_snake_name(elem))
     if struct.kind == "input_record_sequence" and option is not None:
-        ref_count = max(1, len(option.fields))
         read_item = f"""\
-        PyObject *refs[{ref_count}] = {{0}};
         if (!fill_input_{_snake_name(option.c_type)}(PySequence_Fast_GET_ITEM(seq, (Py_ssize_t)i), &out->items[i], refs)) {{
-            release_option_refs(refs, {len(option.fields)});
             free_input_{name}(out);
             Py_DECREF(seq);
             return 0;
-        }}
-        release_option_refs(refs, {len(option.fields)});"""
+        }}"""
         item_type = elem
     elif struct.kind == "handle_sequence" and struct.sequence_depth == 1:
         py_type = _py_type_name(elem)
@@ -828,7 +993,15 @@ def _render_input_sequence_helper(
         item_type = f"{elem}*"
     elif struct.kind == "handle_sequence":
         read_item = f"""\
-        if (!make_input_{_snake_name(elem)}(PySequence_Fast_GET_ITEM(seq, (Py_ssize_t)i), &out->items[i])) {{
+        if (!make_input_{_snake_name(elem)}(PySequence_Fast_GET_ITEM(seq, (Py_ssize_t)i), &out->items[i], refs)) {{
+            free_input_{name}(out);
+            Py_DECREF(seq);
+            return 0;
+        }}"""
+        item_type = elem
+    elif variant is not None and variant.kind == "variant":
+        read_item = f"""\
+        if (!make_input_{_snake_name(elem)}(PySequence_Fast_GET_ITEM(seq, (Py_ssize_t)i), &out->items[i], refs)) {{
             free_input_{name}(out);
             Py_DECREF(seq);
             return 0;
@@ -868,7 +1041,7 @@ def _render_input_sequence_helper(
         item_type = elem
     else:
         read_item = f"""\
-        if (!make_input_{_snake_name(elem)}(PySequence_Fast_GET_ITEM(seq, (Py_ssize_t)i), &out->items[i])) {{
+        if (!make_input_{_snake_name(elem)}(PySequence_Fast_GET_ITEM(seq, (Py_ssize_t)i), &out->items[i], refs)) {{
             free_input_{name}(out);
             Py_DECREF(seq);
             return 0;
@@ -879,6 +1052,14 @@ def _render_input_sequence_helper(
     if (value->items) {{
         for (size_t j = 0; j < value->size; ++j) {{
             free_input_{_snake_name(option.c_type)}(&value->items[j]);
+        }}
+    }}
+    PyMem_Free(value->items);"""
+    elif variant is not None and variant.kind == "variant":
+        free_body = f"""\
+    if (value->items) {{
+        for (size_t j = 0; j < value->size; ++j) {{
+            free_input_{_snake_name(elem)}(&value->items[j]);
         }}
     }}
     PyMem_Free(value->items);"""
@@ -909,7 +1090,8 @@ static void free_input_{name}({struct.c_type} *value) {{
     value->size = 0;
 }}
 
-static int make_input_{name}(PyObject *obj, {struct.c_type} *out) {{
+static int make_input_{name}(PyObject *obj, {struct.c_type} *out, option_ref_owner *refs) {{
+    (void)refs;
     PyObject *seq = PySequence_Fast(obj, "Expected a sequence");
     if (!seq) return 0;
     Py_ssize_t size = PySequence_Fast_GET_SIZE(seq);
@@ -933,6 +1115,7 @@ def _render_option_field_assignment(
     option: COptionIR,
     field_index: int,
     handles: dict[str, CTypeIR],
+    options: dict[str, COptionIR],
 ) -> str:
     field = option.fields[field_index]
     field_ref = f"field_{field_index}"
@@ -946,7 +1129,7 @@ def _render_option_field_assignment(
                 f"    if (!{field_ref}) {{",
                 "        if (PyErr_Occurred()) return 0;",
                 "    } else {",
-                f"        refs[{field_index}] = {field_ref};",
+                f"        if (!retain_option_ref(refs, {field_ref})) return 0;",
                 f"        if ({field_ref} != Py_None) {{",
             ]
         )
@@ -957,7 +1140,7 @@ def _render_option_field_assignment(
                 f"    if (!{field_ref}) {{",
                 "        return 0;",
                 "    }",
-                f"    refs[{field_index}] = {field_ref};",
+                f"    if (!retain_option_ref(refs, {field_ref})) return 0;",
             ]
         )
         indent = ""
@@ -970,7 +1153,7 @@ def _render_option_field_assignment(
         lines.extend(
             [
                 f"    {indent}ifcopenshell_instance_list_t {field.name}_items_{field_index} = {{0}};",
-                f"    {indent}if (!make_input_instance_list({field_ref}, &{field.name}_items_{field_index})) {{",
+                f"    {indent}if (!make_input_instance_list({field_ref}, &{field.name}_items_{field_index}, refs)) {{",
                 f"    {indent}    return 0;",
                 f"    {indent}}}",
                 f"    {indent}if (!ifcopenshell_parse_instance_list_create_from_handles(&{field.name}_items_{field_index}, &out->{field.name})) {{",
@@ -990,13 +1173,56 @@ def _render_option_field_assignment(
                 f"    {indent}    PyErr_NoMemory();",
                 f"    {indent}    return 0;",
                 f"    {indent}}}",
-                f"    {indent}if (!make_input_{sequence_name}({field_ref}, sequence_{field_index})) {{",
+                f"    {indent}if (!make_input_{sequence_name}({field_ref}, sequence_{field_index}, refs)) {{",
                 f"    {indent}    PyMem_Free(sequence_{field_index});",
                 f"    {indent}    return 0;",
                 f"    {indent}}}",
                 f"    {indent}out->{field.name} = sequence_{field_index};",
             ]
         )
+    elif field.type.kind == "option" and field.type.struct is not None:
+        nested = options[field.type.struct]
+        nested_name = _snake_name(nested.c_type)
+        lines.extend(
+            [
+                f"    {indent}{nested.c_type} *nested_{field_index} = ({nested.c_type} *)PyMem_Calloc(1, sizeof({nested.c_type}));",
+                f"    {indent}if (!nested_{field_index}) {{",
+                f"    {indent}    PyErr_NoMemory();",
+                f"    {indent}    return 0;",
+                f"    {indent}}}",
+                f"    {indent}if (!fill_input_{nested_name}({field_ref}, nested_{field_index}, refs)) {{",
+                f"    {indent}    free_input_{nested_name}(nested_{field_index});",
+                f"    {indent}    PyMem_Free(nested_{field_index});",
+                f"    {indent}    return 0;",
+                f"    {indent}}}",
+                f"    {indent}out->{field.name} = nested_{field_index};",
+            ]
+        )
+    elif field.type.kind == "variant":
+        variant_name = _snake_name(sequence_base)
+        if sequence_depth:
+            lines.extend(
+                [
+                    f"    {indent}{sequence_base} *variant_{field_index} = ({sequence_base} *)PyMem_Calloc(1, sizeof({sequence_base}));",
+                    f"    {indent}if (!variant_{field_index}) {{",
+                    f"    {indent}    PyErr_NoMemory();",
+                    f"    {indent}    return 0;",
+                    f"    {indent}}}",
+                    f"    {indent}if (!make_input_{variant_name}({field_ref}, variant_{field_index}, refs)) {{",
+                    f"    {indent}    PyMem_Free(variant_{field_index});",
+                    f"    {indent}    return 0;",
+                    f"    {indent}}}",
+                    f"    {indent}out->{field.name} = variant_{field_index};",
+                ]
+            )
+        else:
+            lines.extend(
+                [
+                    f"    {indent}if (!make_input_{variant_name}({field_ref}, &out->{field.name}, refs)) {{",
+                    f"    {indent}    return 0;",
+                    f"    {indent}}}",
+                ]
+            )
     elif field.type.kind == "string":
         lines.extend(
             [
@@ -1075,7 +1301,7 @@ def _render_option_field_assignment(
     return "\n".join(lines)
 
 
-def _render_option_free_helper(option: COptionIR) -> str:
+def _render_option_free_helper(option: COptionIR, options: dict[str, COptionIR]) -> str:
     lines: list[str] = []
     for field in option.fields:
         base, pointer_depth = _base_pointer_type(field.c_type)
@@ -1093,18 +1319,47 @@ def _render_option_free_helper(option: COptionIR) -> str:
                 ]
             )
             continue
-        if field.type.sequence_depth <= 0:
+        if field.type.sequence_depth > 0:
+            sequence_name = _snake_name(base)
+            lines.extend(
+                [
+                    f"    if (value->{field.name}) {{",
+                    f"        free_input_{sequence_name}(({base} *)value->{field.name});",
+                    f"        PyMem_Free((void *)value->{field.name});",
+                    f"        value->{field.name} = NULL;",
+                    "    }",
+                ]
+            )
             continue
-        sequence_name = _snake_name(base)
-        lines.extend(
-            [
-                f"    if (value->{field.name}) {{",
-                f"        free_input_{sequence_name}(({base} *)value->{field.name});",
-                f"        PyMem_Free((void *)value->{field.name});",
-                f"        value->{field.name} = NULL;",
-                "    }",
-            ]
-        )
+        if field.type.kind == "option" and field.type.struct is not None:
+            nested = options[field.type.struct]
+            nested_name = _snake_name(nested.c_type)
+            lines.extend(
+                [
+                    f"    if (value->{field.name}) {{",
+                    f"        free_input_{nested_name}(({nested.c_type} *)value->{field.name});",
+                    f"        PyMem_Free((void *)value->{field.name});",
+                    f"        value->{field.name} = NULL;",
+                    "    }",
+                ]
+            )
+            continue
+        if field.type.kind == "variant":
+            if pointer_depth:
+                lines.extend(
+                    [
+                        f"    if (value->{field.name}) {{",
+                        f"        free_input_{_snake_name(base)}(({base} *)value->{field.name});",
+                        f"        PyMem_Free((void *)value->{field.name});",
+                        f"        value->{field.name} = NULL;",
+                        "    }",
+                    ]
+                )
+            else:
+                lines.append(
+                    f"    free_input_{_snake_name(base)}(&value->{field.name});"
+                )
+            continue
     body = "\n".join(lines) if lines else "    (void)value;"
     return f"""\
 static void free_input_{_snake_name(option.c_type)}({option.c_type} *value) {{
@@ -1113,16 +1368,20 @@ static void free_input_{_snake_name(option.c_type)}({option.c_type} *value) {{
 """
 
 
-def _render_option_input_helper(option: COptionIR, handles: dict[str, CTypeIR]) -> str:
+def _render_option_input_helper(
+    option: COptionIR,
+    handles: dict[str, CTypeIR],
+    options: dict[str, COptionIR],
+) -> str:
     field_blocks = "\n".join(
-        _render_option_field_assignment(option, index, handles)
+        _render_option_field_assignment(option, index, handles, options)
         for index, _ in enumerate(option.fields)
     )
     return (
-        _render_option_free_helper(option)
+        _render_option_free_helper(option, options)
         + "\n"
         + f"""\
-static int fill_input_{_snake_name(option.c_type)}(PyObject *obj, {option.c_type} *out, PyObject **refs) {{
+static int fill_input_{_snake_name(option.c_type)}(PyObject *obj, {option.c_type} *out, option_ref_owner *refs) {{
     if (!PyMapping_Check(obj)) {{
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -1138,7 +1397,7 @@ def _render_option_input_helpers(
     metadata: BindingABI, handles: dict[str, CTypeIR]
 ) -> str:
     return "\n\n".join(
-        _render_option_input_helper(option, handles)
+        _render_option_input_helper(option, handles, metadata.option_structs)
         for option in sorted(
             metadata.option_structs.values(), key=lambda item: item.c_type
         )
@@ -1148,7 +1407,7 @@ def _render_option_input_helpers(
 def _render_option_input_prototypes(metadata: BindingABI) -> str:
     return "\n".join(
         f"static void free_input_{_snake_name(option.c_type)}({option.c_type} *value);\n"
-        f"static int fill_input_{_snake_name(option.c_type)}(PyObject *obj, {option.c_type} *out, PyObject **refs);"
+        f"static int fill_input_{_snake_name(option.c_type)}(PyObject *obj, {option.c_type} *out, option_ref_owner *refs);"
         for option in sorted(
             metadata.option_structs.values(), key=lambda item: item.c_type
         )
@@ -1180,21 +1439,17 @@ def _param_parse(
     ):
         declarations.append(f"    PyObject *arg_{name}_obj = NULL;")
         declarations.append(f"    {option.c_type} arg_{name} = {{0}};")
-        declarations.append(
-            f"    PyObject *arg_{name}_refs[{len(option.fields)}] = {{0}};"
-        )
+        declarations.append(f"    option_ref_owner arg_{name}_refs = {{0}};")
         fmt = "O"
         parse_args.append(f"&arg_{name}_obj")
         call_args.append(f"&arg_{name}")
         setup.append(
-            f"    if (!fill_input_{_snake_name(option.c_type)}(arg_{name}_obj, &arg_{name}, arg_{name}_refs)) {{\n"
+            f"    if (!fill_input_{_snake_name(option.c_type)}(arg_{name}_obj, &arg_{name}, &arg_{name}_refs)) {{\n"
             f"        goto __cleanup;\n"
             f"    }}"
         )
         cleanup.append(f"    free_input_{_snake_name(option.c_type)}(&arg_{name});")
-        cleanup.append(
-            f"    release_option_refs(arg_{name}_refs, {len(option.fields)});"
-        )
+        cleanup.append(f"    release_option_refs(&arg_{name}_refs);")
     elif c_type in _SCALAR_DECLS:
         decl, fmt, _ = _SCALAR_DECLS[c_type]
         declarations.append(f"    {decl} arg_{name} = 0;")
@@ -1203,6 +1458,46 @@ def _param_parse(
             f"({c_type})arg_{name}"
             if c_type in {"ifcopenshell_logical_t", "size_t"}
             else f"arg_{name}"
+        )
+    elif pointer_depth == 1 and base in _SCALAR_DECLS and param.nullable:
+        value_decl, _, _ = _SCALAR_DECLS[base]
+        declarations.append(f"    PyObject *arg_{name}_obj = NULL;")
+        declarations.append(f"    {value_decl} arg_{name}_value = 0;")
+        declarations.append(f"    const {base} *arg_{name} = NULL;")
+        fmt = "O"
+        parse_args.append(f"&arg_{name}_obj")
+        call_args.append(f"arg_{name}")
+        if base == "bool":
+            convert = (
+                f"        int converted = PyObject_IsTrue(arg_{name}_obj);\n"
+                f"        if (converted < 0) goto __cleanup;\n"
+                f"        arg_{name}_value = converted;"
+            )
+        elif base == "double":
+            convert = (
+                f"        arg_{name}_value = PyFloat_AsDouble(arg_{name}_obj);\n"
+                f"        if (PyErr_Occurred()) goto __cleanup;"
+            )
+        elif base == "int64_t":
+            convert = (
+                f"        arg_{name}_value = PyLong_AsLongLong(arg_{name}_obj);\n"
+                f"        if (PyErr_Occurred()) goto __cleanup;"
+            )
+        elif base in {"uint32_t", "size_t"}:
+            convert = (
+                f"        arg_{name}_value = ({value_decl})PyLong_AsUnsignedLongLong(arg_{name}_obj);\n"
+                f"        if (PyErr_Occurred()) goto __cleanup;"
+            )
+        else:
+            convert = (
+                f"        arg_{name}_value = ({value_decl})PyLong_AsLong(arg_{name}_obj);\n"
+                f"        if (PyErr_Occurred()) goto __cleanup;"
+            )
+        setup.append(
+            f"    if (arg_{name}_obj != NULL && arg_{name}_obj != Py_None) {{\n"
+            f"{convert}\n"
+            f"        arg_{name} = (const {base} *)&arg_{name}_value;\n"
+            f"    }}"
         )
     elif pointer_depth == 1 and base in {h.c_type for h in handles.values()}:
         py_name = _py_type_name(base)
@@ -1215,12 +1510,14 @@ def _param_parse(
             declarations.append(
                 f"    ifcopenshell_instance_list_t arg_{name}_items = {{0}};"
             )
+            declarations.append(f"    option_ref_owner arg_{name}_refs = {{0}};")
             declarations.append(f"    {base} *arg_{name} = NULL;")
             fmt = "O"
             parse_args.append(f"&arg_{name}_obj")
             call_args.append(f"arg_{name}")
             cleanup.append(f"    ifcopenshell_parse_instance_list_destroy(arg_{name});")
             cleanup.append(f"    free_input_instance_list(&arg_{name}_items);")
+            cleanup.append(f"    release_option_refs(&arg_{name}_refs);")
         else:
             fmt = "O"
             parse_args.append(f"&arg_{name}_obj")
@@ -1231,13 +1528,31 @@ def _param_parse(
                 f"        goto __cleanup;\n"
                 f"    }}"
             )
+    elif (
+        pointer_depth == 1
+        and (variant_type := metadata.value_types.get(_snake_name(base))) is not None
+        and variant_type.kind == "variant"
+    ):
+        declarations.append(f"    PyObject *arg_{name}_obj = NULL;")
+        declarations.append(f"    {base} arg_{name} = {{0}};")
+        declarations.append(f"    option_ref_owner arg_{name}_refs = {{0}};")
+        fmt = "O"
+        parse_args.append(f"&arg_{name}_obj")
+        call_args.append(f"&arg_{name}")
+        setup.append(
+            f"    if (!make_input_{_snake_name(base)}(arg_{name}_obj, &arg_{name}, &arg_{name}_refs)) goto __cleanup;"
+        )
+        cleanup.append(f"    free_input_{_snake_name(base)}(&arg_{name});")
+        cleanup.append(f"    release_option_refs(&arg_{name}_refs);")
     elif pointer_depth == 1 and re.fullmatch(r"ifcopenshell_.*_list_t", base):
         declarations.append(f"    PyObject *arg_{name}_obj = NULL;")
         declarations.append(f"    {base} arg_{name} = {{0}};")
+        declarations.append(f"    option_ref_owner arg_{name}_refs = {{0}};")
         fmt = "O"
         parse_args.append(f"&arg_{name}_obj")
         call_args.append(f"&arg_{name}")
         cleanup.append(f"    free_input_{_snake_name(base)}(&arg_{name});")
+        cleanup.append(f"    release_option_refs(&arg_{name}_refs);")
     elif pointer_depth > 0 and base == "void":
         declarations.append(f"    PyObject *arg_{name}_obj = NULL;")
         declarations.append(f"    Py_buffer arg_{name}_view = {{0}};")
@@ -1416,7 +1731,7 @@ def _render_function_wrapper(
             in declarations
         ):
             input_make.append(
-                f"    if (!make_input_instance_list(arg_{param.name}_obj, &arg_{param.name}_items)) {{\n"
+                f"    if (!make_input_instance_list(arg_{param.name}_obj, &arg_{param.name}_items, &arg_{param.name}_refs)) {{\n"
                 f"        goto __cleanup;\n"
                 f"    }}\n"
                 f"    if (!ifcopenshell_parse_instance_list_create_from_handles(&arg_{param.name}_items, &arg_{param.name})) {{\n"
@@ -1431,7 +1746,7 @@ def _render_function_wrapper(
             and f"    {base} arg_{param.name} = {{0}};" in declarations
         ):
             input_make.append(
-                f"    if (!make_input_{_snake_name(base)}(arg_{param.name}_obj, &arg_{param.name})) {{\n"
+                f"    if (!make_input_{_snake_name(base)}(arg_{param.name}_obj, &arg_{param.name}, &arg_{param.name}_refs)) {{\n"
                 f"        goto __cleanup;\n"
                 f"    }}"
             )
@@ -1611,10 +1926,36 @@ static PyObject *get_option_field(PyObject *obj, const char *name, int required)
     return NULL;
 }}
 
-static void release_option_refs(PyObject **refs, size_t count) {{
-    for (size_t i = 0; i < count; ++i) {{
-        Py_XDECREF(refs[i]);
+typedef struct {{
+    PyObject **items;
+    size_t size;
+    size_t capacity;
+}} option_ref_owner;
+
+static int retain_option_ref(option_ref_owner *owner, PyObject *value) {{
+    if (owner->size == owner->capacity) {{
+        size_t capacity = owner->capacity ? owner->capacity * 2 : 8;
+        PyObject **items = (PyObject **)PyMem_Realloc(owner->items, capacity * sizeof(PyObject *));
+        if (!items) {{
+            Py_DECREF(value);
+            PyErr_NoMemory();
+            return 0;
+        }}
+        owner->items = items;
+        owner->capacity = capacity;
     }}
+    owner->items[owner->size++] = value;
+    return 1;
+}}
+
+static void release_option_refs(option_ref_owner *owner) {{
+    for (size_t i = 0; i < owner->size; ++i) {{
+        Py_DECREF(owner->items[i]);
+    }}
+    PyMem_Free(owner->items);
+    owner->items = NULL;
+    owner->size = 0;
+    owner->capacity = 0;
 }}
 
 {destroy_wrappers}

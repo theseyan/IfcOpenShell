@@ -38,12 +38,6 @@ typedef struct ifcopenshell_string_list_t {
     void* owner;
 } ifcopenshell_string_list_t;
 
-typedef struct ifcopenshell_double_list_list_t {
-    ifcopenshell_double_list_t* items;
-    size_t size;
-    void* owner;
-} ifcopenshell_double_list_list_t;
-
 typedef struct ifcopenshell_bool_list_t {
     bool* items;
     size_t size;
@@ -55,6 +49,12 @@ typedef struct ifcopenshell_int64_list_t {
     size_t size;
     void* owner;
 } ifcopenshell_int64_list_t;
+
+typedef struct ifcopenshell_double_list_list_t {
+    ifcopenshell_double_list_t* items;
+    size_t size;
+    void* owner;
+} ifcopenshell_double_list_list_t;
 
 typedef struct ifcopenshell_int32_list_t {
     int32_t* items;
@@ -92,11 +92,11 @@ typedef struct ifcopenshell_double_list_list_list_t {
     void* owner;
 } ifcopenshell_double_list_list_list_t;
 
-typedef struct ifcopenshell_int32_list_list_list_list_t {
-    ifcopenshell_int32_list_list_list_t* items;
+typedef struct ifcopenshell_uint32_list_list_t {
+    ifcopenshell_uint32_list_t* items;
     size_t size;
     void* owner;
-} ifcopenshell_int32_list_list_list_list_t;
+} ifcopenshell_uint32_list_list_t;
 
 void ifcopenshell_buffer_owner_destroy(void** owner);
 
@@ -106,11 +106,11 @@ void ifcopenshell_double_list_destroy(ifcopenshell_double_list_t* value);
 
 void ifcopenshell_string_list_destroy(ifcopenshell_string_list_t* value);
 
-void ifcopenshell_double_list_list_destroy(ifcopenshell_double_list_list_t* value);
-
 void ifcopenshell_bool_list_destroy(ifcopenshell_bool_list_t* value);
 
 void ifcopenshell_int64_list_destroy(ifcopenshell_int64_list_t* value);
+
+void ifcopenshell_double_list_list_destroy(ifcopenshell_double_list_list_t* value);
 
 void ifcopenshell_int32_list_destroy(ifcopenshell_int32_list_t* value);
 
@@ -124,7 +124,7 @@ void ifcopenshell_uint8_list_destroy(ifcopenshell_uint8_list_t* value);
 
 void ifcopenshell_double_list_list_list_destroy(ifcopenshell_double_list_list_list_t* value);
 
-void ifcopenshell_int32_list_list_list_list_destroy(ifcopenshell_int32_list_list_list_list_t* value);
+void ifcopenshell_uint32_list_list_destroy(ifcopenshell_uint32_list_list_t* value);
 
 #endif /* IFCOPENSHELL_COMMON_TYPES_DEFINED */
 
@@ -317,6 +317,272 @@ typedef struct ifcopenshell_geom_element_list_list_t {
     size_t size;
 } ifcopenshell_geom_element_list_list_t;
 
+typedef struct ifcopenshell_aggregate_assign_object_options_t ifcopenshell_aggregate_assign_object_options_t;
+typedef struct ifcopenshell_aggregate_unassign_object_options_t ifcopenshell_aggregate_unassign_object_options_t;
+typedef struct ifcopenshell_alignment_add_stationing_referent_options_t ifcopenshell_alignment_add_stationing_referent_options_t;
+typedef struct ifcopenshell_alignment_create_by_pi_method_options_t ifcopenshell_alignment_create_by_pi_method_options_t;
+typedef struct ifcopenshell_alignment_create_from_csv_text_options_t ifcopenshell_alignment_create_from_csv_text_options_t;
+typedef struct ifcopenshell_alignment_create_offset_curve_options_t ifcopenshell_alignment_create_offset_curve_options_t;
+typedef struct ifcopenshell_alignment_create_options_t ifcopenshell_alignment_create_options_t;
+typedef struct ifcopenshell_alignment_create_polyline_options_t ifcopenshell_alignment_create_polyline_options_t;
+typedef struct ifcopenshell_alignment_horizontal_pi_t ifcopenshell_alignment_horizontal_pi_t;
+typedef struct ifcopenshell_alignment_horizontal_pi_layout_t ifcopenshell_alignment_horizontal_pi_layout_t;
+typedef struct ifcopenshell_alignment_layout_horizontal_by_pi_method_options_t ifcopenshell_alignment_layout_horizontal_by_pi_method_options_t;
+typedef struct ifcopenshell_alignment_layout_vertical_by_pi_method_options_t ifcopenshell_alignment_layout_vertical_by_pi_method_options_t;
+typedef struct ifcopenshell_alignment_map_segment_options_t ifcopenshell_alignment_map_segment_options_t;
+typedef struct ifcopenshell_alignment_vertical_pi_t ifcopenshell_alignment_vertical_pi_t;
+typedef struct ifcopenshell_alignment_vertical_pi_layout_t ifcopenshell_alignment_vertical_pi_layout_t;
+typedef struct ifcopenshell_attribute_edit_attributes_options_t ifcopenshell_attribute_edit_attributes_options_t;
+typedef struct ifcopenshell_boundary_assign_connection_geometry_options_t ifcopenshell_boundary_assign_connection_geometry_options_t;
+typedef struct ifcopenshell_boundary_edit_attributes_options_t ifcopenshell_boundary_edit_attributes_options_t;
+typedef struct ifcopenshell_classification_add_reference_options_t ifcopenshell_classification_add_reference_options_t;
+typedef struct ifcopenshell_classification_remove_reference_options_t ifcopenshell_classification_remove_reference_options_t;
+typedef struct ifcopenshell_cogo_add_survey_point_options_t ifcopenshell_cogo_add_survey_point_options_t;
+typedef struct ifcopenshell_constraint_assign_constraint_options_t ifcopenshell_constraint_assign_constraint_options_t;
+typedef struct ifcopenshell_constraint_unassign_constraint_options_t ifcopenshell_constraint_unassign_constraint_options_t;
+typedef struct ifcopenshell_context_add_context_options_t ifcopenshell_context_add_context_options_t;
+typedef struct ifcopenshell_control_assign_control_options_t ifcopenshell_control_assign_control_options_t;
+typedef struct ifcopenshell_control_unassign_control_options_t ifcopenshell_control_unassign_control_options_t;
+typedef struct ifcopenshell_cost_add_cost_item_options_t ifcopenshell_cost_add_cost_item_options_t;
+typedef struct ifcopenshell_cost_assign_cost_item_quantity_options_t ifcopenshell_cost_assign_cost_item_quantity_options_t;
+typedef struct ifcopenshell_cost_copy_cost_schedule_options_t ifcopenshell_cost_copy_cost_schedule_options_t;
+typedef struct ifcopenshell_cost_edit_cost_value_options_t ifcopenshell_cost_edit_cost_value_options_t;
+typedef struct ifcopenshell_cost_unassign_cost_item_quantity_options_t ifcopenshell_cost_unassign_cost_item_quantity_options_t;
+typedef struct ifcopenshell_document_add_information_options_t ifcopenshell_document_add_information_options_t;
+typedef struct ifcopenshell_document_assign_document_options_t ifcopenshell_document_assign_document_options_t;
+typedef struct ifcopenshell_document_unassign_document_options_t ifcopenshell_document_unassign_document_options_t;
+typedef struct ifcopenshell_drawing_assign_product_options_t ifcopenshell_drawing_assign_product_options_t;
+typedef struct ifcopenshell_drawing_unassign_product_options_t ifcopenshell_drawing_unassign_product_options_t;
+typedef struct ifcopenshell_element_get_container_options_t ifcopenshell_element_get_container_options_t;
+typedef struct ifcopenshell_element_get_decomposition_options_t ifcopenshell_element_get_decomposition_options_t;
+typedef struct ifcopenshell_element_get_material_options_t ifcopenshell_element_get_material_options_t;
+typedef struct ifcopenshell_element_get_pset_ids_options_t ifcopenshell_element_get_pset_ids_options_t;
+typedef struct ifcopenshell_element_get_shape_aspects_options_t ifcopenshell_element_get_shape_aspects_options_t;
+typedef struct ifcopenshell_entity_remove_deep_options_t ifcopenshell_entity_remove_deep_options_t;
+typedef struct ifcopenshell_feature_add_feature_options_t ifcopenshell_feature_add_feature_options_t;
+typedef struct ifcopenshell_feature_remove_feature_options_t ifcopenshell_feature_remove_feature_options_t;
+typedef struct ifcopenshell_geometry_add_door_representation_options_t ifcopenshell_geometry_add_door_representation_options_t;
+typedef struct ifcopenshell_geometry_add_mesh_representation_options_t ifcopenshell_geometry_add_mesh_representation_options_t;
+typedef struct ifcopenshell_geometry_add_profile_representation_options_t ifcopenshell_geometry_add_profile_representation_options_t;
+typedef struct ifcopenshell_geometry_add_railing_representation_options_t ifcopenshell_geometry_add_railing_representation_options_t;
+typedef struct ifcopenshell_geometry_add_shape_aspect_options_t ifcopenshell_geometry_add_shape_aspect_options_t;
+typedef struct ifcopenshell_geometry_add_slab_representation_options_t ifcopenshell_geometry_add_slab_representation_options_t;
+typedef struct ifcopenshell_geometry_add_topology_representation_options_t ifcopenshell_geometry_add_topology_representation_options_t;
+typedef struct ifcopenshell_geometry_add_wall_representation_options_t ifcopenshell_geometry_add_wall_representation_options_t;
+typedef struct ifcopenshell_geometry_add_window_representation_options_t ifcopenshell_geometry_add_window_representation_options_t;
+typedef struct ifcopenshell_geometry_clip_solid_bounded_options_t ifcopenshell_geometry_clip_solid_bounded_options_t;
+typedef struct ifcopenshell_geometry_clip_solid_options_t ifcopenshell_geometry_clip_solid_options_t;
+typedef struct ifcopenshell_geometry_compute_wall_mounted_handrail_options_t ifcopenshell_geometry_compute_wall_mounted_handrail_options_t;
+typedef struct ifcopenshell_geometry_connect_element_options_t ifcopenshell_geometry_connect_element_options_t;
+typedef struct ifcopenshell_geometry_connect_path_options_t ifcopenshell_geometry_connect_path_options_t;
+typedef struct ifcopenshell_geometry_connect_wall_options_t ifcopenshell_geometry_connect_wall_options_t;
+typedef struct ifcopenshell_geometry_copy_representation_options_t ifcopenshell_geometry_copy_representation_options_t;
+typedef struct ifcopenshell_geometry_create2_pt_wall_options_t ifcopenshell_geometry_create2_pt_wall_options_t;
+typedef struct ifcopenshell_geometry_disconnect_path_options_t ifcopenshell_geometry_disconnect_path_options_t;
+typedef struct ifcopenshell_geometry_door_lining_properties_t ifcopenshell_geometry_door_lining_properties_t;
+typedef struct ifcopenshell_geometry_door_panel_properties_t ifcopenshell_geometry_door_panel_properties_t;
+typedef struct ifcopenshell_geometry_edit_object_placement_options_t ifcopenshell_geometry_edit_object_placement_options_t;
+typedef struct ifcopenshell_geometry_entity_clipping_t ifcopenshell_geometry_entity_clipping_t;
+typedef struct ifcopenshell_geometry_mesh_face_t ifcopenshell_geometry_mesh_face_t;
+typedef struct ifcopenshell_geometry_mesh_item_t ifcopenshell_geometry_mesh_item_t;
+typedef struct ifcopenshell_geometry_plane_clipping_t ifcopenshell_geometry_plane_clipping_t;
+typedef struct ifcopenshell_geometry_regenerate_wall_representation_options_t ifcopenshell_geometry_regenerate_wall_representation_options_t;
+typedef struct ifcopenshell_geometry_remove_representation_options_t ifcopenshell_geometry_remove_representation_options_t;
+typedef struct ifcopenshell_geometry_validate_type_options_t ifcopenshell_geometry_validate_type_options_t;
+typedef struct ifcopenshell_geometry_window_lining_properties_t ifcopenshell_geometry_window_lining_properties_t;
+typedef struct ifcopenshell_geometry_window_panel_properties_t ifcopenshell_geometry_window_panel_properties_t;
+typedef struct ifcopenshell_georeference_add_georeferencing_options_t ifcopenshell_georeference_add_georeferencing_options_t;
+typedef struct ifcopenshell_georeference_edit_georeferencing_options_t ifcopenshell_georeference_edit_georeferencing_options_t;
+typedef struct ifcopenshell_georeference_edit_true_north_options_t ifcopenshell_georeference_edit_true_north_options_t;
+typedef struct ifcopenshell_georeference_edit_wcs_options_t ifcopenshell_georeference_edit_wcs_options_t;
+typedef struct ifcopenshell_group_add_group_options_t ifcopenshell_group_add_group_options_t;
+typedef struct ifcopenshell_group_assign_group_options_t ifcopenshell_group_assign_group_options_t;
+typedef struct ifcopenshell_group_unassign_group_options_t ifcopenshell_group_unassign_group_options_t;
+typedef struct ifcopenshell_group_update_group_products_options_t ifcopenshell_group_update_group_products_options_t;
+typedef struct ifcopenshell_layer_add_layer_with_style_options_t ifcopenshell_layer_add_layer_with_style_options_t;
+typedef struct ifcopenshell_library_assign_reference_options_t ifcopenshell_library_assign_reference_options_t;
+typedef struct ifcopenshell_library_unassign_reference_options_t ifcopenshell_library_unassign_reference_options_t;
+typedef struct ifcopenshell_material_add_constituent_options_t ifcopenshell_material_add_constituent_options_t;
+typedef struct ifcopenshell_material_add_layer_options_t ifcopenshell_material_add_layer_options_t;
+typedef struct ifcopenshell_material_add_material_options_t ifcopenshell_material_add_material_options_t;
+typedef struct ifcopenshell_material_add_material_set_options_t ifcopenshell_material_add_material_set_options_t;
+typedef struct ifcopenshell_material_add_profile_options_t ifcopenshell_material_add_profile_options_t;
+typedef struct ifcopenshell_material_assign_material_options_t ifcopenshell_material_assign_material_options_t;
+typedef struct ifcopenshell_material_constituent_entry_options_t ifcopenshell_material_constituent_entry_options_t;
+typedef struct ifcopenshell_material_edit_profile_usage_options_t ifcopenshell_material_edit_profile_usage_options_t;
+typedef struct ifcopenshell_material_remove_item_options_t ifcopenshell_material_remove_item_options_t;
+typedef struct ifcopenshell_material_remove_list_item_options_t ifcopenshell_material_remove_list_item_options_t;
+typedef struct ifcopenshell_material_remove_profile_options_t ifcopenshell_material_remove_profile_options_t;
+typedef struct ifcopenshell_material_reorder_set_item_options_t ifcopenshell_material_reorder_set_item_options_t;
+typedef struct ifcopenshell_material_set_shape_aspect_constituents_options_t ifcopenshell_material_set_shape_aspect_constituents_options_t;
+typedef struct ifcopenshell_material_unassign_material_options_t ifcopenshell_material_unassign_material_options_t;
+typedef struct ifcopenshell_nest_assign_object_options_t ifcopenshell_nest_assign_object_options_t;
+typedef struct ifcopenshell_nest_change_nest_options_t ifcopenshell_nest_change_nest_options_t;
+typedef struct ifcopenshell_nest_reorder_nesting_options_t ifcopenshell_nest_reorder_nesting_options_t;
+typedef struct ifcopenshell_nest_unassign_object_options_t ifcopenshell_nest_unassign_object_options_t;
+typedef struct ifcopenshell_owner_add_actor_options_t ifcopenshell_owner_add_actor_options_t;
+typedef struct ifcopenshell_owner_add_application_options_t ifcopenshell_owner_add_application_options_t;
+typedef struct ifcopenshell_owner_assign_actor_options_t ifcopenshell_owner_assign_actor_options_t;
+typedef struct ifcopenshell_owner_create_owner_history_options_t ifcopenshell_owner_create_owner_history_options_t;
+typedef struct ifcopenshell_owner_unassign_actor_options_t ifcopenshell_owner_unassign_actor_options_t;
+typedef struct ifcopenshell_owner_update_owner_history_options_t ifcopenshell_owner_update_owner_history_options_t;
+typedef struct ifcopenshell_profile_add_arbitrary_profile_options_t ifcopenshell_profile_add_arbitrary_profile_options_t;
+typedef struct ifcopenshell_profile_add_arbitrary_profile_with_voids_options_t ifcopenshell_profile_add_arbitrary_profile_with_voids_options_t;
+typedef struct ifcopenshell_project_append_asset_options_t ifcopenshell_project_append_asset_options_t;
+typedef struct ifcopenshell_project_assign_declaration_options_t ifcopenshell_project_assign_declaration_options_t;
+typedef struct ifcopenshell_project_unassign_declaration_options_t ifcopenshell_project_unassign_declaration_options_t;
+typedef struct ifcopenshell_pset_add_pset_options_t ifcopenshell_pset_add_pset_options_t;
+typedef struct ifcopenshell_pset_add_qto_options_t ifcopenshell_pset_add_qto_options_t;
+typedef struct ifcopenshell_pset_assign_pset_options_t ifcopenshell_pset_assign_pset_options_t;
+typedef struct ifcopenshell_pset_edit_pset_options_t ifcopenshell_pset_edit_pset_options_t;
+typedef struct ifcopenshell_pset_edit_qto_options_t ifcopenshell_pset_edit_qto_options_t;
+typedef struct ifcopenshell_pset_template_edit_prop_template_options_t ifcopenshell_pset_template_edit_prop_template_options_t;
+typedef struct ifcopenshell_pset_unshare_pset_options_t ifcopenshell_pset_unshare_pset_options_t;
+typedef struct ifcopenshell_representation_get_product_representation_options_t ifcopenshell_representation_get_product_representation_options_t;
+typedef struct ifcopenshell_resource_add_resource_options_t ifcopenshell_resource_add_resource_options_t;
+typedef struct ifcopenshell_resource_assignment_options_t ifcopenshell_resource_assignment_options_t;
+typedef struct ifcopenshell_resource_remove_resource_options_t ifcopenshell_resource_remove_resource_options_t;
+typedef struct ifcopenshell_root_create_entity_options_t ifcopenshell_root_create_entity_options_t;
+typedef struct ifcopenshell_root_reassign_class_options_t ifcopenshell_root_reassign_class_options_t;
+typedef struct ifcopenshell_root_remove_product_options_t ifcopenshell_root_remove_product_options_t;
+typedef struct ifcopenshell_sequence_add_task_options_t ifcopenshell_sequence_add_task_options_t;
+typedef struct ifcopenshell_sequence_add_task_time_options_t ifcopenshell_sequence_add_task_time_options_t;
+typedef struct ifcopenshell_sequence_add_time_period_options_t ifcopenshell_sequence_add_time_period_options_t;
+typedef struct ifcopenshell_sequence_add_work_calendar_options_t ifcopenshell_sequence_add_work_calendar_options_t;
+typedef struct ifcopenshell_sequence_add_work_plan_options_t ifcopenshell_sequence_add_work_plan_options_t;
+typedef struct ifcopenshell_sequence_add_work_schedule_options_t ifcopenshell_sequence_add_work_schedule_options_t;
+typedef struct ifcopenshell_sequence_assign_lag_time_options_t ifcopenshell_sequence_assign_lag_time_options_t;
+typedef struct ifcopenshell_sequence_assign_process_options_t ifcopenshell_sequence_assign_process_options_t;
+typedef struct ifcopenshell_sequence_assign_product_options_t ifcopenshell_sequence_assign_product_options_t;
+typedef struct ifcopenshell_sequence_assign_sequence_options_t ifcopenshell_sequence_assign_sequence_options_t;
+typedef struct ifcopenshell_sequence_assign_work_plan_options_t ifcopenshell_sequence_assign_work_plan_options_t;
+typedef struct ifcopenshell_sequence_copy_work_schedule_options_t ifcopenshell_sequence_copy_work_schedule_options_t;
+typedef struct ifcopenshell_sequence_create_baseline_options_t ifcopenshell_sequence_create_baseline_options_t;
+typedef struct ifcopenshell_sequence_duplicate_task_options_t ifcopenshell_sequence_duplicate_task_options_t;
+typedef struct ifcopenshell_sequence_remove_options_t ifcopenshell_sequence_remove_options_t;
+typedef struct ifcopenshell_shape_builder_arc_segment_t ifcopenshell_shape_builder_arc_segment_t;
+typedef struct ifcopenshell_shape_builder_axis2_placement2d_options_t ifcopenshell_shape_builder_axis2_placement2d_options_t;
+typedef struct ifcopenshell_shape_builder_axis2_placement3d_options_t ifcopenshell_shape_builder_axis2_placement3d_options_t;
+typedef struct ifcopenshell_shape_builder_block_options_t ifcopenshell_shape_builder_block_options_t;
+typedef struct ifcopenshell_shape_builder_ellipse_cardinal_trim_t ifcopenshell_shape_builder_ellipse_cardinal_trim_t;
+typedef struct ifcopenshell_shape_builder_ellipse_curve_options_t ifcopenshell_shape_builder_ellipse_curve_options_t;
+typedef struct ifcopenshell_shape_builder_ellipse_point_trim_t ifcopenshell_shape_builder_ellipse_point_trim_t;
+typedef struct ifcopenshell_shape_builder_ellipse_trim_t ifcopenshell_shape_builder_ellipse_trim_t;
+typedef struct ifcopenshell_shape_builder_extrude_options_t ifcopenshell_shape_builder_extrude_options_t;
+typedef struct ifcopenshell_shape_builder_half_space_solid_options_t ifcopenshell_shape_builder_half_space_solid_options_t;
+typedef struct ifcopenshell_shape_builder_indexed_polycurve2d_options_t ifcopenshell_shape_builder_indexed_polycurve2d_options_t;
+typedef struct ifcopenshell_shape_builder_line_segment_t ifcopenshell_shape_builder_line_segment_t;
+typedef struct ifcopenshell_shape_builder_mep_bend_direction_t ifcopenshell_shape_builder_mep_bend_direction_t;
+typedef struct ifcopenshell_shape_builder_mep_bend_shape_options_t ifcopenshell_shape_builder_mep_bend_shape_options_t;
+typedef struct ifcopenshell_shape_builder_mep_offset_t ifcopenshell_shape_builder_mep_offset_t;
+typedef struct ifcopenshell_shape_builder_mep_profile_half_dimensions_t ifcopenshell_shape_builder_mep_profile_half_dimensions_t;
+typedef struct ifcopenshell_shape_builder_mep_transition_calculate_options_t ifcopenshell_shape_builder_mep_transition_calculate_options_t;
+typedef struct ifcopenshell_shape_builder_mep_transition_from_angle_t ifcopenshell_shape_builder_mep_transition_from_angle_t;
+typedef struct ifcopenshell_shape_builder_mep_transition_from_length_t ifcopenshell_shape_builder_mep_transition_from_length_t;
+typedef struct ifcopenshell_shape_builder_mep_transition_length_options_t ifcopenshell_shape_builder_mep_transition_length_options_t;
+typedef struct ifcopenshell_shape_builder_mep_transition_shape_options_t ifcopenshell_shape_builder_mep_transition_shape_options_t;
+typedef struct ifcopenshell_shape_builder_mirror_options_t ifcopenshell_shape_builder_mirror_options_t;
+typedef struct ifcopenshell_shape_builder_polyline_options_t ifcopenshell_shape_builder_polyline_options_t;
+typedef struct ifcopenshell_shape_builder_profile_options_t ifcopenshell_shape_builder_profile_options_t;
+typedef struct ifcopenshell_shape_builder_representation_options_t ifcopenshell_shape_builder_representation_options_t;
+typedef struct ifcopenshell_shape_builder_rotate_options_t ifcopenshell_shape_builder_rotate_options_t;
+typedef struct ifcopenshell_shape_builder_sphere_options_t ifcopenshell_shape_builder_sphere_options_t;
+typedef struct ifcopenshell_shape_builder_translate_options_t ifcopenshell_shape_builder_translate_options_t;
+typedef struct ifcopenshell_spatial_assign_container_options_t ifcopenshell_spatial_assign_container_options_t;
+typedef struct ifcopenshell_spatial_dereference_structure_options_t ifcopenshell_spatial_dereference_structure_options_t;
+typedef struct ifcopenshell_spatial_reference_structure_options_t ifcopenshell_spatial_reference_structure_options_t;
+typedef struct ifcopenshell_spatial_unassign_container_options_t ifcopenshell_spatial_unassign_container_options_t;
+typedef struct ifcopenshell_structural_add_structural_activity_options_t ifcopenshell_structural_add_structural_activity_options_t;
+typedef struct ifcopenshell_structural_add_structural_boundary_condition_options_t ifcopenshell_structural_add_structural_boundary_condition_options_t;
+typedef struct ifcopenshell_structural_assign_structural_analysis_model_options_t ifcopenshell_structural_assign_structural_analysis_model_options_t;
+typedef struct ifcopenshell_structural_remove_structural_boundary_condition_options_t ifcopenshell_structural_remove_structural_boundary_condition_options_t;
+typedef struct ifcopenshell_structural_unassign_structural_analysis_model_options_t ifcopenshell_structural_unassign_structural_analysis_model_options_t;
+typedef struct ifcopenshell_style_assign_item_style_options_t ifcopenshell_style_assign_item_style_options_t;
+typedef struct ifcopenshell_style_surface_texture_options_t ifcopenshell_style_surface_texture_options_t;
+typedef struct ifcopenshell_system_add_port_options_t ifcopenshell_system_add_port_options_t;
+typedef struct ifcopenshell_system_add_system_options_t ifcopenshell_system_add_system_options_t;
+typedef struct ifcopenshell_system_assign_flow_control_options_t ifcopenshell_system_assign_flow_control_options_t;
+typedef struct ifcopenshell_system_assign_port_options_t ifcopenshell_system_assign_port_options_t;
+typedef struct ifcopenshell_system_assign_system_options_t ifcopenshell_system_assign_system_options_t;
+typedef struct ifcopenshell_system_connect_port_options_t ifcopenshell_system_connect_port_options_t;
+typedef struct ifcopenshell_system_unassign_flow_control_options_t ifcopenshell_system_unassign_flow_control_options_t;
+typedef struct ifcopenshell_system_unassign_port_options_t ifcopenshell_system_unassign_port_options_t;
+typedef struct ifcopenshell_system_unassign_system_options_t ifcopenshell_system_unassign_system_options_t;
+typedef struct ifcopenshell_type_assign_type_options_t ifcopenshell_type_assign_type_options_t;
+typedef struct ifcopenshell_type_unassign_type_options_t ifcopenshell_type_unassign_type_options_t;
+typedef struct ifcopenshell_unit_add_conversion_based_unit_options_t ifcopenshell_unit_add_conversion_based_unit_options_t;
+typedef struct ifcopenshell_unit_assign_unit_options_t ifcopenshell_unit_assign_unit_options_t;
+typedef struct ifcopenshell_unit_edit_named_unit_options_t ifcopenshell_unit_edit_named_unit_options_t;
+typedef struct ifcopenshell_alignment_horizontal_pi_list_t ifcopenshell_alignment_horizontal_pi_list_t;
+typedef struct ifcopenshell_alignment_vertical_pi_list_t ifcopenshell_alignment_vertical_pi_list_t;
+typedef struct ifcopenshell_geometry_mesh_face_list_t ifcopenshell_geometry_mesh_face_list_t;
+typedef struct ifcopenshell_geometry_mesh_item_list_t ifcopenshell_geometry_mesh_item_list_t;
+typedef struct ifcopenshell_geometry_window_panel_properties_list_t ifcopenshell_geometry_window_panel_properties_list_t;
+typedef struct ifcopenshell_material_constituent_entry_options_list_t ifcopenshell_material_constituent_entry_options_list_t;
+typedef struct ifcopenshell_style_surface_texture_options_list_t ifcopenshell_style_surface_texture_options_list_t;
+
+typedef struct ifcopenshell_double_list_list_any_2_double_list_list_any_3_variant_t {
+    int32_t kind;
+    ifcopenshell_double_list_list_t value_0;
+    ifcopenshell_double_list_list_t value_1;
+} ifcopenshell_double_list_list_any_2_double_list_list_any_3_variant_t;
+
+typedef struct ifcopenshell_instance_string_variant_t {
+    int32_t kind;
+    ifcopenshell_instance_t* value_0;
+    ifcopenshell_string_t value_1;
+} ifcopenshell_instance_string_variant_t;
+
+typedef struct ifcopenshell_GeometryPlaneClipping_GeometryEntityClipping_variant_t {
+    int32_t kind;
+    const ifcopenshell_geometry_plane_clipping_t* value_0;
+    const ifcopenshell_geometry_entity_clipping_t* value_1;
+} ifcopenshell_GeometryPlaneClipping_GeometryEntityClipping_variant_t;
+
+typedef struct ifcopenshell_ShapeBuilderLineSegment_ShapeBuilderArcSegment_variant_t {
+    int32_t kind;
+    const ifcopenshell_shape_builder_line_segment_t* value_0;
+    const ifcopenshell_shape_builder_arc_segment_t* value_1;
+} ifcopenshell_ShapeBuilderLineSegment_ShapeBuilderArcSegment_variant_t;
+
+typedef struct ifcopenshell_ShapeBuilderMepTransitionFromLength_ShapeBuilderMepTransitionFromAngle_variant_t {
+    int32_t kind;
+    const ifcopenshell_shape_builder_mep_transition_from_length_t* value_0;
+    const ifcopenshell_shape_builder_mep_transition_from_angle_t* value_1;
+} ifcopenshell_ShapeBuilderMepTransitionFromLength_ShapeBuilderMepTransitionFromAngle_variant_t;
+
+typedef struct ifcopenshell_double_list_9_double_list_16_variant_t {
+    int32_t kind;
+    ifcopenshell_double_list_t value_0;
+    ifcopenshell_double_list_t value_1;
+} ifcopenshell_double_list_9_double_list_16_variant_t;
+
+typedef struct ifcopenshell_double_list_2_double_list_3_variant_t {
+    int32_t kind;
+    ifcopenshell_double_list_t value_0;
+    ifcopenshell_double_list_t value_1;
+} ifcopenshell_double_list_2_double_list_3_variant_t;
+
+typedef struct ifcopenshell_ShapeBuilderEllipsePointTrim_ShapeBuilderEllipseCardinalTrim_variant_t {
+    int32_t kind;
+    const ifcopenshell_shape_builder_ellipse_point_trim_t* value_0;
+    const ifcopenshell_shape_builder_ellipse_cardinal_trim_t* value_1;
+} ifcopenshell_ShapeBuilderEllipsePointTrim_ShapeBuilderEllipseCardinalTrim_variant_t;
+typedef struct ifcopenshell_double_list_list_any_2_double_list_list_any_3_variant_list_t {
+    ifcopenshell_double_list_list_any_2_double_list_list_any_3_variant_t* items;
+    size_t size;
+} ifcopenshell_double_list_list_any_2_double_list_list_any_3_variant_list_t;
+
+typedef struct ifcopenshell_GeometryPlaneClipping_GeometryEntityClipping_variant_list_t {
+    ifcopenshell_GeometryPlaneClipping_GeometryEntityClipping_variant_t* items;
+    size_t size;
+} ifcopenshell_GeometryPlaneClipping_GeometryEntityClipping_variant_list_t;
+
+typedef struct ifcopenshell_ShapeBuilderLineSegment_ShapeBuilderArcSegment_variant_list_t {
+    ifcopenshell_ShapeBuilderLineSegment_ShapeBuilderArcSegment_variant_t* items;
+    size_t size;
+} ifcopenshell_ShapeBuilderLineSegment_ShapeBuilderArcSegment_variant_list_t;
+
 typedef struct ifcopenshell_aggregate_assign_object_options_t {
     ifcopenshell_parse_instance_list_t* products;
     ifcopenshell_instance_t* relating_object;
@@ -390,11 +656,11 @@ typedef struct ifcopenshell_alignment_create_polyline_options_t {
 
 typedef struct ifcopenshell_alignment_create_by_pi_method_options_t {
     const char* name;
-    const ifcopenshell_double_list_list_t* horizontal_points;
-    const ifcopenshell_double_list_t* radii;
-    const ifcopenshell_double_list_list_t* vertical_points;
-    const ifcopenshell_double_list_t* vertical_lengths;
+    const ifcopenshell_alignment_horizontal_pi_layout_t* horizontal;
+    const ifcopenshell_alignment_vertical_pi_layout_t* vertical;
+    bool has_vertical;
     double start_station;
+    bool has_start_station;
     ifcopenshell_instance_t* owner_history;
     bool has_owner_history;
     ifcopenshell_instance_t* user;
@@ -412,6 +678,14 @@ typedef struct ifcopenshell_alignment_create_from_csv_text_options_t {
     ifcopenshell_instance_t* application;
     bool has_application;
 } ifcopenshell_alignment_create_from_csv_text_options_t;
+
+typedef struct ifcopenshell_alignment_layout_horizontal_by_pi_method_options_t {
+    const ifcopenshell_alignment_horizontal_pi_layout_t* pis;
+} ifcopenshell_alignment_layout_horizontal_by_pi_method_options_t;
+
+typedef struct ifcopenshell_alignment_layout_vertical_by_pi_method_options_t {
+    const ifcopenshell_alignment_vertical_pi_layout_t* pis;
+} ifcopenshell_alignment_layout_vertical_by_pi_method_options_t;
 
 typedef struct ifcopenshell_alignment_map_segment_options_t {
     ifcopenshell_instance_t* segment;
@@ -694,18 +968,27 @@ typedef struct ifcopenshell_feature_remove_feature_options_t {
 typedef struct ifcopenshell_geometry_add_door_representation_options_t {
     ifcopenshell_instance_t* context;
     double overall_height;
+    bool has_overall_height;
     double overall_width;
-    const char* operation_type;
-    const ifcopenshell_double_list_t* lining_properties;
-    const ifcopenshell_double_list_t* panel_properties;
+    bool has_overall_width;
+    int32_t operation_type;
+    bool has_operation_type;
+    const ifcopenshell_geometry_door_lining_properties_t* lining_properties;
+    bool has_lining_properties;
+    const ifcopenshell_geometry_door_panel_properties_t* panel_properties;
+    bool has_panel_properties;
     ifcopenshell_instance_t* part_of_product;
     bool has_part_of_product;
     double unit_scale;
+    bool has_unit_scale;
 } ifcopenshell_geometry_add_door_representation_options_t;
 
 typedef struct ifcopenshell_geometry_add_mesh_representation_options_t {
-    const ifcopenshell_double_list_list_list_t* vertices;
-    const ifcopenshell_int32_list_list_list_list_t* faces;
+    const ifcopenshell_geometry_mesh_item_list_t* items;
+    const ifcopenshell_double_list_t* coordinate_offset;
+    bool has_coordinate_offset;
+    double unit_scale;
+    bool has_unit_scale;
     bool force_faceted_brep;
     bool has_force_faceted_brep;
 } ifcopenshell_geometry_add_mesh_representation_options_t;
@@ -714,16 +997,15 @@ typedef struct ifcopenshell_geometry_add_profile_representation_options_t {
     ifcopenshell_instance_t* context;
     ifcopenshell_instance_t* profile;
     double depth;
+    bool has_depth;
     const char* cardinal_point;
     bool has_cardinal_point;
     const ifcopenshell_double_list_t* placement_z_axis;
     bool has_placement_z_axis;
     const ifcopenshell_double_list_t* placement_x_axis;
     bool has_placement_x_axis;
-    const ifcopenshell_int32_list_t* clipping_kinds;
-    const ifcopenshell_double_list_list_t* clipping_locations;
-    const ifcopenshell_double_list_list_t* clipping_normals;
-    ifcopenshell_parse_instance_list_t* clipping_entities;
+    const ifcopenshell_GeometryPlaneClipping_GeometryEntityClipping_variant_list_t* clippings;
+    bool has_clippings;
 } ifcopenshell_geometry_add_profile_representation_options_t;
 
 typedef struct ifcopenshell_geometry_add_railing_representation_options_t {
@@ -760,13 +1042,15 @@ typedef struct ifcopenshell_geometry_add_shape_aspect_options_t {
 typedef struct ifcopenshell_geometry_add_slab_representation_options_t {
     ifcopenshell_instance_t* context;
     double depth;
+    bool has_depth;
     const char* direction_sense;
+    bool has_direction_sense;
     double offset;
+    bool has_offset;
     double x_angle;
-    const ifcopenshell_int32_list_t* clipping_kinds;
-    const ifcopenshell_double_list_list_t* clipping_locations;
-    const ifcopenshell_double_list_list_t* clipping_normals;
-    ifcopenshell_parse_instance_list_t* clipping_entities;
+    bool has_x_angle;
+    const ifcopenshell_GeometryPlaneClipping_GeometryEntityClipping_variant_list_t* clippings;
+    bool has_clippings;
     const ifcopenshell_double_list_list_t* polyline;
     bool has_polyline;
 } ifcopenshell_geometry_add_slab_representation_options_t;
@@ -783,28 +1067,39 @@ typedef struct ifcopenshell_geometry_add_topology_representation_options_t {
 typedef struct ifcopenshell_geometry_add_wall_representation_options_t {
     ifcopenshell_instance_t* context;
     double length;
+    bool has_length;
     double height;
+    bool has_height;
     const char* direction_sense;
+    bool has_direction_sense;
     double offset;
+    bool has_offset;
     double thickness;
+    bool has_thickness;
     double x_angle;
-    const ifcopenshell_int32_list_t* clipping_kinds;
-    const ifcopenshell_double_list_list_t* clipping_locations;
-    const ifcopenshell_double_list_list_t* clipping_normals;
-    ifcopenshell_parse_instance_list_t* clipping_entities;
+    bool has_x_angle;
+    const ifcopenshell_GeometryPlaneClipping_GeometryEntityClipping_variant_list_t* clippings;
+    bool has_clippings;
     ifcopenshell_parse_instance_list_t* booleans;
+    bool has_booleans;
 } ifcopenshell_geometry_add_wall_representation_options_t;
 
 typedef struct ifcopenshell_geometry_add_window_representation_options_t {
     ifcopenshell_instance_t* context;
     double overall_height;
+    bool has_overall_height;
     double overall_width;
-    const ifcopenshell_int32_list_list_t* panel_schema;
-    const ifcopenshell_double_list_t* lining_properties;
-    const ifcopenshell_double_list_list_t* panel_properties;
+    bool has_overall_width;
+    int32_t partition_type;
+    bool has_partition_type;
+    const ifcopenshell_geometry_window_lining_properties_t* lining_properties;
+    bool has_lining_properties;
+    const ifcopenshell_geometry_window_panel_properties_list_t* panel_properties;
+    bool has_panel_properties;
     ifcopenshell_instance_t* part_of_product;
     bool has_part_of_product;
-    double glass_thickness;
+    double unit_scale;
+    bool has_unit_scale;
 } ifcopenshell_geometry_add_window_representation_options_t;
 
 typedef struct ifcopenshell_geometry_clip_solid_options_t {
@@ -927,6 +1222,7 @@ typedef struct ifcopenshell_geometry_disconnect_path_options_t {
 typedef struct ifcopenshell_geometry_edit_object_placement_options_t {
     ifcopenshell_instance_t* product;
     const ifcopenshell_double_list_t* matrix;
+    bool has_matrix;
     bool is_si;
     bool should_transform_children;
 } ifcopenshell_geometry_edit_object_placement_options_t;
@@ -1265,14 +1561,14 @@ typedef struct ifcopenshell_owner_update_owner_history_options_t {
 } ifcopenshell_owner_update_owner_history_options_t;
 
 typedef struct ifcopenshell_profile_add_arbitrary_profile_options_t {
-    const ifcopenshell_double_list_list_t* profile;
+    const ifcopenshell_double_list_list_any_2_double_list_list_any_3_variant_t* profile;
     const char* name;
     bool has_name;
 } ifcopenshell_profile_add_arbitrary_profile_options_t;
 
 typedef struct ifcopenshell_profile_add_arbitrary_profile_with_voids_options_t {
-    const ifcopenshell_double_list_list_t* outer_profile;
-    const ifcopenshell_double_list_list_list_t* inner_profiles;
+    const ifcopenshell_double_list_list_any_2_double_list_list_any_3_variant_t* outer_profile;
+    const ifcopenshell_double_list_list_any_2_double_list_list_any_3_variant_list_t* inner_profiles;
     const char* name;
     bool has_name;
 } ifcopenshell_profile_add_arbitrary_profile_with_voids_options_t;
@@ -1619,40 +1915,54 @@ typedef struct ifcopenshell_sequence_remove_options_t {
 
 typedef struct ifcopenshell_shape_builder_axis2_placement2d_options_t {
     const ifcopenshell_double_list_t* position;
+    bool has_position;
     const ifcopenshell_double_list_t* x_direction;
     bool has_x_direction;
 } ifcopenshell_shape_builder_axis2_placement2d_options_t;
 
 typedef struct ifcopenshell_shape_builder_axis2_placement3d_options_t {
     const ifcopenshell_double_list_t* position;
+    bool has_position;
     const ifcopenshell_double_list_t* z_axis;
+    bool has_z_axis;
     const ifcopenshell_double_list_t* x_axis;
+    bool has_x_axis;
 } ifcopenshell_shape_builder_axis2_placement3d_options_t;
 
 typedef struct ifcopenshell_shape_builder_block_options_t {
     const ifcopenshell_double_list_t* position;
+    bool has_position;
     double x_length;
+    bool has_x_length;
     double y_length;
+    bool has_y_length;
     double z_length;
+    bool has_z_length;
 } ifcopenshell_shape_builder_block_options_t;
 
 typedef struct ifcopenshell_shape_builder_ellipse_curve_options_t {
     double x_axis_radius;
     double y_axis_radius;
     const ifcopenshell_double_list_t* position;
-    const ifcopenshell_double_list_list_t* trim_points;
+    bool has_position;
     const ifcopenshell_double_list_t* ref_x_direction;
     bool has_ref_x_direction;
-    const ifcopenshell_int32_list_t* trim_points_mask;
+    const ifcopenshell_shape_builder_ellipse_trim_t* trim;
+    bool has_trim;
 } ifcopenshell_shape_builder_ellipse_curve_options_t;
 
 typedef struct ifcopenshell_shape_builder_extrude_options_t {
     ifcopenshell_instance_t* profile_or_curve;
     double magnitude;
+    bool has_magnitude;
     const ifcopenshell_double_list_t* position;
+    bool has_position;
     const ifcopenshell_double_list_t* extrusion_vector;
+    bool has_extrusion_vector;
     const ifcopenshell_double_list_t* position_z_axis;
+    bool has_position_z_axis;
     const ifcopenshell_double_list_t* position_x_axis;
+    bool has_position_x_axis;
     const ifcopenshell_double_list_t* position_y_axis;
     bool has_position_y_axis;
 } ifcopenshell_shape_builder_extrude_options_t;
@@ -1660,7 +1970,13 @@ typedef struct ifcopenshell_shape_builder_extrude_options_t {
 typedef struct ifcopenshell_shape_builder_half_space_solid_options_t {
     ifcopenshell_instance_t* plane;
     bool agreement_flag;
+    bool has_agreement_flag;
 } ifcopenshell_shape_builder_half_space_solid_options_t;
+
+typedef struct ifcopenshell_shape_builder_indexed_polycurve2d_options_t {
+    const ifcopenshell_double_list_list_t* points;
+    const ifcopenshell_ShapeBuilderLineSegment_ShapeBuilderArcSegment_variant_list_t* segments;
+} ifcopenshell_shape_builder_indexed_polycurve2d_options_t;
 
 typedef struct ifcopenshell_shape_builder_mep_bend_shape_options_t {
     ifcopenshell_instance_t* segment;
@@ -1668,28 +1984,27 @@ typedef struct ifcopenshell_shape_builder_mep_bend_shape_options_t {
     double end_length;
     double angle;
     double radius;
-    const ifcopenshell_double_list_t* bend_vector;
+    const ifcopenshell_shape_builder_mep_bend_direction_t* bend_vector;
     bool flip_z_axis;
 } ifcopenshell_shape_builder_mep_bend_shape_options_t;
 
 typedef struct ifcopenshell_shape_builder_mep_transition_calculate_options_t {
-    const ifcopenshell_double_list_t* start_half_dim;
-    const ifcopenshell_double_list_t* end_half_dim;
-    const ifcopenshell_double_list_t* offset;
-    const ifcopenshell_double_list_t* diff;
+    const ifcopenshell_shape_builder_mep_profile_half_dimensions_t* start_half_dim;
+    const ifcopenshell_shape_builder_mep_profile_half_dimensions_t* end_half_dim;
+    const ifcopenshell_shape_builder_mep_offset_t* offset;
+    const ifcopenshell_shape_builder_mep_offset_t* diff;
     bool has_diff;
     bool end_profile;
-    double length;
-    bool has_length;
-    double angle;
-    bool has_angle;
+    bool has_end_profile;
+    const ifcopenshell_ShapeBuilderMepTransitionFromLength_ShapeBuilderMepTransitionFromAngle_variant_t* calculation;
 } ifcopenshell_shape_builder_mep_transition_calculate_options_t;
 
 typedef struct ifcopenshell_shape_builder_mep_transition_length_options_t {
-    const ifcopenshell_double_list_t* start_half_dim;
-    const ifcopenshell_double_list_t* end_half_dim;
+    const ifcopenshell_shape_builder_mep_profile_half_dimensions_t* start_half_dim;
+    const ifcopenshell_shape_builder_mep_profile_half_dimensions_t* end_half_dim;
     double angle;
-    const ifcopenshell_double_list_t* profile_offset;
+    const ifcopenshell_shape_builder_mep_offset_t* profile_offset;
+    bool has_profile_offset;
 } ifcopenshell_shape_builder_mep_transition_length_options_t;
 
 typedef struct ifcopenshell_shape_builder_mep_transition_shape_options_t {
@@ -1698,24 +2013,29 @@ typedef struct ifcopenshell_shape_builder_mep_transition_shape_options_t {
     double start_length;
     double end_length;
     double angle;
-    const ifcopenshell_double_list_t* profile_offset;
+    bool has_angle;
+    const ifcopenshell_shape_builder_mep_offset_t* profile_offset;
+    bool has_profile_offset;
 } ifcopenshell_shape_builder_mep_transition_shape_options_t;
 
 typedef struct ifcopenshell_shape_builder_mirror_options_t {
     ifcopenshell_instance_t* item;
     const ifcopenshell_double_list_t* mirror_axes;
+    bool has_mirror_axes;
     const ifcopenshell_double_list_t* mirror_point;
+    bool has_mirror_point;
     bool create_copy;
-    const ifcopenshell_double_list_t* placement_matrix;
+    bool has_create_copy;
+    const ifcopenshell_double_list_9_double_list_16_variant_t* placement_matrix;
+    bool has_placement_matrix;
 } ifcopenshell_shape_builder_mirror_options_t;
 
 typedef struct ifcopenshell_shape_builder_polyline_options_t {
-    const ifcopenshell_double_list_list_t* points;
-    bool closed;
-    bool has_closed;
-    const ifcopenshell_double_list_t* position_offset;
+    const ifcopenshell_double_list_list_any_2_double_list_list_any_3_variant_t* points;
+    const ifcopenshell_double_list_2_double_list_3_variant_t* position_offset;
     bool has_position_offset;
-    const ifcopenshell_int32_list_t* arc_points;
+    const ifcopenshell_ShapeBuilderLineSegment_ShapeBuilderArcSegment_variant_list_t* segments;
+    bool has_segments;
 } ifcopenshell_shape_builder_polyline_options_t;
 
 typedef struct ifcopenshell_shape_builder_profile_options_t {
@@ -1723,6 +2043,7 @@ typedef struct ifcopenshell_shape_builder_profile_options_t {
     const char* name;
     bool has_name;
     ifcopenshell_parse_instance_list_t* inner_curves;
+    bool has_inner_curves;
     const char* profile_type;
     bool has_profile_type;
 } ifcopenshell_shape_builder_profile_options_t;
@@ -1737,20 +2058,27 @@ typedef struct ifcopenshell_shape_builder_representation_options_t {
 typedef struct ifcopenshell_shape_builder_rotate_options_t {
     ifcopenshell_instance_t* item;
     double angle;
+    bool has_angle;
     const ifcopenshell_double_list_t* pivot_point;
+    bool has_pivot_point;
     bool counter_clockwise;
+    bool has_counter_clockwise;
     bool create_copy;
+    bool has_create_copy;
 } ifcopenshell_shape_builder_rotate_options_t;
 
 typedef struct ifcopenshell_shape_builder_sphere_options_t {
     double radius;
+    bool has_radius;
     const ifcopenshell_double_list_t* center;
+    bool has_center;
 } ifcopenshell_shape_builder_sphere_options_t;
 
 typedef struct ifcopenshell_shape_builder_translate_options_t {
     ifcopenshell_instance_t* item;
-    const ifcopenshell_double_list_t* translation;
+    const ifcopenshell_double_list_2_double_list_3_variant_t* translation;
     bool create_copy;
+    bool has_create_copy;
 } ifcopenshell_shape_builder_translate_options_t;
 
 typedef struct ifcopenshell_spatial_assign_container_options_t {
@@ -1991,6 +2319,162 @@ typedef struct ifcopenshell_unit_edit_named_unit_options_t {
     void* attributes;
 } ifcopenshell_unit_edit_named_unit_options_t;
 
+typedef struct ifcopenshell_alignment_horizontal_pi_layout_t {
+    const ifcopenshell_double_list_t* start_point;
+    const ifcopenshell_alignment_horizontal_pi_list_t* intersections;
+    const ifcopenshell_double_list_t* end_point;
+} ifcopenshell_alignment_horizontal_pi_layout_t;
+
+typedef struct ifcopenshell_alignment_vertical_pi_layout_t {
+    const ifcopenshell_double_list_t* start_point;
+    const ifcopenshell_alignment_vertical_pi_list_t* intersections;
+    const ifcopenshell_double_list_t* end_point;
+} ifcopenshell_alignment_vertical_pi_layout_t;
+
+typedef struct ifcopenshell_geometry_door_lining_properties_t {
+    double lining_depth;
+    bool has_lining_depth;
+    double lining_thickness;
+    bool has_lining_thickness;
+    double lining_offset;
+    bool has_lining_offset;
+    double lining_to_panel_offset_x;
+    bool has_lining_to_panel_offset_x;
+    double lining_to_panel_offset_y;
+    bool has_lining_to_panel_offset_y;
+    double transom_thickness;
+    bool has_transom_thickness;
+    double transom_offset;
+    bool has_transom_offset;
+    double casing_depth;
+    bool has_casing_depth;
+    double casing_thickness;
+    bool has_casing_thickness;
+    double threshold_depth;
+    bool has_threshold_depth;
+    double threshold_thickness;
+    bool has_threshold_thickness;
+    double threshold_offset;
+    bool has_threshold_offset;
+} ifcopenshell_geometry_door_lining_properties_t;
+
+typedef struct ifcopenshell_geometry_door_panel_properties_t {
+    double panel_depth;
+    bool has_panel_depth;
+    double panel_width;
+    bool has_panel_width;
+    double frame_depth;
+    bool has_frame_depth;
+    double frame_thickness;
+    bool has_frame_thickness;
+} ifcopenshell_geometry_door_panel_properties_t;
+
+typedef struct ifcopenshell_geometry_mesh_item_t {
+    const ifcopenshell_double_list_list_t* vertices;
+    const ifcopenshell_geometry_mesh_face_list_t* faces;
+} ifcopenshell_geometry_mesh_item_t;
+
+typedef struct ifcopenshell_geometry_plane_clipping_t {
+    const ifcopenshell_double_list_t* location;
+    const ifcopenshell_double_list_t* normal;
+} ifcopenshell_geometry_plane_clipping_t;
+
+typedef struct ifcopenshell_geometry_entity_clipping_t {
+    ifcopenshell_instance_t* entity;
+} ifcopenshell_geometry_entity_clipping_t;
+
+typedef struct ifcopenshell_geometry_window_lining_properties_t {
+    double lining_depth;
+    bool has_lining_depth;
+    double lining_thickness;
+    bool has_lining_thickness;
+    double lining_offset;
+    bool has_lining_offset;
+    double lining_to_panel_offset_x;
+    bool has_lining_to_panel_offset_x;
+    double lining_to_panel_offset_y;
+    bool has_lining_to_panel_offset_y;
+    double mullion_thickness;
+    bool has_mullion_thickness;
+    double first_mullion_offset;
+    bool has_first_mullion_offset;
+    double second_mullion_offset;
+    bool has_second_mullion_offset;
+    double transom_thickness;
+    bool has_transom_thickness;
+    double first_transom_offset;
+    bool has_first_transom_offset;
+    double second_transom_offset;
+    bool has_second_transom_offset;
+} ifcopenshell_geometry_window_lining_properties_t;
+
+typedef struct ifcopenshell_geometry_window_panel_properties_t {
+    double frame_depth;
+    bool has_frame_depth;
+    double frame_thickness;
+    bool has_frame_thickness;
+} ifcopenshell_geometry_window_panel_properties_t;
+
+typedef struct ifcopenshell_shape_builder_ellipse_trim_t {
+    const ifcopenshell_ShapeBuilderEllipsePointTrim_ShapeBuilderEllipseCardinalTrim_variant_t* value;
+} ifcopenshell_shape_builder_ellipse_trim_t;
+
+typedef struct ifcopenshell_shape_builder_line_segment_t {
+    const ifcopenshell_uint32_list_t* line_indices;
+} ifcopenshell_shape_builder_line_segment_t;
+
+typedef struct ifcopenshell_shape_builder_arc_segment_t {
+    const ifcopenshell_uint32_list_t* arc_indices;
+} ifcopenshell_shape_builder_arc_segment_t;
+
+typedef struct ifcopenshell_shape_builder_mep_bend_direction_t {
+    double x;
+    double y;
+} ifcopenshell_shape_builder_mep_bend_direction_t;
+
+typedef struct ifcopenshell_shape_builder_mep_profile_half_dimensions_t {
+    double half_x;
+    double half_y;
+    double depth;
+} ifcopenshell_shape_builder_mep_profile_half_dimensions_t;
+
+typedef struct ifcopenshell_shape_builder_mep_offset_t {
+    double x;
+    double y;
+} ifcopenshell_shape_builder_mep_offset_t;
+
+typedef struct ifcopenshell_shape_builder_mep_transition_from_length_t {
+    double length;
+} ifcopenshell_shape_builder_mep_transition_from_length_t;
+
+typedef struct ifcopenshell_shape_builder_mep_transition_from_angle_t {
+    double angle;
+} ifcopenshell_shape_builder_mep_transition_from_angle_t;
+
+typedef struct ifcopenshell_alignment_horizontal_pi_t {
+    const ifcopenshell_double_list_t* point;
+    double radius;
+} ifcopenshell_alignment_horizontal_pi_t;
+
+typedef struct ifcopenshell_alignment_vertical_pi_t {
+    const ifcopenshell_double_list_t* point;
+    double curve_length;
+} ifcopenshell_alignment_vertical_pi_t;
+
+typedef struct ifcopenshell_geometry_mesh_face_t {
+    const ifcopenshell_uint32_list_t* outer;
+    const ifcopenshell_uint32_list_list_t* inner_loops;
+    bool has_inner_loops;
+} ifcopenshell_geometry_mesh_face_t;
+
+typedef struct ifcopenshell_shape_builder_ellipse_point_trim_t {
+    const ifcopenshell_double_list_list_t* points;
+} ifcopenshell_shape_builder_ellipse_point_trim_t;
+
+typedef struct ifcopenshell_shape_builder_ellipse_cardinal_trim_t {
+    const ifcopenshell_uint32_list_t* cardinal_points;
+} ifcopenshell_shape_builder_ellipse_cardinal_trim_t;
+
 typedef struct ifcopenshell_material_constituent_entry_options_list_t {
     ifcopenshell_material_constituent_entry_options_t* items;
     size_t size;
@@ -2000,6 +2484,31 @@ typedef struct ifcopenshell_style_surface_texture_options_list_t {
     ifcopenshell_style_surface_texture_options_t* items;
     size_t size;
 } ifcopenshell_style_surface_texture_options_list_t;
+
+typedef struct ifcopenshell_geometry_mesh_item_list_t {
+    ifcopenshell_geometry_mesh_item_t* items;
+    size_t size;
+} ifcopenshell_geometry_mesh_item_list_t;
+
+typedef struct ifcopenshell_geometry_window_panel_properties_list_t {
+    ifcopenshell_geometry_window_panel_properties_t* items;
+    size_t size;
+} ifcopenshell_geometry_window_panel_properties_list_t;
+
+typedef struct ifcopenshell_alignment_horizontal_pi_list_t {
+    ifcopenshell_alignment_horizontal_pi_t* items;
+    size_t size;
+} ifcopenshell_alignment_horizontal_pi_list_t;
+
+typedef struct ifcopenshell_alignment_vertical_pi_list_t {
+    ifcopenshell_alignment_vertical_pi_t* items;
+    size_t size;
+} ifcopenshell_alignment_vertical_pi_list_t;
+
+typedef struct ifcopenshell_geometry_mesh_face_list_t {
+    ifcopenshell_geometry_mesh_face_t* items;
+    size_t size;
+} ifcopenshell_geometry_mesh_face_list_t;
 
 typedef struct ifcopenshell_alignment_create_layout_segment_result_t {
     ifcopenshell_instance_t* segment;
@@ -2066,12 +2575,6 @@ typedef struct ifcopenshell_optional_shape_builder_mep_transition_shape_result_t
     bool has_value;
     ifcopenshell_shape_builder_mep_transition_shape_result_t value;
 } ifcopenshell_optional_shape_builder_mep_transition_shape_result_t;
-
-typedef struct ifcopenshell_instance_string_variant_t {
-    int32_t kind;
-    ifcopenshell_instance_t* value_0;
-    ifcopenshell_string_t value_1;
-} ifcopenshell_instance_string_variant_t;
 
 typedef enum {
     IFCOPENSHELL_ERROR_NONE = 0,
@@ -2222,7 +2725,14 @@ void ifcopenshell_sequence_duplicate_task_result_destroy(ifcopenshell_sequence_d
 void ifcopenshell_project_append_asset_cache_entry_destroy(ifcopenshell_project_append_asset_cache_entry_t* value);
 void ifcopenshell_optional_shape_builder_mep_transition_shape_result_destroy(ifcopenshell_optional_shape_builder_mep_transition_shape_result_t* value);
 void ifcopenshell_geometry_railing_support_list_destroy(ifcopenshell_geometry_railing_support_list_t* value);
+void ifcopenshell_double_list_list_any_2_double_list_list_any_3_variant_destroy(ifcopenshell_double_list_list_any_2_double_list_list_any_3_variant_t* value);
 void ifcopenshell_instance_string_variant_destroy(ifcopenshell_instance_string_variant_t* value);
+void ifcopenshell_GeometryPlaneClipping_GeometryEntityClipping_variant_destroy(ifcopenshell_GeometryPlaneClipping_GeometryEntityClipping_variant_t* value);
+void ifcopenshell_ShapeBuilderLineSegment_ShapeBuilderArcSegment_variant_destroy(ifcopenshell_ShapeBuilderLineSegment_ShapeBuilderArcSegment_variant_t* value);
+void ifcopenshell_ShapeBuilderMepTransitionFromLength_ShapeBuilderMepTransitionFromAngle_variant_destroy(ifcopenshell_ShapeBuilderMepTransitionFromLength_ShapeBuilderMepTransitionFromAngle_variant_t* value);
+void ifcopenshell_double_list_9_double_list_16_variant_destroy(ifcopenshell_double_list_9_double_list_16_variant_t* value);
+void ifcopenshell_double_list_2_double_list_3_variant_destroy(ifcopenshell_double_list_2_double_list_3_variant_t* value);
+void ifcopenshell_ShapeBuilderEllipsePointTrim_ShapeBuilderEllipseCardinalTrim_variant_destroy(ifcopenshell_ShapeBuilderEllipsePointTrim_ShapeBuilderEllipseCardinalTrim_variant_t* value);
 
 bool ifcopenshell_geom_create_xml_serializer(ifcopenshell_file_t* file, const char* filename, ifcopenshell_geom_serializer_t** out_result);
 bool ifcopenshell_geom_create_tree(ifcopenshell_geom_tree_t** out_result);
@@ -2328,7 +2838,7 @@ bool ifcopenshell_alignment_get_cant_layout(ifcopenshell_instance_t* alignment, 
 bool ifcopenshell_alignment_get_child_alignments(ifcopenshell_instance_t* alignment, ifcopenshell_parse_instance_list_t** out_result);
 bool ifcopenshell_alignment_get_curve(ifcopenshell_instance_t* alignment, ifcopenshell_instance_t** out_result);
 bool ifcopenshell_alignment_get_curve_segment(ifcopenshell_instance_t* layout, ifcopenshell_instance_t* segment, ifcopenshell_instance_t** out_result);
-bool ifcopenshell_alignment_get_curve_segment_transition_code(ifcopenshell_instance_t* segment, ifcopenshell_instance_t* next_segment, double position_tolerance, ifcopenshell_string_t* out_result);
+bool ifcopenshell_alignment_get_curve_segment_transition_code(ifcopenshell_instance_t* segment, ifcopenshell_instance_t* next_segment, const double* position_tolerance, ifcopenshell_string_t* out_result);
 bool ifcopenshell_alignment_get_horizontal_layout(ifcopenshell_instance_t* alignment, ifcopenshell_instance_t** out_result);
 bool ifcopenshell_alignment_get_layout(ifcopenshell_instance_t* segment, ifcopenshell_instance_t** out_result);
 bool ifcopenshell_alignment_get_layout_curve(ifcopenshell_instance_t* layout, ifcopenshell_instance_t** out_result);
@@ -2338,13 +2848,13 @@ bool ifcopenshell_alignment_get_parent_alignment(ifcopenshell_instance_t* alignm
 bool ifcopenshell_alignment_get_referent_nest(ifcopenshell_instance_t* alignment, ifcopenshell_instance_t** out_result);
 bool ifcopenshell_alignment_get_vertical_layout(ifcopenshell_instance_t* alignment, ifcopenshell_instance_t** out_result);
 bool ifcopenshell_alignment_has_zero_length_segment(ifcopenshell_instance_t* layout, bool* out_result);
-bool ifcopenshell_alignment_layout_horizontal_by_pi_method(ifcopenshell_file_t* file, ifcopenshell_instance_t* layout, const ifcopenshell_double_list_list_t* points, const ifcopenshell_double_list_t* radii);
-bool ifcopenshell_alignment_layout_vertical_by_pi_method(ifcopenshell_file_t* file, ifcopenshell_instance_t* layout, const ifcopenshell_double_list_list_t* points, const ifcopenshell_double_list_t* lengths);
+bool ifcopenshell_alignment_layout_horizontal_by_pi_method(ifcopenshell_file_t* file, ifcopenshell_instance_t* layout, const ifcopenshell_alignment_layout_horizontal_by_pi_method_options_t* options);
+bool ifcopenshell_alignment_layout_vertical_by_pi_method(ifcopenshell_file_t* file, ifcopenshell_instance_t* layout, const ifcopenshell_alignment_layout_vertical_by_pi_method_options_t* options);
 /** Map one semantic segment. A Helmert segment returns both mapped halves. */
 bool ifcopenshell_alignment_map_segment(ifcopenshell_file_t* file, const ifcopenshell_alignment_map_segment_options_t* options, ifcopenshell_parse_instance_list_t** out_result);
 bool ifcopenshell_alignment_name_segments(const char* prefix, ifcopenshell_instance_t* layout);
 bool ifcopenshell_alignment_station_as_string(ifcopenshell_file_t* file, double station, ifcopenshell_string_t* out_result);
-bool ifcopenshell_alignment_update_curve_segment_transition_code(ifcopenshell_instance_t* segment, ifcopenshell_instance_t* next_segment, double position_tolerance);
+bool ifcopenshell_alignment_update_curve_segment_transition_code(ifcopenshell_instance_t* segment, ifcopenshell_instance_t* next_segment, const double* position_tolerance);
 bool ifcopenshell_alignment_update_end_point(ifcopenshell_file_t* file, ifcopenshell_instance_t* curve);
 bool ifcopenshell_alignment_update_fallback_position(ifcopenshell_file_t* file, ifcopenshell_instance_t* linear_placement);
 /**
@@ -3292,7 +3802,7 @@ bool ifcopenshell_feature_remove_filling(ifcopenshell_file_t* file, ifcopenshell
  * @param axis Ordered XY or XYZ points defining the axis curve.
  * @return IfcShapeRepresentation entity, or no result if creation fails.
  */
-bool ifcopenshell_geometry_add_axis_representation(ifcopenshell_file_t* file, ifcopenshell_instance_t* context, const ifcopenshell_double_list_list_t* axis, ifcopenshell_instance_t** out_result);
+bool ifcopenshell_geometry_add_axis_representation(ifcopenshell_file_t* file, ifcopenshell_instance_t* context, const ifcopenshell_double_list_list_any_2_double_list_list_any_3_variant_t* axis, ifcopenshell_instance_t** out_result);
 /**
  * Add boolean operands to a solid representation item.
  *
@@ -3332,7 +3842,15 @@ bool ifcopenshell_geometry_add_footprint_representation(ifcopenshell_file_t* fil
  *
  * @param file IFC file that receives the representation.
  * @param context IfcGeometricRepresentationContext.
- * @param options Vertices, faces, and optional faceted BRep override.
+ * Each item binds its vertex list to its faces. Face indices are zero-based.
+ * Polygonal face sets support optional inner loops; IFC2X3 and forced faceted
+ * BReps reject inner loops. Edges without faces are not supported upstream and
+ * are intentionally absent from this native contract.
+ *
+ * Vertices are divided by unit_scale, then coordinate_offset (in project
+ * units) is added. If omitted, unit_scale is calculated from the file.
+ *
+ * @param options Mesh items, coordinate conversion, and optional faceted BRep override.
  * @return IfcShapeRepresentation entity, or no result if creation fails.
  */
 bool ifcopenshell_geometry_add_mesh_representation(ifcopenshell_file_t* file, ifcopenshell_instance_t* context, const ifcopenshell_geometry_add_mesh_representation_options_t* options, ifcopenshell_instance_t** out_result);
@@ -3398,7 +3916,7 @@ bool ifcopenshell_geometry_add_wall_representation(ifcopenshell_file_t* file, co
  * Create a window representation with lining and panel geometry.
  *
  * @param file IFC file that receives the representation.
- * @param options Window dimensions, panel schema, lining/panel properties.
+ * @param options Window dimensions, partition type, and semantic lining/panel properties.
  * @return IfcShapeRepresentation entity, or no result if creation fails.
  */
 bool ifcopenshell_geometry_add_window_representation(ifcopenshell_file_t* file, const ifcopenshell_geometry_add_window_representation_options_t* options, ifcopenshell_instance_t** out_result);
@@ -5538,15 +6056,11 @@ bool ifcopenshell_shape_builder_half_space_solid(ifcopenshell_file_t* file, cons
 /**
  * Create a 2D IfcIndexedPolyCurve from explicit points and segment indices.
  *
- * Segments with two indices are line segments; segments with three indices
- * are arc segments.
- *
  * @param file IFC file that receives the geometry.
- * @param points XY coordinates for the point list.
- * @param segments Segment index arrays (1-based).
+ * @param options XY points and explicit zero-based line or arc segments.
  * @return IfcIndexedPolyCurve entity.
  */
-bool ifcopenshell_shape_builder_indexed_polycurve_2d(ifcopenshell_file_t* file, const ifcopenshell_double_list_list_t* points, const ifcopenshell_int32_list_list_t* segments, ifcopenshell_instance_t** out_result);
+bool ifcopenshell_shape_builder_indexed_polycurve_2d(ifcopenshell_file_t* file, const ifcopenshell_shape_builder_indexed_polycurve2d_options_t* options, ifcopenshell_instance_t** out_result);
 /**
  * Build MEP bend geometry for a duct segment.
  *
@@ -5636,7 +6150,7 @@ bool ifcopenshell_shape_builder_polygonal_face_set(ifcopenshell_file_t* file, co
  * Create a 2D or 3D polyline (IfcPolyline for IFC2X3, IfcIndexedPolyCurve otherwise).
  *
  * @param file IFC file that receives the geometry.
- * @param options Points, closure, offset, and arc segment indices.
+ * @param options Points, optional offset, and explicit semantic segments.
  * @return IfcPolyline or IfcIndexedPolyCurve entity.
  */
 bool ifcopenshell_shape_builder_polyline(ifcopenshell_file_t* file, const ifcopenshell_shape_builder_polyline_options_t* options, ifcopenshell_instance_t** out_result);
@@ -5681,7 +6195,7 @@ bool ifcopenshell_shape_builder_rotate(ifcopenshell_file_t* file, const ifcopens
  * @param coords Replacement coordinates.
  * @return The modified polyline entity.
  */
-bool ifcopenshell_shape_builder_set_polyline_coords(ifcopenshell_file_t* file, ifcopenshell_instance_t* polyline, const ifcopenshell_double_list_list_t* coords, ifcopenshell_instance_t** out_result);
+bool ifcopenshell_shape_builder_set_polyline_coords(ifcopenshell_file_t* file, ifcopenshell_instance_t* polyline, const ifcopenshell_double_list_list_any_2_double_list_list_any_3_variant_t* coords, ifcopenshell_instance_t** out_result);
 /**
  * Create an IfcSphere.
  *

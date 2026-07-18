@@ -12,6 +12,7 @@ int ifcapi_run_unit_smoke_tests(void);
 int ifcapi_run_resource_smoke_tests(void);
 int ifcapi_run_nest_smoke_tests(void);
 int ifcapi_run_geometry_smoke_tests(void);
+int ifcapi_run_shape_builder_smoke_tests(void);
 int ifcapi_run_alignment_smoke_tests(void);
 int ifcapi_run_pset_template_cogo_library_smoke_tests(void);
 int ifcapi_run_edit_wrapper_smoke_tests(void);
@@ -29,6 +30,7 @@ int main(void) {
     failures += ifcapi_run_resource_smoke_tests();
     failures += ifcapi_run_nest_smoke_tests();
     failures += ifcapi_run_geometry_smoke_tests();
+    failures += ifcapi_run_shape_builder_smoke_tests();
     failures += ifcapi_run_alignment_smoke_tests();
     failures += ifcapi_run_pset_template_cogo_library_smoke_tests();
     failures += ifcapi_run_edit_wrapper_smoke_tests();

@@ -19,15 +19,7 @@
 from __future__ import annotations
 
 import dataclasses
-from math import cos, radians
-from typing import Any, Literal, Optional, Union, get_args, overload
-
-import numpy as np
-
-import ifcopenshell.api.geometry
-import ifcopenshell.util.unit
-from ifcopenshell.api.geometry.add_window_representation import create_ifc_window
-from ifcopenshell.util.shape_builder import ShapeBuilder, V
+from typing import Any, Literal, Optional, Union, get_args
 
 from . import _capi
 
@@ -67,52 +59,6 @@ def mm(x: float) -> float:
     return x / 1000
 
 
-def create_ifc_door_lining(
-    builder: ShapeBuilder, size: np.ndarray, thickness: Union[list[float], float], position: Optional[np.ndarray] = None
-) -> ifcopenshell.entity_instance:
-    """`thickness` of the profile is defined as list in the following order: `(SIDE, TOP)`
-
-    `thickness` can be also defined just as 1 float value.
-    """
-    np_X, np_Y, np_Z = 0, 1, 2
-    np_XZ = [0, 2]
-    if not isinstance(thickness, list):
-        thickness = [thickness, thickness]
-
-    th_side, th_up = thickness
-
-    points = V(
-        [
-            (0.0, 0.0, 0.0),
-            (0.0, 0.0, size[np_Z]),
-            (size[np_X], 0.0, size[np_Z]),
-            (size[np_X], 0.0, 0.0),
-            (size[np_X] - th_side, 0.0, 0.0),
-            (size[np_X] - th_side, 0.0, size[np_Z] - th_up),
-            (th_side, 0.0, size[np_Z] - th_up),
-            (th_side, 0.0, 0.0),
-        ]
-    )
-
-    points = points[:, np_XZ]
-    door_lining = builder.polyline(points, closed=True)
-    door_lining = builder.extrude(door_lining, size[np_Y], **builder.extrude_kwargs("Y"))
-    if position is None:
-        position = np.zeros(3)
-    builder.translate(door_lining, position)
-
-    return door_lining
-
-
-def create_ifc_box(
-    builder: ShapeBuilder, size: np.ndarray, position: Optional[np.ndarray] = None
-) -> ifcopenshell.entity_instance:
-    np_Z, np_XY = 2, slice(2)
-    rect = builder.rectangle(size[np_XY])
-    if position is None:
-        position = np.zeros(3)
-    box = builder.extrude(rect, size[np_Z], position=position, extrusion_vector=(0, 0, 1))
-    return box
 
 
 # we use dataclass as we need default values for arguments
@@ -263,451 +209,59 @@ def add_door_representation(
         will be automatically calculated for you.
     :return: IfcShapeRepresentation for a door.
     """
-    usecase = Usecase()
-    usecase.file = file
-    # http://ifc43-docs.standards.buildingsmart.org/IFC/RELEASE/IFC4x3/HTML/lexical/IfcDoor.htm
-    # http://ifc43-docs.standards.buildingsmart.org/IFC/RELEASE/IFC4x3/HTML/lexical/IfcDoorLiningProperties.htm
-    # http://ifc43-docs.standards.buildingsmart.org/IFC/RELEASE/IFC4x3/HTML/lexical/IfcDoorPanelProperties.htm
-    # define unit_scale first as it's going to be used setting default arguments
-    unit_scale = ifcopenshell.util.unit.calculate_unit_scale(file) if unit_scale is None else unit_scale
-    settings: dict[str, Any] = {"unit_scale": unit_scale}
-    si_conversion = 1 / unit_scale
-
-    if lining_properties is None:
-        lining_properties = DoorLiningProperties()
-    elif not isinstance(lining_properties, DoorLiningProperties):
+    if lining_properties is not None and not isinstance(
+        lining_properties, DoorLiningProperties
+    ):
         lining_properties = DoorLiningProperties(**lining_properties)
-    lining_properties.initialize_properties(unit_scale)
-    lining_properties = dataclasses.asdict(lining_properties)
-
-    if panel_properties is None:
-        panel_properties = DoorPanelProperties()
-    elif not isinstance(panel_properties, DoorPanelProperties):
+    if panel_properties is not None and not isinstance(
+        panel_properties, DoorPanelProperties
+    ):
         panel_properties = DoorPanelProperties(**panel_properties)
-    panel_properties.initialize_properties(unit_scale)
-    panel_properties = dataclasses.asdict(panel_properties)
 
-    settings.update(
-        {
-            "context": context,
-            "overall_height": overall_height if overall_height is not None else 2.0 * si_conversion,
-            "overall_width": overall_width if overall_width is not None else 0.9 * si_conversion,
-            "operation_type": operation_type,
-            "lining_properties": lining_properties,
-            "panel_properties": panel_properties,
-            "part_of_product": part_of_product,
+    try:
+        operation_index = SUPPORTED_DOOR_TYPES.index(operation_type)
+    except ValueError as error:
+        raise ValueError(
+            f"Unsupported door operation type: {operation_type}"
+        ) from error
+
+    values: dict[str, Any] = {
+        "context": _capi.instance_handle(context),
+        "operation_type": operation_index,
+    }
+    if overall_height is not None:
+        values["overall_height"] = overall_height
+    if overall_width is not None:
+        values["overall_width"] = overall_width
+    if lining_properties is not None:
+        properties = dataclasses.asdict(lining_properties)
+        values["lining_properties"] = {
+            name[0].lower()
+            + "".join(
+                f"_{char.lower()}" if char.isupper() else char for char in name[1:]
+            ): value
+            for name, value in properties.items()
+            if name in DOOR_LINING_PROPERTY_ORDER and value is not None
         }
-    )
+    if panel_properties is not None:
+        properties = dataclasses.asdict(panel_properties)
+        values["panel_properties"] = {
+            name[0].lower()
+            + "".join(
+                f"_{char.lower()}" if char.isupper() else char for char in name[1:]
+            ): value
+            for name, value in properties.items()
+            if name in DOOR_PANEL_PROPERTY_ORDER and value is not None
+        }
+    if part_of_product is not None:
+        values["part_of_product"] = _capi.instance_handle(part_of_product)
+    if unit_scale is not None:
+        values["unit_scale"] = unit_scale
+
     return _capi.call_handle(
         file,
         "geometry_add_door_representation",
         _capi.file_handle(file),
-        {
-            "context": _capi.instance_handle(context),
-            "overall_height": settings["overall_height"],
-            "overall_width": settings["overall_width"],
-            "operation_type": operation_type,
-            "lining_properties": [lining_properties[name] for name in DOOR_LINING_PROPERTY_ORDER],
-            "panel_properties": [panel_properties[name] for name in DOOR_PANEL_PROPERTY_ORDER],
-            "part_of_product": _capi.instance_handle(part_of_product),
-            "unit_scale": unit_scale,
-        },
+        values,
         nullable=True,
     )
-
-
-class Usecase:
-    file: ifcopenshell.file
-    settings: dict[str, Any]
-
-    def execute(self) -> Union[ifcopenshell.entity_instance, None]:
-        builder = ShapeBuilder(self.file)
-
-        np_X, np_Y, np_Z = 0, 1, 2
-        np_XY = slice(2)
-        np_YX = [1, 0]
-
-        overall_height: float = self.settings["overall_height"]
-        overall_width: float = self.settings["overall_width"]
-        door_type: DOOR_TYPE = self.settings["operation_type"]
-        double_swing_door = "DOUBLE_SWING" in door_type
-        double_door = "DOUBLE_DOOR" in door_type
-        sliding_door = "SLIDING" in door_type
-
-        if self.settings["context"].TargetView == "ELEVATION_VIEW":
-            rect = builder.rectangle((overall_width, 0, overall_height))
-            representation_evelevation = builder.get_representation(self.settings["context"], rect)
-            return representation_evelevation
-
-        panel_props = self.settings["panel_properties"]
-        lining_props = self.settings["lining_properties"]
-
-        # lining params
-        lining_depth: float = lining_props["LiningDepth"]
-        lining_thickness_default: float = lining_props["LiningThickness"]
-        lining_offset: float = lining_props["LiningOffset"]
-        lining_to_panel_offset_x: float = (
-            lining_props["LiningToPanelOffsetX"] if not sliding_door else lining_thickness_default
-        )
-        panel_depth: float = panel_props["PanelDepth"]
-        lining_to_panel_offset_y_full: float = (
-            lining_props["LiningToPanelOffsetY"] if not sliding_door else -panel_depth
-        )
-
-        transom_thickness: float = lining_props["TransomThickness"] / 2
-        transfom_offset: float = lining_props["TransomOffset"]
-        if transom_thickness == 0:
-            transfom_offset = 0
-        window_lining_height = overall_height - transfom_offset - transom_thickness
-
-        side_lining_thickness = lining_thickness_default
-        panel_lining_overlap_x = max(lining_thickness_default - lining_to_panel_offset_x, 0) if not sliding_door else 0
-
-        top_lining_thickness = transom_thickness or lining_thickness_default
-        panel_top_lining_overlap_x = max(top_lining_thickness - lining_to_panel_offset_x, 0) if not sliding_door else 0
-        door_opening_width = overall_width - lining_to_panel_offset_x * 2
-        if double_swing_door:
-            side_lining_thickness = side_lining_thickness - panel_lining_overlap_x
-            top_lining_thickness = top_lining_thickness - panel_top_lining_overlap_x
-
-        threshold_thickness: float = lining_props["ThresholdThickness"]
-        threshold_depth: float = lining_props["ThresholdDepth"]
-        threshold_offset: float = lining_props["ThresholdOffset"]
-        threshold_width = overall_width - side_lining_thickness * 2
-
-        casing_thickness: float = lining_props["CasingThickness"]
-        casing_depth: float = lining_props["CasingDepth"]
-
-        # panel params
-        panel_width: float = door_opening_width * panel_props["PanelWidth"]
-        frame_depth: float = panel_props["FrameDepth"]
-        frame_thickness: float = panel_props["FrameThickness"]
-        frame_height = window_lining_height - lining_to_panel_offset_x * 2
-        glass_thickness = self.convert_si_to_unit(0.01)
-
-        # handle dimensions (hardcoded)
-        handle_size = self.convert_si_to_unit(V(120, 40, 20) * 0.001)
-        handle_offset = self.convert_si_to_unit(V(60, 0, 1000) * 0.001)  # to the handle center
-        handle_center_offset = V(handle_size[np_Y] / 2, 0, handle_size[np_Z]) / 2
-        slider_arrow_symbol_size = self.convert_si_to_unit(30 * 0.001)
-
-        if transfom_offset:
-            panel_height = transfom_offset + transom_thickness - lining_to_panel_offset_x - threshold_thickness
-            lining_height = transfom_offset + transom_thickness
-        else:
-            panel_height = overall_height - lining_to_panel_offset_x - threshold_thickness
-            lining_height = overall_height
-
-        # add lining
-        lining_size = V(overall_width, lining_depth, lining_height)
-        lining_thickness = [side_lining_thickness, top_lining_thickness]
-
-        def l_shape_check(lining_thickness: list[float]) -> bool:
-            return lining_to_panel_offset_y_full < lining_depth and any(
-                lining_to_panel_offset_x < th for th in lining_thickness
-            )
-
-        # create 2d representation
-        if self.settings["context"].TargetView == "PLAN_VIEW":
-            items_2d: list[ifcopenshell.entity_instance] = []
-            panel_size = V(panel_width, panel_depth)
-            if not sliding_door:
-                panel_position = V(lining_to_panel_offset_x, lining_depth)
-            else:
-                panel_position = V(lining_to_panel_offset_x, -panel_size[np_Y])
-
-            if self.settings["context"].ContextIdentifier == "Annotation":
-                # only sliding door has annotation representation
-                if not sliding_door:
-                    return None
-
-                # arrow symbol
-                arrow_symbol: list[ifcopenshell.entity_instance] = []
-                arrow_offset = slider_arrow_symbol_size / cos(radians(15))
-                arrow_symbol.append(
-                    builder.polyline(
-                        points=((0.35 * panel_size[np_X], 0), (0.65 * panel_size[np_X], 0)),
-                    )
-                )
-                arrow_symbol.append(
-                    builder.polyline(
-                        points=(
-                            (slider_arrow_symbol_size, arrow_offset),
-                            (0, 0),
-                            (slider_arrow_symbol_size, -arrow_offset),
-                        ),
-                        position_offset=(0.35 * panel_size[np_X], 0),
-                    )
-                )
-
-                builder.translate(arrow_symbol, panel_position + (0, -arrow_offset * 1.5))
-
-                items_2d.extend(arrow_symbol)
-
-                representation_2d = builder.get_representation(self.settings["context"], items_2d, "Curve2D")
-                return representation_2d
-
-            door_items: list[ifcopenshell.entity_instance] = []
-            # create lining
-            if l_shape_check([side_lining_thickness]):
-                lining_points = [
-                    (0, 0),
-                    (0, lining_depth),
-                    (lining_to_panel_offset_x, lining_depth),
-                    (lining_to_panel_offset_x, lining_to_panel_offset_y_full),
-                    (lining_thickness_default, lining_to_panel_offset_y_full),
-                    (lining_thickness_default, 0),
-                ]
-                lining = builder.polyline(lining_points, closed=True)
-            else:
-                lining = builder.rectangle((side_lining_thickness, lining_depth))
-
-            items_2d.append(lining)
-            items_2d.append(
-                builder.mirror(lining, mirror_axes=V(1, 0), mirror_point=V(overall_width / 2, 0), create_copy=True)
-            )
-
-            # TODO: make second swing lines dashed
-            def create_ifc_door_panel_2d(
-                panel_size: np.ndarray,
-                panel_position: np.ndarray,
-                door_swing_type: Literal["LEFT", "RIGHT"],
-                sliding: bool = False,
-            ) -> list[ifcopenshell.entity_instance]:
-                if sliding:
-                    return create_ifc_door_sliding_panel_2d(panel_size, panel_position, door_swing_type)
-
-                door_items: list[ifcopenshell.entity_instance] = []
-                panel_size = panel_size[np_YX]
-                # create semi-semi-circle
-                if double_swing_door:
-                    trim_points_mask = (3, 1)
-                    second_swing_line = builder.polyline(
-                        points=(
-                            (0, 0),
-                            (0, -panel_size[np_Y]),
-                            (panel_size[np_X], -panel_size[np_Y]),
-                        )
-                    )
-                    door_items.append(second_swing_line)
-                else:
-                    trim_points_mask = (0, 1)
-                semicircle = builder.create_ellipse_curve(
-                    panel_size[np_Y] - panel_size[np_X],
-                    panel_size[np_Y],
-                    trim_points_mask=trim_points_mask,
-                    position=(panel_size[np_X], 0),
-                )
-                door_items.append(semicircle)
-
-                # create door
-                door = builder.rectangle(panel_size)
-                door_items.append(door)
-
-                builder.translate(door_items, panel_position)
-
-                if door_swing_type == "RIGHT":
-                    mirror_point = panel_position + (panel_size[np_Y] / 2, 0)
-                    builder.mirror(door_items, mirror_axes=(1, 0), mirror_point=mirror_point)
-                return door_items
-
-            def create_ifc_door_sliding_panel_2d(
-                panel_size: np.ndarray, panel_position: np.ndarray, door_swing_type: Literal["LEFT", "RIGHT"]
-            ) -> list[ifcopenshell.entity_instance]:
-                door = builder.rectangle(panel_size, position=panel_position - (panel_size[np_X] * 0.5, 0))
-
-                if door_swing_type == "RIGHT":
-                    mirror_point = panel_position + (panel_size[np_X] / 2, 0)
-                    builder.mirror(door, mirror_axes=(1, 0), mirror_point=mirror_point)
-                return [door]
-
-            door_items: list[ifcopenshell.entity_instance] = []
-            if double_door:
-                panel_size[np_X] = panel_size[np_X] / 2
-                door_items.extend(create_ifc_door_panel_2d(panel_size, panel_position, "LEFT", sliding_door))
-
-                mirror_point = panel_position + V(door_opening_width / 2, 0)
-                door_items.extend(
-                    builder.mirror(door_items, mirror_axes=(1, 0), mirror_point=mirror_point, create_copy=True)
-                )
-            else:
-                door_swing_type = "LEFT" if door_type.endswith("LEFT") else "RIGHT"
-                door_items.extend(create_ifc_door_panel_2d(panel_size, panel_position, door_swing_type, sliding_door))
-            items_2d.extend(door_items)
-
-            builder.translate(items_2d, (0, lining_offset))
-            representation_2d = builder.get_representation(self.settings["context"], items_2d)
-            return representation_2d
-
-        lining_items: list[ifcopenshell.entity_instance] = []
-        main_lining_size = lining_size
-
-        # need to check offsets to decide whether lining should be rectangle
-        # or L shaped
-        if l_shape_check(lining_thickness):
-            main_lining_size = lining_size.copy()
-            main_lining_size[np_Y] = lining_to_panel_offset_y_full
-
-            second_lining_size = lining_size.copy()
-            second_lining_size[np_Y] = lining_size[np_Y] - lining_to_panel_offset_y_full
-            second_lining_position = V(0, lining_to_panel_offset_y_full, 0)
-            second_lining_thickness = [min(th, lining_to_panel_offset_x) for th in lining_thickness]
-
-            second_lining = create_ifc_door_lining(
-                builder, second_lining_size, second_lining_thickness, second_lining_position
-            )
-            lining_items.append(second_lining)
-
-        main_lining = create_ifc_door_lining(builder, main_lining_size, lining_thickness)
-        lining_items.append(main_lining)
-
-        # add threshold
-        threshold_items: list[ifcopenshell.entity_instance]
-        if not threshold_thickness:
-            threshold_items = []
-        else:
-            threshold_size = V(threshold_width, threshold_depth, threshold_thickness)
-            threshold_position = V(side_lining_thickness, threshold_offset, 0)
-            threshold_items = [create_ifc_box(builder, threshold_size, threshold_position)]
-
-        # add casings
-        casing_items: list[ifcopenshell.entity_instance] = []
-        if not lining_offset and casing_thickness:
-            casing_wall_overlap = max(casing_thickness - lining_thickness_default, 0)
-            inner_casing_thickness = [
-                casing_thickness - panel_lining_overlap_x,
-                casing_thickness - panel_top_lining_overlap_x,
-            ]
-            outer_casing_thickness = inner_casing_thickness.copy() if double_swing_door else casing_thickness
-
-            casing_size = V(overall_width + casing_wall_overlap * 2, casing_depth, overall_height + casing_wall_overlap)
-            casing_position = V(-casing_wall_overlap, -casing_depth, 0)
-            outer_casing = create_ifc_door_lining(builder, casing_size, outer_casing_thickness, casing_position)
-            casing_items.append(outer_casing)
-
-            inner_casing_position = V(-casing_wall_overlap, lining_depth, 0)
-            inner_casing = create_ifc_door_lining(builder, casing_size, inner_casing_thickness, inner_casing_position)
-            casing_items.append(inner_casing)
-
-        def create_ifc_door_panel(
-            panel_size: np.ndarray, panel_position: np.ndarray, door_swing_type: Literal["LEFT", "RIGHT"]
-        ) -> list[ifcopenshell.entity_instance]:
-            door_items: list[ifcopenshell.entity_instance] = []
-            # add door panel
-            door_items.append(create_ifc_box(builder, panel_size, panel_position))
-            # add door handle
-            handle_points = [
-                (0, 0),
-                (0, -handle_size[np_Y]),
-                (handle_size[np_X], -handle_size[np_Y]),
-                (handle_size[np_X], -handle_size[np_Y] / 2),
-                (handle_size[np_Y] / 2, -handle_size[np_Y] / 2),
-                (handle_size[np_Y] / 2, 0),
-            ]
-            handle_polyline = builder.polyline(handle_points, closed=True)
-
-            handle_position = panel_position + handle_offset - handle_center_offset
-
-            door_handle = builder.extrude(handle_polyline, handle_size[np_Z], position=handle_position)
-            door_items.append(door_handle)
-
-            if door_swing_type == "LEFT":
-                builder.mirror(
-                    door_handle, mirror_axes=(1, 0), mirror_point=panel_position[np_XY] + (panel_size[np_X] / 2, 0)
-                )
-
-            door_handle_mirrored = builder.mirror(
-                door_handle,
-                mirror_axes=(0, 1),
-                mirror_point=handle_position[np_XY] + (0, panel_size[np_Y] / 2),
-                create_copy=True,
-            )
-            door_items.append(door_handle_mirrored)
-            return door_items
-
-        door_items: list[ifcopenshell.entity_instance] = []
-        panel_size = V(panel_width, panel_depth, panel_height)
-        panel_position = V(lining_to_panel_offset_x, lining_to_panel_offset_y_full, threshold_thickness)
-
-        if double_door:
-            # keeping a little space between doors for readibility
-            double_door_offset = self.convert_si_to_unit(0.001)
-            panel_size[np_X] = panel_size[np_X] / 2 - double_door_offset
-            door_items.extend(create_ifc_door_panel(panel_size, panel_position, "LEFT"))
-
-            mirror_point = panel_position + V(door_opening_width / 2, 0, 0)
-            door_items.extend(
-                builder.mirror(door_items, mirror_axes=(1, 0), mirror_point=mirror_point[np_XY], create_copy=True)
-            )
-        else:
-            door_swing_type = "LEFT" if door_type.endswith("LEFT") else "RIGHT"
-            door_items.extend(create_ifc_door_panel(panel_size, panel_position, door_swing_type))
-
-        # add on top window
-        if not transom_thickness:
-            window_lining_items = []
-            frame_items = []
-            glass_items = []
-        else:
-            window_lining_thickness = [
-                side_lining_thickness,
-                lining_thickness_default,
-                side_lining_thickness,
-                transom_thickness,
-            ]
-            window_lining_size = V(overall_width, lining_depth, window_lining_height)
-            window_position = V(0, 0, overall_height - window_lining_height)
-            frame_size = V(door_opening_width, frame_depth, frame_height)
-            current_window_items = create_ifc_window(
-                builder,
-                window_lining_size,
-                window_lining_thickness,
-                lining_to_panel_offset_x,
-                lining_to_panel_offset_y_full,
-                frame_size,
-                frame_thickness,
-                glass_thickness,
-                window_position,
-            )
-            window_lining_items = current_window_items["Lining"]
-            frame_items = current_window_items["Framing"]
-            glass_items = current_window_items["Glazing"]
-
-        lining_offset_items = lining_items + door_items + window_lining_items + frame_items + glass_items
-        builder.translate(lining_offset_items, (0, lining_offset, 0))
-
-        output_items = lining_offset_items + threshold_items + casing_items
-
-        representation = builder.get_representation(self.settings["context"], output_items)
-        if self.settings["part_of_product"]:
-            ifcopenshell.api.geometry.add_shape_aspect(
-                self.file,
-                "Lining",
-                items=lining_items + window_lining_items + threshold_items + casing_items,
-                representation=representation,
-                part_of_product=self.settings["part_of_product"],
-            )
-            ifcopenshell.api.geometry.add_shape_aspect(
-                self.file,
-                "Framing",
-                items=door_items + frame_items,
-                representation=representation,
-                part_of_product=self.settings["part_of_product"],
-            )
-            if glass_items:
-                ifcopenshell.api.geometry.add_shape_aspect(
-                    self.file,
-                    "Glazing",
-                    items=glass_items,
-                    representation=representation,
-                    part_of_product=self.settings["part_of_product"],
-                )
-        return representation
-
-    @overload
-    def convert_si_to_unit(self, value: float) -> float: ...
-    @overload
-    def convert_si_to_unit(self, value: np.ndarray) -> np.ndarray: ...
-    def convert_si_to_unit(self, value: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
-        si_conversion = 1 / self.settings["unit_scale"]
-        return value * si_conversion

@@ -285,11 +285,19 @@ def _record_node(cursor, kinds) -> dict:
                 "isDeleted": child.is_deleted_method(),
             }
         else:
+            tokens = [token.spelling for token in child.get_tokens()]
+            try:
+                name_index = tokens.index(child.spelling)
+            except ValueError:
+                name_index = len(tokens)
             node = {
                 "kind": "FieldDecl",
                 "name": child.spelling,
                 "type": _type_info(child.type, current_scope),
                 "doc": _clean_comment(child.raw_comment),
+                "hasInitializer": any(
+                    token in {"=", "{"} for token in tokens[name_index + 1 :]
+                ),
             }
         inner.append(node)
     return {
@@ -383,6 +391,15 @@ def parse_translation_unit(command) -> ParsedTranslationUnit:
                     "qualifiedName": "::".join(
                         item for item in (parent_name, cursor.spelling) if item
                     ),
+                    "inner": [
+                        {
+                            "kind": "EnumConstantDecl",
+                            "name": child.spelling,
+                            "value": child.enum_value,
+                        }
+                        for child in cursor.get_children()
+                        if _kind_id(child) == kinds.ENUM_CONSTANT_DECL.value
+                    ],
                 }
             )
         elif kind in {kinds.TYPEDEF_DECL.value, kinds.TYPE_ALIAS_DECL.value}:

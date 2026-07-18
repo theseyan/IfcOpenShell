@@ -1028,10 +1028,9 @@ int do_set(ifcopenshell::file* file,
                     if (ifcapi::bindings::shape_is_almost_equal(newv, prev, 0.0)) return 0;
 
                     matrix[(size_t)ci * 4 + 3] = newv;
-                    std::vector<double> matrix_values(matrix.begin(), matrix.end());
                     ifcapi::bindings::geometry_edit_object_placement(
                         file_h ? file_h->ptr : nullptr,
-                        ifcapi::bindings::GeometryEditObjectPlacementOptions{cur.inst, matrix_values, false, true});
+                        ifcapi::bindings::GeometryEditObjectPlacementOptions{cur.inst, matrix, false, true});
                     return 0;
                 }
             }

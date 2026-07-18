@@ -4,6 +4,7 @@
 #define IFCAPI_BINDINGS_BOUNDARY_H
 
 #include "ifcapi/bindings/contract.h"
+#include "ifcapi/bindings/types.h"
 
 #include "ifcparse/express.h"
 #include "ifcparse/file.h"
@@ -31,15 +32,15 @@ IFCAPI_BINDING express::Base boundary_copy_boundary(
  */
 struct BoundaryAssignConnectionGeometryOptions {
     /// Outer boundary of the connection plane, in SI metres and converted to project units using unit_scale.
-    std::vector<std::vector<double>> outer_boundary;
+    std::vector<std::array<double, 2>> outer_boundary;
     /// Origin of the connection plane relative to the bounded space, in SI metres and converted to project units using unit_scale.
-    std::vector<double> location;
+    std::array<double, 3> location;
     /// Local axis direction of the connection plane.
-    std::vector<double> axis;
+    std::array<double, 3> axis;
     /// Local reference direction of the connection plane.
-    std::vector<double> ref_direction;
+    std::array<double, 3> ref_direction;
     /// Inner boundaries representing openings in the connection plane, in SI metres and converted to project units using unit_scale.
-    std::vector<std::vector<std::vector<double>>> inner_boundaries;
+    std::vector<std::vector<std::array<double, 2>>> inner_boundaries;
     /// Scale that converts model units to SI units.
     double unit_scale = 1.0;
 };

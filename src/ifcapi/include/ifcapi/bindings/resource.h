@@ -39,7 +39,9 @@ IFCAPI_BINDING express::Base resource_add_resource(ifcopenshell::file* file, con
  * with distinct stable codes; diagnostic messages must not be parsed.
  */
 IFCAPI_BINDING express::Base resource_add_resource_quantity(
-    ifcopenshell::file* file, express::Base* resource, const std::string& ifc_class = "IfcQuantityCount");
+    ifcopenshell::file* file,
+    express::Base* resource,
+    std::optional<std::string> ifc_class = std::nullopt);
 
 /** Create an IfcResourceTime and replace the resource Usage reference. */
 IFCAPI_BINDING express::Base resource_add_resource_time(ifcopenshell::file* file, express::Base* resource);

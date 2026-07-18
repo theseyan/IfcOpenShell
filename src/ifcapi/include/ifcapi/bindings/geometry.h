@@ -4,26 +4,62 @@
 #define IFCAPI_BINDINGS_GEOMETRY_H
 
 #include "ifcapi/bindings/contract.h"
+#include "ifcapi/bindings/types.h"
 
 #include "ifcparse/express.h"
 #include "ifcparse/file.h"
 
+#include <array>
 #include <cstdint>
 #include <optional>
 #include <string>
+#include <variant>
 #include <vector>
 
 namespace ifcapi {
 namespace bindings {
 
-/**
- * Mesh item data for creating an IFC shape representation.
- */
+/** A clipping half-space plane in SI metres. */
+struct GeometryPlaneClipping {
+    /// Point on the clipping plane, in SI metres.
+    std::array<double, 3> location;
+    /// Plane normal pointing towards the material to discard.
+    std::array<double, 3> normal;
+};
+
+/** A pre-existing boolean clipping entity that will be copied before use. */
+struct GeometryEntityClipping {
+    /// IfcBooleanClippingResult (or compatible boolean result) to copy.
+    express::Base entity;
+};
+
+/** Ordered semantic clipping definition. */
+using GeometryClipping = std::variant<GeometryPlaneClipping, GeometryEntityClipping>;
+
+/** One polygonal mesh face, expressed with zero-based vertex indices. */
+struct GeometryMeshFace {
+    /// Outer boundary loop. At least three indices are required.
+    std::vector<std::uint32_t> outer;
+    /// Optional inner boundary loops. Each loop requires at least three indices.
+    std::optional<std::vector<std::vector<std::uint32_t>>> inner_loops;
+};
+
+/** Vertices and faces for one IFC representation item. */
+struct GeometryMeshItem {
+    /// XYZ vertex coordinates in the units described by unit_scale.
+    std::vector<std::array<double, 3>> vertices;
+    /// Faces referencing this item's vertices.
+    std::vector<GeometryMeshFace> faces;
+};
+
+/** Mesh representation input and coordinate conversion options. */
 struct GeometryAddMeshRepresentationOptions {
-    /// Vertices for each mesh item. Each point is an XYZ coordinate.
-    std::vector<std::vector<std::vector<double>>> vertices;
-    /// Faces for each mesh item. Each face may contain one outer loop and optional inner loops.
-    std::vector<std::vector<std::vector<std::vector<int>>>> faces;
+    /// Ordered representation items. At least one item is required.
+    std::vector<GeometryMeshItem> items;
+    /// Optional XYZ offset applied after unit conversion, in project units.
+    std::optional<std::array<double, 3>> coordinate_offset;
+    /// Vertex-unit scale relative to SI. Defaults to the file length-unit scale.
+    std::optional<double> unit_scale;
     /// Force faceted BRep output instead of tessellated face sets. Defaults to false.
     std::optional<bool> force_faceted_brep;
 };
@@ -65,21 +101,15 @@ struct GeometryAddSlabRepresentationOptions {
     /// IfcGeometricRepresentationContext for the representation.
     express::Base context;
     /// Slab depth (thickness) in SI metres.
-    double depth = 0.0;
+    std::optional<double> depth;
     /// Extrusion direction sense: "POSITIVE" or "NEGATIVE".
-    std::string direction_sense;
+    std::optional<std::string> direction_sense;
     /// Offset from the reference plane along the extrusion direction, in SI metres.
-    double offset = 0.0;
+    std::optional<double> offset;
     /// Angle of the extrusion direction from vertical, in radians.
-    double x_angle = 0.0;
-    /// Clipping plane types: 0 = plane, 1 = entity.
-    std::vector<int32_t> clipping_kinds;
-    /// Clipping plane locations in SI metres (one XYZ point per plane-kind clipping).
-    std::vector<std::vector<double>> clipping_locations;
-    /// Clipping plane normals (one direction per plane-kind clipping).
-    std::vector<std::vector<double>> clipping_normals;
-    /// Pre-existing boolean clipping entities (used for entity-kind clippings).
-    std::vector<express::Base> clipping_entities;
+    std::optional<double> x_angle;
+    /// Ordered plane or entity clippings. Defaults to no clippings.
+    std::optional<std::vector<GeometryClipping>> clippings;
     /// Optional outer boundary polyline in SI metres. Defaults to a unit square when omitted.
     std::optional<std::vector<std::vector<double>>> polyline;
 };
@@ -91,27 +121,21 @@ struct GeometryAddWallRepresentationOptions {
     /// IfcGeometricRepresentationContext for the representation.
     express::Base context;
     /// Wall length in SI metres.
-    double length = 0.0;
+    std::optional<double> length;
     /// Wall height in SI metres.
-    double height = 0.0;
+    std::optional<double> height;
     /// Extrusion direction sense: "POSITIVE" or "NEGATIVE".
-    std::string direction_sense;
+    std::optional<std::string> direction_sense;
     /// Offset from the reference plane along the extrusion direction, in SI metres.
-    double offset = 0.0;
+    std::optional<double> offset;
     /// Wall thickness in SI metres.
-    double thickness = 0.0;
+    std::optional<double> thickness;
     /// Angle of the extrusion direction from vertical, in radians.
-    double x_angle = 0.0;
-    /// Clipping plane types: 0 = plane, 1 = entity.
-    std::vector<int32_t> clipping_kinds;
-    /// Clipping plane locations in SI metres (one XYZ point per plane-kind clipping).
-    std::vector<std::vector<double>> clipping_locations;
-    /// Clipping plane normals (one direction per plane-kind clipping).
-    std::vector<std::vector<double>> clipping_normals;
-    /// Pre-existing boolean clipping entities (used for entity-kind clippings).
-    std::vector<express::Base> clipping_entities;
-    /// Pre-existing boolean operand entities applied before clippings.
-    std::vector<express::Base> booleans;
+    std::optional<double> x_angle;
+    /// Ordered plane or entity clippings. Defaults to no clippings.
+    std::optional<std::vector<GeometryClipping>> clippings;
+    /// Pre-existing boolean operand entities applied before clippings. Defaults to empty.
+    std::optional<std::vector<express::Base>> booleans;
 };
 
 /**
@@ -123,21 +147,15 @@ struct GeometryAddProfileRepresentationOptions {
     /// IfcProfileDef to extrude.
     express::Base profile;
     /// Extrusion depth in SI metres.
-    double depth = 1.0;
-    /// Canonical cardinal-point name; when omitted, the profile origin is used.
+    std::optional<double> depth;
+    /// Canonical cardinal-point name. Defaults to "mid-depth centre".
     std::optional<std::string> cardinal_point;
     /// Optional placement Z axis; defaults to (0, 0, 1) when omitted.
-    std::optional<std::vector<double>> placement_z_axis;
+    std::optional<std::array<double, 3>> placement_z_axis;
     /// Optional placement X axis; defaults to (1, 0, 0) when omitted.
-    std::optional<std::vector<double>> placement_x_axis;
-    /// Clipping kinds in input order: 0 = plane, 1 = pre-existing entity.
-    std::vector<int32_t> clipping_kinds;
-    /// Plane clipping locations in SI metres, in plane-only order.
-    std::vector<std::vector<double>> clipping_locations;
-    /// Plane clipping normals, in the same order as clipping_locations.
-    std::vector<std::vector<double>> clipping_normals;
-    /// Pre-existing clipping entities, in entity-only input order; each is copied before use.
-    std::vector<express::Base> clipping_entities;
+    std::optional<std::array<double, 3>> placement_x_axis;
+    /// Ordered plane or entity clippings. Defaults to no clippings.
+    std::optional<std::vector<GeometryClipping>> clippings;
 };
 
 /**
@@ -149,9 +167,9 @@ struct GeometryCreate2PtWallOptions {
     /// IfcGeometricRepresentationContext for the body representation.
     express::Base context;
     /// XY start point of the wall baseline.
-    std::vector<double> start;
+    std::array<double, 2> start;
     /// XY end point of the wall baseline.
-    std::vector<double> end;
+    std::array<double, 2> end;
     /// Wall base elevation in SI metres (or model units when is_si is false).
     double elevation = 0.0;
     /// Wall height in SI metres (or model units when is_si is false).
@@ -194,48 +212,115 @@ struct GeometryRegenerateWallRepresentationOptions {
     std::optional<double> angle;
 };
 
-/**
- * Options for creating a window representation.
- */
+/** Supported window panel partition layouts. */
+enum class GeometryWindowPartitionType {
+    SINGLE_PANEL,
+    DOUBLE_PANEL_HORIZONTAL,
+    DOUBLE_PANEL_VERTICAL,
+    TRIPLE_PANEL_BOTTOM,
+    TRIPLE_PANEL_HORIZONTAL,
+    TRIPLE_PANEL_LEFT,
+    TRIPLE_PANEL_RIGHT,
+    TRIPLE_PANEL_TOP,
+    TRIPLE_PANEL_VERTICAL,
+};
+
+/** Semantic window lining dimensions in model units. */
+struct GeometryWindowLiningProperties {
+    std::optional<double> lining_depth;
+    std::optional<double> lining_thickness;
+    std::optional<double> lining_offset;
+    std::optional<double> lining_to_panel_offset_x;
+    std::optional<double> lining_to_panel_offset_y;
+    std::optional<double> mullion_thickness;
+    std::optional<double> first_mullion_offset;
+    std::optional<double> second_mullion_offset;
+    std::optional<double> transom_thickness;
+    std::optional<double> first_transom_offset;
+    std::optional<double> second_transom_offset;
+};
+
+/** Semantic dimensions for one window panel in model units. */
+struct GeometryWindowPanelProperties {
+    std::optional<double> frame_depth;
+    std::optional<double> frame_thickness;
+};
+
+/** Options for creating a window representation. */
 struct GeometryAddWindowRepresentationOptions {
     /// IfcGeometricRepresentationContext for the representation.
     express::Base context;
-    /// Overall window height in model units.
-    double overall_height = 0.0;
-    /// Overall window width in model units.
-    double overall_width = 0.0;
-    /// Panel layout schema: each entry is {panel_index, operation_type}.
-    std::vector<std::vector<int>> panel_schema;
-    /// Lining properties as a flat double array.
-    std::vector<double> lining_properties;
-    /// Per-panel properties as arrays of doubles.
-    std::vector<std::vector<double>> panel_properties;
-    /// Optional IfcProductDefinitionShape to attach a shape aspect to.
+    /// Overall window height in model units. Defaults to 0.9 metres.
+    std::optional<double> overall_height = std::nullopt;
+    /// Overall window width in model units. Defaults to 0.6 metres.
+    std::optional<double> overall_width = std::nullopt;
+    /// Window panel partition layout. Defaults to SINGLE_PANEL.
+    std::optional<GeometryWindowPartitionType> partition_type = std::nullopt;
+    /// Optional semantic lining property overrides.
+    std::optional<GeometryWindowLiningProperties> lining_properties = std::nullopt;
+    /// Optional semantic panel property overrides. Omission creates one default panel.
+    std::optional<std::vector<GeometryWindowPanelProperties>> panel_properties = std::nullopt;
+    /// Optional IfcProductDefinitionShape to attach shape aspects to.
     std::optional<express::Base> part_of_product;
-    /// Glass thickness in model units. Defaults to 0.01.
-    double glass_thickness = 0.01;
+    /// Scale factor from model units to SI metres. Calculated from the file when omitted.
+    std::optional<double> unit_scale = std::nullopt;
 };
 
-/**
- * Options for creating a door representation.
- */
+/** Supported door panel operation layouts. */
+enum class GeometryDoorOperationType {
+    SINGLE_SWING_LEFT,
+    SINGLE_SWING_RIGHT,
+    DOUBLE_SWING_RIGHT,
+    DOUBLE_SWING_LEFT,
+    DOUBLE_DOOR_SINGLE_SWING,
+    DOUBLE_DOOR_DOUBLE_SWING,
+    SLIDING_TO_LEFT,
+    SLIDING_TO_RIGHT,
+    DOUBLE_DOOR_SLIDING,
+};
+
+/** Semantic door lining dimensions in model units. */
+struct GeometryDoorLiningProperties {
+    std::optional<double> lining_depth;
+    std::optional<double> lining_thickness;
+    std::optional<double> lining_offset;
+    std::optional<double> lining_to_panel_offset_x;
+    std::optional<double> lining_to_panel_offset_y;
+    std::optional<double> transom_thickness;
+    std::optional<double> transom_offset;
+    std::optional<double> casing_depth;
+    std::optional<double> casing_thickness;
+    std::optional<double> threshold_depth;
+    std::optional<double> threshold_thickness;
+    std::optional<double> threshold_offset;
+};
+
+/** Semantic door panel dimensions in model units. */
+struct GeometryDoorPanelProperties {
+    std::optional<double> panel_depth;
+    std::optional<double> panel_width;
+    std::optional<double> frame_depth;
+    std::optional<double> frame_thickness;
+};
+
+/** Options for creating a door representation. */
 struct GeometryAddDoorRepresentationOptions {
     /// IfcGeometricRepresentationContext for the representation.
     express::Base context;
-    /// Overall door height in model units.
-    double overall_height = 0.0;
-    /// Overall door width in model units.
-    double overall_width = 0.0;
-    /// Door operation type (e.g. "SINGLE_SWING_LEFT", "DOUBLE_SWING").
-    std::string operation_type;
-    /// Lining properties as a flat double array.
-    std::vector<double> lining_properties;
-    /// Panel properties as a flat double array.
-    std::vector<double> panel_properties;
+    /// Overall door height in model units. Defaults to 2 metres.
+    std::optional<double> overall_height = std::nullopt;
+    /// Overall door width in model units. Defaults to 0.9 metres.
+    std::optional<double> overall_width = std::nullopt;
+    /// Door operation layout. Defaults to SINGLE_SWING_LEFT.
+    std::optional<GeometryDoorOperationType> operation_type = std::nullopt;
+    /// Optional semantic lining property overrides.
+    std::optional<GeometryDoorLiningProperties> lining_properties = std::nullopt;
+    /// Optional semantic panel property overrides.
+    std::optional<GeometryDoorPanelProperties> panel_properties = std::nullopt;
     /// Optional IfcProductDefinitionShape to attach a shape aspect to.
     std::optional<express::Base> part_of_product;
-    /// Scale factor from model units to SI metres. Defaults to 1.0.
-    double unit_scale = 1.0;
+    /// Scale factor from model units to SI metres. Calculated from the file when omitted.
+    std::optional<double> unit_scale = std::nullopt;
 };
 
 /** Pure geometry for one wall-mounted handrail support, in project units. */
@@ -269,7 +354,7 @@ struct GeometryWallMountedHandrailResult {
 /** Options for pure wall-mounted handrail computation. */
 struct GeometryComputeWallMountedHandrailOptions {
     /// Required unclosed sequence of finite XYZ points in project units.
-    std::vector<std::vector<double>> railing_path;
+    std::vector<std::array<double, 3>> railing_path;
     /// Required automatic support spacing in project units; unused in manual mode.
     double support_spacing;
     /// Required positive handrail diameter in project units.
@@ -293,7 +378,7 @@ struct GeometryAddRailingRepresentationOptions {
     /// IfcGeometricRepresentationContext for the representation.
     express::Base context;
     /// Optional finite XYZ path. When omitted, uses the documented three-point default path.
-    std::optional<std::vector<std::vector<double>>> railing_path;
+    std::optional<std::vector<std::array<double, 3>>> railing_path;
     /// Optional manual-support mode. Defaults to false.
     std::optional<bool> use_manual_supports;
     /// Optional automatic support spacing; defaults to 1000 mm in project units.
@@ -319,9 +404,9 @@ struct GeometryClipSolidOptions {
     /// Solid item to clip (first operand).
     express::Base item;
     /// XYZ point on the clipping plane, in model units.
-    std::vector<double> location;
+    std::array<double, 3> location;
     /// Direction ratios of the clipping plane normal.
-    std::vector<double> normal;
+    std::array<double, 3> normal;
     /// Optional owning element for BBIM_Boolean tracking.
     std::optional<express::Base> element;
     /// Optional existing IfcOwnerHistory.
@@ -339,13 +424,13 @@ struct GeometryClipSolidBoundedOptions {
     /// Solid item to clip (first operand).
     express::Base item;
     /// XYZ point on the clipping plane, in model units.
-    std::vector<double> location;
+    std::array<double, 3> location;
     /// Direction ratios of the clipping plane normal.
-    std::vector<double> normal;
+    std::array<double, 3> normal;
     /// XY points defining the polygonal boundary of the clipping region.
-    std::vector<std::vector<double>> boundary_points;
+    std::vector<std::array<double, 2>> boundary_points;
     /// XYZ position of the boundary polygon's local origin.
-    std::vector<double> boundary_position;
+    std::array<double, 3> boundary_position;
     /// Optional owning element for BBIM_Boolean tracking.
     std::optional<express::Base> element;
     /// Optional existing IfcOwnerHistory.
@@ -383,7 +468,7 @@ struct GeometryEditObjectPlacementOptions {
     /// Product whose ObjectPlacement to set.
     express::Base product;
     /// 16-element row-major 4x4 transformation matrix.
-    std::vector<double> matrix;
+    std::optional<std::array<double, 16>> matrix;
     /// If true, translation components are in SI metres. Defaults to true.
     bool is_si = true;
     /// If true, child local placements are left unchanged so children move with the parent. If false (default), child world positions are preserved.
@@ -486,7 +571,7 @@ IFCAPI_BINDING std::vector<express::Base> geometry_add_boolean(
 IFCAPI_BINDING express::Base geometry_add_axis_representation(
     ifcopenshell::file* file,
     express::Base* context,
-    const std::vector<std::vector<double>>& axis);
+    const std::variant<std::vector<std::array<double, 2>>, std::vector<std::array<double, 3>>>& axis);
 
 /**
  * Create a footprint representation (GeometricCurveSet) from curves.
@@ -509,7 +594,15 @@ IFCAPI_BINDING express::Base geometry_add_footprint_representation(
  *
  * @param file IFC file that receives the representation.
  * @param context IfcGeometricRepresentationContext.
- * @param options Vertices, faces, and optional faceted BRep override.
+ * Each item binds its vertex list to its faces. Face indices are zero-based.
+ * Polygonal face sets support optional inner loops; IFC2X3 and forced faceted
+ * BReps reject inner loops. Edges without faces are not supported upstream and
+ * are intentionally absent from this native contract.
+ *
+ * Vertices are divided by unit_scale, then coordinate_offset (in project
+ * units) is added. If omitted, unit_scale is calculated from the file.
+ *
+ * @param options Mesh items, coordinate conversion, and optional faceted BRep override.
  * @return IfcShapeRepresentation entity, or no result if creation fails.
  */
 IFCAPI_BINDING express::Base geometry_add_mesh_representation(
@@ -630,7 +723,7 @@ IFCAPI_BINDING express::Base geometry_regenerate_wall_representation(
  * Create a window representation with lining and panel geometry.
  *
  * @param file IFC file that receives the representation.
- * @param options Window dimensions, panel schema, lining/panel properties.
+ * @param options Window dimensions, partition type, and semantic lining/panel properties.
  * @return IfcShapeRepresentation entity, or no result if creation fails.
  */
 IFCAPI_BINDING express::Base geometry_add_window_representation(

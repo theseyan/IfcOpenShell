@@ -66,8 +66,10 @@ describeOrSkip('GeomIterator', () => {
     });
     using wall = shell.api.root.createEntity(transformedFile, { ifcClass: 'IfcWall', name: 'Transformed wall' });
     using representation = shell.api.geometry.addMeshRepresentation(transformedFile, body, {
-      vertices: [[[0, 0, 0], [2, 0, 0], [0, 3, 0]]],
-      faces: [[[[0, 1, 2]]]],
+      items: [{
+        vertices: [[0, 0, 0], [2, 0, 0], [0, 3, 0]],
+        faces: [{ outer: [0, 1, 2] }],
+      }],
     });
     using relation = shell.api.geometry.assignRepresentation(transformedFile, wall, representation);
     using placement = shell.api.geometry.editObjectPlacement(transformedFile, {

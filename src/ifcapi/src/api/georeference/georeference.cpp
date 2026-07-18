@@ -257,8 +257,8 @@ void georeference_edit_true_north(
             }
 
             const auto& vec = *options.true_north;
-            double x = vec.size() > 0 ? vec[0] : 0.0;
-            double y = vec.size() > 1 ? vec[1] : 0.0;
+            double x = vec[0];
+            double y = vec[1];
 
             if (true_north) {
                 if (ifcapi::detail::total_inverses(file, true_north) != 1) {

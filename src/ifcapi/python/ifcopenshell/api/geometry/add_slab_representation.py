@@ -17,7 +17,7 @@
 # along with IfcOpenShell.  If not, see <http://www.gnu.org/licenses/>.
 
 from math import cos, sin
-from typing import Optional, Union
+from typing import Any, Optional, Union
 
 import ifcopenshell.util.element
 import ifcopenshell.util.unit
@@ -57,22 +57,18 @@ def add_slab_representation(
         representation = ifcopenshell.api.geometry.add_slab_representation(ifc_file, context, depth=0.2, clippings=clippings)
         ifcopenshell.api.geometry.assign_representation(ifc_file, product=element, representation=representation)
     """
-    clipping_kinds: list[int] = []
-    clipping_locations: list[tuple[float, float, float]] = []
-    clipping_normals: list[tuple[float, float, float]] = []
-    clipping_entities: list[ifcopenshell.entity_instance] = []
-    clipping_items = clippings if clippings is not None else []
+    clipping_items: list[dict[str, Any]] = []
+    source_clippings = clippings if clippings is not None else []
     drained_clippings = []
-    while clipping_items:
-        drained_clippings.append(clipping_items.pop(0))
+    while source_clippings:
+        drained_clippings.append(source_clippings.pop(0))
     for clipping in drained_clippings:
         if isinstance(clipping, ifcopenshell.entity_instance):
-            clipping_kinds.append(1)
-            clipping_entities.append(clipping)
+            clipping_items.append({"entity": _capi.instance_handle(clipping)})
         else:
-            clipping_kinds.append(0)
-            clipping_locations.append(clipping.location)
-            clipping_normals.append(clipping.normal)
+            clipping_items.append(
+                {"location": clipping.location, "normal": clipping.normal}
+            )
     return _capi.call_handle(
         file,
         "geometry_add_slab_representation",
@@ -83,10 +79,7 @@ def add_slab_representation(
             "direction_sense": direction_sense,
             "offset": offset,
             "x_angle": x_angle,
-            "clipping_kinds": clipping_kinds,
-            "clipping_locations": clipping_locations,
-            "clipping_normals": clipping_normals,
-            "clipping_entities": _capi.instance_list(clipping_entities),
+            "clippings": clipping_items,
             "polyline": polyline,
         },
     )
@@ -125,13 +118,20 @@ class Usecase:
         points = ((0.0, 0.0), (size, 0.0), (size, size), (0.0, size), (0.0, 0.0))
         if self.polyline:
             points = [
-                (self.convert_si_to_unit(p[0]), self.convert_si_to_unit(p[1] * abs(1 / cos(self.x_angle))))
+                (
+                    self.convert_si_to_unit(p[0]),
+                    self.convert_si_to_unit(p[1] * abs(1 / cos(self.x_angle))),
+                )
                 for p in self.polyline
             ]
         if self.file.schema == "IFC2X3":
-            curve = self.file.createIfcPolyline([self.file.createIfcCartesianPoint(p) for p in points])
+            curve = self.file.createIfcPolyline(
+                [self.file.createIfcCartesianPoint(p) for p in points]
+            )
         else:
-            curve = self.file.createIfcIndexedPolyCurve(self.file.createIfcCartesianPointList2D(points))
+            curve = self.file.createIfcIndexedPolyCurve(
+                self.file.createIfcCartesianPointList2D(points)
+            )
 
         if self.x_angle:
             direction_ratios = (0.0, sin(self.x_angle), cos(self.x_angle))
@@ -144,8 +144,12 @@ class Usecase:
             direction_ratios = tuple(-n for n in direction_ratios)
             extrusion_direction = self.file.createIfcDirection(direction_ratios)
 
-        perpendicular_offset = self.convert_si_to_unit(self.offset) * abs(1 / cos(self.x_angle))
-        perpendicular_depth = self.convert_si_to_unit(self.depth) * abs(1 / cos(self.x_angle))
+        perpendicular_offset = self.convert_si_to_unit(self.offset) * abs(
+            1 / cos(self.x_angle)
+        )
+        perpendicular_depth = self.convert_si_to_unit(self.depth) * abs(
+            1 / cos(self.x_angle)
+        )
         position = None
         # default position for IFC2X3 where .Position is not optional
         if self.file.schema == "IFC2X3" or self.offset != 0:
@@ -171,7 +175,9 @@ class Usecase:
             return self.apply_clippings(extrusion)
         return extrusion
 
-    def apply_clippings(self, first_operand: ifcopenshell.entity_instance) -> ifcopenshell.entity_instance:
+    def apply_clippings(
+        self, first_operand: ifcopenshell.entity_instance
+    ) -> ifcopenshell.entity_instance:
         while self.clippings:
             clipping = self.clippings.pop()
             if isinstance(clipping, ifcopenshell.entity_instance):
@@ -179,7 +185,9 @@ class Usecase:
                 new.FirstOperand = first_operand
                 first_operand = new
             else:  # Clipping
-                first_operand = clipping.apply(self.file, first_operand, self.unit_scale)
+                first_operand = clipping.apply(
+                    self.file, first_operand, self.unit_scale
+                )
         return first_operand
 
     def convert_si_to_unit(self, co: float) -> float:

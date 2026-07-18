@@ -25,7 +25,10 @@ def edit_object_placement(file, product=None, matrix=None, is_si=True, should_tr
     if matrix is None:
         matrix_values = _IDENTITY
     else:
-        arr = np.ascontiguousarray(np.asarray(matrix, dtype=np.float64).reshape(4, 4))
+        arr = np.asarray(matrix, dtype=np.float64)
+        if arr.shape != (4, 4):
+            raise ValueError(f"Expected matrix with shape (4, 4), got {arr.shape}")
+        arr = np.ascontiguousarray(arr)
         matrix_values = arr.reshape(16).tolist()
 
     new_placement = _capi.call_handle(

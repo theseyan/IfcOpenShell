@@ -26,6 +26,7 @@ class CTypeIR:
     element_type: str | None = None
     sequence_depth: int = 0
     layout: str = "transparent"
+    variants: tuple[TypeSpec, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -36,6 +37,7 @@ class COptionFieldIR:
     semantic: str | None = None
     doc: str | None = None
     presence_field: str | None = None
+    has_default: bool = False
 
 
 @dataclass(frozen=True)
@@ -54,6 +56,7 @@ class CParamIR:
     nullable: bool = False
     has_default: bool = False
     semantic: str | None = None
+    type: TypeSpec | None = None
 
 
 @dataclass(frozen=True)
@@ -225,6 +228,10 @@ def _option_list_c_type(option: object) -> str:
     return f"{option.c_type.removesuffix('_t')}_list_t"
 
 
+def _variant_list_c_type(type_spec: TypeSpec, ir: BindingIR) -> str:
+    return f"{_variant_c_type(type_spec, ir).removesuffix('_t')}_list_t"
+
+
 def _handle_destroy_name(handle: HandleSpec) -> str:
     return f"ifcopenshell_{_snake_name(handle.c_type)}_destroy"
 
@@ -262,6 +269,7 @@ def _type_spec_sequence_kind(type_spec: TypeSpec) -> str | None:
         "handle",
         "option",
         "struct",
+        "variant",
     }:
         return None
     return f"{type_spec.kind}{'_list' * type_spec.sequence_depth}"
@@ -355,7 +363,8 @@ def _param_c_type(type_spec: TypeSpec, ir: BindingIR) -> str:
     if sequence_kind is not None:
         return f"const {_sequence_c_type(sequence_kind)}*"
     if type_spec.kind in _SCALAR_PARAM_TYPES:
-        return _SCALAR_PARAM_TYPES[type_spec.kind]
+        c_type = _SCALAR_PARAM_TYPES[type_spec.kind]
+        return f"const {c_type}*" if type_spec.nullable else c_type
     if type_spec.kind == "string":
         return "const char*"
     if type_spec.kind in _BUFFER_TYPES:
@@ -381,20 +390,32 @@ def _param_c_type(type_spec: TypeSpec, ir: BindingIR) -> str:
         if type_spec.sequence_depth == 1:
             return f"const {_option_list_c_type(ir.option_structs[type_spec.struct])}*"
         return f"const {ir.option_structs[type_spec.struct].c_type}*"
+    if type_spec.kind == "variant":
+        if type_spec.sequence_depth == 1:
+            return f"const {_variant_list_c_type(type_spec, ir)}*"
+        return f"const {_variant_c_type(type_spec, ir)}*"
     raise ValueError(f"Unsupported parameter kind: {type_spec.kind}")
 
 
 def _option_field_c_type(type_spec: TypeSpec, ir: BindingIR) -> str:
+    if type_spec.kind in _SCALAR_PARAM_TYPES and type_spec.sequence_depth == 0:
+        return _SCALAR_PARAM_TYPES[type_spec.kind]
     return _param_c_type(type_spec, ir)
 
 
 def _variant_alt_name(type_spec: TypeSpec, ir: BindingIR) -> str:
     sequence_kind = _type_spec_sequence_kind(type_spec)
     if sequence_kind is not None:
-        return sequence_kind
+        fixed_suffix = "_".join(
+            "any" if length is None else str(length)
+            for length in type_spec.fixed_lengths
+        )
+        return f"{sequence_kind}_{fixed_suffix}" if fixed_suffix else sequence_kind
     if type_spec.kind == "handle" and type_spec.handle is not None:
         return type_spec.handle
     if type_spec.kind == "struct" and type_spec.struct is not None:
+        return type_spec.struct
+    if type_spec.kind == "option" and type_spec.struct is not None:
         return type_spec.struct
     return type_spec.kind
 
@@ -472,6 +493,10 @@ def _field_c_type(type_spec: TypeSpec, ir: BindingIR) -> str:
         if type_spec.sequence_depth == 1:
             return _result_record_list_c_type(ir.result_structs[type_spec.struct])
         return ir.result_structs[type_spec.struct].c_type
+    if type_spec.kind == "option":
+        if type_spec.struct is None:
+            raise ValueError("option type is missing struct name")
+        return f"const {ir.option_structs[type_spec.struct].c_type}*"
     if type_spec.kind == "opaque_ptr":
         return "void*"
     if type_spec.kind == "variant":
@@ -585,6 +610,12 @@ def _finalize_value_types(ir: BindingIR) -> dict[str, CTypeIR]:
             and param.type.sequence_depth == 1
             for call in ir.calls
             for param in call.params
+        ) or any(
+            field.type.kind == "option"
+            and field.type.struct == option.name
+            and field.type.sequence_depth == 1
+            for parent in ir.option_structs.values()
+            for field in parent.fields
         )
         if used:
             list_type = _option_list_c_type(option)
@@ -613,22 +644,62 @@ def _finalize_value_types(ir: BindingIR) -> dict[str, CTypeIR]:
                 destroy_function=_value_destroy_name(c_type),
                 element_type=returns.struct,
             )
-        if returns.kind == "variant":
-            c_type = _variant_c_type(returns, ir)
-            result[_snake_name(c_type)] = CTypeIR(
-                c_type=c_type,
-                kind="variant",
-                fields=tuple(
-                    [CFieldIR("kind", "int32_t")]
-                    + [
-                        CFieldIR(f"value_{index}", _field_c_type(alt, ir))
-                        for index, alt in enumerate(returns.variants)
-                    ]
+    for variant in _used_variant_types(ir):
+        c_type = _variant_c_type(variant, ir)
+        result[_snake_name(c_type)] = CTypeIR(
+            c_type=c_type,
+            kind="variant",
+            fields=tuple(
+                [CFieldIR("kind", "int32_t")]
+                + [
+                    CFieldIR(f"value_{index}", _field_c_type(alt, ir))
+                    for index, alt in enumerate(variant.variants)
+                ]
+            ),
+            destroy_function=_variant_destroy_name(variant, ir),
+            element_type=variant.cpp_type,
+            variants=variant.variants,
+        )
+        if variant.sequence_depth == 1:
+            list_type = _variant_list_c_type(variant, ir)
+            result[_snake_name(list_type)] = CTypeIR(
+                c_type=list_type,
+                kind="input_variant_sequence",
+                fields=(
+                    CFieldIR("items", f"{c_type}*"),
+                    CFieldIR("size", "size_t"),
                 ),
-                destroy_function=_variant_destroy_name(returns, ir),
-                element_type=returns.cpp_type,
+                destroy_function=None,
+                element_type=c_type,
+                sequence_depth=1,
             )
     return result
+
+
+def _used_variant_types(ir: BindingIR) -> tuple[TypeSpec, ...]:
+    variants: dict[str, TypeSpec] = {}
+
+    def visit(type_spec: TypeSpec) -> None:
+        if type_spec.kind != "variant":
+            return
+        c_type = _variant_c_type(type_spec, ir)
+        previous = variants.get(c_type)
+        if previous is None or type_spec.sequence_depth > previous.sequence_depth:
+            variants[c_type] = type_spec
+        for alternative in type_spec.variants:
+            visit(alternative)
+
+    for call in ir.calls:
+        visit(call.returns)
+        for param in call.params:
+            visit(param.type)
+    for option in ir.option_structs.values():
+        for field in option.fields:
+            visit(field.type)
+    for struct in ir.result_structs.values():
+        for field in struct.fields:
+            visit(field.type)
+    return tuple(variants.values())
 
 
 def _finalize_function(call: CallIR, ir: BindingIR) -> CFunctionIR:
@@ -654,6 +725,7 @@ def _finalize_function(call: CallIR, ir: BindingIR) -> CFunctionIR:
                 nullable=param.type.nullable,
                 has_default=param.has_default,
                 semantic=param.type.semantic,
+                type=param.type,
             )
         )
     if call.returns.kind != "void":
@@ -751,6 +823,7 @@ def finalize_abi(ir: BindingIR) -> BindingABI:
                         field.type.semantic,
                         field.doc,
                         f"has_{field.name}" if field.type.nullable else None,
+                        field.has_default,
                     )
                     for field in option.fields
                 ),

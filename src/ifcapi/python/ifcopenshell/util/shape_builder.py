@@ -51,7 +51,10 @@ else:
 
 SequenceOfVectors = Union[Sequence[VectorType], np.ndarray]
 
-def _native_entity(file: ifcopenshell.file, symbol: str, *args) -> ifcopenshell.entity_instance:
+
+def _native_entity(
+    file: ifcopenshell.file, symbol: str, *args
+) -> ifcopenshell.entity_instance:
     handle = getattr(_capi, symbol)(file._handle, *args)
     if handle is None:
         raise RuntimeError(f"{symbol} returned a null Ifc instance handle")
@@ -82,6 +85,59 @@ def _native_faces(faces: Sequence[Sequence[int]]) -> Sequence[Sequence[int]]:
     return faces
 
 
+def _native_curve_segments(segments: Sequence[Sequence[int]]) -> list[dict[str, Any]]:
+    result: list[dict[str, Any]] = []
+    for segment in segments:
+        if len(segment) == 2:
+            result.append({"line_indices": list(segment)})
+        elif len(segment) == 3:
+            result.append({"arc_indices": list(segment)})
+        else:
+            raise ValueError(
+                "Curve segments require at least two line indices or exactly three arc indices"
+            )
+    return result
+
+
+def _polyline_segments(
+    point_count: int, closed: bool, arc_points: Sequence[int]
+) -> Optional[list[dict[str, Any]]]:
+    if not closed and not arc_points:
+        return None
+    raw_segments: list[list[int]] = []
+    current = 0
+    closed_by_arc = False
+    arc_midpoints = set(arc_points)
+    while current < point_count - 1:
+        if current + 1 in arc_midpoints:
+            if current + 2 < point_count:
+                raw_segments.append([current, current + 1, current + 2])
+            else:
+                raw_segments.append([current, current + 1, 0])
+                closed_by_arc = True
+            current += 2
+        else:
+            raw_segments.append([current, current + 1])
+            current += 1
+    if closed and not closed_by_arc and point_count:
+        raw_segments.append([point_count - 1, 0])
+
+    result: list[dict[str, Any]] = []
+    current_line: list[int] = []
+    for index, segment in enumerate(raw_segments):
+        if len(segment) == 2:
+            if not current_line:
+                current_line = segment.copy()
+            else:
+                current_line.append(segment[1])
+        if current_line and (len(segment) == 3 or index == len(raw_segments) - 1):
+            result.append({"line_indices": current_line})
+            current_line = []
+        if len(segment) == 3:
+            result.append({"arc_indices": segment})
+    return result
+
+
 def _curve_dim(curve: ifcopenshell.entity_instance) -> int | None:
     try:
         return curve.Dim
@@ -101,16 +157,28 @@ def _curve_dim(curve: ifcopenshell.entity_instance) -> int | None:
 
 
 def _native_polygonal_faces(
-    faces: Sequence[Union[Sequence[int], Sequence[Sequence[int]]]]
+    faces: Sequence[Union[Sequence[int], Sequence[Sequence[int]]]],
 ) -> list[Union[Sequence[int], Sequence[Sequence[int]]]]:
     def is_sequence_of_ints(x):
-        return isinstance(x, Sequence) and not isinstance(x, (str, bytes)) and all(isinstance(el, int) for el in x)
+        return (
+            isinstance(x, Sequence)
+            and not isinstance(x, (str, bytes))
+            and all(isinstance(el, int) for el in x)
+        )
 
     def is_sequence_of_sequence_of_ints(x):
-        return isinstance(x, Sequence) and not isinstance(x, (str, bytes)) and all(is_sequence_of_ints(el) for el in x)
+        return (
+            isinstance(x, Sequence)
+            and not isinstance(x, (str, bytes))
+            and all(is_sequence_of_ints(el) for el in x)
+        )
 
-    if not all(is_sequence_of_ints(f) or is_sequence_of_sequence_of_ints(f) for f in faces):
-        raise ValueError("Expected a sequence of int or sequence of sequence of int for each face")
+    if not all(
+        is_sequence_of_ints(f) or is_sequence_of_sequence_of_ints(f) for f in faces
+    ):
+        raise ValueError(
+            "Expected a sequence of int or sequence of sequence of int for each face"
+        )
 
     return [[face] if is_sequence_of_ints(face) else face for face in faces]  # type: ignore[list-item]
 
@@ -121,7 +189,9 @@ def _struct_field(value: Any, name: str, index: int) -> Any:
     return value[index]
 
 
-def V(*args: Union[float, int, VectorType, SequenceOfVectors]) -> npt.NDArray[np.float64]:
+def V(
+    *args: Union[float, int, VectorType, SequenceOfVectors],
+) -> npt.NDArray[np.float64]:
     """Convert floats / vector / sequence of vectors to numpy array.
 
     Note that `float` argument type also allows passing ints,
@@ -131,7 +201,9 @@ def V(*args: Union[float, int, VectorType, SequenceOfVectors]) -> npt.NDArray[np
     if isinstance(args[0], (float, int)):
         return np.array(args, dtype="d")
 
-    assert len(args) == 1, "Only single argument is supported if providing a vector or a sequence of them."
+    assert len(args) == 1, (
+        "Only single argument is supported if providing a vector or a sequence of them."
+    )
     return np.array(args[0], dtype="d")
 
 
@@ -243,7 +315,9 @@ def np_translation_matrix(vector: VectorType) -> npt.NDArray[np.float64]:
 
 
 def np_rotation_matrix(
-    angle: float, size: int, axis: Optional[Union[Literal["X", "Y", "Z"], VectorType]] = None
+    angle: float,
+    size: int,
+    axis: Optional[Union[Literal["X", "Y", "Z"], VectorType]] = None,
 ) -> np.ndarray:
     """Get rotation matrix. Designed to be similar to mathutils Matrix.Rotation but to use numpy.
 
@@ -266,17 +340,29 @@ def np_rotation_matrix(
     assert axis, "For non-2D matrices 'axis' argument is not optional."
     if isinstance(axis, str):
         if axis == "X":
-            matrix = np.array([[1, 0, 0], [0, cos_theta, -sin_theta], [0, sin_theta, cos_theta]])
+            matrix = np.array(
+                [[1, 0, 0], [0, cos_theta, -sin_theta], [0, sin_theta, cos_theta]]
+            )
         elif axis == "Y":
-            matrix = np.array([[cos_theta, 0, sin_theta], [0, 1, 0], [-sin_theta, 0, cos_theta]])
+            matrix = np.array(
+                [[cos_theta, 0, sin_theta], [0, 1, 0], [-sin_theta, 0, cos_theta]]
+            )
         elif axis == "Z":
-            matrix = np.array([[cos_theta, -sin_theta, 0], [sin_theta, cos_theta, 0], [0, 0, 1]])
+            matrix = np.array(
+                [[cos_theta, -sin_theta, 0], [sin_theta, cos_theta, 0], [0, 0, 1]]
+            )
     else:
         # Assume axis is a vector.
         axis = axis / np.linalg.norm(axis)
         # Rodrigues' rotation formula.
-        K = np.array([[0, -axis[2], axis[1]], [axis[2], 0, -axis[0]], [-axis[1], axis[0], 0]])
-        matrix = cos_theta * np.eye(3) + (1 - cos_theta) * np.outer(axis, axis) + sin_theta * K
+        K = np.array(
+            [[0, -axis[2], axis[1]], [axis[2], 0, -axis[0]], [-axis[1], axis[0], 0]]
+        )
+        matrix = (
+            cos_theta * np.eye(3)
+            + (1 - cos_theta) * np.outer(axis, axis)
+            + sin_theta * K
+        )
     if size == 4:
         return np_to_4x4(matrix)
     return matrix
@@ -412,14 +498,27 @@ class ShapeBuilder:
             "ifcopenshell_shape_builder_polyline",
             {
                 "points": _native_points(points),
-                "closed": bool(closed),
-                **({"position_offset": _native_vector(position_offset)} if position_offset is not None else {}),
-                "arc_points": arc_points,
+                **(
+                    {"position_offset": _native_vector(position_offset)}
+                    if position_offset is not None
+                    else {}
+                ),
+                **(
+                    {
+                        "segments": _polyline_segments(
+                            len(points), bool(closed), arc_points
+                        )
+                    }
+                    if closed or arc_points
+                    else {}
+                ),
             },
         )
 
     @staticmethod
-    def get_rectangle_coords(size: VectorType = (1.0, 1.0), position: Optional[VectorType] = None) -> np.ndarray:
+    def get_rectangle_coords(
+        size: VectorType = (1.0, 1.0), position: Optional[VectorType] = None
+    ) -> np.ndarray:
         """
         Get rectangle coords arranged as below:
 
@@ -464,7 +563,9 @@ class ShapeBuilder:
         """
         return self.polyline(self.get_rectangle_coords(size, position), closed=True)
 
-    def circle(self, center: VectorType = (0.0, 0.0), radius: float = 1.0) -> ifcopenshell.entity_instance:
+    def circle(
+        self, center: VectorType = (0.0, 0.0), radius: float = 1.0
+    ) -> ifcopenshell.entity_instance:
         """
         :param center: circle 2D position
         :param radius: radius of the circle
@@ -478,7 +579,9 @@ class ShapeBuilder:
         )
 
     def plane(
-        self, location: VectorType = (0.0, 0.0, 0.0), normal: VectorType = (0.0, 0.0, 1.0)
+        self,
+        location: VectorType = (0.0, 0.0, 0.0),
+        normal: VectorType = (0.0, 0.0, 1.0),
     ) -> ifcopenshell.entity_instance:
         """
         Create IfcPlane.
@@ -498,13 +601,17 @@ class ShapeBuilder:
     # TODO: explain points order for the curve_between_two_points
     # because the order is important and defines the center of the curve
     # currently it seems like the first point shifted by x-axis defines the center
-    def curve_between_two_points(self, points: tuple[VectorType, VectorType]) -> ifcopenshell.entity_instance:
+    def curve_between_two_points(
+        self, points: tuple[VectorType, VectorType]
+    ) -> ifcopenshell.entity_instance:
         """Simple circle based curve between two points
         Good for creating curves and fillets, won't work for continuous ellipse shapes.
 
         :param points: tuple of 2 points.
         :return: IfcIndexePolyCurve
         """
+        if len(points) != 2 or any(len(point) != 2 for point in points):
+            raise ValueError("curve_between_two_points expects two 2D points")
         return _native_entity(
             self.file,
             "ifcopenshell_shape_builder_curve_between_two_points",
@@ -579,9 +686,20 @@ class ShapeBuilder:
                 "x_axis_radius": x_axis_radius,
                 "y_axis_radius": y_axis_radius,
                 "position": _native_vector(position),
-                "trim_points": _native_points(trim_points),
-                "ref_x_direction": _native_vector(ref_x_direction) if ref_x_direction is not None else None,
-                "trim_points_mask": trim_points_mask,
+                "ref_x_direction": _native_vector(ref_x_direction)
+                if ref_x_direction is not None
+                else None,
+                **(
+                    {"trim": {"value": {"points": _native_points(trim_points[:2])}}}
+                    if len(trim_points)
+                    else {
+                        "trim": {
+                            "value": {"cardinal_points": list(trim_points_mask[:2])}
+                        }
+                    }
+                    if len(trim_points_mask)
+                    else {}
+                ),
             },
         )
 
@@ -634,7 +752,9 @@ class ShapeBuilder:
 
     def translate(
         self,
-        curve_or_item: Union[ifcopenshell.entity_instance, Sequence[ifcopenshell.entity_instance]],
+        curve_or_item: Union[
+            ifcopenshell.entity_instance, Sequence[ifcopenshell.entity_instance]
+        ],
         translation: VectorType,
         create_copy: bool = False,
     ) -> Union[ifcopenshell.entity_instance, list[ifcopenshell.entity_instance]]:
@@ -690,7 +810,9 @@ class ShapeBuilder:
 
     def rotate(
         self,
-        curve_or_item: Union[ifcopenshell.entity_instance, Sequence[ifcopenshell.entity_instance]],
+        curve_or_item: Union[
+            ifcopenshell.entity_instance, Sequence[ifcopenshell.entity_instance]
+        ],
         angle: float = 90.0,
         pivot_point: VectorType = (0.0, 0.0),
         counter_clockwise: bool = False,
@@ -787,10 +909,14 @@ class ShapeBuilder:
         """
         if matrix is None:
             matrix = np.eye(4, dtype=float)
-        return self.create_axis2_placement_3d(position=matrix[:3, 3], z_axis=matrix[:3, 2], x_axis=matrix[:3, 0])
+        return self.create_axis2_placement_3d(
+            position=matrix[:3, 3], z_axis=matrix[:3, 2], x_axis=matrix[:3, 0]
+        )
 
     def create_axis2_placement_2d(
-        self, position: VectorType = (0.0, 0.0), x_direction: Optional[VectorType] = None
+        self,
+        position: VectorType = (0.0, 0.0),
+        x_direction: Optional[VectorType] = None,
     ) -> ifcopenshell.entity_instance:
         """Create IfcAxis2Placement2D.
 
@@ -804,11 +930,15 @@ class ShapeBuilder:
             "ifcopenshell_shape_builder_axis2_placement_2d",
             {
                 "position": _native_vector(position),
-                "x_direction": _native_vector(x_direction) if x_direction is not None else None,
+                "x_direction": _native_vector(x_direction)
+                if x_direction is not None
+                else None,
             },
         )
 
-    def vertex(self, position: VectorType = (0.0, 0.0, 0.0)) -> ifcopenshell.entity_instance:
+    def vertex(
+        self, position: VectorType = (0.0, 0.0, 0.0)
+    ) -> ifcopenshell.entity_instance:
         """Create a topological vertex
 
         Commonly used in structural point elements.
@@ -855,7 +985,9 @@ class ShapeBuilder:
 
     def mirror(
         self,
-        curve_or_item: Union[ifcopenshell.entity_instance, list[ifcopenshell.entity_instance]],
+        curve_or_item: Union[
+            ifcopenshell.entity_instance, list[ifcopenshell.entity_instance]
+        ],
         mirror_axes: Union[VectorType, SequenceOfVectors] = (1.0, 1.0),
         mirror_point: VectorType = (0.0, 0.0),
         create_copy: bool = False,
@@ -879,7 +1011,9 @@ class ShapeBuilder:
         multiple_objects = isinstance(curve_or_item, collections.abc.Iterable)
         curve_or_item = [curve_or_item] if not multiple_objects else curve_or_item
         multiple_transformations = not isinstance(mirror_axes[0], (float, int))
-        mirror_axes_data = [mirror_axes] if not multiple_transformations else mirror_axes
+        mirror_axes_data = (
+            [mirror_axes] if not multiple_transformations else mirror_axes
+        )
 
         processed_objects: list[ifcopenshell.entity_instance] = []
         for curve_or_item_el in curve_or_item:
@@ -893,18 +1027,30 @@ class ShapeBuilder:
                             "mirror_axes": _native_vector(mirror_axes),
                             "mirror_point": _native_vector(mirror_point),
                             "create_copy": bool(create_copy),
-                            "placement_matrix": _native_vector(
-                                []
-                                if placement_matrix is None
-                                else np.array(placement_matrix, dtype="d")[:3, :3].reshape(9).tolist()
+                            **(
+                                {
+                                    "placement_matrix": _native_vector(
+                                        np.array(placement_matrix, dtype="d")[:3, :3]
+                                        .reshape(9)
+                                        .tolist()
+                                    )
+                                }
+                                if placement_matrix is not None
+                                else {}
                             ),
                         },
                     )
                 )
 
-        return processed_objects if (multiple_objects or multiple_transformations) else processed_objects[0]
+        return (
+            processed_objects
+            if (multiple_objects or multiple_transformations)
+            else processed_objects[0]
+        )
 
-    def sphere(self, radius: float = 1.0, center: VectorType = (0.0, 0.0, 0.0)) -> ifcopenshell.entity_instance:
+    def sphere(
+        self, radius: float = 1.0, center: VectorType = (0.0, 0.0, 0.0)
+    ) -> ifcopenshell.entity_instance:
         """
         :param radius: radius of the sphere.
         :param center: sphere position.
@@ -1000,7 +1146,11 @@ class ShapeBuilder:
                 "extrusion_vector": _native_vector(extrusion_vector),
                 "position_z_axis": _native_vector(position_z_axis),
                 "position_x_axis": _native_vector(position_x_axis),
-                **({"position_y_axis": _native_vector(position_y_axis)} if position_y_axis is not None else {}),
+                **(
+                    {"position_y_axis": _native_vector(position_y_axis)}
+                    if position_y_axis is not None
+                    else {}
+                ),
             },
         )
 
@@ -1032,7 +1182,9 @@ class ShapeBuilder:
     def get_representation(
         self,
         context: ifcopenshell.entity_instance,
-        items: Union[ifcopenshell.entity_instance, Sequence[ifcopenshell.entity_instance]],
+        items: Union[
+            ifcopenshell.entity_instance, Sequence[ifcopenshell.entity_instance]
+        ],
         representation_type: Optional[str] = None,
     ) -> ifcopenshell.entity_instance:
         """Create IFC representation for the specified context and items.
@@ -1073,7 +1225,9 @@ class ShapeBuilder:
             Items=items,
         )
 
-    def deep_copy(self, element: ifcopenshell.entity_instance) -> ifcopenshell.entity_instance:
+    def deep_copy(
+        self, element: ifcopenshell.entity_instance
+    ) -> ifcopenshell.entity_instance:
         """Create a deep copy of an IFC element and all its referenced entities.
 
         :param element: The IFC entity to copy.
@@ -1086,7 +1240,9 @@ class ShapeBuilder:
         )
 
     # UTILITIES
-    def extrude_kwargs(self, axis: Literal["Y", "X", "Z"]) -> dict[str, tuple[float, float, float]]:
+    def extrude_kwargs(
+        self, axis: Literal["Y", "X", "Z"]
+    ) -> dict[str, tuple[float, float, float]]:
         """Shortcut to get kwargs for :meth:`extrude` to extrude along a principal axis.
 
         Assumes the 2D profile lies in the plane perpendicular to the extrusion axis:
@@ -1147,7 +1303,9 @@ class ShapeBuilder:
         coords = _capi.shape_builder_get_polyline_coords(polyline._handle)
         return np.array(coords)
 
-    def set_polyline_coords(self, polyline: ifcopenshell.entity_instance, coords: SequenceOfVectors) -> None:
+    def set_polyline_coords(
+        self, polyline: ifcopenshell.entity_instance, coords: SequenceOfVectors
+    ) -> None:
         """Update the coordinates of a polyline entity in-place.
 
         :param polyline: An ``IfcIndexedPolyCurve`` or ``IfcPolyline`` entity.
@@ -1168,7 +1326,9 @@ class ShapeBuilder:
         fillet_radius: Union[float, Sequence[float]] = (),
         closed: bool = True,
         create_ifc_curve: bool = False,
-    ) -> tuple[list[VectorType], list[list[int]], Union[ifcopenshell.entity_instance, None]]:
+    ) -> tuple[
+        list[VectorType], list[list[int]], Union[ifcopenshell.entity_instance, None]
+    ]:
         """
         Creates simple 2D curve from set of 2d coords and list of points with fillets.
         Simple curve means that all fillets are based on 90 degree angle.
@@ -1209,11 +1369,17 @@ class ShapeBuilder:
 
             # remove duplicate segments
             valid_segments = [segment for segment in segments if len(set(segment)) != 1]
-            points = [point for i, point in enumerate(points) if i not in points_to_remove]
+            points = [
+                point for i, point in enumerate(points) if i not in points_to_remove
+            ]
             # correct the order in segments
             unique_points = sorted(set(chain(*valid_segments)))
-            unique_points_translation = {prev: i for i, prev in enumerate(unique_points)}
-            valid_segments = [[unique_points_translation[p] for p in s] for s in valid_segments]
+            unique_points_translation = {
+                prev: i for i, prev in enumerate(unique_points)
+            }
+            valid_segments = [
+                [unique_points_translation[p] for p in s] for s in valid_segments
+            ]
 
             return points, valid_segments
 
@@ -1236,8 +1402,16 @@ class ShapeBuilder:
                 previous_co = coords[co_i - 1]
 
                 # identify fillet type (1 of 4 possible types)
-                x_direction = 1 if coords[co_i][0] < previous_co[0] or coords[co_i][0] < next_co[0] else -1
-                y_direction = 1 if coords[co_i][1] < previous_co[1] or coords[co_i][1] < next_co[1] else -1
+                x_direction = (
+                    1
+                    if coords[co_i][0] < previous_co[0] or coords[co_i][0] < next_co[0]
+                    else -1
+                )
+                y_direction = (
+                    1
+                    if coords[co_i][1] < previous_co[1] or coords[co_i][1] < next_co[1]
+                    else -1
+                )
 
                 xshift_point = (co[0] + r * x_direction, co[1])
                 middle_point = (co[0] + rss * x_direction, co[1] + rss * y_direction)
@@ -1271,8 +1445,10 @@ class ShapeBuilder:
             ifc_curve = _native_entity(
                 self.file,
                 "ifcopenshell_shape_builder_indexed_polycurve_2d",
-                _native_points(points),
-                _native_faces([[i + 1 for i in segment] for segment in segments]),
+                {
+                    "points": _native_points(points),
+                    "segments": _native_curve_segments(segments),
+                },
             )
         return (points, segments, ifc_curve)
 
@@ -1337,7 +1513,9 @@ class ShapeBuilder:
 
     def create_transition_arc_ifc(
         self, width: float, height: float, create_ifc_curve: bool = False
-    ) -> tuple[SequenceOfVectors, list[list[int]], Union[ifcopenshell.entity_instance, None]]:
+    ) -> tuple[
+        SequenceOfVectors, list[list[int]], Union[ifcopenshell.entity_instance, None]
+    ]:
         """Create an arc fitting inside a rectangle of the given width and height.
 
         If a single arc cannot span the full width, the longest possible radius is used and
@@ -1373,11 +1551,17 @@ class ShapeBuilder:
             ]
             fillets = (1, 4)
         points, segments, transition_arc = self.get_simple_2dcurve_data(
-            curve_coords, fillets, fillet_radius, closed=False, create_ifc_curve=create_ifc_curve
+            curve_coords,
+            fillets,
+            fillet_radius,
+            closed=False,
+            create_ifc_curve=create_ifc_curve,
         )
         return points, segments, transition_arc
 
-    def mesh(self, points: SequenceOfVectors, faces: Sequence[Sequence[int]]) -> ifcopenshell.entity_instance:
+    def mesh(
+        self, points: SequenceOfVectors, faces: Sequence[Sequence[int]]
+    ) -> ifcopenshell.entity_instance:
         """Create a tessellated mesh from points and face indices.
 
         Delegates to :meth:`faceted_brep` for IFC2X3, or :meth:`polygonal_face_set` for IFC4 and later.
@@ -1393,7 +1577,9 @@ class ShapeBuilder:
             _native_faces(faces),
         )
 
-    def faceted_brep(self, points: SequenceOfVectors, faces: Sequence[Sequence[int]]) -> ifcopenshell.entity_instance:
+    def faceted_brep(
+        self, points: SequenceOfVectors, faces: Sequence[Sequence[int]]
+    ) -> ifcopenshell.entity_instance:
         """Generate an IfcFacetedBrep with a closed shell
 
         Note that :func:`polygonal_face_set` is recommended in IFC4.
@@ -1429,7 +1615,9 @@ class ShapeBuilder:
         )
 
     def polygonal_face_set(
-        self, points: SequenceOfVectors, faces: Sequence[Union[Sequence[int], Sequence[Sequence[int]]]]
+        self,
+        points: SequenceOfVectors,
+        faces: Sequence[Union[Sequence[int], Sequence[Sequence[int]]]],
     ) -> ifcopenshell.entity_instance:
         """
         Generate an IfcPolygonalFaceSet
@@ -1486,7 +1674,9 @@ class ShapeBuilder:
         for i in range(last_vert_i):
             face = (i, i + 1, n_verts + i + 1, n_verts + i)
             faces.append(face)
-        faces.append((last_vert_i, 0, n_verts + 0, n_verts + last_vert_i))  # close the loop
+        faces.append(
+            (last_vert_i, 0, n_verts + 0, n_verts + last_vert_i)
+        )  # close the loop
 
         if end_cap:
             faces.append(tuple(range(n_verts, n_verts * 2)))
@@ -1527,13 +1717,18 @@ class ShapeBuilder:
                 "start_length": float(start_length),
                 "end_length": float(end_length),
                 "angle": float(angle),
-                "profile_offset": _native_vector(profile_offset),
+                "profile_offset": {
+                    "x": float(profile_offset[0]),
+                    "y": float(profile_offset[1]),
+                },
             },
         )
         if value is None:
             return None, None
         representation = _native_entity_from_struct_handle(
-            self.file, _struct_field(value, "representation", 0), "shape_builder_mep_transition_shape"
+            self.file,
+            _struct_field(value, "representation", 0),
+            "shape_builder_mep_transition_shape",
         )
         return representation, {
             "start_length": _struct_field(value, "start_length", 1),
@@ -1570,10 +1765,21 @@ class ShapeBuilder:
         """
         result = _capi.shape_builder_mep_transition_length(
             {
-                "start_half_dim": _native_vector(start_half_dim),
-                "end_half_dim": _native_vector(end_half_dim),
+                "start_half_dim": {
+                    "half_x": float(start_half_dim[0]),
+                    "half_y": float(start_half_dim[1]),
+                    "depth": float(start_half_dim[2]),
+                },
+                "end_half_dim": {
+                    "half_x": float(end_half_dim[0]),
+                    "half_y": float(end_half_dim[1]),
+                    "depth": float(end_half_dim[2]),
+                },
                 "angle": float(angle),
-                "profile_offset": _native_vector(profile_offset),
+                "profile_offset": {
+                    "x": float(profile_offset[0]),
+                    "y": float(profile_offset[1]),
+                },
             },
         )
         return None if np.isnan(result) else result
@@ -1606,15 +1812,30 @@ class ShapeBuilder:
         :return: Transition length (if ``angle`` was given) or transition angle in degrees
             (if ``length`` was given), or ``None`` if the geometry is not feasible.
         """
+        if (length is None) == (angle is None):
+            raise ValueError("Provide exactly one of length or angle")
         result = _capi.shape_builder_mep_transition_calculate(
             {
-                "start_half_dim": _native_vector(start_half_dim),
-                "end_half_dim": _native_vector(end_half_dim),
-                "offset": _native_vector(offset),
-                "diff": _native_vector(diff) if diff is not None else None,
+                "start_half_dim": {
+                    "half_x": float(start_half_dim[0]),
+                    "half_y": float(start_half_dim[1]),
+                    "depth": float(start_half_dim[2]),
+                },
+                "end_half_dim": {
+                    "half_x": float(end_half_dim[0]),
+                    "half_y": float(end_half_dim[1]),
+                    "depth": float(end_half_dim[2]),
+                },
+                "offset": {"x": float(offset[0]), "y": float(offset[1])},
+                "diff": {"x": float(diff[0]), "y": float(diff[1])}
+                if diff is not None
+                else None,
                 "end_profile": bool(end_profile),
-                "length": None if length is None else float(length),
-                "angle": None if angle is None else float(angle),
+                **(
+                    {"calculation": {"length": float(length)}}
+                    if length is not None
+                    else {"calculation": {"angle": float(angle)}}
+                ),
             },
         )
         return None if np.isnan(result) else result
@@ -1651,12 +1872,14 @@ class ShapeBuilder:
                 "end_length": float(end_length),
                 "angle": float(angle),
                 "radius": float(radius),
-                "bend_vector": _native_vector(bend_vector),
+                "bend_vector": {"x": float(bend_vector[0]), "y": float(bend_vector[1])},
                 "flip_z_axis": bool(flip_z_axis),
             },
         )
         representation = _native_entity_from_struct_handle(
-            self.file, _struct_field(value, "representation", 0), "shape_builder_mep_bend_shape"
+            self.file,
+            _struct_field(value, "representation", 0),
+            "shape_builder_mep_bend_shape",
         )
         return representation, {
             "start_length": _struct_field(value, "start_length", 1),

@@ -5,6 +5,7 @@
 #define IFCAPI_BINDINGS_PROFILE_H
 
 #include "ifcapi/bindings/contract.h"
+#include "ifcapi/bindings/types.h"
 
 #include "ifcparse/express.h"
 #include "ifcparse/file.h"
@@ -23,7 +24,7 @@ namespace bindings {
  */
 struct ProfileAddArbitraryProfileOptions {
     /// Ordered XYZ or XY points defining the closed outer curve, in SI metres.
-    std::vector<std::vector<double>> profile;
+    std::variant<std::vector<std::array<double, 2>>, std::vector<std::array<double, 3>>> profile;
     /// Optional profile name. When omitted, the profile name is empty.
     std::optional<std::string> name;
 };
@@ -33,9 +34,9 @@ struct ProfileAddArbitraryProfileOptions {
  */
 struct ProfileAddArbitraryProfileWithVoidsOptions {
     /// Ordered XYZ or XY points defining the outer curve, in SI metres.
-    std::vector<std::vector<double>> outer_profile;
+    std::variant<std::vector<std::array<double, 2>>, std::vector<std::array<double, 3>>> outer_profile;
     /// Inner void curves, each as ordered XY or XYZ points in SI metres.
-    std::vector<std::vector<std::vector<double>>> inner_profiles;
+    std::vector<std::variant<std::vector<std::array<double, 2>>, std::vector<std::array<double, 3>>>> inner_profiles;
     /// Optional profile name. When omitted, the profile name is empty.
     std::optional<std::string> name;
 };

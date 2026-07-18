@@ -15,6 +15,19 @@
 
 namespace {
 inline void set_error(const std::string& msg) { ifcopenshell::capi::set_last_error(msg); }
+
+template <typename T, std::size_t N>
+std::vector<T> dynamic_array(const std::array<T, N>& values) {
+    return {values.begin(), values.end()};
+}
+
+template <typename T, std::size_t N>
+std::vector<std::vector<T>> dynamic_arrays(const std::vector<std::array<T, N>>& values) {
+    std::vector<std::vector<T>> result;
+    result.reserve(values.size());
+    for (const auto& value : values) result.push_back(dynamic_array(value));
+    return result;
+}
 }
 
 namespace ifcapi {
@@ -46,19 +59,19 @@ void boundary_assign_connection_geometry(
         return;
     }
     try {
-        auto outer_curve = ifcapi::detail::create_closed_polyline(file, options.outer_boundary, options.unit_scale);
+        auto outer_curve = ifcapi::detail::create_closed_polyline(file, dynamic_arrays(options.outer_boundary), options.unit_scale);
         std::vector<express::Base> inner_curves;
         inner_curves.reserve(options.inner_boundaries.size());
         for (const auto& boundary : options.inner_boundaries) {
-            inner_curves.push_back(ifcapi::detail::create_closed_polyline(file, boundary, options.unit_scale));
+            inner_curves.push_back(ifcapi::detail::create_closed_polyline(file, dynamic_arrays(boundary), options.unit_scale));
         }
 
         auto curve_bounded_plane = file->create(file->schema()->declaration_by_name("IfcCurveBoundedPlane"));
         auto placement = ifcapi::detail::create_axis2_placement_3d(
             file,
-            ifcapi::detail::scale_point_coordinates(options.location, options.unit_scale),
-            options.axis,
-            options.ref_direction);
+            ifcapi::detail::scale_point_coordinates(dynamic_array(options.location), options.unit_scale),
+            dynamic_array(options.axis),
+            dynamic_array(options.ref_direction));
         ifcapi::detail::write_ref_attr(
             curve_bounded_plane, "BasisSurface", ifcapi::detail::create_plane(file, placement));
         ifcapi::detail::write_ref_attr(curve_bounded_plane, "OuterBoundary", outer_curve);

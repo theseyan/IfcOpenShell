@@ -16,6 +16,11 @@ class TypeSpec:
     cpp_type: str | None = None
     sequence_depth: int = 0
     semantic: str | None = None
+    alias: str | None = None
+    fixed_lengths: tuple[int | None, ...] = ()
+    enum_values: tuple[str, ...] = ()
+    enum_numeric_values: tuple[int, ...] = ()
+    literal_value: str | None = None
 
 
 @dataclass(frozen=True)
@@ -57,6 +62,7 @@ class OptionStructFieldSpec:
     type: TypeSpec
     cpp_field: str | None = None
     doc: str | None = None
+    has_default: bool = False
 
 
 @dataclass(frozen=True)

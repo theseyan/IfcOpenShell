@@ -2,12 +2,27 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
 from typing import TYPE_CHECKING
+
+from ..binding_model import TypeSpec
 
 if TYPE_CHECKING:
     from ..abi_ir import BindingABI, CFunctionIR, CParamIR
 
 _DOMAIN_PREFIXES = ("ifcopenshell_parse_", "ifcopenshell_geom_")
+
+
+def _sequence_leaf_type(type_spec: TypeSpec) -> TypeSpec:
+    """Remove sequence shape while retaining the element's semantic metadata."""
+    if type_spec.sequence_depth <= 0:
+        raise ValueError("Expected a sequence type")
+    return replace(
+        type_spec,
+        sequence_depth=0,
+        fixed_lengths=(),
+        nullable=False,
+    )
 
 
 def _snake_name(c_type: str) -> str:
@@ -162,6 +177,7 @@ __all__ = [
     "_public_module_members",
     "_public_name",
     "_public_params",
+    "_sequence_leaf_type",
     "_snake_name",
     "_type_name",
     "_typed_buffer_element",

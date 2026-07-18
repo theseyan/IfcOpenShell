@@ -76,7 +76,9 @@ from .semantic_types import (
     analyze_cpp_type,
     semantic_leaf_type,
     semantic_record_match_names,
+    semantic_sequence_alias,
     semantic_sequence_depth,
+    semantic_sequence_lengths,
 )
 
 _ALLOWED_TYPE_KINDS = {
@@ -2078,6 +2080,10 @@ def _lower_generic_sequence_type(
 ) -> TypeSpec | None:
     leaf = semantic_leaf_type(semantic)
     depth = semantic_sequence_depth(semantic)
+    sequence_metadata = {
+        "alias": semantic_sequence_alias(semantic),
+        "fixed_lengths": semantic_sequence_lengths(semantic),
+    }
 
     if isinstance(leaf, RecordSemanticType):
         result_spec = _type_spec_from_result_struct_semantic(leaf, result_structs or {})
@@ -2088,6 +2094,7 @@ def _lower_generic_sequence_type(
                 ownership="copy",
                 cpp_type=semantic.cpp_type,
                 sequence_depth=depth,
+                **sequence_metadata,
             )
         record_spec = _type_spec_from_record_semantic(
             leaf, handles=handles, ownership=ownership, nullable=False
@@ -2106,6 +2113,7 @@ def _lower_generic_sequence_type(
             ownership=record_spec.ownership,
             cpp_type=semantic.cpp_type,
             sequence_depth=depth,
+            **sequence_metadata,
         )
 
     if isinstance(leaf, StringSemanticType):
@@ -2114,6 +2122,7 @@ def _lower_generic_sequence_type(
             ownership="copy",
             cpp_type=semantic.cpp_type,
             sequence_depth=depth,
+            **sequence_metadata,
         )
 
     if isinstance(leaf, ScalarSemanticType):
@@ -2123,6 +2132,7 @@ def _lower_generic_sequence_type(
                 ownership="copy",
                 cpp_type=semantic.cpp_type,
                 sequence_depth=depth,
+                **sequence_metadata,
             )
     return None
 
@@ -2142,7 +2152,15 @@ def _infer_type(
     if isinstance(semantic, VoidSemanticType):
         return TypeSpec(kind="void", cpp_type=_cpp_type_storage(cpp_type))
     if isinstance(semantic, EnumSemanticType):
-        return TypeSpec(kind="int32", cpp_type=_cpp_type_storage(cpp_type))
+        return TypeSpec(
+            kind="int32",
+            cpp_type=_cpp_type_storage(cpp_type),
+            alias=(semantic.enum_qualified_name or semantic.cpp_type).rsplit("::", 1)[
+                -1
+            ],
+            enum_values=tuple(name for name, _ in semantic.values),
+            enum_numeric_values=tuple(value for _, value in semantic.values),
+        )
     if isinstance(semantic, StringSemanticType):
         nullable = nullable_string_pointers and _normalize_cpp_type(
             semantic.cpp_type
@@ -2154,8 +2172,13 @@ def _infer_type(
             cpp_type=_cpp_type_storage(cpp_type),
         )
     if isinstance(semantic, OptionalSemanticType):
+        inner_cpp_type = (
+            cpp_type.template_args[0]
+            if isinstance(cpp_type, DiscoveredCppType) and cpp_type.template_args
+            else semantic.element.cpp_type
+        )
         inner = _infer_type(
-            semantic.element.cpp_type,
+            inner_cpp_type,
             handles,
             ownership=ownership,
             nullable_pointers=True,
@@ -2172,6 +2195,11 @@ def _infer_type(
             cpp_type=_cpp_type_storage(cpp_type),
             sequence_depth=inner.sequence_depth,
             semantic=inner.semantic,
+            alias=inner.alias,
+            fixed_lengths=inner.fixed_lengths,
+            enum_values=inner.enum_values,
+            enum_numeric_values=inner.enum_numeric_values,
+            literal_value=inner.literal_value,
         )
     if isinstance(semantic, VariantSemanticType):
         alternatives = tuple(

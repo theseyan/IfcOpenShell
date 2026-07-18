@@ -15,7 +15,9 @@
 
 #include <algorithm>
 #include <array>
+#include <cmath>
 #include <cstring>
+#include <stdexcept>
 #include <string>
 #include <vector>
 
@@ -250,13 +252,16 @@ express::Base geometry_edit_object_placement(
     }
     if (!has_attr(product_value, "ObjectPlacement")) return {};
 
-    std::array<double, 16> m;
-    if (options.matrix.size() == m.size()) {
-        std::copy(options.matrix.begin(), options.matrix.end(), m.begin());
-    } else {
-        identity4(m.data());
-    }
     try {
+        std::array<double, 16> m;
+        if (options.matrix) {
+            m = *options.matrix;
+            if (std::any_of(m.begin(), m.end(), [](double value) { return !std::isfinite(value); })) {
+                throw std::invalid_argument("matrix values must be finite");
+            }
+        } else {
+            identity4(m.data());
+        }
         return edit_placement_impl(file, product_value, m, options.is_si, options.should_transform_children);
     } catch (const std::exception& ex) {
         ifcapi::detail::set_error(ex, "edit_object_placement: ");

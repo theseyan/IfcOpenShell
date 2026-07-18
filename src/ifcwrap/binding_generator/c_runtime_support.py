@@ -65,6 +65,41 @@ struct capi_array_owner final : capi_buffer_owner {{
     std::unique_ptr<T[]> values;
 }};
 
+template <size_t N, typename Sequence>
+auto to_fixed_array(Sequence&& values) {{
+    if (values.size() != N) {{
+        throw std::invalid_argument("Fixed-size sequence has invalid cardinality");
+    }}
+    using item_type = std::decay_t<decltype(values[0])>;
+    std::array<item_type, N> result{{}};
+    std::move(values.begin(), values.end(), result.begin());
+    return result;
+}}
+
+template <typename Sequence, typename Transform>
+auto transform_sequence(Sequence&& values, Transform transform) {{
+    using item_type = decltype(transform(std::move(values[0])));
+    std::vector<item_type> result;
+    result.reserve(values.size());
+    for (auto& value : values) {{
+        result.push_back(transform(std::move(value)));
+    }}
+    return result;
+}}
+
+template <size_t N, typename Sequence, typename Transform>
+auto transform_fixed_sequence(Sequence&& values, Transform transform) {{
+    if (values.size() != N) {{
+        throw std::invalid_argument("Fixed-size sequence has invalid cardinality");
+    }}
+    using item_type = decltype(transform(std::move(values[0])));
+    std::array<item_type, N> result{{}};
+    for (size_t index = 0; index < N; ++index) {{
+        result[index] = transform(std::move(values[index]));
+    }}
+    return result;
+}}
+
 bool feature_use_attribute_value_derived = false;
 std::stringstream ifcopenshell_log_stream;
 bool g_log_stream_initialized = false;

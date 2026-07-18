@@ -5,6 +5,7 @@
 #define IFCAPI_BINDINGS_STRUCTURAL_H
 
 #include "ifcapi/bindings/contract.h"
+#include "ifcapi/bindings/types.h"
 #include "ifcparse/file.h"
 
 #include <optional>
@@ -238,8 +239,8 @@ IFCAPI_BINDING express::Base structural_add_structural_boundary_condition(
 IFCAPI_BINDING void structural_edit_structural_connection_cs(
     ifcopenshell::file* file,
     express::Base* structural_item,
-    const std::vector<double>& axis,
-    const std::vector<double>& ref_direction);
+    const std::array<double, 3>& axis,
+    const std::array<double, 3>& ref_direction);
 /**
  * Edit the Axis direction of a structural item.
  *
@@ -254,7 +255,7 @@ IFCAPI_BINDING void structural_edit_structural_connection_cs(
 IFCAPI_BINDING void structural_edit_structural_item_axis(
     ifcopenshell::file* file,
     express::Base* structural_item,
-    const std::vector<double>& axis);
+    const std::array<double, 3>& axis);
 /**
  * Edit attributes of an IfcBoundaryCondition subclass.
  *

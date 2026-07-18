@@ -52,6 +52,30 @@ class TestEditObjectPlacement(test.bootstrap.IFC4):
         ifcopenshell.api.geometry.edit_object_placement(self.file, product=element, matrix=matrix.copy(), is_si=False)
         assert numpy.array_equal(ifcopenshell.util.placement.get_local_placement(element.ObjectPlacement), matrix)
 
+    @pytest.mark.parametrize("matrix", [numpy.arange(16), numpy.arange(16).reshape(2, 8)])
+    def test_rejecting_malformed_matrix_shapes_before_mutation(self, matrix):
+        ifcopenshell.api.root.create_entity(self.file, ifc_class="IfcProject")
+        ifcopenshell.api.unit.assign_unit(self.file)
+        element = ifcopenshell.api.root.create_entity(self.file, ifc_class="IfcWall")
+        initial_matrix = numpy.eye(4)
+        initial_matrix[:3, 3] = (1.0, 2.0, 3.0)
+        ifcopenshell.api.geometry.edit_object_placement(
+            self.file, product=element, matrix=initial_matrix, is_si=False
+        )
+        initial_placement = element.ObjectPlacement
+        initial_entity_ids = [entity.id() for entity in self.file]
+
+        with pytest.raises(ValueError, match=r"Expected matrix with shape \(4, 4\)"):
+            ifcopenshell.api.geometry.edit_object_placement(
+                self.file, product=element, matrix=matrix, is_si=False
+            )
+
+        assert element.ObjectPlacement == initial_placement
+        assert [entity.id() for entity in self.file] == initial_entity_ids
+        assert numpy.array_equal(
+            ifcopenshell.util.placement.get_local_placement(element.ObjectPlacement), initial_matrix
+        )
+
     def test_setting_an_object_placement_using_si_units(self):
         ifcopenshell.api.root.create_entity(self.file, ifc_class="IfcProject")
         ifcopenshell.api.unit.assign_unit(self.file)

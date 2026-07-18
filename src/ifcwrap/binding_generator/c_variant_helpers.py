@@ -8,6 +8,7 @@ from .abi_ir import (
     _handle_list_list_destroy_name,
     _sequence_destroy_name,
     _type_spec_sequence_kind,
+    _used_variant_types,
     _variant_c_type,
     _variant_destroy_name,
 )
@@ -16,17 +17,7 @@ from .binding_ir import BindingIR
 
 
 def _variant_return_types(spec: BindingIR) -> tuple[TypeSpec, ...]:
-    seen: set[str] = set()
-    variants: list[TypeSpec] = []
-    for call in spec.calls:
-        if call.returns.kind != "variant":
-            continue
-        c_type = _variant_c_type(call.returns, spec)
-        if c_type in seen:
-            continue
-        seen.add(c_type)
-        variants.append(call.returns)
-    return tuple(variants)
+    return _used_variant_types(spec)
 
 
 def _variant_alternative_destroy(

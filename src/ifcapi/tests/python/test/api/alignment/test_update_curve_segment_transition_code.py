@@ -19,6 +19,7 @@
 
 import ifcopenshell.api.context
 import ifcopenshell.api.unit
+from ifcopenshell.api.alignment import _capi as alignment_capi
 from ifcopenshell.api.alignment._update_curve_segment_transition_code import (
     _update_curve_segment_transition_code,
 )
@@ -84,7 +85,11 @@ def _test1():
 
     composite_curve = file.createIfcCompositeCurve(Segments=(circular_arc, line), SelfIntersect=False)
 
-    _update_curve_segment_transition_code(circular_arc, line)
+    alignment_capi.call_status(
+        "alignment_update_curve_segment_transition_code",
+        alignment_capi.instance_handle(circular_arc),
+        alignment_capi.instance_handle(line),
+    )
     assert circular_arc.Transition == "CONTSAMEGRADIENT"
 
 

@@ -110,7 +110,8 @@ inline std::vector<express::Base> create_window_frame_simple(
             true);
         auto panel_profile = ifcapi::bindings::shape_builder_profile(
             file,
-            ifcapi::bindings::ShapeBuilderProfileOptions{panel_rect, {}, {inner_rect}, "AREA"});
+            ifcapi::bindings::ShapeBuilderProfileOptions{
+                panel_rect, {}, std::vector<express::Base>{inner_rect}, "AREA"});
         result.push_back(extrude_y(file, panel_profile, size[1], position));
         return result;
     }

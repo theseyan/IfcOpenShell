@@ -146,6 +146,7 @@ if(BUILD_TESTING AND NOT WASM_BUILD)
         tests/test_resource.c
         tests/test_nest.c
         tests/test_geometry.c
+        tests/test_shape_builder.c
         tests/test_alignment.c
         tests/test_pset_template_cogo_library.c
         tests/test_edit_wrappers.c

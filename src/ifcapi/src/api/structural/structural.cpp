@@ -374,8 +374,8 @@ express::Base structural_add_structural_boundary_condition(
 void structural_edit_structural_connection_cs(
     ifcopenshell::file* file,
     express::Base* structural_item,
-    const std::vector<double>& axis,
-    const std::vector<double>& ref_direction)
+    const Vec3& axis,
+    const Vec3& ref_direction)
 {
     ifcopenshell_clear_error();
     auto structural_item_ref = ifcapi::detail::deref_or_empty(structural_item);
@@ -395,11 +395,12 @@ void structural_edit_structural_connection_cs(
         if (auto current_axis = ifcapi::detail::read_ref_attr(ccs, "Axis")) {
             if (total_inverses(file, current_axis) == 1) file->remove_entity(current_axis);
         }
-        ifcapi::detail::write_ref_attr(ccs, "Axis", create_direction(file, axis));
+        ifcapi::detail::write_ref_attr(ccs, "Axis", create_direction(file, std::vector<double>(axis.begin(), axis.end())));
         if (auto current_ref_direction = ifcapi::detail::read_ref_attr(ccs, "RefDirection")) {
             if (total_inverses(file, current_ref_direction) == 1) file->remove_entity(current_ref_direction);
         }
-        ifcapi::detail::write_ref_attr(ccs, "RefDirection", create_direction(file, ref_direction));
+        ifcapi::detail::write_ref_attr(
+            ccs, "RefDirection", create_direction(file, std::vector<double>(ref_direction.begin(), ref_direction.end())));
     } catch (const std::exception& e) {
         ifcapi::detail::set_error(e);
     }
@@ -408,7 +409,7 @@ void structural_edit_structural_connection_cs(
 void structural_edit_structural_item_axis(
     ifcopenshell::file* file,
     express::Base* structural_item,
-    const std::vector<double>& axis)
+    const Vec3& axis)
 {
     ifcopenshell_clear_error();
     auto structural_item_ref = ifcapi::detail::deref_or_empty(structural_item);
@@ -423,7 +424,8 @@ void structural_edit_structural_item_axis(
         if (auto current_axis = ifcapi::detail::read_ref_attr(structural_item_ref, "Axis")) {
             if (total_inverses(file, current_axis) == 1) file->remove_entity(current_axis);
         }
-        ifcapi::detail::write_ref_attr(structural_item_ref, "Axis", create_direction(file, axis));
+        ifcapi::detail::write_ref_attr(
+            structural_item_ref, "Axis", create_direction(file, std::vector<double>(axis.begin(), axis.end())));
     } catch (const std::exception& e) {
         ifcapi::detail::set_error(e);
     }

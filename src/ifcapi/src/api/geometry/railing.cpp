@@ -50,12 +50,21 @@ struct RailingDims {
 
 bool finite(double value) { return std::isfinite(value); }
 
-bool finite_point(const Point& point) {
+template <typename T>
+bool finite_point(const T& point) {
     return point.size() == 3 && std::all_of(point.begin(), point.end(), [](double value) { return finite(value); });
 }
 
-bool finite_points(const Points& points) {
-    return std::all_of(points.begin(), points.end(), finite_point);
+template <typename T>
+bool finite_points(const T& points) {
+    return std::all_of(points.begin(), points.end(), [](const auto& point) { return finite_point(point); });
+}
+
+Points dynamic_points(const std::vector<ifcapi::bindings::Vec3>& points) {
+    Points result;
+    result.reserve(points.size());
+    for (const auto& point : points) result.emplace_back(point.begin(), point.end());
+    return result;
 }
 
 std::optional<Point> normalized(const Point& value) {
@@ -78,6 +87,36 @@ std::optional<Point> horizontal_orthogonal(const Point& direction) {
 Point cap_orthogonal(const Point& direction) {
     if (auto result = horizontal_orthogonal(direction)) return *result;
     return {1.0, 0.0, 0.0};
+}
+
+std::vector<ifcapi::bindings::ShapeBuilderCurveSegment> curve_segments(
+    size_t point_count,
+    const std::vector<int>& arc_midpoints)
+{
+    std::vector<ifcapi::bindings::ShapeBuilderCurveSegment> result;
+    std::vector<std::uint32_t> current_line;
+    size_t index = 0;
+    while (index + 1 < point_count) {
+        const bool arc = std::find(arc_midpoints.begin(), arc_midpoints.end(), static_cast<int>(index + 1)) !=
+            arc_midpoints.end();
+        if (arc && index + 2 < point_count) {
+            if (!current_line.empty()) {
+                result.emplace_back(ifcapi::bindings::ShapeBuilderLineSegment{std::move(current_line)});
+                current_line.clear();
+            }
+            result.emplace_back(ifcapi::bindings::ShapeBuilderArcSegment{{
+                static_cast<std::uint32_t>(index),
+                static_cast<std::uint32_t>(index + 1),
+                static_cast<std::uint32_t>(index + 2)}});
+            index += 2;
+        } else {
+            if (current_line.empty()) current_line.push_back(static_cast<std::uint32_t>(index));
+            current_line.push_back(static_cast<std::uint32_t>(index + 1));
+            ++index;
+        }
+    }
+    if (!current_line.empty()) result.emplace_back(ifcapi::bindings::ShapeBuilderLineSegment{std::move(current_line)});
+    return result;
 }
 
 std::optional<Point> line_intersection(
@@ -392,7 +431,11 @@ express::Base require_entity(express::Base value, const char* operation) {
 express::Base materialize_support(ifcopenshell::file* file, const GeometryRailingSupport& support) {
     auto polyline = require_entity(
         ifcapi::bindings::shape_builder_polyline(
-            file, ifcapi::bindings::ShapeBuilderPolylineOptions{support.arc_polyline, false, {}, {1}}),
+            file,
+            ifcapi::bindings::ShapeBuilderPolylineOptions{
+                ifcapi::detail::fixed_vec2_or_vec3_list(support.arc_polyline),
+                {},
+                curve_segments(support.arc_polyline.size(), {1})}),
         "Failed to create railing support polyline");
     return require_entity(
         ifcapi::bindings::shape_builder_swept_disk_solid(file, &polyline, support.arc_radius),
@@ -410,10 +453,10 @@ express::Base materialize_disk(ifcopenshell::file* file, const GeometryRailingSu
             ifcapi::bindings::ShapeBuilderExtrudeOptions{
                 circle,
                 support.disk_depth,
-                support.disk_position,
-                {0.0, 0.0, -1.0},
-                ifcapi::detail::rotate_xy({0.0, -1.0, 0.0}, rotated),
-                ifcapi::detail::rotate_xy({1.0, 0.0, 0.0}, rotated),
+                ifcapi::detail::fixed_vec3(support.disk_position),
+                ifcapi::bindings::Vec3{0.0, 0.0, -1.0},
+                ifcapi::detail::fixed_vec3(ifcapi::detail::rotate_xy({0.0, -1.0, 0.0}, rotated)),
+                ifcapi::detail::fixed_vec3(ifcapi::detail::rotate_xy({1.0, 0.0, 0.0}, rotated)),
                 {}}),
         "Failed to create railing support attachment disk");
 }
@@ -446,7 +489,7 @@ GeometryWallMountedHandrailResult geometry_compute_wall_mounted_handrail_geometr
         options.clear_width,
         terminal_type};
 
-    Points railing_coords = options.railing_path;
+    Points railing_coords = dynamic_points(options.railing_path);
     for (auto& point : railing_coords) point[2] += railing_radius;
     if (looped_path && railing_coords.size() > 2 &&
         ifcapi::detail::np_allclose(railing_coords.front(), railing_coords.back())) {
@@ -477,10 +520,10 @@ express::Base geometry_add_railing_representation(
 
     const double unit_scale = options.unit_scale.value_or(unit_calculate_unit_scale(file, "LENGTHUNIT"));
     const auto default_dimension = [unit_scale](double millimetres) { return mm(millimetres) / unit_scale; };
-    Points path = options.railing_path.value_or(Points{
-        {0.0, 0.0, 1.0 / unit_scale},
-        {1.0 / unit_scale, 0.0, 1.0 / unit_scale},
-        {2.0 / unit_scale, 0.0, 1.0 / unit_scale}});
+    const auto path = options.railing_path.value_or(std::vector<Vec3>{
+        Vec3{0.0, 0.0, 1.0 / unit_scale},
+        Vec3{1.0 / unit_scale, 0.0, 1.0 / unit_scale},
+        Vec3{2.0 / unit_scale, 0.0, 1.0 / unit_scale}});
     GeometryComputeWallMountedHandrailOptions compute_options{
         path,
         options.support_spacing.value_or(default_dimension(1000.0)),
@@ -508,7 +551,9 @@ express::Base geometry_add_railing_representation(
         shape_builder_polyline(
             file,
             ShapeBuilderPolylineOptions{
-                geometry.handrail_polyline, false, {}, geometry.handrail_arc_point_indices}),
+                ifcapi::detail::fixed_vec2_or_vec3_list(geometry.handrail_polyline),
+                {},
+                curve_segments(geometry.handrail_polyline.size(), geometry.handrail_arc_point_indices)}),
         "Failed to create handrail polyline");
     items.push_back(require_entity(
         shape_builder_swept_disk_solid(file, &handrail_path, geometry.handrail_radius),

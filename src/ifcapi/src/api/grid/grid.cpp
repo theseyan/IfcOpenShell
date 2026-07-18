@@ -107,8 +107,8 @@ void grid_remove_grid_axis(ifcopenshell::file* file, express::Base* axis) {
 
 void grid_create_axis_curve(
     ifcopenshell::file* file,
-    const std::vector<double>& p1,
-    const std::vector<double>& p2,
+    const Vec3& p1,
+    const Vec3& p2,
     express::Base* grid_axis,
     bool is_si)
 {
@@ -118,8 +118,8 @@ void grid_create_axis_curve(
         if (!file || !grid_axis_value) {
             throw std::runtime_error("grid_create_axis_curve requires a file and grid axis");
         }
-        auto point1 = normalise_point(p1);
-        auto point2 = normalise_point(p2);
+        auto point1 = normalise_point(std::vector<double>(p1.begin(), p1.end()));
+        auto point2 = normalise_point(std::vector<double>(p2.begin(), p2.end()));
         if (is_si) {
             double unit_scale = unit_calculate_unit_scale(file, "LENGTHUNIT");
             for (double* value : {&point1[0], &point1[1], &point1[2], &point2[0], &point2[1], &point2[2]}) {

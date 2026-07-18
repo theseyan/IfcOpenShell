@@ -4195,10 +4195,36 @@ static PyObject *get_option_field(PyObject *obj, const char *name, int required)
     return NULL;
 }
 
-static void release_option_refs(PyObject **refs, size_t count) {
-    for (size_t i = 0; i < count; ++i) {
-        Py_XDECREF(refs[i]);
+typedef struct {
+    PyObject **items;
+    size_t size;
+    size_t capacity;
+} option_ref_owner;
+
+static int retain_option_ref(option_ref_owner *owner, PyObject *value) {
+    if (owner->size == owner->capacity) {
+        size_t capacity = owner->capacity ? owner->capacity * 2 : 8;
+        PyObject **items = (PyObject **)PyMem_Realloc(owner->items, capacity * sizeof(PyObject *));
+        if (!items) {
+            Py_DECREF(value);
+            PyErr_NoMemory();
+            return 0;
+        }
+        owner->items = items;
+        owner->capacity = capacity;
     }
+    owner->items[owner->size++] = value;
+    return 1;
+}
+
+static void release_option_refs(option_ref_owner *owner) {
+    for (size_t i = 0; i < owner->size; ++i) {
+        Py_DECREF(owner->items[i]);
+    }
+    PyMem_Free(owner->items);
+    owner->items = NULL;
+    owner->size = 0;
+    owner->capacity = 0;
 }
 
 static PyObject *py_aggregation_type_destroy(PyObject *self, PyObject *args) {
@@ -6002,347 +6028,795 @@ static PyObject *wrap_value(ifcopenshell_value_t *handle, int owned) {
 }
 
 static void free_input_aggregate_assign_object_options(ifcopenshell_aggregate_assign_object_options_t *value);
-static int fill_input_aggregate_assign_object_options(PyObject *obj, ifcopenshell_aggregate_assign_object_options_t *out, PyObject **refs);
+static int fill_input_aggregate_assign_object_options(PyObject *obj, ifcopenshell_aggregate_assign_object_options_t *out, option_ref_owner *refs);
 static void free_input_aggregate_unassign_object_options(ifcopenshell_aggregate_unassign_object_options_t *value);
-static int fill_input_aggregate_unassign_object_options(PyObject *obj, ifcopenshell_aggregate_unassign_object_options_t *out, PyObject **refs);
+static int fill_input_aggregate_unassign_object_options(PyObject *obj, ifcopenshell_aggregate_unassign_object_options_t *out, option_ref_owner *refs);
 static void free_input_alignment_add_stationing_referent_options(ifcopenshell_alignment_add_stationing_referent_options_t *value);
-static int fill_input_alignment_add_stationing_referent_options(PyObject *obj, ifcopenshell_alignment_add_stationing_referent_options_t *out, PyObject **refs);
+static int fill_input_alignment_add_stationing_referent_options(PyObject *obj, ifcopenshell_alignment_add_stationing_referent_options_t *out, option_ref_owner *refs);
 static void free_input_alignment_create_by_pi_method_options(ifcopenshell_alignment_create_by_pi_method_options_t *value);
-static int fill_input_alignment_create_by_pi_method_options(PyObject *obj, ifcopenshell_alignment_create_by_pi_method_options_t *out, PyObject **refs);
+static int fill_input_alignment_create_by_pi_method_options(PyObject *obj, ifcopenshell_alignment_create_by_pi_method_options_t *out, option_ref_owner *refs);
 static void free_input_alignment_create_from_csv_text_options(ifcopenshell_alignment_create_from_csv_text_options_t *value);
-static int fill_input_alignment_create_from_csv_text_options(PyObject *obj, ifcopenshell_alignment_create_from_csv_text_options_t *out, PyObject **refs);
+static int fill_input_alignment_create_from_csv_text_options(PyObject *obj, ifcopenshell_alignment_create_from_csv_text_options_t *out, option_ref_owner *refs);
 static void free_input_alignment_create_offset_curve_options(ifcopenshell_alignment_create_offset_curve_options_t *value);
-static int fill_input_alignment_create_offset_curve_options(PyObject *obj, ifcopenshell_alignment_create_offset_curve_options_t *out, PyObject **refs);
+static int fill_input_alignment_create_offset_curve_options(PyObject *obj, ifcopenshell_alignment_create_offset_curve_options_t *out, option_ref_owner *refs);
 static void free_input_alignment_create_options(ifcopenshell_alignment_create_options_t *value);
-static int fill_input_alignment_create_options(PyObject *obj, ifcopenshell_alignment_create_options_t *out, PyObject **refs);
+static int fill_input_alignment_create_options(PyObject *obj, ifcopenshell_alignment_create_options_t *out, option_ref_owner *refs);
 static void free_input_alignment_create_polyline_options(ifcopenshell_alignment_create_polyline_options_t *value);
-static int fill_input_alignment_create_polyline_options(PyObject *obj, ifcopenshell_alignment_create_polyline_options_t *out, PyObject **refs);
+static int fill_input_alignment_create_polyline_options(PyObject *obj, ifcopenshell_alignment_create_polyline_options_t *out, option_ref_owner *refs);
+static void free_input_alignment_horizontal_pi_layout(ifcopenshell_alignment_horizontal_pi_layout_t *value);
+static int fill_input_alignment_horizontal_pi_layout(PyObject *obj, ifcopenshell_alignment_horizontal_pi_layout_t *out, option_ref_owner *refs);
+static void free_input_alignment_horizontal_pi(ifcopenshell_alignment_horizontal_pi_t *value);
+static int fill_input_alignment_horizontal_pi(PyObject *obj, ifcopenshell_alignment_horizontal_pi_t *out, option_ref_owner *refs);
+static void free_input_alignment_layout_horizontal_by_pi_method_options(ifcopenshell_alignment_layout_horizontal_by_pi_method_options_t *value);
+static int fill_input_alignment_layout_horizontal_by_pi_method_options(PyObject *obj, ifcopenshell_alignment_layout_horizontal_by_pi_method_options_t *out, option_ref_owner *refs);
+static void free_input_alignment_layout_vertical_by_pi_method_options(ifcopenshell_alignment_layout_vertical_by_pi_method_options_t *value);
+static int fill_input_alignment_layout_vertical_by_pi_method_options(PyObject *obj, ifcopenshell_alignment_layout_vertical_by_pi_method_options_t *out, option_ref_owner *refs);
 static void free_input_alignment_map_segment_options(ifcopenshell_alignment_map_segment_options_t *value);
-static int fill_input_alignment_map_segment_options(PyObject *obj, ifcopenshell_alignment_map_segment_options_t *out, PyObject **refs);
+static int fill_input_alignment_map_segment_options(PyObject *obj, ifcopenshell_alignment_map_segment_options_t *out, option_ref_owner *refs);
+static void free_input_alignment_vertical_pi_layout(ifcopenshell_alignment_vertical_pi_layout_t *value);
+static int fill_input_alignment_vertical_pi_layout(PyObject *obj, ifcopenshell_alignment_vertical_pi_layout_t *out, option_ref_owner *refs);
+static void free_input_alignment_vertical_pi(ifcopenshell_alignment_vertical_pi_t *value);
+static int fill_input_alignment_vertical_pi(PyObject *obj, ifcopenshell_alignment_vertical_pi_t *out, option_ref_owner *refs);
 static void free_input_attribute_edit_attributes_options(ifcopenshell_attribute_edit_attributes_options_t *value);
-static int fill_input_attribute_edit_attributes_options(PyObject *obj, ifcopenshell_attribute_edit_attributes_options_t *out, PyObject **refs);
+static int fill_input_attribute_edit_attributes_options(PyObject *obj, ifcopenshell_attribute_edit_attributes_options_t *out, option_ref_owner *refs);
 static void free_input_boundary_assign_connection_geometry_options(ifcopenshell_boundary_assign_connection_geometry_options_t *value);
-static int fill_input_boundary_assign_connection_geometry_options(PyObject *obj, ifcopenshell_boundary_assign_connection_geometry_options_t *out, PyObject **refs);
+static int fill_input_boundary_assign_connection_geometry_options(PyObject *obj, ifcopenshell_boundary_assign_connection_geometry_options_t *out, option_ref_owner *refs);
 static void free_input_boundary_edit_attributes_options(ifcopenshell_boundary_edit_attributes_options_t *value);
-static int fill_input_boundary_edit_attributes_options(PyObject *obj, ifcopenshell_boundary_edit_attributes_options_t *out, PyObject **refs);
+static int fill_input_boundary_edit_attributes_options(PyObject *obj, ifcopenshell_boundary_edit_attributes_options_t *out, option_ref_owner *refs);
 static void free_input_classification_add_reference_options(ifcopenshell_classification_add_reference_options_t *value);
-static int fill_input_classification_add_reference_options(PyObject *obj, ifcopenshell_classification_add_reference_options_t *out, PyObject **refs);
+static int fill_input_classification_add_reference_options(PyObject *obj, ifcopenshell_classification_add_reference_options_t *out, option_ref_owner *refs);
 static void free_input_classification_remove_reference_options(ifcopenshell_classification_remove_reference_options_t *value);
-static int fill_input_classification_remove_reference_options(PyObject *obj, ifcopenshell_classification_remove_reference_options_t *out, PyObject **refs);
+static int fill_input_classification_remove_reference_options(PyObject *obj, ifcopenshell_classification_remove_reference_options_t *out, option_ref_owner *refs);
 static void free_input_cogo_add_survey_point_options(ifcopenshell_cogo_add_survey_point_options_t *value);
-static int fill_input_cogo_add_survey_point_options(PyObject *obj, ifcopenshell_cogo_add_survey_point_options_t *out, PyObject **refs);
+static int fill_input_cogo_add_survey_point_options(PyObject *obj, ifcopenshell_cogo_add_survey_point_options_t *out, option_ref_owner *refs);
 static void free_input_constraint_assign_constraint_options(ifcopenshell_constraint_assign_constraint_options_t *value);
-static int fill_input_constraint_assign_constraint_options(PyObject *obj, ifcopenshell_constraint_assign_constraint_options_t *out, PyObject **refs);
+static int fill_input_constraint_assign_constraint_options(PyObject *obj, ifcopenshell_constraint_assign_constraint_options_t *out, option_ref_owner *refs);
 static void free_input_constraint_unassign_constraint_options(ifcopenshell_constraint_unassign_constraint_options_t *value);
-static int fill_input_constraint_unassign_constraint_options(PyObject *obj, ifcopenshell_constraint_unassign_constraint_options_t *out, PyObject **refs);
+static int fill_input_constraint_unassign_constraint_options(PyObject *obj, ifcopenshell_constraint_unassign_constraint_options_t *out, option_ref_owner *refs);
 static void free_input_context_add_context_options(ifcopenshell_context_add_context_options_t *value);
-static int fill_input_context_add_context_options(PyObject *obj, ifcopenshell_context_add_context_options_t *out, PyObject **refs);
+static int fill_input_context_add_context_options(PyObject *obj, ifcopenshell_context_add_context_options_t *out, option_ref_owner *refs);
 static void free_input_control_assign_control_options(ifcopenshell_control_assign_control_options_t *value);
-static int fill_input_control_assign_control_options(PyObject *obj, ifcopenshell_control_assign_control_options_t *out, PyObject **refs);
+static int fill_input_control_assign_control_options(PyObject *obj, ifcopenshell_control_assign_control_options_t *out, option_ref_owner *refs);
 static void free_input_control_unassign_control_options(ifcopenshell_control_unassign_control_options_t *value);
-static int fill_input_control_unassign_control_options(PyObject *obj, ifcopenshell_control_unassign_control_options_t *out, PyObject **refs);
+static int fill_input_control_unassign_control_options(PyObject *obj, ifcopenshell_control_unassign_control_options_t *out, option_ref_owner *refs);
 static void free_input_cost_add_cost_item_options(ifcopenshell_cost_add_cost_item_options_t *value);
-static int fill_input_cost_add_cost_item_options(PyObject *obj, ifcopenshell_cost_add_cost_item_options_t *out, PyObject **refs);
+static int fill_input_cost_add_cost_item_options(PyObject *obj, ifcopenshell_cost_add_cost_item_options_t *out, option_ref_owner *refs);
 static void free_input_cost_assign_cost_item_quantity_options(ifcopenshell_cost_assign_cost_item_quantity_options_t *value);
-static int fill_input_cost_assign_cost_item_quantity_options(PyObject *obj, ifcopenshell_cost_assign_cost_item_quantity_options_t *out, PyObject **refs);
+static int fill_input_cost_assign_cost_item_quantity_options(PyObject *obj, ifcopenshell_cost_assign_cost_item_quantity_options_t *out, option_ref_owner *refs);
 static void free_input_cost_copy_cost_schedule_options(ifcopenshell_cost_copy_cost_schedule_options_t *value);
-static int fill_input_cost_copy_cost_schedule_options(PyObject *obj, ifcopenshell_cost_copy_cost_schedule_options_t *out, PyObject **refs);
+static int fill_input_cost_copy_cost_schedule_options(PyObject *obj, ifcopenshell_cost_copy_cost_schedule_options_t *out, option_ref_owner *refs);
 static void free_input_cost_edit_cost_value_options(ifcopenshell_cost_edit_cost_value_options_t *value);
-static int fill_input_cost_edit_cost_value_options(PyObject *obj, ifcopenshell_cost_edit_cost_value_options_t *out, PyObject **refs);
+static int fill_input_cost_edit_cost_value_options(PyObject *obj, ifcopenshell_cost_edit_cost_value_options_t *out, option_ref_owner *refs);
 static void free_input_cost_unassign_cost_item_quantity_options(ifcopenshell_cost_unassign_cost_item_quantity_options_t *value);
-static int fill_input_cost_unassign_cost_item_quantity_options(PyObject *obj, ifcopenshell_cost_unassign_cost_item_quantity_options_t *out, PyObject **refs);
+static int fill_input_cost_unassign_cost_item_quantity_options(PyObject *obj, ifcopenshell_cost_unassign_cost_item_quantity_options_t *out, option_ref_owner *refs);
 static void free_input_document_add_information_options(ifcopenshell_document_add_information_options_t *value);
-static int fill_input_document_add_information_options(PyObject *obj, ifcopenshell_document_add_information_options_t *out, PyObject **refs);
+static int fill_input_document_add_information_options(PyObject *obj, ifcopenshell_document_add_information_options_t *out, option_ref_owner *refs);
 static void free_input_document_assign_document_options(ifcopenshell_document_assign_document_options_t *value);
-static int fill_input_document_assign_document_options(PyObject *obj, ifcopenshell_document_assign_document_options_t *out, PyObject **refs);
+static int fill_input_document_assign_document_options(PyObject *obj, ifcopenshell_document_assign_document_options_t *out, option_ref_owner *refs);
 static void free_input_document_unassign_document_options(ifcopenshell_document_unassign_document_options_t *value);
-static int fill_input_document_unassign_document_options(PyObject *obj, ifcopenshell_document_unassign_document_options_t *out, PyObject **refs);
+static int fill_input_document_unassign_document_options(PyObject *obj, ifcopenshell_document_unassign_document_options_t *out, option_ref_owner *refs);
 static void free_input_drawing_assign_product_options(ifcopenshell_drawing_assign_product_options_t *value);
-static int fill_input_drawing_assign_product_options(PyObject *obj, ifcopenshell_drawing_assign_product_options_t *out, PyObject **refs);
+static int fill_input_drawing_assign_product_options(PyObject *obj, ifcopenshell_drawing_assign_product_options_t *out, option_ref_owner *refs);
 static void free_input_drawing_unassign_product_options(ifcopenshell_drawing_unassign_product_options_t *value);
-static int fill_input_drawing_unassign_product_options(PyObject *obj, ifcopenshell_drawing_unassign_product_options_t *out, PyObject **refs);
+static int fill_input_drawing_unassign_product_options(PyObject *obj, ifcopenshell_drawing_unassign_product_options_t *out, option_ref_owner *refs);
 static void free_input_element_get_container_options(ifcopenshell_element_get_container_options_t *value);
-static int fill_input_element_get_container_options(PyObject *obj, ifcopenshell_element_get_container_options_t *out, PyObject **refs);
+static int fill_input_element_get_container_options(PyObject *obj, ifcopenshell_element_get_container_options_t *out, option_ref_owner *refs);
 static void free_input_element_get_decomposition_options(ifcopenshell_element_get_decomposition_options_t *value);
-static int fill_input_element_get_decomposition_options(PyObject *obj, ifcopenshell_element_get_decomposition_options_t *out, PyObject **refs);
+static int fill_input_element_get_decomposition_options(PyObject *obj, ifcopenshell_element_get_decomposition_options_t *out, option_ref_owner *refs);
 static void free_input_element_get_material_options(ifcopenshell_element_get_material_options_t *value);
-static int fill_input_element_get_material_options(PyObject *obj, ifcopenshell_element_get_material_options_t *out, PyObject **refs);
+static int fill_input_element_get_material_options(PyObject *obj, ifcopenshell_element_get_material_options_t *out, option_ref_owner *refs);
 static void free_input_element_get_pset_ids_options(ifcopenshell_element_get_pset_ids_options_t *value);
-static int fill_input_element_get_pset_ids_options(PyObject *obj, ifcopenshell_element_get_pset_ids_options_t *out, PyObject **refs);
+static int fill_input_element_get_pset_ids_options(PyObject *obj, ifcopenshell_element_get_pset_ids_options_t *out, option_ref_owner *refs);
 static void free_input_element_get_shape_aspects_options(ifcopenshell_element_get_shape_aspects_options_t *value);
-static int fill_input_element_get_shape_aspects_options(PyObject *obj, ifcopenshell_element_get_shape_aspects_options_t *out, PyObject **refs);
+static int fill_input_element_get_shape_aspects_options(PyObject *obj, ifcopenshell_element_get_shape_aspects_options_t *out, option_ref_owner *refs);
 static void free_input_entity_remove_deep_options(ifcopenshell_entity_remove_deep_options_t *value);
-static int fill_input_entity_remove_deep_options(PyObject *obj, ifcopenshell_entity_remove_deep_options_t *out, PyObject **refs);
+static int fill_input_entity_remove_deep_options(PyObject *obj, ifcopenshell_entity_remove_deep_options_t *out, option_ref_owner *refs);
 static void free_input_feature_add_feature_options(ifcopenshell_feature_add_feature_options_t *value);
-static int fill_input_feature_add_feature_options(PyObject *obj, ifcopenshell_feature_add_feature_options_t *out, PyObject **refs);
+static int fill_input_feature_add_feature_options(PyObject *obj, ifcopenshell_feature_add_feature_options_t *out, option_ref_owner *refs);
 static void free_input_feature_remove_feature_options(ifcopenshell_feature_remove_feature_options_t *value);
-static int fill_input_feature_remove_feature_options(PyObject *obj, ifcopenshell_feature_remove_feature_options_t *out, PyObject **refs);
+static int fill_input_feature_remove_feature_options(PyObject *obj, ifcopenshell_feature_remove_feature_options_t *out, option_ref_owner *refs);
 static void free_input_geometry_add_door_representation_options(ifcopenshell_geometry_add_door_representation_options_t *value);
-static int fill_input_geometry_add_door_representation_options(PyObject *obj, ifcopenshell_geometry_add_door_representation_options_t *out, PyObject **refs);
+static int fill_input_geometry_add_door_representation_options(PyObject *obj, ifcopenshell_geometry_add_door_representation_options_t *out, option_ref_owner *refs);
 static void free_input_geometry_add_mesh_representation_options(ifcopenshell_geometry_add_mesh_representation_options_t *value);
-static int fill_input_geometry_add_mesh_representation_options(PyObject *obj, ifcopenshell_geometry_add_mesh_representation_options_t *out, PyObject **refs);
+static int fill_input_geometry_add_mesh_representation_options(PyObject *obj, ifcopenshell_geometry_add_mesh_representation_options_t *out, option_ref_owner *refs);
 static void free_input_geometry_add_profile_representation_options(ifcopenshell_geometry_add_profile_representation_options_t *value);
-static int fill_input_geometry_add_profile_representation_options(PyObject *obj, ifcopenshell_geometry_add_profile_representation_options_t *out, PyObject **refs);
+static int fill_input_geometry_add_profile_representation_options(PyObject *obj, ifcopenshell_geometry_add_profile_representation_options_t *out, option_ref_owner *refs);
 static void free_input_geometry_add_railing_representation_options(ifcopenshell_geometry_add_railing_representation_options_t *value);
-static int fill_input_geometry_add_railing_representation_options(PyObject *obj, ifcopenshell_geometry_add_railing_representation_options_t *out, PyObject **refs);
+static int fill_input_geometry_add_railing_representation_options(PyObject *obj, ifcopenshell_geometry_add_railing_representation_options_t *out, option_ref_owner *refs);
 static void free_input_geometry_add_shape_aspect_options(ifcopenshell_geometry_add_shape_aspect_options_t *value);
-static int fill_input_geometry_add_shape_aspect_options(PyObject *obj, ifcopenshell_geometry_add_shape_aspect_options_t *out, PyObject **refs);
+static int fill_input_geometry_add_shape_aspect_options(PyObject *obj, ifcopenshell_geometry_add_shape_aspect_options_t *out, option_ref_owner *refs);
 static void free_input_geometry_add_slab_representation_options(ifcopenshell_geometry_add_slab_representation_options_t *value);
-static int fill_input_geometry_add_slab_representation_options(PyObject *obj, ifcopenshell_geometry_add_slab_representation_options_t *out, PyObject **refs);
+static int fill_input_geometry_add_slab_representation_options(PyObject *obj, ifcopenshell_geometry_add_slab_representation_options_t *out, option_ref_owner *refs);
 static void free_input_geometry_add_topology_representation_options(ifcopenshell_geometry_add_topology_representation_options_t *value);
-static int fill_input_geometry_add_topology_representation_options(PyObject *obj, ifcopenshell_geometry_add_topology_representation_options_t *out, PyObject **refs);
+static int fill_input_geometry_add_topology_representation_options(PyObject *obj, ifcopenshell_geometry_add_topology_representation_options_t *out, option_ref_owner *refs);
 static void free_input_geometry_add_wall_representation_options(ifcopenshell_geometry_add_wall_representation_options_t *value);
-static int fill_input_geometry_add_wall_representation_options(PyObject *obj, ifcopenshell_geometry_add_wall_representation_options_t *out, PyObject **refs);
+static int fill_input_geometry_add_wall_representation_options(PyObject *obj, ifcopenshell_geometry_add_wall_representation_options_t *out, option_ref_owner *refs);
 static void free_input_geometry_add_window_representation_options(ifcopenshell_geometry_add_window_representation_options_t *value);
-static int fill_input_geometry_add_window_representation_options(PyObject *obj, ifcopenshell_geometry_add_window_representation_options_t *out, PyObject **refs);
+static int fill_input_geometry_add_window_representation_options(PyObject *obj, ifcopenshell_geometry_add_window_representation_options_t *out, option_ref_owner *refs);
 static void free_input_geometry_clip_solid_bounded_options(ifcopenshell_geometry_clip_solid_bounded_options_t *value);
-static int fill_input_geometry_clip_solid_bounded_options(PyObject *obj, ifcopenshell_geometry_clip_solid_bounded_options_t *out, PyObject **refs);
+static int fill_input_geometry_clip_solid_bounded_options(PyObject *obj, ifcopenshell_geometry_clip_solid_bounded_options_t *out, option_ref_owner *refs);
 static void free_input_geometry_clip_solid_options(ifcopenshell_geometry_clip_solid_options_t *value);
-static int fill_input_geometry_clip_solid_options(PyObject *obj, ifcopenshell_geometry_clip_solid_options_t *out, PyObject **refs);
+static int fill_input_geometry_clip_solid_options(PyObject *obj, ifcopenshell_geometry_clip_solid_options_t *out, option_ref_owner *refs);
 static void free_input_geometry_compute_wall_mounted_handrail_options(ifcopenshell_geometry_compute_wall_mounted_handrail_options_t *value);
-static int fill_input_geometry_compute_wall_mounted_handrail_options(PyObject *obj, ifcopenshell_geometry_compute_wall_mounted_handrail_options_t *out, PyObject **refs);
+static int fill_input_geometry_compute_wall_mounted_handrail_options(PyObject *obj, ifcopenshell_geometry_compute_wall_mounted_handrail_options_t *out, option_ref_owner *refs);
 static void free_input_geometry_connect_element_options(ifcopenshell_geometry_connect_element_options_t *value);
-static int fill_input_geometry_connect_element_options(PyObject *obj, ifcopenshell_geometry_connect_element_options_t *out, PyObject **refs);
+static int fill_input_geometry_connect_element_options(PyObject *obj, ifcopenshell_geometry_connect_element_options_t *out, option_ref_owner *refs);
 static void free_input_geometry_connect_path_options(ifcopenshell_geometry_connect_path_options_t *value);
-static int fill_input_geometry_connect_path_options(PyObject *obj, ifcopenshell_geometry_connect_path_options_t *out, PyObject **refs);
+static int fill_input_geometry_connect_path_options(PyObject *obj, ifcopenshell_geometry_connect_path_options_t *out, option_ref_owner *refs);
 static void free_input_geometry_connect_wall_options(ifcopenshell_geometry_connect_wall_options_t *value);
-static int fill_input_geometry_connect_wall_options(PyObject *obj, ifcopenshell_geometry_connect_wall_options_t *out, PyObject **refs);
+static int fill_input_geometry_connect_wall_options(PyObject *obj, ifcopenshell_geometry_connect_wall_options_t *out, option_ref_owner *refs);
 static void free_input_geometry_copy_representation_options(ifcopenshell_geometry_copy_representation_options_t *value);
-static int fill_input_geometry_copy_representation_options(PyObject *obj, ifcopenshell_geometry_copy_representation_options_t *out, PyObject **refs);
+static int fill_input_geometry_copy_representation_options(PyObject *obj, ifcopenshell_geometry_copy_representation_options_t *out, option_ref_owner *refs);
 static void free_input_geometry_create2_pt_wall_options(ifcopenshell_geometry_create2_pt_wall_options_t *value);
-static int fill_input_geometry_create2_pt_wall_options(PyObject *obj, ifcopenshell_geometry_create2_pt_wall_options_t *out, PyObject **refs);
+static int fill_input_geometry_create2_pt_wall_options(PyObject *obj, ifcopenshell_geometry_create2_pt_wall_options_t *out, option_ref_owner *refs);
 static void free_input_geometry_disconnect_path_options(ifcopenshell_geometry_disconnect_path_options_t *value);
-static int fill_input_geometry_disconnect_path_options(PyObject *obj, ifcopenshell_geometry_disconnect_path_options_t *out, PyObject **refs);
+static int fill_input_geometry_disconnect_path_options(PyObject *obj, ifcopenshell_geometry_disconnect_path_options_t *out, option_ref_owner *refs);
+static void free_input_geometry_door_lining_properties(ifcopenshell_geometry_door_lining_properties_t *value);
+static int fill_input_geometry_door_lining_properties(PyObject *obj, ifcopenshell_geometry_door_lining_properties_t *out, option_ref_owner *refs);
+static void free_input_geometry_door_panel_properties(ifcopenshell_geometry_door_panel_properties_t *value);
+static int fill_input_geometry_door_panel_properties(PyObject *obj, ifcopenshell_geometry_door_panel_properties_t *out, option_ref_owner *refs);
 static void free_input_geometry_edit_object_placement_options(ifcopenshell_geometry_edit_object_placement_options_t *value);
-static int fill_input_geometry_edit_object_placement_options(PyObject *obj, ifcopenshell_geometry_edit_object_placement_options_t *out, PyObject **refs);
+static int fill_input_geometry_edit_object_placement_options(PyObject *obj, ifcopenshell_geometry_edit_object_placement_options_t *out, option_ref_owner *refs);
+static void free_input_geometry_entity_clipping(ifcopenshell_geometry_entity_clipping_t *value);
+static int fill_input_geometry_entity_clipping(PyObject *obj, ifcopenshell_geometry_entity_clipping_t *out, option_ref_owner *refs);
+static void free_input_geometry_mesh_face(ifcopenshell_geometry_mesh_face_t *value);
+static int fill_input_geometry_mesh_face(PyObject *obj, ifcopenshell_geometry_mesh_face_t *out, option_ref_owner *refs);
+static void free_input_geometry_mesh_item(ifcopenshell_geometry_mesh_item_t *value);
+static int fill_input_geometry_mesh_item(PyObject *obj, ifcopenshell_geometry_mesh_item_t *out, option_ref_owner *refs);
+static void free_input_geometry_plane_clipping(ifcopenshell_geometry_plane_clipping_t *value);
+static int fill_input_geometry_plane_clipping(PyObject *obj, ifcopenshell_geometry_plane_clipping_t *out, option_ref_owner *refs);
 static void free_input_geometry_regenerate_wall_representation_options(ifcopenshell_geometry_regenerate_wall_representation_options_t *value);
-static int fill_input_geometry_regenerate_wall_representation_options(PyObject *obj, ifcopenshell_geometry_regenerate_wall_representation_options_t *out, PyObject **refs);
+static int fill_input_geometry_regenerate_wall_representation_options(PyObject *obj, ifcopenshell_geometry_regenerate_wall_representation_options_t *out, option_ref_owner *refs);
 static void free_input_geometry_remove_representation_options(ifcopenshell_geometry_remove_representation_options_t *value);
-static int fill_input_geometry_remove_representation_options(PyObject *obj, ifcopenshell_geometry_remove_representation_options_t *out, PyObject **refs);
+static int fill_input_geometry_remove_representation_options(PyObject *obj, ifcopenshell_geometry_remove_representation_options_t *out, option_ref_owner *refs);
 static void free_input_geometry_validate_type_options(ifcopenshell_geometry_validate_type_options_t *value);
-static int fill_input_geometry_validate_type_options(PyObject *obj, ifcopenshell_geometry_validate_type_options_t *out, PyObject **refs);
+static int fill_input_geometry_validate_type_options(PyObject *obj, ifcopenshell_geometry_validate_type_options_t *out, option_ref_owner *refs);
+static void free_input_geometry_window_lining_properties(ifcopenshell_geometry_window_lining_properties_t *value);
+static int fill_input_geometry_window_lining_properties(PyObject *obj, ifcopenshell_geometry_window_lining_properties_t *out, option_ref_owner *refs);
+static void free_input_geometry_window_panel_properties(ifcopenshell_geometry_window_panel_properties_t *value);
+static int fill_input_geometry_window_panel_properties(PyObject *obj, ifcopenshell_geometry_window_panel_properties_t *out, option_ref_owner *refs);
 static void free_input_georeference_add_georeferencing_options(ifcopenshell_georeference_add_georeferencing_options_t *value);
-static int fill_input_georeference_add_georeferencing_options(PyObject *obj, ifcopenshell_georeference_add_georeferencing_options_t *out, PyObject **refs);
+static int fill_input_georeference_add_georeferencing_options(PyObject *obj, ifcopenshell_georeference_add_georeferencing_options_t *out, option_ref_owner *refs);
 static void free_input_georeference_edit_georeferencing_options(ifcopenshell_georeference_edit_georeferencing_options_t *value);
-static int fill_input_georeference_edit_georeferencing_options(PyObject *obj, ifcopenshell_georeference_edit_georeferencing_options_t *out, PyObject **refs);
+static int fill_input_georeference_edit_georeferencing_options(PyObject *obj, ifcopenshell_georeference_edit_georeferencing_options_t *out, option_ref_owner *refs);
 static void free_input_georeference_edit_true_north_options(ifcopenshell_georeference_edit_true_north_options_t *value);
-static int fill_input_georeference_edit_true_north_options(PyObject *obj, ifcopenshell_georeference_edit_true_north_options_t *out, PyObject **refs);
+static int fill_input_georeference_edit_true_north_options(PyObject *obj, ifcopenshell_georeference_edit_true_north_options_t *out, option_ref_owner *refs);
 static void free_input_georeference_edit_wcs_options(ifcopenshell_georeference_edit_wcs_options_t *value);
-static int fill_input_georeference_edit_wcs_options(PyObject *obj, ifcopenshell_georeference_edit_wcs_options_t *out, PyObject **refs);
+static int fill_input_georeference_edit_wcs_options(PyObject *obj, ifcopenshell_georeference_edit_wcs_options_t *out, option_ref_owner *refs);
 static void free_input_group_add_group_options(ifcopenshell_group_add_group_options_t *value);
-static int fill_input_group_add_group_options(PyObject *obj, ifcopenshell_group_add_group_options_t *out, PyObject **refs);
+static int fill_input_group_add_group_options(PyObject *obj, ifcopenshell_group_add_group_options_t *out, option_ref_owner *refs);
 static void free_input_group_assign_group_options(ifcopenshell_group_assign_group_options_t *value);
-static int fill_input_group_assign_group_options(PyObject *obj, ifcopenshell_group_assign_group_options_t *out, PyObject **refs);
+static int fill_input_group_assign_group_options(PyObject *obj, ifcopenshell_group_assign_group_options_t *out, option_ref_owner *refs);
 static void free_input_group_unassign_group_options(ifcopenshell_group_unassign_group_options_t *value);
-static int fill_input_group_unassign_group_options(PyObject *obj, ifcopenshell_group_unassign_group_options_t *out, PyObject **refs);
+static int fill_input_group_unassign_group_options(PyObject *obj, ifcopenshell_group_unassign_group_options_t *out, option_ref_owner *refs);
 static void free_input_group_update_group_products_options(ifcopenshell_group_update_group_products_options_t *value);
-static int fill_input_group_update_group_products_options(PyObject *obj, ifcopenshell_group_update_group_products_options_t *out, PyObject **refs);
+static int fill_input_group_update_group_products_options(PyObject *obj, ifcopenshell_group_update_group_products_options_t *out, option_ref_owner *refs);
 static void free_input_layer_add_layer_with_style_options(ifcopenshell_layer_add_layer_with_style_options_t *value);
-static int fill_input_layer_add_layer_with_style_options(PyObject *obj, ifcopenshell_layer_add_layer_with_style_options_t *out, PyObject **refs);
+static int fill_input_layer_add_layer_with_style_options(PyObject *obj, ifcopenshell_layer_add_layer_with_style_options_t *out, option_ref_owner *refs);
 static void free_input_library_assign_reference_options(ifcopenshell_library_assign_reference_options_t *value);
-static int fill_input_library_assign_reference_options(PyObject *obj, ifcopenshell_library_assign_reference_options_t *out, PyObject **refs);
+static int fill_input_library_assign_reference_options(PyObject *obj, ifcopenshell_library_assign_reference_options_t *out, option_ref_owner *refs);
 static void free_input_library_unassign_reference_options(ifcopenshell_library_unassign_reference_options_t *value);
-static int fill_input_library_unassign_reference_options(PyObject *obj, ifcopenshell_library_unassign_reference_options_t *out, PyObject **refs);
+static int fill_input_library_unassign_reference_options(PyObject *obj, ifcopenshell_library_unassign_reference_options_t *out, option_ref_owner *refs);
 static void free_input_material_add_constituent_options(ifcopenshell_material_add_constituent_options_t *value);
-static int fill_input_material_add_constituent_options(PyObject *obj, ifcopenshell_material_add_constituent_options_t *out, PyObject **refs);
+static int fill_input_material_add_constituent_options(PyObject *obj, ifcopenshell_material_add_constituent_options_t *out, option_ref_owner *refs);
 static void free_input_material_add_layer_options(ifcopenshell_material_add_layer_options_t *value);
-static int fill_input_material_add_layer_options(PyObject *obj, ifcopenshell_material_add_layer_options_t *out, PyObject **refs);
+static int fill_input_material_add_layer_options(PyObject *obj, ifcopenshell_material_add_layer_options_t *out, option_ref_owner *refs);
 static void free_input_material_add_material_options(ifcopenshell_material_add_material_options_t *value);
-static int fill_input_material_add_material_options(PyObject *obj, ifcopenshell_material_add_material_options_t *out, PyObject **refs);
+static int fill_input_material_add_material_options(PyObject *obj, ifcopenshell_material_add_material_options_t *out, option_ref_owner *refs);
 static void free_input_material_add_material_set_options(ifcopenshell_material_add_material_set_options_t *value);
-static int fill_input_material_add_material_set_options(PyObject *obj, ifcopenshell_material_add_material_set_options_t *out, PyObject **refs);
+static int fill_input_material_add_material_set_options(PyObject *obj, ifcopenshell_material_add_material_set_options_t *out, option_ref_owner *refs);
 static void free_input_material_add_profile_options(ifcopenshell_material_add_profile_options_t *value);
-static int fill_input_material_add_profile_options(PyObject *obj, ifcopenshell_material_add_profile_options_t *out, PyObject **refs);
+static int fill_input_material_add_profile_options(PyObject *obj, ifcopenshell_material_add_profile_options_t *out, option_ref_owner *refs);
 static void free_input_material_assign_material_options(ifcopenshell_material_assign_material_options_t *value);
-static int fill_input_material_assign_material_options(PyObject *obj, ifcopenshell_material_assign_material_options_t *out, PyObject **refs);
+static int fill_input_material_assign_material_options(PyObject *obj, ifcopenshell_material_assign_material_options_t *out, option_ref_owner *refs);
 static void free_input_material_constituent_entry_options(ifcopenshell_material_constituent_entry_options_t *value);
-static int fill_input_material_constituent_entry_options(PyObject *obj, ifcopenshell_material_constituent_entry_options_t *out, PyObject **refs);
+static int fill_input_material_constituent_entry_options(PyObject *obj, ifcopenshell_material_constituent_entry_options_t *out, option_ref_owner *refs);
 static void free_input_material_edit_profile_usage_options(ifcopenshell_material_edit_profile_usage_options_t *value);
-static int fill_input_material_edit_profile_usage_options(PyObject *obj, ifcopenshell_material_edit_profile_usage_options_t *out, PyObject **refs);
+static int fill_input_material_edit_profile_usage_options(PyObject *obj, ifcopenshell_material_edit_profile_usage_options_t *out, option_ref_owner *refs);
 static void free_input_material_remove_item_options(ifcopenshell_material_remove_item_options_t *value);
-static int fill_input_material_remove_item_options(PyObject *obj, ifcopenshell_material_remove_item_options_t *out, PyObject **refs);
+static int fill_input_material_remove_item_options(PyObject *obj, ifcopenshell_material_remove_item_options_t *out, option_ref_owner *refs);
 static void free_input_material_remove_list_item_options(ifcopenshell_material_remove_list_item_options_t *value);
-static int fill_input_material_remove_list_item_options(PyObject *obj, ifcopenshell_material_remove_list_item_options_t *out, PyObject **refs);
+static int fill_input_material_remove_list_item_options(PyObject *obj, ifcopenshell_material_remove_list_item_options_t *out, option_ref_owner *refs);
 static void free_input_material_remove_profile_options(ifcopenshell_material_remove_profile_options_t *value);
-static int fill_input_material_remove_profile_options(PyObject *obj, ifcopenshell_material_remove_profile_options_t *out, PyObject **refs);
+static int fill_input_material_remove_profile_options(PyObject *obj, ifcopenshell_material_remove_profile_options_t *out, option_ref_owner *refs);
 static void free_input_material_reorder_set_item_options(ifcopenshell_material_reorder_set_item_options_t *value);
-static int fill_input_material_reorder_set_item_options(PyObject *obj, ifcopenshell_material_reorder_set_item_options_t *out, PyObject **refs);
+static int fill_input_material_reorder_set_item_options(PyObject *obj, ifcopenshell_material_reorder_set_item_options_t *out, option_ref_owner *refs);
 static void free_input_material_set_shape_aspect_constituents_options(ifcopenshell_material_set_shape_aspect_constituents_options_t *value);
-static int fill_input_material_set_shape_aspect_constituents_options(PyObject *obj, ifcopenshell_material_set_shape_aspect_constituents_options_t *out, PyObject **refs);
+static int fill_input_material_set_shape_aspect_constituents_options(PyObject *obj, ifcopenshell_material_set_shape_aspect_constituents_options_t *out, option_ref_owner *refs);
 static void free_input_material_unassign_material_options(ifcopenshell_material_unassign_material_options_t *value);
-static int fill_input_material_unassign_material_options(PyObject *obj, ifcopenshell_material_unassign_material_options_t *out, PyObject **refs);
+static int fill_input_material_unassign_material_options(PyObject *obj, ifcopenshell_material_unassign_material_options_t *out, option_ref_owner *refs);
 static void free_input_nest_assign_object_options(ifcopenshell_nest_assign_object_options_t *value);
-static int fill_input_nest_assign_object_options(PyObject *obj, ifcopenshell_nest_assign_object_options_t *out, PyObject **refs);
+static int fill_input_nest_assign_object_options(PyObject *obj, ifcopenshell_nest_assign_object_options_t *out, option_ref_owner *refs);
 static void free_input_nest_change_nest_options(ifcopenshell_nest_change_nest_options_t *value);
-static int fill_input_nest_change_nest_options(PyObject *obj, ifcopenshell_nest_change_nest_options_t *out, PyObject **refs);
+static int fill_input_nest_change_nest_options(PyObject *obj, ifcopenshell_nest_change_nest_options_t *out, option_ref_owner *refs);
 static void free_input_nest_reorder_nesting_options(ifcopenshell_nest_reorder_nesting_options_t *value);
-static int fill_input_nest_reorder_nesting_options(PyObject *obj, ifcopenshell_nest_reorder_nesting_options_t *out, PyObject **refs);
+static int fill_input_nest_reorder_nesting_options(PyObject *obj, ifcopenshell_nest_reorder_nesting_options_t *out, option_ref_owner *refs);
 static void free_input_nest_unassign_object_options(ifcopenshell_nest_unassign_object_options_t *value);
-static int fill_input_nest_unassign_object_options(PyObject *obj, ifcopenshell_nest_unassign_object_options_t *out, PyObject **refs);
+static int fill_input_nest_unassign_object_options(PyObject *obj, ifcopenshell_nest_unassign_object_options_t *out, option_ref_owner *refs);
 static void free_input_owner_add_actor_options(ifcopenshell_owner_add_actor_options_t *value);
-static int fill_input_owner_add_actor_options(PyObject *obj, ifcopenshell_owner_add_actor_options_t *out, PyObject **refs);
+static int fill_input_owner_add_actor_options(PyObject *obj, ifcopenshell_owner_add_actor_options_t *out, option_ref_owner *refs);
 static void free_input_owner_add_application_options(ifcopenshell_owner_add_application_options_t *value);
-static int fill_input_owner_add_application_options(PyObject *obj, ifcopenshell_owner_add_application_options_t *out, PyObject **refs);
+static int fill_input_owner_add_application_options(PyObject *obj, ifcopenshell_owner_add_application_options_t *out, option_ref_owner *refs);
 static void free_input_owner_assign_actor_options(ifcopenshell_owner_assign_actor_options_t *value);
-static int fill_input_owner_assign_actor_options(PyObject *obj, ifcopenshell_owner_assign_actor_options_t *out, PyObject **refs);
+static int fill_input_owner_assign_actor_options(PyObject *obj, ifcopenshell_owner_assign_actor_options_t *out, option_ref_owner *refs);
 static void free_input_owner_create_owner_history_options(ifcopenshell_owner_create_owner_history_options_t *value);
-static int fill_input_owner_create_owner_history_options(PyObject *obj, ifcopenshell_owner_create_owner_history_options_t *out, PyObject **refs);
+static int fill_input_owner_create_owner_history_options(PyObject *obj, ifcopenshell_owner_create_owner_history_options_t *out, option_ref_owner *refs);
 static void free_input_owner_unassign_actor_options(ifcopenshell_owner_unassign_actor_options_t *value);
-static int fill_input_owner_unassign_actor_options(PyObject *obj, ifcopenshell_owner_unassign_actor_options_t *out, PyObject **refs);
+static int fill_input_owner_unassign_actor_options(PyObject *obj, ifcopenshell_owner_unassign_actor_options_t *out, option_ref_owner *refs);
 static void free_input_owner_update_owner_history_options(ifcopenshell_owner_update_owner_history_options_t *value);
-static int fill_input_owner_update_owner_history_options(PyObject *obj, ifcopenshell_owner_update_owner_history_options_t *out, PyObject **refs);
+static int fill_input_owner_update_owner_history_options(PyObject *obj, ifcopenshell_owner_update_owner_history_options_t *out, option_ref_owner *refs);
 static void free_input_profile_add_arbitrary_profile_options(ifcopenshell_profile_add_arbitrary_profile_options_t *value);
-static int fill_input_profile_add_arbitrary_profile_options(PyObject *obj, ifcopenshell_profile_add_arbitrary_profile_options_t *out, PyObject **refs);
+static int fill_input_profile_add_arbitrary_profile_options(PyObject *obj, ifcopenshell_profile_add_arbitrary_profile_options_t *out, option_ref_owner *refs);
 static void free_input_profile_add_arbitrary_profile_with_voids_options(ifcopenshell_profile_add_arbitrary_profile_with_voids_options_t *value);
-static int fill_input_profile_add_arbitrary_profile_with_voids_options(PyObject *obj, ifcopenshell_profile_add_arbitrary_profile_with_voids_options_t *out, PyObject **refs);
+static int fill_input_profile_add_arbitrary_profile_with_voids_options(PyObject *obj, ifcopenshell_profile_add_arbitrary_profile_with_voids_options_t *out, option_ref_owner *refs);
 static void free_input_project_append_asset_options(ifcopenshell_project_append_asset_options_t *value);
-static int fill_input_project_append_asset_options(PyObject *obj, ifcopenshell_project_append_asset_options_t *out, PyObject **refs);
+static int fill_input_project_append_asset_options(PyObject *obj, ifcopenshell_project_append_asset_options_t *out, option_ref_owner *refs);
 static void free_input_project_assign_declaration_options(ifcopenshell_project_assign_declaration_options_t *value);
-static int fill_input_project_assign_declaration_options(PyObject *obj, ifcopenshell_project_assign_declaration_options_t *out, PyObject **refs);
+static int fill_input_project_assign_declaration_options(PyObject *obj, ifcopenshell_project_assign_declaration_options_t *out, option_ref_owner *refs);
 static void free_input_project_unassign_declaration_options(ifcopenshell_project_unassign_declaration_options_t *value);
-static int fill_input_project_unassign_declaration_options(PyObject *obj, ifcopenshell_project_unassign_declaration_options_t *out, PyObject **refs);
+static int fill_input_project_unassign_declaration_options(PyObject *obj, ifcopenshell_project_unassign_declaration_options_t *out, option_ref_owner *refs);
 static void free_input_pset_add_pset_options(ifcopenshell_pset_add_pset_options_t *value);
-static int fill_input_pset_add_pset_options(PyObject *obj, ifcopenshell_pset_add_pset_options_t *out, PyObject **refs);
+static int fill_input_pset_add_pset_options(PyObject *obj, ifcopenshell_pset_add_pset_options_t *out, option_ref_owner *refs);
 static void free_input_pset_add_qto_options(ifcopenshell_pset_add_qto_options_t *value);
-static int fill_input_pset_add_qto_options(PyObject *obj, ifcopenshell_pset_add_qto_options_t *out, PyObject **refs);
+static int fill_input_pset_add_qto_options(PyObject *obj, ifcopenshell_pset_add_qto_options_t *out, option_ref_owner *refs);
 static void free_input_pset_assign_pset_options(ifcopenshell_pset_assign_pset_options_t *value);
-static int fill_input_pset_assign_pset_options(PyObject *obj, ifcopenshell_pset_assign_pset_options_t *out, PyObject **refs);
+static int fill_input_pset_assign_pset_options(PyObject *obj, ifcopenshell_pset_assign_pset_options_t *out, option_ref_owner *refs);
 static void free_input_pset_edit_pset_options(ifcopenshell_pset_edit_pset_options_t *value);
-static int fill_input_pset_edit_pset_options(PyObject *obj, ifcopenshell_pset_edit_pset_options_t *out, PyObject **refs);
+static int fill_input_pset_edit_pset_options(PyObject *obj, ifcopenshell_pset_edit_pset_options_t *out, option_ref_owner *refs);
 static void free_input_pset_edit_qto_options(ifcopenshell_pset_edit_qto_options_t *value);
-static int fill_input_pset_edit_qto_options(PyObject *obj, ifcopenshell_pset_edit_qto_options_t *out, PyObject **refs);
+static int fill_input_pset_edit_qto_options(PyObject *obj, ifcopenshell_pset_edit_qto_options_t *out, option_ref_owner *refs);
 static void free_input_pset_template_edit_prop_template_options(ifcopenshell_pset_template_edit_prop_template_options_t *value);
-static int fill_input_pset_template_edit_prop_template_options(PyObject *obj, ifcopenshell_pset_template_edit_prop_template_options_t *out, PyObject **refs);
+static int fill_input_pset_template_edit_prop_template_options(PyObject *obj, ifcopenshell_pset_template_edit_prop_template_options_t *out, option_ref_owner *refs);
 static void free_input_pset_unshare_pset_options(ifcopenshell_pset_unshare_pset_options_t *value);
-static int fill_input_pset_unshare_pset_options(PyObject *obj, ifcopenshell_pset_unshare_pset_options_t *out, PyObject **refs);
+static int fill_input_pset_unshare_pset_options(PyObject *obj, ifcopenshell_pset_unshare_pset_options_t *out, option_ref_owner *refs);
 static void free_input_representation_get_product_representation_options(ifcopenshell_representation_get_product_representation_options_t *value);
-static int fill_input_representation_get_product_representation_options(PyObject *obj, ifcopenshell_representation_get_product_representation_options_t *out, PyObject **refs);
+static int fill_input_representation_get_product_representation_options(PyObject *obj, ifcopenshell_representation_get_product_representation_options_t *out, option_ref_owner *refs);
 static void free_input_resource_add_resource_options(ifcopenshell_resource_add_resource_options_t *value);
-static int fill_input_resource_add_resource_options(PyObject *obj, ifcopenshell_resource_add_resource_options_t *out, PyObject **refs);
+static int fill_input_resource_add_resource_options(PyObject *obj, ifcopenshell_resource_add_resource_options_t *out, option_ref_owner *refs);
 static void free_input_resource_assignment_options(ifcopenshell_resource_assignment_options_t *value);
-static int fill_input_resource_assignment_options(PyObject *obj, ifcopenshell_resource_assignment_options_t *out, PyObject **refs);
+static int fill_input_resource_assignment_options(PyObject *obj, ifcopenshell_resource_assignment_options_t *out, option_ref_owner *refs);
 static void free_input_resource_remove_resource_options(ifcopenshell_resource_remove_resource_options_t *value);
-static int fill_input_resource_remove_resource_options(PyObject *obj, ifcopenshell_resource_remove_resource_options_t *out, PyObject **refs);
+static int fill_input_resource_remove_resource_options(PyObject *obj, ifcopenshell_resource_remove_resource_options_t *out, option_ref_owner *refs);
 static void free_input_root_create_entity_options(ifcopenshell_root_create_entity_options_t *value);
-static int fill_input_root_create_entity_options(PyObject *obj, ifcopenshell_root_create_entity_options_t *out, PyObject **refs);
+static int fill_input_root_create_entity_options(PyObject *obj, ifcopenshell_root_create_entity_options_t *out, option_ref_owner *refs);
 static void free_input_root_reassign_class_options(ifcopenshell_root_reassign_class_options_t *value);
-static int fill_input_root_reassign_class_options(PyObject *obj, ifcopenshell_root_reassign_class_options_t *out, PyObject **refs);
+static int fill_input_root_reassign_class_options(PyObject *obj, ifcopenshell_root_reassign_class_options_t *out, option_ref_owner *refs);
 static void free_input_root_remove_product_options(ifcopenshell_root_remove_product_options_t *value);
-static int fill_input_root_remove_product_options(PyObject *obj, ifcopenshell_root_remove_product_options_t *out, PyObject **refs);
+static int fill_input_root_remove_product_options(PyObject *obj, ifcopenshell_root_remove_product_options_t *out, option_ref_owner *refs);
 static void free_input_sequence_add_task_options(ifcopenshell_sequence_add_task_options_t *value);
-static int fill_input_sequence_add_task_options(PyObject *obj, ifcopenshell_sequence_add_task_options_t *out, PyObject **refs);
+static int fill_input_sequence_add_task_options(PyObject *obj, ifcopenshell_sequence_add_task_options_t *out, option_ref_owner *refs);
 static void free_input_sequence_add_task_time_options(ifcopenshell_sequence_add_task_time_options_t *value);
-static int fill_input_sequence_add_task_time_options(PyObject *obj, ifcopenshell_sequence_add_task_time_options_t *out, PyObject **refs);
+static int fill_input_sequence_add_task_time_options(PyObject *obj, ifcopenshell_sequence_add_task_time_options_t *out, option_ref_owner *refs);
 static void free_input_sequence_add_time_period_options(ifcopenshell_sequence_add_time_period_options_t *value);
-static int fill_input_sequence_add_time_period_options(PyObject *obj, ifcopenshell_sequence_add_time_period_options_t *out, PyObject **refs);
+static int fill_input_sequence_add_time_period_options(PyObject *obj, ifcopenshell_sequence_add_time_period_options_t *out, option_ref_owner *refs);
 static void free_input_sequence_add_work_calendar_options(ifcopenshell_sequence_add_work_calendar_options_t *value);
-static int fill_input_sequence_add_work_calendar_options(PyObject *obj, ifcopenshell_sequence_add_work_calendar_options_t *out, PyObject **refs);
+static int fill_input_sequence_add_work_calendar_options(PyObject *obj, ifcopenshell_sequence_add_work_calendar_options_t *out, option_ref_owner *refs);
 static void free_input_sequence_add_work_plan_options(ifcopenshell_sequence_add_work_plan_options_t *value);
-static int fill_input_sequence_add_work_plan_options(PyObject *obj, ifcopenshell_sequence_add_work_plan_options_t *out, PyObject **refs);
+static int fill_input_sequence_add_work_plan_options(PyObject *obj, ifcopenshell_sequence_add_work_plan_options_t *out, option_ref_owner *refs);
 static void free_input_sequence_add_work_schedule_options(ifcopenshell_sequence_add_work_schedule_options_t *value);
-static int fill_input_sequence_add_work_schedule_options(PyObject *obj, ifcopenshell_sequence_add_work_schedule_options_t *out, PyObject **refs);
+static int fill_input_sequence_add_work_schedule_options(PyObject *obj, ifcopenshell_sequence_add_work_schedule_options_t *out, option_ref_owner *refs);
 static void free_input_sequence_assign_lag_time_options(ifcopenshell_sequence_assign_lag_time_options_t *value);
-static int fill_input_sequence_assign_lag_time_options(PyObject *obj, ifcopenshell_sequence_assign_lag_time_options_t *out, PyObject **refs);
+static int fill_input_sequence_assign_lag_time_options(PyObject *obj, ifcopenshell_sequence_assign_lag_time_options_t *out, option_ref_owner *refs);
 static void free_input_sequence_assign_process_options(ifcopenshell_sequence_assign_process_options_t *value);
-static int fill_input_sequence_assign_process_options(PyObject *obj, ifcopenshell_sequence_assign_process_options_t *out, PyObject **refs);
+static int fill_input_sequence_assign_process_options(PyObject *obj, ifcopenshell_sequence_assign_process_options_t *out, option_ref_owner *refs);
 static void free_input_sequence_assign_product_options(ifcopenshell_sequence_assign_product_options_t *value);
-static int fill_input_sequence_assign_product_options(PyObject *obj, ifcopenshell_sequence_assign_product_options_t *out, PyObject **refs);
+static int fill_input_sequence_assign_product_options(PyObject *obj, ifcopenshell_sequence_assign_product_options_t *out, option_ref_owner *refs);
 static void free_input_sequence_assign_sequence_options(ifcopenshell_sequence_assign_sequence_options_t *value);
-static int fill_input_sequence_assign_sequence_options(PyObject *obj, ifcopenshell_sequence_assign_sequence_options_t *out, PyObject **refs);
+static int fill_input_sequence_assign_sequence_options(PyObject *obj, ifcopenshell_sequence_assign_sequence_options_t *out, option_ref_owner *refs);
 static void free_input_sequence_assign_work_plan_options(ifcopenshell_sequence_assign_work_plan_options_t *value);
-static int fill_input_sequence_assign_work_plan_options(PyObject *obj, ifcopenshell_sequence_assign_work_plan_options_t *out, PyObject **refs);
+static int fill_input_sequence_assign_work_plan_options(PyObject *obj, ifcopenshell_sequence_assign_work_plan_options_t *out, option_ref_owner *refs);
 static void free_input_sequence_copy_work_schedule_options(ifcopenshell_sequence_copy_work_schedule_options_t *value);
-static int fill_input_sequence_copy_work_schedule_options(PyObject *obj, ifcopenshell_sequence_copy_work_schedule_options_t *out, PyObject **refs);
+static int fill_input_sequence_copy_work_schedule_options(PyObject *obj, ifcopenshell_sequence_copy_work_schedule_options_t *out, option_ref_owner *refs);
 static void free_input_sequence_create_baseline_options(ifcopenshell_sequence_create_baseline_options_t *value);
-static int fill_input_sequence_create_baseline_options(PyObject *obj, ifcopenshell_sequence_create_baseline_options_t *out, PyObject **refs);
+static int fill_input_sequence_create_baseline_options(PyObject *obj, ifcopenshell_sequence_create_baseline_options_t *out, option_ref_owner *refs);
 static void free_input_sequence_duplicate_task_options(ifcopenshell_sequence_duplicate_task_options_t *value);
-static int fill_input_sequence_duplicate_task_options(PyObject *obj, ifcopenshell_sequence_duplicate_task_options_t *out, PyObject **refs);
+static int fill_input_sequence_duplicate_task_options(PyObject *obj, ifcopenshell_sequence_duplicate_task_options_t *out, option_ref_owner *refs);
 static void free_input_sequence_remove_options(ifcopenshell_sequence_remove_options_t *value);
-static int fill_input_sequence_remove_options(PyObject *obj, ifcopenshell_sequence_remove_options_t *out, PyObject **refs);
+static int fill_input_sequence_remove_options(PyObject *obj, ifcopenshell_sequence_remove_options_t *out, option_ref_owner *refs);
+static void free_input_shape_builder_arc_segment(ifcopenshell_shape_builder_arc_segment_t *value);
+static int fill_input_shape_builder_arc_segment(PyObject *obj, ifcopenshell_shape_builder_arc_segment_t *out, option_ref_owner *refs);
 static void free_input_shape_builder_axis2_placement2d_options(ifcopenshell_shape_builder_axis2_placement2d_options_t *value);
-static int fill_input_shape_builder_axis2_placement2d_options(PyObject *obj, ifcopenshell_shape_builder_axis2_placement2d_options_t *out, PyObject **refs);
+static int fill_input_shape_builder_axis2_placement2d_options(PyObject *obj, ifcopenshell_shape_builder_axis2_placement2d_options_t *out, option_ref_owner *refs);
 static void free_input_shape_builder_axis2_placement3d_options(ifcopenshell_shape_builder_axis2_placement3d_options_t *value);
-static int fill_input_shape_builder_axis2_placement3d_options(PyObject *obj, ifcopenshell_shape_builder_axis2_placement3d_options_t *out, PyObject **refs);
+static int fill_input_shape_builder_axis2_placement3d_options(PyObject *obj, ifcopenshell_shape_builder_axis2_placement3d_options_t *out, option_ref_owner *refs);
 static void free_input_shape_builder_block_options(ifcopenshell_shape_builder_block_options_t *value);
-static int fill_input_shape_builder_block_options(PyObject *obj, ifcopenshell_shape_builder_block_options_t *out, PyObject **refs);
+static int fill_input_shape_builder_block_options(PyObject *obj, ifcopenshell_shape_builder_block_options_t *out, option_ref_owner *refs);
+static void free_input_shape_builder_ellipse_cardinal_trim(ifcopenshell_shape_builder_ellipse_cardinal_trim_t *value);
+static int fill_input_shape_builder_ellipse_cardinal_trim(PyObject *obj, ifcopenshell_shape_builder_ellipse_cardinal_trim_t *out, option_ref_owner *refs);
 static void free_input_shape_builder_ellipse_curve_options(ifcopenshell_shape_builder_ellipse_curve_options_t *value);
-static int fill_input_shape_builder_ellipse_curve_options(PyObject *obj, ifcopenshell_shape_builder_ellipse_curve_options_t *out, PyObject **refs);
+static int fill_input_shape_builder_ellipse_curve_options(PyObject *obj, ifcopenshell_shape_builder_ellipse_curve_options_t *out, option_ref_owner *refs);
+static void free_input_shape_builder_ellipse_point_trim(ifcopenshell_shape_builder_ellipse_point_trim_t *value);
+static int fill_input_shape_builder_ellipse_point_trim(PyObject *obj, ifcopenshell_shape_builder_ellipse_point_trim_t *out, option_ref_owner *refs);
+static void free_input_shape_builder_ellipse_trim(ifcopenshell_shape_builder_ellipse_trim_t *value);
+static int fill_input_shape_builder_ellipse_trim(PyObject *obj, ifcopenshell_shape_builder_ellipse_trim_t *out, option_ref_owner *refs);
 static void free_input_shape_builder_extrude_options(ifcopenshell_shape_builder_extrude_options_t *value);
-static int fill_input_shape_builder_extrude_options(PyObject *obj, ifcopenshell_shape_builder_extrude_options_t *out, PyObject **refs);
+static int fill_input_shape_builder_extrude_options(PyObject *obj, ifcopenshell_shape_builder_extrude_options_t *out, option_ref_owner *refs);
 static void free_input_shape_builder_half_space_solid_options(ifcopenshell_shape_builder_half_space_solid_options_t *value);
-static int fill_input_shape_builder_half_space_solid_options(PyObject *obj, ifcopenshell_shape_builder_half_space_solid_options_t *out, PyObject **refs);
+static int fill_input_shape_builder_half_space_solid_options(PyObject *obj, ifcopenshell_shape_builder_half_space_solid_options_t *out, option_ref_owner *refs);
+static void free_input_shape_builder_indexed_polycurve2d_options(ifcopenshell_shape_builder_indexed_polycurve2d_options_t *value);
+static int fill_input_shape_builder_indexed_polycurve2d_options(PyObject *obj, ifcopenshell_shape_builder_indexed_polycurve2d_options_t *out, option_ref_owner *refs);
+static void free_input_shape_builder_line_segment(ifcopenshell_shape_builder_line_segment_t *value);
+static int fill_input_shape_builder_line_segment(PyObject *obj, ifcopenshell_shape_builder_line_segment_t *out, option_ref_owner *refs);
+static void free_input_shape_builder_mep_bend_direction(ifcopenshell_shape_builder_mep_bend_direction_t *value);
+static int fill_input_shape_builder_mep_bend_direction(PyObject *obj, ifcopenshell_shape_builder_mep_bend_direction_t *out, option_ref_owner *refs);
 static void free_input_shape_builder_mep_bend_shape_options(ifcopenshell_shape_builder_mep_bend_shape_options_t *value);
-static int fill_input_shape_builder_mep_bend_shape_options(PyObject *obj, ifcopenshell_shape_builder_mep_bend_shape_options_t *out, PyObject **refs);
+static int fill_input_shape_builder_mep_bend_shape_options(PyObject *obj, ifcopenshell_shape_builder_mep_bend_shape_options_t *out, option_ref_owner *refs);
+static void free_input_shape_builder_mep_offset(ifcopenshell_shape_builder_mep_offset_t *value);
+static int fill_input_shape_builder_mep_offset(PyObject *obj, ifcopenshell_shape_builder_mep_offset_t *out, option_ref_owner *refs);
+static void free_input_shape_builder_mep_profile_half_dimensions(ifcopenshell_shape_builder_mep_profile_half_dimensions_t *value);
+static int fill_input_shape_builder_mep_profile_half_dimensions(PyObject *obj, ifcopenshell_shape_builder_mep_profile_half_dimensions_t *out, option_ref_owner *refs);
 static void free_input_shape_builder_mep_transition_calculate_options(ifcopenshell_shape_builder_mep_transition_calculate_options_t *value);
-static int fill_input_shape_builder_mep_transition_calculate_options(PyObject *obj, ifcopenshell_shape_builder_mep_transition_calculate_options_t *out, PyObject **refs);
+static int fill_input_shape_builder_mep_transition_calculate_options(PyObject *obj, ifcopenshell_shape_builder_mep_transition_calculate_options_t *out, option_ref_owner *refs);
+static void free_input_shape_builder_mep_transition_from_angle(ifcopenshell_shape_builder_mep_transition_from_angle_t *value);
+static int fill_input_shape_builder_mep_transition_from_angle(PyObject *obj, ifcopenshell_shape_builder_mep_transition_from_angle_t *out, option_ref_owner *refs);
+static void free_input_shape_builder_mep_transition_from_length(ifcopenshell_shape_builder_mep_transition_from_length_t *value);
+static int fill_input_shape_builder_mep_transition_from_length(PyObject *obj, ifcopenshell_shape_builder_mep_transition_from_length_t *out, option_ref_owner *refs);
 static void free_input_shape_builder_mep_transition_length_options(ifcopenshell_shape_builder_mep_transition_length_options_t *value);
-static int fill_input_shape_builder_mep_transition_length_options(PyObject *obj, ifcopenshell_shape_builder_mep_transition_length_options_t *out, PyObject **refs);
+static int fill_input_shape_builder_mep_transition_length_options(PyObject *obj, ifcopenshell_shape_builder_mep_transition_length_options_t *out, option_ref_owner *refs);
 static void free_input_shape_builder_mep_transition_shape_options(ifcopenshell_shape_builder_mep_transition_shape_options_t *value);
-static int fill_input_shape_builder_mep_transition_shape_options(PyObject *obj, ifcopenshell_shape_builder_mep_transition_shape_options_t *out, PyObject **refs);
+static int fill_input_shape_builder_mep_transition_shape_options(PyObject *obj, ifcopenshell_shape_builder_mep_transition_shape_options_t *out, option_ref_owner *refs);
 static void free_input_shape_builder_mirror_options(ifcopenshell_shape_builder_mirror_options_t *value);
-static int fill_input_shape_builder_mirror_options(PyObject *obj, ifcopenshell_shape_builder_mirror_options_t *out, PyObject **refs);
+static int fill_input_shape_builder_mirror_options(PyObject *obj, ifcopenshell_shape_builder_mirror_options_t *out, option_ref_owner *refs);
 static void free_input_shape_builder_polyline_options(ifcopenshell_shape_builder_polyline_options_t *value);
-static int fill_input_shape_builder_polyline_options(PyObject *obj, ifcopenshell_shape_builder_polyline_options_t *out, PyObject **refs);
+static int fill_input_shape_builder_polyline_options(PyObject *obj, ifcopenshell_shape_builder_polyline_options_t *out, option_ref_owner *refs);
 static void free_input_shape_builder_profile_options(ifcopenshell_shape_builder_profile_options_t *value);
-static int fill_input_shape_builder_profile_options(PyObject *obj, ifcopenshell_shape_builder_profile_options_t *out, PyObject **refs);
+static int fill_input_shape_builder_profile_options(PyObject *obj, ifcopenshell_shape_builder_profile_options_t *out, option_ref_owner *refs);
 static void free_input_shape_builder_representation_options(ifcopenshell_shape_builder_representation_options_t *value);
-static int fill_input_shape_builder_representation_options(PyObject *obj, ifcopenshell_shape_builder_representation_options_t *out, PyObject **refs);
+static int fill_input_shape_builder_representation_options(PyObject *obj, ifcopenshell_shape_builder_representation_options_t *out, option_ref_owner *refs);
 static void free_input_shape_builder_rotate_options(ifcopenshell_shape_builder_rotate_options_t *value);
-static int fill_input_shape_builder_rotate_options(PyObject *obj, ifcopenshell_shape_builder_rotate_options_t *out, PyObject **refs);
+static int fill_input_shape_builder_rotate_options(PyObject *obj, ifcopenshell_shape_builder_rotate_options_t *out, option_ref_owner *refs);
 static void free_input_shape_builder_sphere_options(ifcopenshell_shape_builder_sphere_options_t *value);
-static int fill_input_shape_builder_sphere_options(PyObject *obj, ifcopenshell_shape_builder_sphere_options_t *out, PyObject **refs);
+static int fill_input_shape_builder_sphere_options(PyObject *obj, ifcopenshell_shape_builder_sphere_options_t *out, option_ref_owner *refs);
 static void free_input_shape_builder_translate_options(ifcopenshell_shape_builder_translate_options_t *value);
-static int fill_input_shape_builder_translate_options(PyObject *obj, ifcopenshell_shape_builder_translate_options_t *out, PyObject **refs);
+static int fill_input_shape_builder_translate_options(PyObject *obj, ifcopenshell_shape_builder_translate_options_t *out, option_ref_owner *refs);
 static void free_input_spatial_assign_container_options(ifcopenshell_spatial_assign_container_options_t *value);
-static int fill_input_spatial_assign_container_options(PyObject *obj, ifcopenshell_spatial_assign_container_options_t *out, PyObject **refs);
+static int fill_input_spatial_assign_container_options(PyObject *obj, ifcopenshell_spatial_assign_container_options_t *out, option_ref_owner *refs);
 static void free_input_spatial_dereference_structure_options(ifcopenshell_spatial_dereference_structure_options_t *value);
-static int fill_input_spatial_dereference_structure_options(PyObject *obj, ifcopenshell_spatial_dereference_structure_options_t *out, PyObject **refs);
+static int fill_input_spatial_dereference_structure_options(PyObject *obj, ifcopenshell_spatial_dereference_structure_options_t *out, option_ref_owner *refs);
 static void free_input_spatial_reference_structure_options(ifcopenshell_spatial_reference_structure_options_t *value);
-static int fill_input_spatial_reference_structure_options(PyObject *obj, ifcopenshell_spatial_reference_structure_options_t *out, PyObject **refs);
+static int fill_input_spatial_reference_structure_options(PyObject *obj, ifcopenshell_spatial_reference_structure_options_t *out, option_ref_owner *refs);
 static void free_input_spatial_unassign_container_options(ifcopenshell_spatial_unassign_container_options_t *value);
-static int fill_input_spatial_unassign_container_options(PyObject *obj, ifcopenshell_spatial_unassign_container_options_t *out, PyObject **refs);
+static int fill_input_spatial_unassign_container_options(PyObject *obj, ifcopenshell_spatial_unassign_container_options_t *out, option_ref_owner *refs);
 static void free_input_structural_add_structural_activity_options(ifcopenshell_structural_add_structural_activity_options_t *value);
-static int fill_input_structural_add_structural_activity_options(PyObject *obj, ifcopenshell_structural_add_structural_activity_options_t *out, PyObject **refs);
+static int fill_input_structural_add_structural_activity_options(PyObject *obj, ifcopenshell_structural_add_structural_activity_options_t *out, option_ref_owner *refs);
 static void free_input_structural_add_structural_boundary_condition_options(ifcopenshell_structural_add_structural_boundary_condition_options_t *value);
-static int fill_input_structural_add_structural_boundary_condition_options(PyObject *obj, ifcopenshell_structural_add_structural_boundary_condition_options_t *out, PyObject **refs);
+static int fill_input_structural_add_structural_boundary_condition_options(PyObject *obj, ifcopenshell_structural_add_structural_boundary_condition_options_t *out, option_ref_owner *refs);
 static void free_input_structural_assign_structural_analysis_model_options(ifcopenshell_structural_assign_structural_analysis_model_options_t *value);
-static int fill_input_structural_assign_structural_analysis_model_options(PyObject *obj, ifcopenshell_structural_assign_structural_analysis_model_options_t *out, PyObject **refs);
+static int fill_input_structural_assign_structural_analysis_model_options(PyObject *obj, ifcopenshell_structural_assign_structural_analysis_model_options_t *out, option_ref_owner *refs);
 static void free_input_structural_remove_structural_boundary_condition_options(ifcopenshell_structural_remove_structural_boundary_condition_options_t *value);
-static int fill_input_structural_remove_structural_boundary_condition_options(PyObject *obj, ifcopenshell_structural_remove_structural_boundary_condition_options_t *out, PyObject **refs);
+static int fill_input_structural_remove_structural_boundary_condition_options(PyObject *obj, ifcopenshell_structural_remove_structural_boundary_condition_options_t *out, option_ref_owner *refs);
 static void free_input_structural_unassign_structural_analysis_model_options(ifcopenshell_structural_unassign_structural_analysis_model_options_t *value);
-static int fill_input_structural_unassign_structural_analysis_model_options(PyObject *obj, ifcopenshell_structural_unassign_structural_analysis_model_options_t *out, PyObject **refs);
+static int fill_input_structural_unassign_structural_analysis_model_options(PyObject *obj, ifcopenshell_structural_unassign_structural_analysis_model_options_t *out, option_ref_owner *refs);
 static void free_input_style_assign_item_style_options(ifcopenshell_style_assign_item_style_options_t *value);
-static int fill_input_style_assign_item_style_options(PyObject *obj, ifcopenshell_style_assign_item_style_options_t *out, PyObject **refs);
+static int fill_input_style_assign_item_style_options(PyObject *obj, ifcopenshell_style_assign_item_style_options_t *out, option_ref_owner *refs);
 static void free_input_style_surface_texture_options(ifcopenshell_style_surface_texture_options_t *value);
-static int fill_input_style_surface_texture_options(PyObject *obj, ifcopenshell_style_surface_texture_options_t *out, PyObject **refs);
+static int fill_input_style_surface_texture_options(PyObject *obj, ifcopenshell_style_surface_texture_options_t *out, option_ref_owner *refs);
 static void free_input_system_add_port_options(ifcopenshell_system_add_port_options_t *value);
-static int fill_input_system_add_port_options(PyObject *obj, ifcopenshell_system_add_port_options_t *out, PyObject **refs);
+static int fill_input_system_add_port_options(PyObject *obj, ifcopenshell_system_add_port_options_t *out, option_ref_owner *refs);
 static void free_input_system_add_system_options(ifcopenshell_system_add_system_options_t *value);
-static int fill_input_system_add_system_options(PyObject *obj, ifcopenshell_system_add_system_options_t *out, PyObject **refs);
+static int fill_input_system_add_system_options(PyObject *obj, ifcopenshell_system_add_system_options_t *out, option_ref_owner *refs);
 static void free_input_system_assign_flow_control_options(ifcopenshell_system_assign_flow_control_options_t *value);
-static int fill_input_system_assign_flow_control_options(PyObject *obj, ifcopenshell_system_assign_flow_control_options_t *out, PyObject **refs);
+static int fill_input_system_assign_flow_control_options(PyObject *obj, ifcopenshell_system_assign_flow_control_options_t *out, option_ref_owner *refs);
 static void free_input_system_assign_port_options(ifcopenshell_system_assign_port_options_t *value);
-static int fill_input_system_assign_port_options(PyObject *obj, ifcopenshell_system_assign_port_options_t *out, PyObject **refs);
+static int fill_input_system_assign_port_options(PyObject *obj, ifcopenshell_system_assign_port_options_t *out, option_ref_owner *refs);
 static void free_input_system_assign_system_options(ifcopenshell_system_assign_system_options_t *value);
-static int fill_input_system_assign_system_options(PyObject *obj, ifcopenshell_system_assign_system_options_t *out, PyObject **refs);
+static int fill_input_system_assign_system_options(PyObject *obj, ifcopenshell_system_assign_system_options_t *out, option_ref_owner *refs);
 static void free_input_system_connect_port_options(ifcopenshell_system_connect_port_options_t *value);
-static int fill_input_system_connect_port_options(PyObject *obj, ifcopenshell_system_connect_port_options_t *out, PyObject **refs);
+static int fill_input_system_connect_port_options(PyObject *obj, ifcopenshell_system_connect_port_options_t *out, option_ref_owner *refs);
 static void free_input_system_unassign_flow_control_options(ifcopenshell_system_unassign_flow_control_options_t *value);
-static int fill_input_system_unassign_flow_control_options(PyObject *obj, ifcopenshell_system_unassign_flow_control_options_t *out, PyObject **refs);
+static int fill_input_system_unassign_flow_control_options(PyObject *obj, ifcopenshell_system_unassign_flow_control_options_t *out, option_ref_owner *refs);
 static void free_input_system_unassign_port_options(ifcopenshell_system_unassign_port_options_t *value);
-static int fill_input_system_unassign_port_options(PyObject *obj, ifcopenshell_system_unassign_port_options_t *out, PyObject **refs);
+static int fill_input_system_unassign_port_options(PyObject *obj, ifcopenshell_system_unassign_port_options_t *out, option_ref_owner *refs);
 static void free_input_system_unassign_system_options(ifcopenshell_system_unassign_system_options_t *value);
-static int fill_input_system_unassign_system_options(PyObject *obj, ifcopenshell_system_unassign_system_options_t *out, PyObject **refs);
+static int fill_input_system_unassign_system_options(PyObject *obj, ifcopenshell_system_unassign_system_options_t *out, option_ref_owner *refs);
 static void free_input_type_assign_type_options(ifcopenshell_type_assign_type_options_t *value);
-static int fill_input_type_assign_type_options(PyObject *obj, ifcopenshell_type_assign_type_options_t *out, PyObject **refs);
+static int fill_input_type_assign_type_options(PyObject *obj, ifcopenshell_type_assign_type_options_t *out, option_ref_owner *refs);
 static void free_input_type_unassign_type_options(ifcopenshell_type_unassign_type_options_t *value);
-static int fill_input_type_unassign_type_options(PyObject *obj, ifcopenshell_type_unassign_type_options_t *out, PyObject **refs);
+static int fill_input_type_unassign_type_options(PyObject *obj, ifcopenshell_type_unassign_type_options_t *out, option_ref_owner *refs);
 static void free_input_unit_add_conversion_based_unit_options(ifcopenshell_unit_add_conversion_based_unit_options_t *value);
-static int fill_input_unit_add_conversion_based_unit_options(PyObject *obj, ifcopenshell_unit_add_conversion_based_unit_options_t *out, PyObject **refs);
+static int fill_input_unit_add_conversion_based_unit_options(PyObject *obj, ifcopenshell_unit_add_conversion_based_unit_options_t *out, option_ref_owner *refs);
 static void free_input_unit_assign_unit_options(ifcopenshell_unit_assign_unit_options_t *value);
-static int fill_input_unit_assign_unit_options(PyObject *obj, ifcopenshell_unit_assign_unit_options_t *out, PyObject **refs);
+static int fill_input_unit_assign_unit_options(PyObject *obj, ifcopenshell_unit_assign_unit_options_t *out, option_ref_owner *refs);
 static void free_input_unit_edit_named_unit_options(ifcopenshell_unit_edit_named_unit_options_t *value);
-static int fill_input_unit_edit_named_unit_options(PyObject *obj, ifcopenshell_unit_edit_named_unit_options_t *out, PyObject **refs);
+static int fill_input_unit_edit_named_unit_options(PyObject *obj, ifcopenshell_unit_edit_named_unit_options_t *out, option_ref_owner *refs);
+
+static int matches_input_shape(PyObject *obj, const Py_ssize_t *lengths, size_t length_count, size_t depth) {
+    if (depth >= length_count) return 1;
+    PyObject *seq = PySequence_Fast(obj, NULL);
+    if (!seq) {
+        PyErr_Clear();
+        return 0;
+    }
+    const Py_ssize_t size = PySequence_Fast_GET_SIZE(seq);
+    if (lengths[depth] >= 0 && size != lengths[depth]) {
+        Py_DECREF(seq);
+        return 0;
+    }
+    for (Py_ssize_t i = 0; i < size; ++i) {
+        if (!matches_input_shape(PySequence_Fast_GET_ITEM(seq, i), lengths, length_count, depth + 1)) {
+            Py_DECREF(seq);
+            return 0;
+        }
+    }
+    Py_DECREF(seq);
+    return 1;
+}
+
+static int make_input_double_list_list(PyObject *obj, ifcopenshell_double_list_list_t *out, option_ref_owner *refs);
+static void free_input_double_list_list(ifcopenshell_double_list_list_t *value);
+static void free_input_double_list_list_any_2_double_list_list_any_3_variant(ifcopenshell_double_list_list_any_2_double_list_list_any_3_variant_t *value) {
+    switch (value->kind) {
+    case 0:
+        free_input_double_list_list(&value->value_0);
+        break;
+    case 1:
+        free_input_double_list_list(&value->value_1);
+        break;
+    default: break;
+    }
+}
+
+static int make_input_double_list_list_any_2_double_list_list_any_3_variant(PyObject *obj, ifcopenshell_double_list_list_any_2_double_list_list_any_3_variant_t *out, option_ref_owner *refs) {
+    (void)refs;
+    int selected = -1;
+    int matches = 0;
+    static const Py_ssize_t shape_0[] = {-1, 2};
+    static const Py_ssize_t shape_1[] = {-1, 3};
+    if (matches_input_shape(obj, shape_0, 2, 0)) { selected = 0; ++matches; }
+    if (matches_input_shape(obj, shape_1, 2, 0)) { selected = 1; ++matches; }
+    if (matches != 1) {
+        PyErr_SetString(PyExc_TypeError, "Expected exactly one variant alternative");
+        return 0;
+    }
+    switch (selected) {
+    case 0:
+        if (!make_input_double_list_list(obj, &out->value_0, refs)) return 0;
+        out->kind = 0;
+        return 1;
+    case 1:
+        if (!make_input_double_list_list(obj, &out->value_1, refs)) return 0;
+        out->kind = 1;
+        return 1;
+    default:
+        PyErr_SetString(PyExc_TypeError, "Invalid variant alternative");
+        return 0;
+    }
+}
+
+
+
+static void free_input_GeometryPlaneClipping_GeometryEntityClipping_variant(ifcopenshell_GeometryPlaneClipping_GeometryEntityClipping_variant_t *value) {
+    switch (value->kind) {
+    case 0:
+        if (value->value_0) {
+            free_input_geometry_plane_clipping((ifcopenshell_geometry_plane_clipping_t *)value->value_0);
+            PyMem_Free((void *)value->value_0);
+            value->value_0 = NULL;
+        }
+        break;
+    case 1:
+        if (value->value_1) {
+            free_input_geometry_entity_clipping((ifcopenshell_geometry_entity_clipping_t *)value->value_1);
+            PyMem_Free((void *)value->value_1);
+            value->value_1 = NULL;
+        }
+        break;
+    default: break;
+    }
+}
+
+static int make_input_GeometryPlaneClipping_GeometryEntityClipping_variant(PyObject *obj, ifcopenshell_GeometryPlaneClipping_GeometryEntityClipping_variant_t *out, option_ref_owner *refs) {
+    (void)refs;
+    int selected = -1;
+    int matches = 0;
+
+    if (PyMapping_Check(obj) && (PyMapping_HasKeyString(obj, "location") && PyMapping_HasKeyString(obj, "normal"))) { selected = 0; ++matches; }
+    if (PyMapping_Check(obj) && (PyMapping_HasKeyString(obj, "entity"))) { selected = 1; ++matches; }
+    if (matches != 1) {
+        PyErr_SetString(PyExc_TypeError, "Expected exactly one variant alternative");
+        return 0;
+    }
+    switch (selected) {
+    case 0: {
+        ifcopenshell_geometry_plane_clipping_t *value = (ifcopenshell_geometry_plane_clipping_t *)PyMem_Calloc(1, sizeof(ifcopenshell_geometry_plane_clipping_t));
+        if (!value) { PyErr_NoMemory(); return 0; }
+        if (!fill_input_geometry_plane_clipping(obj, value, refs)) {
+            free_input_geometry_plane_clipping(value);
+            PyMem_Free(value);
+            return 0;
+        }
+        out->kind = 0;
+        out->value_0 = value;
+        return 1;
+    }
+    case 1: {
+        ifcopenshell_geometry_entity_clipping_t *value = (ifcopenshell_geometry_entity_clipping_t *)PyMem_Calloc(1, sizeof(ifcopenshell_geometry_entity_clipping_t));
+        if (!value) { PyErr_NoMemory(); return 0; }
+        if (!fill_input_geometry_entity_clipping(obj, value, refs)) {
+            free_input_geometry_entity_clipping(value);
+            PyMem_Free(value);
+            return 0;
+        }
+        out->kind = 1;
+        out->value_1 = value;
+        return 1;
+    }
+    default:
+        PyErr_SetString(PyExc_TypeError, "Invalid variant alternative");
+        return 0;
+    }
+}
+
+
+static void free_input_ShapeBuilderLineSegment_ShapeBuilderArcSegment_variant(ifcopenshell_ShapeBuilderLineSegment_ShapeBuilderArcSegment_variant_t *value) {
+    switch (value->kind) {
+    case 0:
+        if (value->value_0) {
+            free_input_shape_builder_line_segment((ifcopenshell_shape_builder_line_segment_t *)value->value_0);
+            PyMem_Free((void *)value->value_0);
+            value->value_0 = NULL;
+        }
+        break;
+    case 1:
+        if (value->value_1) {
+            free_input_shape_builder_arc_segment((ifcopenshell_shape_builder_arc_segment_t *)value->value_1);
+            PyMem_Free((void *)value->value_1);
+            value->value_1 = NULL;
+        }
+        break;
+    default: break;
+    }
+}
+
+static int make_input_ShapeBuilderLineSegment_ShapeBuilderArcSegment_variant(PyObject *obj, ifcopenshell_ShapeBuilderLineSegment_ShapeBuilderArcSegment_variant_t *out, option_ref_owner *refs) {
+    (void)refs;
+    int selected = -1;
+    int matches = 0;
+
+    if (PyMapping_Check(obj) && (PyMapping_HasKeyString(obj, "line_indices"))) { selected = 0; ++matches; }
+    if (PyMapping_Check(obj) && (PyMapping_HasKeyString(obj, "arc_indices"))) { selected = 1; ++matches; }
+    if (matches != 1) {
+        PyErr_SetString(PyExc_TypeError, "Expected exactly one variant alternative");
+        return 0;
+    }
+    switch (selected) {
+    case 0: {
+        ifcopenshell_shape_builder_line_segment_t *value = (ifcopenshell_shape_builder_line_segment_t *)PyMem_Calloc(1, sizeof(ifcopenshell_shape_builder_line_segment_t));
+        if (!value) { PyErr_NoMemory(); return 0; }
+        if (!fill_input_shape_builder_line_segment(obj, value, refs)) {
+            free_input_shape_builder_line_segment(value);
+            PyMem_Free(value);
+            return 0;
+        }
+        out->kind = 0;
+        out->value_0 = value;
+        return 1;
+    }
+    case 1: {
+        ifcopenshell_shape_builder_arc_segment_t *value = (ifcopenshell_shape_builder_arc_segment_t *)PyMem_Calloc(1, sizeof(ifcopenshell_shape_builder_arc_segment_t));
+        if (!value) { PyErr_NoMemory(); return 0; }
+        if (!fill_input_shape_builder_arc_segment(obj, value, refs)) {
+            free_input_shape_builder_arc_segment(value);
+            PyMem_Free(value);
+            return 0;
+        }
+        out->kind = 1;
+        out->value_1 = value;
+        return 1;
+    }
+    default:
+        PyErr_SetString(PyExc_TypeError, "Invalid variant alternative");
+        return 0;
+    }
+}
+
+
+static void free_input_ShapeBuilderMepTransitionFromLength_ShapeBuilderMepTransitionFromAngle_variant(ifcopenshell_ShapeBuilderMepTransitionFromLength_ShapeBuilderMepTransitionFromAngle_variant_t *value) {
+    switch (value->kind) {
+    case 0:
+        if (value->value_0) {
+            free_input_shape_builder_mep_transition_from_length((ifcopenshell_shape_builder_mep_transition_from_length_t *)value->value_0);
+            PyMem_Free((void *)value->value_0);
+            value->value_0 = NULL;
+        }
+        break;
+    case 1:
+        if (value->value_1) {
+            free_input_shape_builder_mep_transition_from_angle((ifcopenshell_shape_builder_mep_transition_from_angle_t *)value->value_1);
+            PyMem_Free((void *)value->value_1);
+            value->value_1 = NULL;
+        }
+        break;
+    default: break;
+    }
+}
+
+static int make_input_ShapeBuilderMepTransitionFromLength_ShapeBuilderMepTransitionFromAngle_variant(PyObject *obj, ifcopenshell_ShapeBuilderMepTransitionFromLength_ShapeBuilderMepTransitionFromAngle_variant_t *out, option_ref_owner *refs) {
+    (void)refs;
+    int selected = -1;
+    int matches = 0;
+
+    if (PyMapping_Check(obj) && (PyMapping_HasKeyString(obj, "length"))) { selected = 0; ++matches; }
+    if (PyMapping_Check(obj) && (PyMapping_HasKeyString(obj, "angle"))) { selected = 1; ++matches; }
+    if (matches != 1) {
+        PyErr_SetString(PyExc_TypeError, "Expected exactly one variant alternative");
+        return 0;
+    }
+    switch (selected) {
+    case 0: {
+        ifcopenshell_shape_builder_mep_transition_from_length_t *value = (ifcopenshell_shape_builder_mep_transition_from_length_t *)PyMem_Calloc(1, sizeof(ifcopenshell_shape_builder_mep_transition_from_length_t));
+        if (!value) { PyErr_NoMemory(); return 0; }
+        if (!fill_input_shape_builder_mep_transition_from_length(obj, value, refs)) {
+            free_input_shape_builder_mep_transition_from_length(value);
+            PyMem_Free(value);
+            return 0;
+        }
+        out->kind = 0;
+        out->value_0 = value;
+        return 1;
+    }
+    case 1: {
+        ifcopenshell_shape_builder_mep_transition_from_angle_t *value = (ifcopenshell_shape_builder_mep_transition_from_angle_t *)PyMem_Calloc(1, sizeof(ifcopenshell_shape_builder_mep_transition_from_angle_t));
+        if (!value) { PyErr_NoMemory(); return 0; }
+        if (!fill_input_shape_builder_mep_transition_from_angle(obj, value, refs)) {
+            free_input_shape_builder_mep_transition_from_angle(value);
+            PyMem_Free(value);
+            return 0;
+        }
+        out->kind = 1;
+        out->value_1 = value;
+        return 1;
+    }
+    default:
+        PyErr_SetString(PyExc_TypeError, "Invalid variant alternative");
+        return 0;
+    }
+}
+
+static int make_input_double_list(PyObject *obj, ifcopenshell_double_list_t *out, option_ref_owner *refs);
+static void free_input_double_list(ifcopenshell_double_list_t *value);
+static void free_input_double_list_9_double_list_16_variant(ifcopenshell_double_list_9_double_list_16_variant_t *value) {
+    switch (value->kind) {
+    case 0:
+        free_input_double_list(&value->value_0);
+        break;
+    case 1:
+        free_input_double_list(&value->value_1);
+        break;
+    default: break;
+    }
+}
+
+static int make_input_double_list_9_double_list_16_variant(PyObject *obj, ifcopenshell_double_list_9_double_list_16_variant_t *out, option_ref_owner *refs) {
+    (void)refs;
+    int selected = -1;
+    int matches = 0;
+    static const Py_ssize_t shape_0[] = {9};
+    static const Py_ssize_t shape_1[] = {16};
+    if (matches_input_shape(obj, shape_0, 1, 0)) { selected = 0; ++matches; }
+    if (matches_input_shape(obj, shape_1, 1, 0)) { selected = 1; ++matches; }
+    if (matches != 1) {
+        PyErr_SetString(PyExc_TypeError, "Expected exactly one variant alternative");
+        return 0;
+    }
+    switch (selected) {
+    case 0:
+        if (!make_input_double_list(obj, &out->value_0, refs)) return 0;
+        out->kind = 0;
+        return 1;
+    case 1:
+        if (!make_input_double_list(obj, &out->value_1, refs)) return 0;
+        out->kind = 1;
+        return 1;
+    default:
+        PyErr_SetString(PyExc_TypeError, "Invalid variant alternative");
+        return 0;
+    }
+}
+
+static int make_input_double_list(PyObject *obj, ifcopenshell_double_list_t *out, option_ref_owner *refs);
+static void free_input_double_list(ifcopenshell_double_list_t *value);
+static void free_input_double_list_2_double_list_3_variant(ifcopenshell_double_list_2_double_list_3_variant_t *value) {
+    switch (value->kind) {
+    case 0:
+        free_input_double_list(&value->value_0);
+        break;
+    case 1:
+        free_input_double_list(&value->value_1);
+        break;
+    default: break;
+    }
+}
+
+static int make_input_double_list_2_double_list_3_variant(PyObject *obj, ifcopenshell_double_list_2_double_list_3_variant_t *out, option_ref_owner *refs) {
+    (void)refs;
+    int selected = -1;
+    int matches = 0;
+    static const Py_ssize_t shape_0[] = {2};
+    static const Py_ssize_t shape_1[] = {3};
+    if (matches_input_shape(obj, shape_0, 1, 0)) { selected = 0; ++matches; }
+    if (matches_input_shape(obj, shape_1, 1, 0)) { selected = 1; ++matches; }
+    if (matches != 1) {
+        PyErr_SetString(PyExc_TypeError, "Expected exactly one variant alternative");
+        return 0;
+    }
+    switch (selected) {
+    case 0:
+        if (!make_input_double_list(obj, &out->value_0, refs)) return 0;
+        out->kind = 0;
+        return 1;
+    case 1:
+        if (!make_input_double_list(obj, &out->value_1, refs)) return 0;
+        out->kind = 1;
+        return 1;
+    default:
+        PyErr_SetString(PyExc_TypeError, "Invalid variant alternative");
+        return 0;
+    }
+}
+
+
+static void free_input_ShapeBuilderEllipsePointTrim_ShapeBuilderEllipseCardinalTrim_variant(ifcopenshell_ShapeBuilderEllipsePointTrim_ShapeBuilderEllipseCardinalTrim_variant_t *value) {
+    switch (value->kind) {
+    case 0:
+        if (value->value_0) {
+            free_input_shape_builder_ellipse_point_trim((ifcopenshell_shape_builder_ellipse_point_trim_t *)value->value_0);
+            PyMem_Free((void *)value->value_0);
+            value->value_0 = NULL;
+        }
+        break;
+    case 1:
+        if (value->value_1) {
+            free_input_shape_builder_ellipse_cardinal_trim((ifcopenshell_shape_builder_ellipse_cardinal_trim_t *)value->value_1);
+            PyMem_Free((void *)value->value_1);
+            value->value_1 = NULL;
+        }
+        break;
+    default: break;
+    }
+}
+
+static int make_input_ShapeBuilderEllipsePointTrim_ShapeBuilderEllipseCardinalTrim_variant(PyObject *obj, ifcopenshell_ShapeBuilderEllipsePointTrim_ShapeBuilderEllipseCardinalTrim_variant_t *out, option_ref_owner *refs) {
+    (void)refs;
+    int selected = -1;
+    int matches = 0;
+
+    if (PyMapping_Check(obj) && (PyMapping_HasKeyString(obj, "points"))) { selected = 0; ++matches; }
+    if (PyMapping_Check(obj) && (PyMapping_HasKeyString(obj, "cardinal_points"))) { selected = 1; ++matches; }
+    if (matches != 1) {
+        PyErr_SetString(PyExc_TypeError, "Expected exactly one variant alternative");
+        return 0;
+    }
+    switch (selected) {
+    case 0: {
+        ifcopenshell_shape_builder_ellipse_point_trim_t *value = (ifcopenshell_shape_builder_ellipse_point_trim_t *)PyMem_Calloc(1, sizeof(ifcopenshell_shape_builder_ellipse_point_trim_t));
+        if (!value) { PyErr_NoMemory(); return 0; }
+        if (!fill_input_shape_builder_ellipse_point_trim(obj, value, refs)) {
+            free_input_shape_builder_ellipse_point_trim(value);
+            PyMem_Free(value);
+            return 0;
+        }
+        out->kind = 0;
+        out->value_0 = value;
+        return 1;
+    }
+    case 1: {
+        ifcopenshell_shape_builder_ellipse_cardinal_trim_t *value = (ifcopenshell_shape_builder_ellipse_cardinal_trim_t *)PyMem_Calloc(1, sizeof(ifcopenshell_shape_builder_ellipse_cardinal_trim_t));
+        if (!value) { PyErr_NoMemory(); return 0; }
+        if (!fill_input_shape_builder_ellipse_cardinal_trim(obj, value, refs)) {
+            free_input_shape_builder_ellipse_cardinal_trim(value);
+            PyMem_Free(value);
+            return 0;
+        }
+        out->kind = 1;
+        out->value_1 = value;
+        return 1;
+    }
+    default:
+        PyErr_SetString(PyExc_TypeError, "Invalid variant alternative");
+        return 0;
+    }
+}
 
 static void free_input_double_list(ifcopenshell_double_list_t *value) {
     PyMem_Free(value->items);
@@ -6350,7 +6824,8 @@ static void free_input_double_list(ifcopenshell_double_list_t *value) {
     value->size = 0;
 }
 
-static int make_input_double_list(PyObject *obj, ifcopenshell_double_list_t *out) {
+static int make_input_double_list(PyObject *obj, ifcopenshell_double_list_t *out, option_ref_owner *refs) {
+    (void)refs;
     PyObject *seq = PySequence_Fast(obj, "Expected a sequence");
     if (!seq) return 0;
     Py_ssize_t size = PySequence_Fast_GET_SIZE(seq);
@@ -6386,7 +6861,8 @@ static void free_input_string_list(ifcopenshell_string_list_t *value) {
     value->size = 0;
 }
 
-static int make_input_string_list(PyObject *obj, ifcopenshell_string_list_t *out) {
+static int make_input_string_list(PyObject *obj, ifcopenshell_string_list_t *out, option_ref_owner *refs) {
+    (void)refs;
     PyObject *seq = PySequence_Fast(obj, "Expected a sequence");
     if (!seq) return 0;
     Py_ssize_t size = PySequence_Fast_GET_SIZE(seq);
@@ -6426,7 +6902,8 @@ static void free_input_bool_list(ifcopenshell_bool_list_t *value) {
     value->size = 0;
 }
 
-static int make_input_bool_list(PyObject *obj, ifcopenshell_bool_list_t *out) {
+static int make_input_bool_list(PyObject *obj, ifcopenshell_bool_list_t *out, option_ref_owner *refs) {
+    (void)refs;
     PyObject *seq = PySequence_Fast(obj, "Expected a sequence");
     if (!seq) return 0;
     Py_ssize_t size = PySequence_Fast_GET_SIZE(seq);
@@ -6455,7 +6932,8 @@ static void free_input_int64_list(ifcopenshell_int64_list_t *value) {
     value->size = 0;
 }
 
-static int make_input_int64_list(PyObject *obj, ifcopenshell_int64_list_t *out) {
+static int make_input_int64_list(PyObject *obj, ifcopenshell_int64_list_t *out, option_ref_owner *refs) {
+    (void)refs;
     PyObject *seq = PySequence_Fast(obj, "Expected a sequence");
     if (!seq) return 0;
     Py_ssize_t size = PySequence_Fast_GET_SIZE(seq);
@@ -6484,7 +6962,8 @@ static void free_input_int32_list(ifcopenshell_int32_list_t *value) {
     value->size = 0;
 }
 
-static int make_input_int32_list(PyObject *obj, ifcopenshell_int32_list_t *out) {
+static int make_input_int32_list(PyObject *obj, ifcopenshell_int32_list_t *out, option_ref_owner *refs) {
+    (void)refs;
     PyObject *seq = PySequence_Fast(obj, "Expected a sequence");
     if (!seq) return 0;
     Py_ssize_t size = PySequence_Fast_GET_SIZE(seq);
@@ -6513,7 +6992,8 @@ static void free_input_uint32_list(ifcopenshell_uint32_list_t *value) {
     value->size = 0;
 }
 
-static int make_input_uint32_list(PyObject *obj, ifcopenshell_uint32_list_t *out) {
+static int make_input_uint32_list(PyObject *obj, ifcopenshell_uint32_list_t *out, option_ref_owner *refs) {
+    (void)refs;
     PyObject *seq = PySequence_Fast(obj, "Expected a sequence");
     if (!seq) return 0;
     Py_ssize_t size = PySequence_Fast_GET_SIZE(seq);
@@ -6542,7 +7022,8 @@ static void free_input_uint8_list(ifcopenshell_uint8_list_t *value) {
     value->size = 0;
 }
 
-static int make_input_uint8_list(PyObject *obj, ifcopenshell_uint8_list_t *out) {
+static int make_input_uint8_list(PyObject *obj, ifcopenshell_uint8_list_t *out, option_ref_owner *refs) {
+    (void)refs;
     PyObject *seq = PySequence_Fast(obj, "Expected a sequence");
     if (!seq) return 0;
     Py_ssize_t size = PySequence_Fast_GET_SIZE(seq);
@@ -6571,7 +7052,8 @@ static void free_input_instance_list(ifcopenshell_instance_list_t *value) {
     value->size = 0;
 }
 
-static int make_input_instance_list(PyObject *obj, ifcopenshell_instance_list_t *out) {
+static int make_input_instance_list(PyObject *obj, ifcopenshell_instance_list_t *out, option_ref_owner *refs) {
+    (void)refs;
     PyObject *seq = PySequence_Fast(obj, "Expected a sequence");
     if (!seq) return 0;
     Py_ssize_t size = PySequence_Fast_GET_SIZE(seq);
@@ -6602,7 +7084,8 @@ static void free_input_file_list(ifcopenshell_file_list_t *value) {
     value->size = 0;
 }
 
-static int make_input_file_list(PyObject *obj, ifcopenshell_file_list_t *out) {
+static int make_input_file_list(PyObject *obj, ifcopenshell_file_list_t *out, option_ref_owner *refs) {
+    (void)refs;
     PyObject *seq = PySequence_Fast(obj, "Expected a sequence");
     if (!seq) return 0;
     Py_ssize_t size = PySequence_Fast_GET_SIZE(seq);
@@ -6633,7 +7116,8 @@ static void free_input_geom_svgfill_polygon_list(ifcopenshell_geom_svgfill_polyg
     value->size = 0;
 }
 
-static int make_input_geom_svgfill_polygon_list(PyObject *obj, ifcopenshell_geom_svgfill_polygon_list_t *out) {
+static int make_input_geom_svgfill_polygon_list(PyObject *obj, ifcopenshell_geom_svgfill_polygon_list_t *out, option_ref_owner *refs) {
+    (void)refs;
     PyObject *seq = PySequence_Fast(obj, "Expected a sequence");
     if (!seq) return 0;
     Py_ssize_t size = PySequence_Fast_GET_SIZE(seq);
@@ -6664,7 +7148,8 @@ static void free_input_geom_conversion_result_shape_list(ifcopenshell_geom_conve
     value->size = 0;
 }
 
-static int make_input_geom_conversion_result_shape_list(PyObject *obj, ifcopenshell_geom_conversion_result_shape_list_t *out) {
+static int make_input_geom_conversion_result_shape_list(PyObject *obj, ifcopenshell_geom_conversion_result_shape_list_t *out, option_ref_owner *refs) {
+    (void)refs;
     PyObject *seq = PySequence_Fast(obj, "Expected a sequence");
     if (!seq) return 0;
     Py_ssize_t size = PySequence_Fast_GET_SIZE(seq);
@@ -6695,7 +7180,8 @@ static void free_input_declaration_list(ifcopenshell_declaration_list_t *value) 
     value->size = 0;
 }
 
-static int make_input_declaration_list(PyObject *obj, ifcopenshell_declaration_list_t *out) {
+static int make_input_declaration_list(PyObject *obj, ifcopenshell_declaration_list_t *out, option_ref_owner *refs) {
+    (void)refs;
     PyObject *seq = PySequence_Fast(obj, "Expected a sequence");
     if (!seq) return 0;
     Py_ssize_t size = PySequence_Fast_GET_SIZE(seq);
@@ -6726,7 +7212,8 @@ static void free_input_entity_list(ifcopenshell_entity_list_t *value) {
     value->size = 0;
 }
 
-static int make_input_entity_list(PyObject *obj, ifcopenshell_entity_list_t *out) {
+static int make_input_entity_list(PyObject *obj, ifcopenshell_entity_list_t *out, option_ref_owner *refs) {
+    (void)refs;
     PyObject *seq = PySequence_Fast(obj, "Expected a sequence");
     if (!seq) return 0;
     Py_ssize_t size = PySequence_Fast_GET_SIZE(seq);
@@ -6757,7 +7244,8 @@ static void free_input_enumeration_list(ifcopenshell_enumeration_list_t *value) 
     value->size = 0;
 }
 
-static int make_input_enumeration_list(PyObject *obj, ifcopenshell_enumeration_list_t *out) {
+static int make_input_enumeration_list(PyObject *obj, ifcopenshell_enumeration_list_t *out, option_ref_owner *refs) {
+    (void)refs;
     PyObject *seq = PySequence_Fast(obj, "Expected a sequence");
     if (!seq) return 0;
     Py_ssize_t size = PySequence_Fast_GET_SIZE(seq);
@@ -6788,7 +7276,8 @@ static void free_input_select_type_list(ifcopenshell_select_type_list_t *value) 
     value->size = 0;
 }
 
-static int make_input_select_type_list(PyObject *obj, ifcopenshell_select_type_list_t *out) {
+static int make_input_select_type_list(PyObject *obj, ifcopenshell_select_type_list_t *out, option_ref_owner *refs) {
+    (void)refs;
     PyObject *seq = PySequence_Fast(obj, "Expected a sequence");
     if (!seq) return 0;
     Py_ssize_t size = PySequence_Fast_GET_SIZE(seq);
@@ -6819,7 +7308,8 @@ static void free_input_type_declaration_list(ifcopenshell_type_declaration_list_
     value->size = 0;
 }
 
-static int make_input_type_declaration_list(PyObject *obj, ifcopenshell_type_declaration_list_t *out) {
+static int make_input_type_declaration_list(PyObject *obj, ifcopenshell_type_declaration_list_t *out, option_ref_owner *refs) {
+    (void)refs;
     PyObject *seq = PySequence_Fast(obj, "Expected a sequence");
     if (!seq) return 0;
     Py_ssize_t size = PySequence_Fast_GET_SIZE(seq);
@@ -6850,7 +7340,8 @@ static void free_input_attribute_list(ifcopenshell_attribute_list_t *value) {
     value->size = 0;
 }
 
-static int make_input_attribute_list(PyObject *obj, ifcopenshell_attribute_list_t *out) {
+static int make_input_attribute_list(PyObject *obj, ifcopenshell_attribute_list_t *out, option_ref_owner *refs) {
+    (void)refs;
     PyObject *seq = PySequence_Fast(obj, "Expected a sequence");
     if (!seq) return 0;
     Py_ssize_t size = PySequence_Fast_GET_SIZE(seq);
@@ -6881,7 +7372,8 @@ static void free_input_inverse_attribute_list(ifcopenshell_inverse_attribute_lis
     value->size = 0;
 }
 
-static int make_input_inverse_attribute_list(PyObject *obj, ifcopenshell_inverse_attribute_list_t *out) {
+static int make_input_inverse_attribute_list(PyObject *obj, ifcopenshell_inverse_attribute_list_t *out, option_ref_owner *refs) {
+    (void)refs;
     PyObject *seq = PySequence_Fast(obj, "Expected a sequence");
     if (!seq) return 0;
     Py_ssize_t size = PySequence_Fast_GET_SIZE(seq);
@@ -6912,7 +7404,8 @@ static void free_input_geom_taxonomy_style_list(ifcopenshell_geom_taxonomy_style
     value->size = 0;
 }
 
-static int make_input_geom_taxonomy_style_list(PyObject *obj, ifcopenshell_geom_taxonomy_style_list_t *out) {
+static int make_input_geom_taxonomy_style_list(PyObject *obj, ifcopenshell_geom_taxonomy_style_list_t *out, option_ref_owner *refs) {
+    (void)refs;
     PyObject *seq = PySequence_Fast(obj, "Expected a sequence");
     if (!seq) return 0;
     Py_ssize_t size = PySequence_Fast_GET_SIZE(seq);
@@ -6943,7 +7436,8 @@ static void free_input_geom_taxonomy_item_list(ifcopenshell_geom_taxonomy_item_l
     value->size = 0;
 }
 
-static int make_input_geom_taxonomy_item_list(PyObject *obj, ifcopenshell_geom_taxonomy_item_list_t *out) {
+static int make_input_geom_taxonomy_item_list(PyObject *obj, ifcopenshell_geom_taxonomy_item_list_t *out, option_ref_owner *refs) {
+    (void)refs;
     PyObject *seq = PySequence_Fast(obj, "Expected a sequence");
     if (!seq) return 0;
     Py_ssize_t size = PySequence_Fast_GET_SIZE(seq);
@@ -6974,7 +7468,8 @@ static void free_input_geom_element_list(ifcopenshell_geom_element_list_t *value
     value->size = 0;
 }
 
-static int make_input_geom_element_list(PyObject *obj, ifcopenshell_geom_element_list_t *out) {
+static int make_input_geom_element_list(PyObject *obj, ifcopenshell_geom_element_list_t *out, option_ref_owner *refs) {
+    (void)refs;
     PyObject *seq = PySequence_Fast(obj, "Expected a sequence");
     if (!seq) return 0;
     Py_ssize_t size = PySequence_Fast_GET_SIZE(seq);
@@ -7010,7 +7505,8 @@ static void free_input_material_constituent_entry_options_list(ifcopenshell_mate
     value->size = 0;
 }
 
-static int make_input_material_constituent_entry_options_list(PyObject *obj, ifcopenshell_material_constituent_entry_options_list_t *out) {
+static int make_input_material_constituent_entry_options_list(PyObject *obj, ifcopenshell_material_constituent_entry_options_list_t *out, option_ref_owner *refs) {
+    (void)refs;
     PyObject *seq = PySequence_Fast(obj, "Expected a sequence");
     if (!seq) return 0;
     Py_ssize_t size = PySequence_Fast_GET_SIZE(seq);
@@ -7022,14 +7518,11 @@ static int make_input_material_constituent_entry_options_list(PyObject *obj, ifc
         return 0;
     }
     for (size_t i = 0; i < (size_t)size; ++i) {
-        PyObject *refs[2] = {0};
         if (!fill_input_material_constituent_entry_options(PySequence_Fast_GET_ITEM(seq, (Py_ssize_t)i), &out->items[i], refs)) {
-            release_option_refs(refs, 2);
             free_input_material_constituent_entry_options_list(out);
             Py_DECREF(seq);
             return 0;
         }
-        release_option_refs(refs, 2);
     }
     Py_DECREF(seq);
     return 1;
@@ -7046,7 +7539,8 @@ static void free_input_style_surface_texture_options_list(ifcopenshell_style_sur
     value->size = 0;
 }
 
-static int make_input_style_surface_texture_options_list(PyObject *obj, ifcopenshell_style_surface_texture_options_list_t *out) {
+static int make_input_style_surface_texture_options_list(PyObject *obj, ifcopenshell_style_surface_texture_options_list_t *out, option_ref_owner *refs) {
+    (void)refs;
     PyObject *seq = PySequence_Fast(obj, "Expected a sequence");
     if (!seq) return 0;
     Py_ssize_t size = PySequence_Fast_GET_SIZE(seq);
@@ -7058,14 +7552,283 @@ static int make_input_style_surface_texture_options_list(PyObject *obj, ifcopens
         return 0;
     }
     for (size_t i = 0; i < (size_t)size; ++i) {
-        PyObject *refs[7] = {0};
         if (!fill_input_style_surface_texture_options(PySequence_Fast_GET_ITEM(seq, (Py_ssize_t)i), &out->items[i], refs)) {
-            release_option_refs(refs, 7);
             free_input_style_surface_texture_options_list(out);
             Py_DECREF(seq);
             return 0;
         }
-        release_option_refs(refs, 7);
+    }
+    Py_DECREF(seq);
+    return 1;
+}
+
+static void free_input_geometry_mesh_item_list(ifcopenshell_geometry_mesh_item_list_t *value) {
+    if (value->items) {
+        for (size_t j = 0; j < value->size; ++j) {
+            free_input_geometry_mesh_item(&value->items[j]);
+        }
+    }
+    PyMem_Free(value->items);
+    value->items = NULL;
+    value->size = 0;
+}
+
+static int make_input_geometry_mesh_item_list(PyObject *obj, ifcopenshell_geometry_mesh_item_list_t *out, option_ref_owner *refs) {
+    (void)refs;
+    PyObject *seq = PySequence_Fast(obj, "Expected a sequence");
+    if (!seq) return 0;
+    Py_ssize_t size = PySequence_Fast_GET_SIZE(seq);
+    out->items = size ? (ifcopenshell_geometry_mesh_item_t *)PyMem_Calloc((size_t)size, sizeof(ifcopenshell_geometry_mesh_item_t)) : NULL;
+    out->size = (size_t)size;
+    if (size && !out->items) {
+        Py_DECREF(seq);
+        PyErr_NoMemory();
+        return 0;
+    }
+    for (size_t i = 0; i < (size_t)size; ++i) {
+        if (!fill_input_geometry_mesh_item(PySequence_Fast_GET_ITEM(seq, (Py_ssize_t)i), &out->items[i], refs)) {
+            free_input_geometry_mesh_item_list(out);
+            Py_DECREF(seq);
+            return 0;
+        }
+    }
+    Py_DECREF(seq);
+    return 1;
+}
+
+static void free_input_geometry_window_panel_properties_list(ifcopenshell_geometry_window_panel_properties_list_t *value) {
+    if (value->items) {
+        for (size_t j = 0; j < value->size; ++j) {
+            free_input_geometry_window_panel_properties(&value->items[j]);
+        }
+    }
+    PyMem_Free(value->items);
+    value->items = NULL;
+    value->size = 0;
+}
+
+static int make_input_geometry_window_panel_properties_list(PyObject *obj, ifcopenshell_geometry_window_panel_properties_list_t *out, option_ref_owner *refs) {
+    (void)refs;
+    PyObject *seq = PySequence_Fast(obj, "Expected a sequence");
+    if (!seq) return 0;
+    Py_ssize_t size = PySequence_Fast_GET_SIZE(seq);
+    out->items = size ? (ifcopenshell_geometry_window_panel_properties_t *)PyMem_Calloc((size_t)size, sizeof(ifcopenshell_geometry_window_panel_properties_t)) : NULL;
+    out->size = (size_t)size;
+    if (size && !out->items) {
+        Py_DECREF(seq);
+        PyErr_NoMemory();
+        return 0;
+    }
+    for (size_t i = 0; i < (size_t)size; ++i) {
+        if (!fill_input_geometry_window_panel_properties(PySequence_Fast_GET_ITEM(seq, (Py_ssize_t)i), &out->items[i], refs)) {
+            free_input_geometry_window_panel_properties_list(out);
+            Py_DECREF(seq);
+            return 0;
+        }
+    }
+    Py_DECREF(seq);
+    return 1;
+}
+
+static void free_input_alignment_horizontal_pi_list(ifcopenshell_alignment_horizontal_pi_list_t *value) {
+    if (value->items) {
+        for (size_t j = 0; j < value->size; ++j) {
+            free_input_alignment_horizontal_pi(&value->items[j]);
+        }
+    }
+    PyMem_Free(value->items);
+    value->items = NULL;
+    value->size = 0;
+}
+
+static int make_input_alignment_horizontal_pi_list(PyObject *obj, ifcopenshell_alignment_horizontal_pi_list_t *out, option_ref_owner *refs) {
+    (void)refs;
+    PyObject *seq = PySequence_Fast(obj, "Expected a sequence");
+    if (!seq) return 0;
+    Py_ssize_t size = PySequence_Fast_GET_SIZE(seq);
+    out->items = size ? (ifcopenshell_alignment_horizontal_pi_t *)PyMem_Calloc((size_t)size, sizeof(ifcopenshell_alignment_horizontal_pi_t)) : NULL;
+    out->size = (size_t)size;
+    if (size && !out->items) {
+        Py_DECREF(seq);
+        PyErr_NoMemory();
+        return 0;
+    }
+    for (size_t i = 0; i < (size_t)size; ++i) {
+        if (!fill_input_alignment_horizontal_pi(PySequence_Fast_GET_ITEM(seq, (Py_ssize_t)i), &out->items[i], refs)) {
+            free_input_alignment_horizontal_pi_list(out);
+            Py_DECREF(seq);
+            return 0;
+        }
+    }
+    Py_DECREF(seq);
+    return 1;
+}
+
+static void free_input_alignment_vertical_pi_list(ifcopenshell_alignment_vertical_pi_list_t *value) {
+    if (value->items) {
+        for (size_t j = 0; j < value->size; ++j) {
+            free_input_alignment_vertical_pi(&value->items[j]);
+        }
+    }
+    PyMem_Free(value->items);
+    value->items = NULL;
+    value->size = 0;
+}
+
+static int make_input_alignment_vertical_pi_list(PyObject *obj, ifcopenshell_alignment_vertical_pi_list_t *out, option_ref_owner *refs) {
+    (void)refs;
+    PyObject *seq = PySequence_Fast(obj, "Expected a sequence");
+    if (!seq) return 0;
+    Py_ssize_t size = PySequence_Fast_GET_SIZE(seq);
+    out->items = size ? (ifcopenshell_alignment_vertical_pi_t *)PyMem_Calloc((size_t)size, sizeof(ifcopenshell_alignment_vertical_pi_t)) : NULL;
+    out->size = (size_t)size;
+    if (size && !out->items) {
+        Py_DECREF(seq);
+        PyErr_NoMemory();
+        return 0;
+    }
+    for (size_t i = 0; i < (size_t)size; ++i) {
+        if (!fill_input_alignment_vertical_pi(PySequence_Fast_GET_ITEM(seq, (Py_ssize_t)i), &out->items[i], refs)) {
+            free_input_alignment_vertical_pi_list(out);
+            Py_DECREF(seq);
+            return 0;
+        }
+    }
+    Py_DECREF(seq);
+    return 1;
+}
+
+static void free_input_geometry_mesh_face_list(ifcopenshell_geometry_mesh_face_list_t *value) {
+    if (value->items) {
+        for (size_t j = 0; j < value->size; ++j) {
+            free_input_geometry_mesh_face(&value->items[j]);
+        }
+    }
+    PyMem_Free(value->items);
+    value->items = NULL;
+    value->size = 0;
+}
+
+static int make_input_geometry_mesh_face_list(PyObject *obj, ifcopenshell_geometry_mesh_face_list_t *out, option_ref_owner *refs) {
+    (void)refs;
+    PyObject *seq = PySequence_Fast(obj, "Expected a sequence");
+    if (!seq) return 0;
+    Py_ssize_t size = PySequence_Fast_GET_SIZE(seq);
+    out->items = size ? (ifcopenshell_geometry_mesh_face_t *)PyMem_Calloc((size_t)size, sizeof(ifcopenshell_geometry_mesh_face_t)) : NULL;
+    out->size = (size_t)size;
+    if (size && !out->items) {
+        Py_DECREF(seq);
+        PyErr_NoMemory();
+        return 0;
+    }
+    for (size_t i = 0; i < (size_t)size; ++i) {
+        if (!fill_input_geometry_mesh_face(PySequence_Fast_GET_ITEM(seq, (Py_ssize_t)i), &out->items[i], refs)) {
+            free_input_geometry_mesh_face_list(out);
+            Py_DECREF(seq);
+            return 0;
+        }
+    }
+    Py_DECREF(seq);
+    return 1;
+}
+
+static void free_input_double_list_list_any_2_double_list_list_any_3_variant_list(ifcopenshell_double_list_list_any_2_double_list_list_any_3_variant_list_t *value) {
+    if (value->items) {
+        for (size_t j = 0; j < value->size; ++j) {
+            free_input_double_list_list_any_2_double_list_list_any_3_variant(&value->items[j]);
+        }
+    }
+    PyMem_Free(value->items);
+    value->items = NULL;
+    value->size = 0;
+}
+
+static int make_input_double_list_list_any_2_double_list_list_any_3_variant_list(PyObject *obj, ifcopenshell_double_list_list_any_2_double_list_list_any_3_variant_list_t *out, option_ref_owner *refs) {
+    (void)refs;
+    PyObject *seq = PySequence_Fast(obj, "Expected a sequence");
+    if (!seq) return 0;
+    Py_ssize_t size = PySequence_Fast_GET_SIZE(seq);
+    out->items = size ? (ifcopenshell_double_list_list_any_2_double_list_list_any_3_variant_t *)PyMem_Calloc((size_t)size, sizeof(ifcopenshell_double_list_list_any_2_double_list_list_any_3_variant_t)) : NULL;
+    out->size = (size_t)size;
+    if (size && !out->items) {
+        Py_DECREF(seq);
+        PyErr_NoMemory();
+        return 0;
+    }
+    for (size_t i = 0; i < (size_t)size; ++i) {
+        if (!make_input_double_list_list_any_2_double_list_list_any_3_variant(PySequence_Fast_GET_ITEM(seq, (Py_ssize_t)i), &out->items[i], refs)) {
+            free_input_double_list_list_any_2_double_list_list_any_3_variant_list(out);
+            Py_DECREF(seq);
+            return 0;
+        }
+    }
+    Py_DECREF(seq);
+    return 1;
+}
+
+static void free_input_GeometryPlaneClipping_GeometryEntityClipping_variant_list(ifcopenshell_GeometryPlaneClipping_GeometryEntityClipping_variant_list_t *value) {
+    if (value->items) {
+        for (size_t j = 0; j < value->size; ++j) {
+            free_input_GeometryPlaneClipping_GeometryEntityClipping_variant(&value->items[j]);
+        }
+    }
+    PyMem_Free(value->items);
+    value->items = NULL;
+    value->size = 0;
+}
+
+static int make_input_GeometryPlaneClipping_GeometryEntityClipping_variant_list(PyObject *obj, ifcopenshell_GeometryPlaneClipping_GeometryEntityClipping_variant_list_t *out, option_ref_owner *refs) {
+    (void)refs;
+    PyObject *seq = PySequence_Fast(obj, "Expected a sequence");
+    if (!seq) return 0;
+    Py_ssize_t size = PySequence_Fast_GET_SIZE(seq);
+    out->items = size ? (ifcopenshell_GeometryPlaneClipping_GeometryEntityClipping_variant_t *)PyMem_Calloc((size_t)size, sizeof(ifcopenshell_GeometryPlaneClipping_GeometryEntityClipping_variant_t)) : NULL;
+    out->size = (size_t)size;
+    if (size && !out->items) {
+        Py_DECREF(seq);
+        PyErr_NoMemory();
+        return 0;
+    }
+    for (size_t i = 0; i < (size_t)size; ++i) {
+        if (!make_input_GeometryPlaneClipping_GeometryEntityClipping_variant(PySequence_Fast_GET_ITEM(seq, (Py_ssize_t)i), &out->items[i], refs)) {
+            free_input_GeometryPlaneClipping_GeometryEntityClipping_variant_list(out);
+            Py_DECREF(seq);
+            return 0;
+        }
+    }
+    Py_DECREF(seq);
+    return 1;
+}
+
+static void free_input_ShapeBuilderLineSegment_ShapeBuilderArcSegment_variant_list(ifcopenshell_ShapeBuilderLineSegment_ShapeBuilderArcSegment_variant_list_t *value) {
+    if (value->items) {
+        for (size_t j = 0; j < value->size; ++j) {
+            free_input_ShapeBuilderLineSegment_ShapeBuilderArcSegment_variant(&value->items[j]);
+        }
+    }
+    PyMem_Free(value->items);
+    value->items = NULL;
+    value->size = 0;
+}
+
+static int make_input_ShapeBuilderLineSegment_ShapeBuilderArcSegment_variant_list(PyObject *obj, ifcopenshell_ShapeBuilderLineSegment_ShapeBuilderArcSegment_variant_list_t *out, option_ref_owner *refs) {
+    (void)refs;
+    PyObject *seq = PySequence_Fast(obj, "Expected a sequence");
+    if (!seq) return 0;
+    Py_ssize_t size = PySequence_Fast_GET_SIZE(seq);
+    out->items = size ? (ifcopenshell_ShapeBuilderLineSegment_ShapeBuilderArcSegment_variant_t *)PyMem_Calloc((size_t)size, sizeof(ifcopenshell_ShapeBuilderLineSegment_ShapeBuilderArcSegment_variant_t)) : NULL;
+    out->size = (size_t)size;
+    if (size && !out->items) {
+        Py_DECREF(seq);
+        PyErr_NoMemory();
+        return 0;
+    }
+    for (size_t i = 0; i < (size_t)size; ++i) {
+        if (!make_input_ShapeBuilderLineSegment_ShapeBuilderArcSegment_variant(PySequence_Fast_GET_ITEM(seq, (Py_ssize_t)i), &out->items[i], refs)) {
+            free_input_ShapeBuilderLineSegment_ShapeBuilderArcSegment_variant_list(out);
+            Py_DECREF(seq);
+            return 0;
+        }
     }
     Py_DECREF(seq);
     return 1;
@@ -7082,7 +7845,8 @@ static void free_input_double_list_list(ifcopenshell_double_list_list_t *value) 
     value->size = 0;
 }
 
-static int make_input_double_list_list(PyObject *obj, ifcopenshell_double_list_list_t *out) {
+static int make_input_double_list_list(PyObject *obj, ifcopenshell_double_list_list_t *out, option_ref_owner *refs) {
+    (void)refs;
     PyObject *seq = PySequence_Fast(obj, "Expected a sequence");
     if (!seq) return 0;
     Py_ssize_t size = PySequence_Fast_GET_SIZE(seq);
@@ -7094,7 +7858,7 @@ static int make_input_double_list_list(PyObject *obj, ifcopenshell_double_list_l
         return 0;
     }
     for (size_t i = 0; i < (size_t)size; ++i) {
-        if (!make_input_double_list(PySequence_Fast_GET_ITEM(seq, (Py_ssize_t)i), &out->items[i])) {
+        if (!make_input_double_list(PySequence_Fast_GET_ITEM(seq, (Py_ssize_t)i), &out->items[i], refs)) {
             free_input_double_list_list(out);
             Py_DECREF(seq);
             return 0;
@@ -7115,7 +7879,8 @@ static void free_input_int32_list_list(ifcopenshell_int32_list_list_t *value) {
     value->size = 0;
 }
 
-static int make_input_int32_list_list(PyObject *obj, ifcopenshell_int32_list_list_t *out) {
+static int make_input_int32_list_list(PyObject *obj, ifcopenshell_int32_list_list_t *out, option_ref_owner *refs) {
+    (void)refs;
     PyObject *seq = PySequence_Fast(obj, "Expected a sequence");
     if (!seq) return 0;
     Py_ssize_t size = PySequence_Fast_GET_SIZE(seq);
@@ -7127,8 +7892,42 @@ static int make_input_int32_list_list(PyObject *obj, ifcopenshell_int32_list_lis
         return 0;
     }
     for (size_t i = 0; i < (size_t)size; ++i) {
-        if (!make_input_int32_list(PySequence_Fast_GET_ITEM(seq, (Py_ssize_t)i), &out->items[i])) {
+        if (!make_input_int32_list(PySequence_Fast_GET_ITEM(seq, (Py_ssize_t)i), &out->items[i], refs)) {
             free_input_int32_list_list(out);
+            Py_DECREF(seq);
+            return 0;
+        }
+    }
+    Py_DECREF(seq);
+    return 1;
+}
+
+static void free_input_uint32_list_list(ifcopenshell_uint32_list_list_t *value) {
+    if (value->items) {
+        for (size_t j = 0; j < value->size; ++j) {
+            free_input_uint32_list(&value->items[j]);
+        }
+    }
+    PyMem_Free(value->items);
+    value->items = NULL;
+    value->size = 0;
+}
+
+static int make_input_uint32_list_list(PyObject *obj, ifcopenshell_uint32_list_list_t *out, option_ref_owner *refs) {
+    (void)refs;
+    PyObject *seq = PySequence_Fast(obj, "Expected a sequence");
+    if (!seq) return 0;
+    Py_ssize_t size = PySequence_Fast_GET_SIZE(seq);
+    out->items = size ? (ifcopenshell_uint32_list_t *)PyMem_Calloc((size_t)size, sizeof(ifcopenshell_uint32_list_t)) : NULL;
+    out->size = (size_t)size;
+    if (size && !out->items) {
+        Py_DECREF(seq);
+        PyErr_NoMemory();
+        return 0;
+    }
+    for (size_t i = 0; i < (size_t)size; ++i) {
+        if (!make_input_uint32_list(PySequence_Fast_GET_ITEM(seq, (Py_ssize_t)i), &out->items[i], refs)) {
+            free_input_uint32_list_list(out);
             Py_DECREF(seq);
             return 0;
         }
@@ -7148,7 +7947,8 @@ static void free_input_instance_list_list(ifcopenshell_instance_list_list_t *val
     value->size = 0;
 }
 
-static int make_input_instance_list_list(PyObject *obj, ifcopenshell_instance_list_list_t *out) {
+static int make_input_instance_list_list(PyObject *obj, ifcopenshell_instance_list_list_t *out, option_ref_owner *refs) {
+    (void)refs;
     PyObject *seq = PySequence_Fast(obj, "Expected a sequence");
     if (!seq) return 0;
     Py_ssize_t size = PySequence_Fast_GET_SIZE(seq);
@@ -7160,7 +7960,7 @@ static int make_input_instance_list_list(PyObject *obj, ifcopenshell_instance_li
         return 0;
     }
     for (size_t i = 0; i < (size_t)size; ++i) {
-        if (!make_input_instance_list(PySequence_Fast_GET_ITEM(seq, (Py_ssize_t)i), &out->items[i])) {
+        if (!make_input_instance_list(PySequence_Fast_GET_ITEM(seq, (Py_ssize_t)i), &out->items[i], refs)) {
             free_input_instance_list_list(out);
             Py_DECREF(seq);
             return 0;
@@ -7181,7 +7981,8 @@ static void free_input_file_list_list(ifcopenshell_file_list_list_t *value) {
     value->size = 0;
 }
 
-static int make_input_file_list_list(PyObject *obj, ifcopenshell_file_list_list_t *out) {
+static int make_input_file_list_list(PyObject *obj, ifcopenshell_file_list_list_t *out, option_ref_owner *refs) {
+    (void)refs;
     PyObject *seq = PySequence_Fast(obj, "Expected a sequence");
     if (!seq) return 0;
     Py_ssize_t size = PySequence_Fast_GET_SIZE(seq);
@@ -7193,7 +7994,7 @@ static int make_input_file_list_list(PyObject *obj, ifcopenshell_file_list_list_
         return 0;
     }
     for (size_t i = 0; i < (size_t)size; ++i) {
-        if (!make_input_file_list(PySequence_Fast_GET_ITEM(seq, (Py_ssize_t)i), &out->items[i])) {
+        if (!make_input_file_list(PySequence_Fast_GET_ITEM(seq, (Py_ssize_t)i), &out->items[i], refs)) {
             free_input_file_list_list(out);
             Py_DECREF(seq);
             return 0;
@@ -7214,7 +8015,8 @@ static void free_input_geom_svgfill_polygon_list_list(ifcopenshell_geom_svgfill_
     value->size = 0;
 }
 
-static int make_input_geom_svgfill_polygon_list_list(PyObject *obj, ifcopenshell_geom_svgfill_polygon_list_list_t *out) {
+static int make_input_geom_svgfill_polygon_list_list(PyObject *obj, ifcopenshell_geom_svgfill_polygon_list_list_t *out, option_ref_owner *refs) {
+    (void)refs;
     PyObject *seq = PySequence_Fast(obj, "Expected a sequence");
     if (!seq) return 0;
     Py_ssize_t size = PySequence_Fast_GET_SIZE(seq);
@@ -7226,7 +8028,7 @@ static int make_input_geom_svgfill_polygon_list_list(PyObject *obj, ifcopenshell
         return 0;
     }
     for (size_t i = 0; i < (size_t)size; ++i) {
-        if (!make_input_geom_svgfill_polygon_list(PySequence_Fast_GET_ITEM(seq, (Py_ssize_t)i), &out->items[i])) {
+        if (!make_input_geom_svgfill_polygon_list(PySequence_Fast_GET_ITEM(seq, (Py_ssize_t)i), &out->items[i], refs)) {
             free_input_geom_svgfill_polygon_list_list(out);
             Py_DECREF(seq);
             return 0;
@@ -7247,7 +8049,8 @@ static void free_input_geom_conversion_result_shape_list_list(ifcopenshell_geom_
     value->size = 0;
 }
 
-static int make_input_geom_conversion_result_shape_list_list(PyObject *obj, ifcopenshell_geom_conversion_result_shape_list_list_t *out) {
+static int make_input_geom_conversion_result_shape_list_list(PyObject *obj, ifcopenshell_geom_conversion_result_shape_list_list_t *out, option_ref_owner *refs) {
+    (void)refs;
     PyObject *seq = PySequence_Fast(obj, "Expected a sequence");
     if (!seq) return 0;
     Py_ssize_t size = PySequence_Fast_GET_SIZE(seq);
@@ -7259,7 +8062,7 @@ static int make_input_geom_conversion_result_shape_list_list(PyObject *obj, ifco
         return 0;
     }
     for (size_t i = 0; i < (size_t)size; ++i) {
-        if (!make_input_geom_conversion_result_shape_list(PySequence_Fast_GET_ITEM(seq, (Py_ssize_t)i), &out->items[i])) {
+        if (!make_input_geom_conversion_result_shape_list(PySequence_Fast_GET_ITEM(seq, (Py_ssize_t)i), &out->items[i], refs)) {
             free_input_geom_conversion_result_shape_list_list(out);
             Py_DECREF(seq);
             return 0;
@@ -7280,7 +8083,8 @@ static void free_input_declaration_list_list(ifcopenshell_declaration_list_list_
     value->size = 0;
 }
 
-static int make_input_declaration_list_list(PyObject *obj, ifcopenshell_declaration_list_list_t *out) {
+static int make_input_declaration_list_list(PyObject *obj, ifcopenshell_declaration_list_list_t *out, option_ref_owner *refs) {
+    (void)refs;
     PyObject *seq = PySequence_Fast(obj, "Expected a sequence");
     if (!seq) return 0;
     Py_ssize_t size = PySequence_Fast_GET_SIZE(seq);
@@ -7292,7 +8096,7 @@ static int make_input_declaration_list_list(PyObject *obj, ifcopenshell_declarat
         return 0;
     }
     for (size_t i = 0; i < (size_t)size; ++i) {
-        if (!make_input_declaration_list(PySequence_Fast_GET_ITEM(seq, (Py_ssize_t)i), &out->items[i])) {
+        if (!make_input_declaration_list(PySequence_Fast_GET_ITEM(seq, (Py_ssize_t)i), &out->items[i], refs)) {
             free_input_declaration_list_list(out);
             Py_DECREF(seq);
             return 0;
@@ -7313,7 +8117,8 @@ static void free_input_entity_list_list(ifcopenshell_entity_list_list_t *value) 
     value->size = 0;
 }
 
-static int make_input_entity_list_list(PyObject *obj, ifcopenshell_entity_list_list_t *out) {
+static int make_input_entity_list_list(PyObject *obj, ifcopenshell_entity_list_list_t *out, option_ref_owner *refs) {
+    (void)refs;
     PyObject *seq = PySequence_Fast(obj, "Expected a sequence");
     if (!seq) return 0;
     Py_ssize_t size = PySequence_Fast_GET_SIZE(seq);
@@ -7325,7 +8130,7 @@ static int make_input_entity_list_list(PyObject *obj, ifcopenshell_entity_list_l
         return 0;
     }
     for (size_t i = 0; i < (size_t)size; ++i) {
-        if (!make_input_entity_list(PySequence_Fast_GET_ITEM(seq, (Py_ssize_t)i), &out->items[i])) {
+        if (!make_input_entity_list(PySequence_Fast_GET_ITEM(seq, (Py_ssize_t)i), &out->items[i], refs)) {
             free_input_entity_list_list(out);
             Py_DECREF(seq);
             return 0;
@@ -7346,7 +8151,8 @@ static void free_input_enumeration_list_list(ifcopenshell_enumeration_list_list_
     value->size = 0;
 }
 
-static int make_input_enumeration_list_list(PyObject *obj, ifcopenshell_enumeration_list_list_t *out) {
+static int make_input_enumeration_list_list(PyObject *obj, ifcopenshell_enumeration_list_list_t *out, option_ref_owner *refs) {
+    (void)refs;
     PyObject *seq = PySequence_Fast(obj, "Expected a sequence");
     if (!seq) return 0;
     Py_ssize_t size = PySequence_Fast_GET_SIZE(seq);
@@ -7358,7 +8164,7 @@ static int make_input_enumeration_list_list(PyObject *obj, ifcopenshell_enumerat
         return 0;
     }
     for (size_t i = 0; i < (size_t)size; ++i) {
-        if (!make_input_enumeration_list(PySequence_Fast_GET_ITEM(seq, (Py_ssize_t)i), &out->items[i])) {
+        if (!make_input_enumeration_list(PySequence_Fast_GET_ITEM(seq, (Py_ssize_t)i), &out->items[i], refs)) {
             free_input_enumeration_list_list(out);
             Py_DECREF(seq);
             return 0;
@@ -7379,7 +8185,8 @@ static void free_input_select_type_list_list(ifcopenshell_select_type_list_list_
     value->size = 0;
 }
 
-static int make_input_select_type_list_list(PyObject *obj, ifcopenshell_select_type_list_list_t *out) {
+static int make_input_select_type_list_list(PyObject *obj, ifcopenshell_select_type_list_list_t *out, option_ref_owner *refs) {
+    (void)refs;
     PyObject *seq = PySequence_Fast(obj, "Expected a sequence");
     if (!seq) return 0;
     Py_ssize_t size = PySequence_Fast_GET_SIZE(seq);
@@ -7391,7 +8198,7 @@ static int make_input_select_type_list_list(PyObject *obj, ifcopenshell_select_t
         return 0;
     }
     for (size_t i = 0; i < (size_t)size; ++i) {
-        if (!make_input_select_type_list(PySequence_Fast_GET_ITEM(seq, (Py_ssize_t)i), &out->items[i])) {
+        if (!make_input_select_type_list(PySequence_Fast_GET_ITEM(seq, (Py_ssize_t)i), &out->items[i], refs)) {
             free_input_select_type_list_list(out);
             Py_DECREF(seq);
             return 0;
@@ -7412,7 +8219,8 @@ static void free_input_type_declaration_list_list(ifcopenshell_type_declaration_
     value->size = 0;
 }
 
-static int make_input_type_declaration_list_list(PyObject *obj, ifcopenshell_type_declaration_list_list_t *out) {
+static int make_input_type_declaration_list_list(PyObject *obj, ifcopenshell_type_declaration_list_list_t *out, option_ref_owner *refs) {
+    (void)refs;
     PyObject *seq = PySequence_Fast(obj, "Expected a sequence");
     if (!seq) return 0;
     Py_ssize_t size = PySequence_Fast_GET_SIZE(seq);
@@ -7424,7 +8232,7 @@ static int make_input_type_declaration_list_list(PyObject *obj, ifcopenshell_typ
         return 0;
     }
     for (size_t i = 0; i < (size_t)size; ++i) {
-        if (!make_input_type_declaration_list(PySequence_Fast_GET_ITEM(seq, (Py_ssize_t)i), &out->items[i])) {
+        if (!make_input_type_declaration_list(PySequence_Fast_GET_ITEM(seq, (Py_ssize_t)i), &out->items[i], refs)) {
             free_input_type_declaration_list_list(out);
             Py_DECREF(seq);
             return 0;
@@ -7445,7 +8253,8 @@ static void free_input_attribute_list_list(ifcopenshell_attribute_list_list_t *v
     value->size = 0;
 }
 
-static int make_input_attribute_list_list(PyObject *obj, ifcopenshell_attribute_list_list_t *out) {
+static int make_input_attribute_list_list(PyObject *obj, ifcopenshell_attribute_list_list_t *out, option_ref_owner *refs) {
+    (void)refs;
     PyObject *seq = PySequence_Fast(obj, "Expected a sequence");
     if (!seq) return 0;
     Py_ssize_t size = PySequence_Fast_GET_SIZE(seq);
@@ -7457,7 +8266,7 @@ static int make_input_attribute_list_list(PyObject *obj, ifcopenshell_attribute_
         return 0;
     }
     for (size_t i = 0; i < (size_t)size; ++i) {
-        if (!make_input_attribute_list(PySequence_Fast_GET_ITEM(seq, (Py_ssize_t)i), &out->items[i])) {
+        if (!make_input_attribute_list(PySequence_Fast_GET_ITEM(seq, (Py_ssize_t)i), &out->items[i], refs)) {
             free_input_attribute_list_list(out);
             Py_DECREF(seq);
             return 0;
@@ -7478,7 +8287,8 @@ static void free_input_inverse_attribute_list_list(ifcopenshell_inverse_attribut
     value->size = 0;
 }
 
-static int make_input_inverse_attribute_list_list(PyObject *obj, ifcopenshell_inverse_attribute_list_list_t *out) {
+static int make_input_inverse_attribute_list_list(PyObject *obj, ifcopenshell_inverse_attribute_list_list_t *out, option_ref_owner *refs) {
+    (void)refs;
     PyObject *seq = PySequence_Fast(obj, "Expected a sequence");
     if (!seq) return 0;
     Py_ssize_t size = PySequence_Fast_GET_SIZE(seq);
@@ -7490,7 +8300,7 @@ static int make_input_inverse_attribute_list_list(PyObject *obj, ifcopenshell_in
         return 0;
     }
     for (size_t i = 0; i < (size_t)size; ++i) {
-        if (!make_input_inverse_attribute_list(PySequence_Fast_GET_ITEM(seq, (Py_ssize_t)i), &out->items[i])) {
+        if (!make_input_inverse_attribute_list(PySequence_Fast_GET_ITEM(seq, (Py_ssize_t)i), &out->items[i], refs)) {
             free_input_inverse_attribute_list_list(out);
             Py_DECREF(seq);
             return 0;
@@ -7511,7 +8321,8 @@ static void free_input_geom_taxonomy_style_list_list(ifcopenshell_geom_taxonomy_
     value->size = 0;
 }
 
-static int make_input_geom_taxonomy_style_list_list(PyObject *obj, ifcopenshell_geom_taxonomy_style_list_list_t *out) {
+static int make_input_geom_taxonomy_style_list_list(PyObject *obj, ifcopenshell_geom_taxonomy_style_list_list_t *out, option_ref_owner *refs) {
+    (void)refs;
     PyObject *seq = PySequence_Fast(obj, "Expected a sequence");
     if (!seq) return 0;
     Py_ssize_t size = PySequence_Fast_GET_SIZE(seq);
@@ -7523,7 +8334,7 @@ static int make_input_geom_taxonomy_style_list_list(PyObject *obj, ifcopenshell_
         return 0;
     }
     for (size_t i = 0; i < (size_t)size; ++i) {
-        if (!make_input_geom_taxonomy_style_list(PySequence_Fast_GET_ITEM(seq, (Py_ssize_t)i), &out->items[i])) {
+        if (!make_input_geom_taxonomy_style_list(PySequence_Fast_GET_ITEM(seq, (Py_ssize_t)i), &out->items[i], refs)) {
             free_input_geom_taxonomy_style_list_list(out);
             Py_DECREF(seq);
             return 0;
@@ -7544,7 +8355,8 @@ static void free_input_geom_taxonomy_item_list_list(ifcopenshell_geom_taxonomy_i
     value->size = 0;
 }
 
-static int make_input_geom_taxonomy_item_list_list(PyObject *obj, ifcopenshell_geom_taxonomy_item_list_list_t *out) {
+static int make_input_geom_taxonomy_item_list_list(PyObject *obj, ifcopenshell_geom_taxonomy_item_list_list_t *out, option_ref_owner *refs) {
+    (void)refs;
     PyObject *seq = PySequence_Fast(obj, "Expected a sequence");
     if (!seq) return 0;
     Py_ssize_t size = PySequence_Fast_GET_SIZE(seq);
@@ -7556,7 +8368,7 @@ static int make_input_geom_taxonomy_item_list_list(PyObject *obj, ifcopenshell_g
         return 0;
     }
     for (size_t i = 0; i < (size_t)size; ++i) {
-        if (!make_input_geom_taxonomy_item_list(PySequence_Fast_GET_ITEM(seq, (Py_ssize_t)i), &out->items[i])) {
+        if (!make_input_geom_taxonomy_item_list(PySequence_Fast_GET_ITEM(seq, (Py_ssize_t)i), &out->items[i], refs)) {
             free_input_geom_taxonomy_item_list_list(out);
             Py_DECREF(seq);
             return 0;
@@ -7577,7 +8389,8 @@ static void free_input_geom_element_list_list(ifcopenshell_geom_element_list_lis
     value->size = 0;
 }
 
-static int make_input_geom_element_list_list(PyObject *obj, ifcopenshell_geom_element_list_list_t *out) {
+static int make_input_geom_element_list_list(PyObject *obj, ifcopenshell_geom_element_list_list_t *out, option_ref_owner *refs) {
+    (void)refs;
     PyObject *seq = PySequence_Fast(obj, "Expected a sequence");
     if (!seq) return 0;
     Py_ssize_t size = PySequence_Fast_GET_SIZE(seq);
@@ -7589,7 +8402,7 @@ static int make_input_geom_element_list_list(PyObject *obj, ifcopenshell_geom_el
         return 0;
     }
     for (size_t i = 0; i < (size_t)size; ++i) {
-        if (!make_input_geom_element_list(PySequence_Fast_GET_ITEM(seq, (Py_ssize_t)i), &out->items[i])) {
+        if (!make_input_geom_element_list(PySequence_Fast_GET_ITEM(seq, (Py_ssize_t)i), &out->items[i], refs)) {
             free_input_geom_element_list_list(out);
             Py_DECREF(seq);
             return 0;
@@ -7610,7 +8423,8 @@ static void free_input_int32_list_list_list(ifcopenshell_int32_list_list_list_t 
     value->size = 0;
 }
 
-static int make_input_int32_list_list_list(PyObject *obj, ifcopenshell_int32_list_list_list_t *out) {
+static int make_input_int32_list_list_list(PyObject *obj, ifcopenshell_int32_list_list_list_t *out, option_ref_owner *refs) {
+    (void)refs;
     PyObject *seq = PySequence_Fast(obj, "Expected a sequence");
     if (!seq) return 0;
     Py_ssize_t size = PySequence_Fast_GET_SIZE(seq);
@@ -7622,7 +8436,7 @@ static int make_input_int32_list_list_list(PyObject *obj, ifcopenshell_int32_lis
         return 0;
     }
     for (size_t i = 0; i < (size_t)size; ++i) {
-        if (!make_input_int32_list_list(PySequence_Fast_GET_ITEM(seq, (Py_ssize_t)i), &out->items[i])) {
+        if (!make_input_int32_list_list(PySequence_Fast_GET_ITEM(seq, (Py_ssize_t)i), &out->items[i], refs)) {
             free_input_int32_list_list_list(out);
             Py_DECREF(seq);
             return 0;
@@ -7643,7 +8457,8 @@ static void free_input_double_list_list_list(ifcopenshell_double_list_list_list_
     value->size = 0;
 }
 
-static int make_input_double_list_list_list(PyObject *obj, ifcopenshell_double_list_list_list_t *out) {
+static int make_input_double_list_list_list(PyObject *obj, ifcopenshell_double_list_list_list_t *out, option_ref_owner *refs) {
+    (void)refs;
     PyObject *seq = PySequence_Fast(obj, "Expected a sequence");
     if (!seq) return 0;
     Py_ssize_t size = PySequence_Fast_GET_SIZE(seq);
@@ -7655,41 +8470,8 @@ static int make_input_double_list_list_list(PyObject *obj, ifcopenshell_double_l
         return 0;
     }
     for (size_t i = 0; i < (size_t)size; ++i) {
-        if (!make_input_double_list_list(PySequence_Fast_GET_ITEM(seq, (Py_ssize_t)i), &out->items[i])) {
+        if (!make_input_double_list_list(PySequence_Fast_GET_ITEM(seq, (Py_ssize_t)i), &out->items[i], refs)) {
             free_input_double_list_list_list(out);
-            Py_DECREF(seq);
-            return 0;
-        }
-    }
-    Py_DECREF(seq);
-    return 1;
-}
-
-static void free_input_int32_list_list_list_list(ifcopenshell_int32_list_list_list_list_t *value) {
-    if (value->items) {
-        for (size_t j = 0; j < value->size; ++j) {
-            free_input_int32_list_list_list(&value->items[j]);
-        }
-    }
-    PyMem_Free(value->items);
-    value->items = NULL;
-    value->size = 0;
-}
-
-static int make_input_int32_list_list_list_list(PyObject *obj, ifcopenshell_int32_list_list_list_list_t *out) {
-    PyObject *seq = PySequence_Fast(obj, "Expected a sequence");
-    if (!seq) return 0;
-    Py_ssize_t size = PySequence_Fast_GET_SIZE(seq);
-    out->items = size ? (ifcopenshell_int32_list_list_list_t *)PyMem_Calloc((size_t)size, sizeof(ifcopenshell_int32_list_list_list_t)) : NULL;
-    out->size = (size_t)size;
-    if (size && !out->items) {
-        Py_DECREF(seq);
-        PyErr_NoMemory();
-        return 0;
-    }
-    for (size_t i = 0; i < (size_t)size; ++i) {
-        if (!make_input_int32_list_list_list(PySequence_Fast_GET_ITEM(seq, (Py_ssize_t)i), &out->items[i])) {
-            free_input_int32_list_list_list_list(out);
             Py_DECREF(seq);
             return 0;
         }
@@ -7705,7 +8487,7 @@ static void free_input_aggregate_assign_object_options(ifcopenshell_aggregate_as
     }
 }
 
-static int fill_input_aggregate_assign_object_options(PyObject *obj, ifcopenshell_aggregate_assign_object_options_t *out, PyObject **refs) {
+static int fill_input_aggregate_assign_object_options(PyObject *obj, ifcopenshell_aggregate_assign_object_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -7714,9 +8496,9 @@ static int fill_input_aggregate_assign_object_options(PyObject *obj, ifcopenshel
     if (!field_0) {
         return 0;
     }
-    refs[0] = field_0;
+    if (!retain_option_ref(refs, field_0)) return 0;
     ifcopenshell_instance_list_t products_items_0 = {0};
-    if (!make_input_instance_list(field_0, &products_items_0)) {
+    if (!make_input_instance_list(field_0, &products_items_0, refs)) {
         return 0;
     }
     if (!ifcopenshell_parse_instance_list_create_from_handles(&products_items_0, &out->products)) {
@@ -7729,7 +8511,7 @@ static int fill_input_aggregate_assign_object_options(PyObject *obj, ifcopenshel
     if (!field_1) {
         return 0;
     }
-    refs[1] = field_1;
+    if (!retain_option_ref(refs, field_1)) return 0;
     if (!extract_handle(field_1, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->relating_object, 0)) {
         return 0;
     }
@@ -7737,7 +8519,7 @@ static int fill_input_aggregate_assign_object_options(PyObject *obj, ifcopenshel
     if (!field_2) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[2] = field_2;
+        if (!retain_option_ref(refs, field_2)) return 0;
         if (field_2 != Py_None) {
             if (!extract_handle(field_2, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->owner_history, 0)) {
                 return 0;
@@ -7749,7 +8531,7 @@ static int fill_input_aggregate_assign_object_options(PyObject *obj, ifcopenshel
     if (!field_3) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[3] = field_3;
+        if (!retain_option_ref(refs, field_3)) return 0;
         if (field_3 != Py_None) {
             if (!extract_handle(field_3, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->user, 0)) {
                 return 0;
@@ -7761,7 +8543,7 @@ static int fill_input_aggregate_assign_object_options(PyObject *obj, ifcopenshel
     if (!field_4) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[4] = field_4;
+        if (!retain_option_ref(refs, field_4)) return 0;
         if (field_4 != Py_None) {
             if (!extract_handle(field_4, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->application, 0)) {
                 return 0;
@@ -7780,7 +8562,7 @@ static void free_input_aggregate_unassign_object_options(ifcopenshell_aggregate_
     }
 }
 
-static int fill_input_aggregate_unassign_object_options(PyObject *obj, ifcopenshell_aggregate_unassign_object_options_t *out, PyObject **refs) {
+static int fill_input_aggregate_unassign_object_options(PyObject *obj, ifcopenshell_aggregate_unassign_object_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -7789,9 +8571,9 @@ static int fill_input_aggregate_unassign_object_options(PyObject *obj, ifcopensh
     if (!field_0) {
         return 0;
     }
-    refs[0] = field_0;
+    if (!retain_option_ref(refs, field_0)) return 0;
     ifcopenshell_instance_list_t products_items_0 = {0};
-    if (!make_input_instance_list(field_0, &products_items_0)) {
+    if (!make_input_instance_list(field_0, &products_items_0, refs)) {
         return 0;
     }
     if (!ifcopenshell_parse_instance_list_create_from_handles(&products_items_0, &out->products)) {
@@ -7804,7 +8586,7 @@ static int fill_input_aggregate_unassign_object_options(PyObject *obj, ifcopensh
     if (!field_1) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[1] = field_1;
+        if (!retain_option_ref(refs, field_1)) return 0;
         if (field_1 != Py_None) {
             if (!extract_handle(field_1, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->user, 0)) {
                 return 0;
@@ -7816,7 +8598,7 @@ static int fill_input_aggregate_unassign_object_options(PyObject *obj, ifcopensh
     if (!field_2) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[2] = field_2;
+        if (!retain_option_ref(refs, field_2)) return 0;
         if (field_2 != Py_None) {
             if (!extract_handle(field_2, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->application, 0)) {
                 return 0;
@@ -7832,7 +8614,7 @@ static void free_input_alignment_add_stationing_referent_options(ifcopenshell_al
     (void)value;
 }
 
-static int fill_input_alignment_add_stationing_referent_options(PyObject *obj, ifcopenshell_alignment_add_stationing_referent_options_t *out, PyObject **refs) {
+static int fill_input_alignment_add_stationing_referent_options(PyObject *obj, ifcopenshell_alignment_add_stationing_referent_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -7841,7 +8623,7 @@ static int fill_input_alignment_add_stationing_referent_options(PyObject *obj, i
     if (!field_0) {
         return 0;
     }
-    refs[0] = field_0;
+    if (!retain_option_ref(refs, field_0)) return 0;
     if (!extract_handle(field_0, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->alignment, 0)) {
         return 0;
     }
@@ -7849,28 +8631,28 @@ static int fill_input_alignment_add_stationing_referent_options(PyObject *obj, i
     if (!field_1) {
         return 0;
     }
-    refs[1] = field_1;
+    if (!retain_option_ref(refs, field_1)) return 0;
     out->distance_along = PyFloat_AsDouble(field_1);
     if (PyErr_Occurred()) return 0;
     PyObject *field_2 = get_option_field(obj, "station", 1);
     if (!field_2) {
         return 0;
     }
-    refs[2] = field_2;
+    if (!retain_option_ref(refs, field_2)) return 0;
     out->station = PyFloat_AsDouble(field_2);
     if (PyErr_Occurred()) return 0;
     PyObject *field_3 = get_option_field(obj, "name", 1);
     if (!field_3) {
         return 0;
     }
-    refs[3] = field_3;
+    if (!retain_option_ref(refs, field_3)) return 0;
     out->name = PyUnicode_AsUTF8(field_3);
     if (!out->name) return 0;
     PyObject *field_4 = get_option_field(obj, "positioned_product", 1);
     if (!field_4) {
         return 0;
     }
-    refs[4] = field_4;
+    if (!retain_option_ref(refs, field_4)) return 0;
     if (!extract_handle(field_4, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->positioned_product, 0)) {
         return 0;
     }
@@ -7878,7 +8660,7 @@ static int fill_input_alignment_add_stationing_referent_options(PyObject *obj, i
     if (!field_5) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[5] = field_5;
+        if (!retain_option_ref(refs, field_5)) return 0;
         if (field_5 != Py_None) {
             if (!extract_handle(field_5, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->owner_history, 0)) {
                 return 0;
@@ -7890,7 +8672,7 @@ static int fill_input_alignment_add_stationing_referent_options(PyObject *obj, i
     if (!field_6) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[6] = field_6;
+        if (!retain_option_ref(refs, field_6)) return 0;
         if (field_6 != Py_None) {
             if (!extract_handle(field_6, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->user, 0)) {
                 return 0;
@@ -7902,7 +8684,7 @@ static int fill_input_alignment_add_stationing_referent_options(PyObject *obj, i
     if (!field_7) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[7] = field_7;
+        if (!retain_option_ref(refs, field_7)) return 0;
         if (field_7 != Py_None) {
             if (!extract_handle(field_7, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->application, 0)) {
                 return 0;
@@ -7915,29 +8697,19 @@ static int fill_input_alignment_add_stationing_referent_options(PyObject *obj, i
 
 
 static void free_input_alignment_create_by_pi_method_options(ifcopenshell_alignment_create_by_pi_method_options_t *value) {
-    if (value->horizontal_points) {
-        free_input_double_list_list((ifcopenshell_double_list_list_t *)value->horizontal_points);
-        PyMem_Free((void *)value->horizontal_points);
-        value->horizontal_points = NULL;
+    if (value->horizontal) {
+        free_input_alignment_horizontal_pi_layout((ifcopenshell_alignment_horizontal_pi_layout_t *)value->horizontal);
+        PyMem_Free((void *)value->horizontal);
+        value->horizontal = NULL;
     }
-    if (value->radii) {
-        free_input_double_list((ifcopenshell_double_list_t *)value->radii);
-        PyMem_Free((void *)value->radii);
-        value->radii = NULL;
-    }
-    if (value->vertical_points) {
-        free_input_double_list_list((ifcopenshell_double_list_list_t *)value->vertical_points);
-        PyMem_Free((void *)value->vertical_points);
-        value->vertical_points = NULL;
-    }
-    if (value->vertical_lengths) {
-        free_input_double_list((ifcopenshell_double_list_t *)value->vertical_lengths);
-        PyMem_Free((void *)value->vertical_lengths);
-        value->vertical_lengths = NULL;
+    if (value->vertical) {
+        free_input_alignment_vertical_pi_layout((ifcopenshell_alignment_vertical_pi_layout_t *)value->vertical);
+        PyMem_Free((void *)value->vertical);
+        value->vertical = NULL;
     }
 }
 
-static int fill_input_alignment_create_by_pi_method_options(PyObject *obj, ifcopenshell_alignment_create_by_pi_method_options_t *out, PyObject **refs) {
+static int fill_input_alignment_create_by_pi_method_options(PyObject *obj, ifcopenshell_alignment_create_by_pi_method_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -7946,107 +8718,87 @@ static int fill_input_alignment_create_by_pi_method_options(PyObject *obj, ifcop
     if (!field_0) {
         return 0;
     }
-    refs[0] = field_0;
+    if (!retain_option_ref(refs, field_0)) return 0;
     out->name = PyUnicode_AsUTF8(field_0);
     if (!out->name) return 0;
-    PyObject *field_1 = get_option_field(obj, "horizontal_points", 1);
+    PyObject *field_1 = get_option_field(obj, "horizontal", 1);
     if (!field_1) {
         return 0;
     }
-    refs[1] = field_1;
-    ifcopenshell_double_list_list_t *sequence_1 = (ifcopenshell_double_list_list_t *)PyMem_Calloc(1, sizeof(ifcopenshell_double_list_list_t));
-    if (!sequence_1) {
+    if (!retain_option_ref(refs, field_1)) return 0;
+    ifcopenshell_alignment_horizontal_pi_layout_t *nested_1 = (ifcopenshell_alignment_horizontal_pi_layout_t *)PyMem_Calloc(1, sizeof(ifcopenshell_alignment_horizontal_pi_layout_t));
+    if (!nested_1) {
         PyErr_NoMemory();
         return 0;
     }
-    if (!make_input_double_list_list(field_1, sequence_1)) {
-        PyMem_Free(sequence_1);
+    if (!fill_input_alignment_horizontal_pi_layout(field_1, nested_1, refs)) {
+        free_input_alignment_horizontal_pi_layout(nested_1);
+        PyMem_Free(nested_1);
         return 0;
     }
-    out->horizontal_points = sequence_1;
-    PyObject *field_2 = get_option_field(obj, "radii", 1);
+    out->horizontal = nested_1;
+    PyObject *field_2 = get_option_field(obj, "vertical", 0);
     if (!field_2) {
-        return 0;
-    }
-    refs[2] = field_2;
-    ifcopenshell_double_list_t *sequence_2 = (ifcopenshell_double_list_t *)PyMem_Calloc(1, sizeof(ifcopenshell_double_list_t));
-    if (!sequence_2) {
-        PyErr_NoMemory();
-        return 0;
-    }
-    if (!make_input_double_list(field_2, sequence_2)) {
-        PyMem_Free(sequence_2);
-        return 0;
-    }
-    out->radii = sequence_2;
-    PyObject *field_3 = get_option_field(obj, "vertical_points", 1);
-    if (!field_3) {
-        return 0;
-    }
-    refs[3] = field_3;
-    ifcopenshell_double_list_list_t *sequence_3 = (ifcopenshell_double_list_list_t *)PyMem_Calloc(1, sizeof(ifcopenshell_double_list_list_t));
-    if (!sequence_3) {
-        PyErr_NoMemory();
-        return 0;
-    }
-    if (!make_input_double_list_list(field_3, sequence_3)) {
-        PyMem_Free(sequence_3);
-        return 0;
-    }
-    out->vertical_points = sequence_3;
-    PyObject *field_4 = get_option_field(obj, "vertical_lengths", 1);
-    if (!field_4) {
-        return 0;
-    }
-    refs[4] = field_4;
-    ifcopenshell_double_list_t *sequence_4 = (ifcopenshell_double_list_t *)PyMem_Calloc(1, sizeof(ifcopenshell_double_list_t));
-    if (!sequence_4) {
-        PyErr_NoMemory();
-        return 0;
-    }
-    if (!make_input_double_list(field_4, sequence_4)) {
-        PyMem_Free(sequence_4);
-        return 0;
-    }
-    out->vertical_lengths = sequence_4;
-    PyObject *field_5 = get_option_field(obj, "start_station", 1);
-    if (!field_5) {
-        return 0;
-    }
-    refs[5] = field_5;
-    out->start_station = PyFloat_AsDouble(field_5);
-    if (PyErr_Occurred()) return 0;
-    PyObject *field_6 = get_option_field(obj, "owner_history", 0);
-    if (!field_6) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[6] = field_6;
-        if (field_6 != Py_None) {
-            if (!extract_handle(field_6, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->owner_history, 0)) {
+        if (!retain_option_ref(refs, field_2)) return 0;
+        if (field_2 != Py_None) {
+            ifcopenshell_alignment_vertical_pi_layout_t *nested_2 = (ifcopenshell_alignment_vertical_pi_layout_t *)PyMem_Calloc(1, sizeof(ifcopenshell_alignment_vertical_pi_layout_t));
+            if (!nested_2) {
+                PyErr_NoMemory();
+                return 0;
+            }
+            if (!fill_input_alignment_vertical_pi_layout(field_2, nested_2, refs)) {
+                free_input_alignment_vertical_pi_layout(nested_2);
+                PyMem_Free(nested_2);
+                return 0;
+            }
+            out->vertical = nested_2;
+        out->has_vertical = true;
+        }
+    }
+    PyObject *field_3 = get_option_field(obj, "start_station", 0);
+    if (!field_3) {
+        if (PyErr_Occurred()) return 0;
+    } else {
+        if (!retain_option_ref(refs, field_3)) return 0;
+        if (field_3 != Py_None) {
+            out->start_station = PyFloat_AsDouble(field_3);
+            if (PyErr_Occurred()) return 0;
+        out->has_start_station = true;
+        }
+    }
+    PyObject *field_4 = get_option_field(obj, "owner_history", 0);
+    if (!field_4) {
+        if (PyErr_Occurred()) return 0;
+    } else {
+        if (!retain_option_ref(refs, field_4)) return 0;
+        if (field_4 != Py_None) {
+            if (!extract_handle(field_4, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->owner_history, 0)) {
                 return 0;
             }
         out->has_owner_history = true;
         }
     }
-    PyObject *field_7 = get_option_field(obj, "user", 0);
-    if (!field_7) {
+    PyObject *field_5 = get_option_field(obj, "user", 0);
+    if (!field_5) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[7] = field_7;
-        if (field_7 != Py_None) {
-            if (!extract_handle(field_7, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->user, 0)) {
+        if (!retain_option_ref(refs, field_5)) return 0;
+        if (field_5 != Py_None) {
+            if (!extract_handle(field_5, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->user, 0)) {
                 return 0;
             }
         out->has_user = true;
         }
     }
-    PyObject *field_8 = get_option_field(obj, "application", 0);
-    if (!field_8) {
+    PyObject *field_6 = get_option_field(obj, "application", 0);
+    if (!field_6) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[8] = field_8;
-        if (field_8 != Py_None) {
-            if (!extract_handle(field_8, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->application, 0)) {
+        if (!retain_option_ref(refs, field_6)) return 0;
+        if (field_6 != Py_None) {
+            if (!extract_handle(field_6, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->application, 0)) {
                 return 0;
             }
         out->has_application = true;
@@ -8060,7 +8812,7 @@ static void free_input_alignment_create_from_csv_text_options(ifcopenshell_align
     (void)value;
 }
 
-static int fill_input_alignment_create_from_csv_text_options(PyObject *obj, ifcopenshell_alignment_create_from_csv_text_options_t *out, PyObject **refs) {
+static int fill_input_alignment_create_from_csv_text_options(PyObject *obj, ifcopenshell_alignment_create_from_csv_text_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -8069,14 +8821,14 @@ static int fill_input_alignment_create_from_csv_text_options(PyObject *obj, ifco
     if (!field_0) {
         return 0;
     }
-    refs[0] = field_0;
+    if (!retain_option_ref(refs, field_0)) return 0;
     out->csv_text = PyUnicode_AsUTF8(field_0);
     if (!out->csv_text) return 0;
     PyObject *field_1 = get_option_field(obj, "owner_history", 0);
     if (!field_1) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[1] = field_1;
+        if (!retain_option_ref(refs, field_1)) return 0;
         if (field_1 != Py_None) {
             if (!extract_handle(field_1, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->owner_history, 0)) {
                 return 0;
@@ -8088,7 +8840,7 @@ static int fill_input_alignment_create_from_csv_text_options(PyObject *obj, ifco
     if (!field_2) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[2] = field_2;
+        if (!retain_option_ref(refs, field_2)) return 0;
         if (field_2 != Py_None) {
             if (!extract_handle(field_2, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->user, 0)) {
                 return 0;
@@ -8100,7 +8852,7 @@ static int fill_input_alignment_create_from_csv_text_options(PyObject *obj, ifco
     if (!field_3) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[3] = field_3;
+        if (!retain_option_ref(refs, field_3)) return 0;
         if (field_3 != Py_None) {
             if (!extract_handle(field_3, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->application, 0)) {
                 return 0;
@@ -8119,7 +8871,7 @@ static void free_input_alignment_create_offset_curve_options(ifcopenshell_alignm
     }
 }
 
-static int fill_input_alignment_create_offset_curve_options(PyObject *obj, ifcopenshell_alignment_create_offset_curve_options_t *out, PyObject **refs) {
+static int fill_input_alignment_create_offset_curve_options(PyObject *obj, ifcopenshell_alignment_create_offset_curve_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -8128,16 +8880,16 @@ static int fill_input_alignment_create_offset_curve_options(PyObject *obj, ifcop
     if (!field_0) {
         return 0;
     }
-    refs[0] = field_0;
+    if (!retain_option_ref(refs, field_0)) return 0;
     out->name = PyUnicode_AsUTF8(field_0);
     if (!out->name) return 0;
     PyObject *field_1 = get_option_field(obj, "offsets", 1);
     if (!field_1) {
         return 0;
     }
-    refs[1] = field_1;
+    if (!retain_option_ref(refs, field_1)) return 0;
     ifcopenshell_instance_list_t offsets_items_1 = {0};
-    if (!make_input_instance_list(field_1, &offsets_items_1)) {
+    if (!make_input_instance_list(field_1, &offsets_items_1, refs)) {
         return 0;
     }
     if (!ifcopenshell_parse_instance_list_create_from_handles(&offsets_items_1, &out->offsets)) {
@@ -8150,14 +8902,14 @@ static int fill_input_alignment_create_offset_curve_options(PyObject *obj, ifcop
     if (!field_2) {
         return 0;
     }
-    refs[2] = field_2;
+    if (!retain_option_ref(refs, field_2)) return 0;
     out->start_station = PyFloat_AsDouble(field_2);
     if (PyErr_Occurred()) return 0;
     PyObject *field_3 = get_option_field(obj, "owner_history", 0);
     if (!field_3) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[3] = field_3;
+        if (!retain_option_ref(refs, field_3)) return 0;
         if (field_3 != Py_None) {
             if (!extract_handle(field_3, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->owner_history, 0)) {
                 return 0;
@@ -8169,7 +8921,7 @@ static int fill_input_alignment_create_offset_curve_options(PyObject *obj, ifcop
     if (!field_4) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[4] = field_4;
+        if (!retain_option_ref(refs, field_4)) return 0;
         if (field_4 != Py_None) {
             if (!extract_handle(field_4, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->user, 0)) {
                 return 0;
@@ -8181,7 +8933,7 @@ static int fill_input_alignment_create_offset_curve_options(PyObject *obj, ifcop
     if (!field_5) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[5] = field_5;
+        if (!retain_option_ref(refs, field_5)) return 0;
         if (field_5 != Py_None) {
             if (!extract_handle(field_5, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->application, 0)) {
                 return 0;
@@ -8197,7 +8949,7 @@ static void free_input_alignment_create_options(ifcopenshell_alignment_create_op
     (void)value;
 }
 
-static int fill_input_alignment_create_options(PyObject *obj, ifcopenshell_alignment_create_options_t *out, PyObject **refs) {
+static int fill_input_alignment_create_options(PyObject *obj, ifcopenshell_alignment_create_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -8206,14 +8958,14 @@ static int fill_input_alignment_create_options(PyObject *obj, ifcopenshell_align
     if (!field_0) {
         return 0;
     }
-    refs[0] = field_0;
+    if (!retain_option_ref(refs, field_0)) return 0;
     out->name = PyUnicode_AsUTF8(field_0);
     if (!out->name) return 0;
     PyObject *field_1 = get_option_field(obj, "include_vertical", 1);
     if (!field_1) {
         return 0;
     }
-    refs[1] = field_1;
+    if (!retain_option_ref(refs, field_1)) return 0;
     int value_1 = PyObject_IsTrue(field_1);
     if (value_1 < 0) return 0;
     out->include_vertical = (bool)value_1;
@@ -8221,7 +8973,7 @@ static int fill_input_alignment_create_options(PyObject *obj, ifcopenshell_align
     if (!field_2) {
         return 0;
     }
-    refs[2] = field_2;
+    if (!retain_option_ref(refs, field_2)) return 0;
     int value_2 = PyObject_IsTrue(field_2);
     if (value_2 < 0) return 0;
     out->include_cant = (bool)value_2;
@@ -8229,7 +8981,7 @@ static int fill_input_alignment_create_options(PyObject *obj, ifcopenshell_align
     if (!field_3) {
         return 0;
     }
-    refs[3] = field_3;
+    if (!retain_option_ref(refs, field_3)) return 0;
     int value_3 = PyObject_IsTrue(field_3);
     if (value_3 < 0) return 0;
     out->include_geometry = (bool)value_3;
@@ -8237,14 +8989,14 @@ static int fill_input_alignment_create_options(PyObject *obj, ifcopenshell_align
     if (!field_4) {
         return 0;
     }
-    refs[4] = field_4;
+    if (!retain_option_ref(refs, field_4)) return 0;
     out->start_station = PyFloat_AsDouble(field_4);
     if (PyErr_Occurred()) return 0;
     PyObject *field_5 = get_option_field(obj, "owner_history", 0);
     if (!field_5) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[5] = field_5;
+        if (!retain_option_ref(refs, field_5)) return 0;
         if (field_5 != Py_None) {
             if (!extract_handle(field_5, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->owner_history, 0)) {
                 return 0;
@@ -8256,7 +9008,7 @@ static int fill_input_alignment_create_options(PyObject *obj, ifcopenshell_align
     if (!field_6) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[6] = field_6;
+        if (!retain_option_ref(refs, field_6)) return 0;
         if (field_6 != Py_None) {
             if (!extract_handle(field_6, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->user, 0)) {
                 return 0;
@@ -8268,7 +9020,7 @@ static int fill_input_alignment_create_options(PyObject *obj, ifcopenshell_align
     if (!field_7) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[7] = field_7;
+        if (!retain_option_ref(refs, field_7)) return 0;
         if (field_7 != Py_None) {
             if (!extract_handle(field_7, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->application, 0)) {
                 return 0;
@@ -8287,7 +9039,7 @@ static void free_input_alignment_create_polyline_options(ifcopenshell_alignment_
     }
 }
 
-static int fill_input_alignment_create_polyline_options(PyObject *obj, ifcopenshell_alignment_create_polyline_options_t *out, PyObject **refs) {
+static int fill_input_alignment_create_polyline_options(PyObject *obj, ifcopenshell_alignment_create_polyline_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -8296,16 +9048,16 @@ static int fill_input_alignment_create_polyline_options(PyObject *obj, ifcopensh
     if (!field_0) {
         return 0;
     }
-    refs[0] = field_0;
+    if (!retain_option_ref(refs, field_0)) return 0;
     out->name = PyUnicode_AsUTF8(field_0);
     if (!out->name) return 0;
     PyObject *field_1 = get_option_field(obj, "points", 1);
     if (!field_1) {
         return 0;
     }
-    refs[1] = field_1;
+    if (!retain_option_ref(refs, field_1)) return 0;
     ifcopenshell_instance_list_t points_items_1 = {0};
-    if (!make_input_instance_list(field_1, &points_items_1)) {
+    if (!make_input_instance_list(field_1, &points_items_1, refs)) {
         return 0;
     }
     if (!ifcopenshell_parse_instance_list_create_from_handles(&points_items_1, &out->points)) {
@@ -8318,14 +9070,14 @@ static int fill_input_alignment_create_polyline_options(PyObject *obj, ifcopensh
     if (!field_2) {
         return 0;
     }
-    refs[2] = field_2;
+    if (!retain_option_ref(refs, field_2)) return 0;
     out->start_station = PyFloat_AsDouble(field_2);
     if (PyErr_Occurred()) return 0;
     PyObject *field_3 = get_option_field(obj, "owner_history", 0);
     if (!field_3) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[3] = field_3;
+        if (!retain_option_ref(refs, field_3)) return 0;
         if (field_3 != Py_None) {
             if (!extract_handle(field_3, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->owner_history, 0)) {
                 return 0;
@@ -8337,7 +9089,7 @@ static int fill_input_alignment_create_polyline_options(PyObject *obj, ifcopensh
     if (!field_4) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[4] = field_4;
+        if (!retain_option_ref(refs, field_4)) return 0;
         if (field_4 != Py_None) {
             if (!extract_handle(field_4, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->user, 0)) {
                 return 0;
@@ -8349,7 +9101,7 @@ static int fill_input_alignment_create_polyline_options(PyObject *obj, ifcopensh
     if (!field_5) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[5] = field_5;
+        if (!retain_option_ref(refs, field_5)) return 0;
         if (field_5 != Py_None) {
             if (!extract_handle(field_5, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->application, 0)) {
                 return 0;
@@ -8361,11 +9113,188 @@ static int fill_input_alignment_create_polyline_options(PyObject *obj, ifcopensh
 }
 
 
+static void free_input_alignment_horizontal_pi_layout(ifcopenshell_alignment_horizontal_pi_layout_t *value) {
+    if (value->start_point) {
+        free_input_double_list((ifcopenshell_double_list_t *)value->start_point);
+        PyMem_Free((void *)value->start_point);
+        value->start_point = NULL;
+    }
+    if (value->intersections) {
+        free_input_alignment_horizontal_pi_list((ifcopenshell_alignment_horizontal_pi_list_t *)value->intersections);
+        PyMem_Free((void *)value->intersections);
+        value->intersections = NULL;
+    }
+    if (value->end_point) {
+        free_input_double_list((ifcopenshell_double_list_t *)value->end_point);
+        PyMem_Free((void *)value->end_point);
+        value->end_point = NULL;
+    }
+}
+
+static int fill_input_alignment_horizontal_pi_layout(PyObject *obj, ifcopenshell_alignment_horizontal_pi_layout_t *out, option_ref_owner *refs) {
+    if (!PyMapping_Check(obj)) {
+        PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
+        return 0;
+    }
+    PyObject *field_0 = get_option_field(obj, "start_point", 1);
+    if (!field_0) {
+        return 0;
+    }
+    if (!retain_option_ref(refs, field_0)) return 0;
+    ifcopenshell_double_list_t *sequence_0 = (ifcopenshell_double_list_t *)PyMem_Calloc(1, sizeof(ifcopenshell_double_list_t));
+    if (!sequence_0) {
+        PyErr_NoMemory();
+        return 0;
+    }
+    if (!make_input_double_list(field_0, sequence_0, refs)) {
+        PyMem_Free(sequence_0);
+        return 0;
+    }
+    out->start_point = sequence_0;
+    PyObject *field_1 = get_option_field(obj, "intersections", 1);
+    if (!field_1) {
+        return 0;
+    }
+    if (!retain_option_ref(refs, field_1)) return 0;
+    ifcopenshell_alignment_horizontal_pi_list_t *sequence_1 = (ifcopenshell_alignment_horizontal_pi_list_t *)PyMem_Calloc(1, sizeof(ifcopenshell_alignment_horizontal_pi_list_t));
+    if (!sequence_1) {
+        PyErr_NoMemory();
+        return 0;
+    }
+    if (!make_input_alignment_horizontal_pi_list(field_1, sequence_1, refs)) {
+        PyMem_Free(sequence_1);
+        return 0;
+    }
+    out->intersections = sequence_1;
+    PyObject *field_2 = get_option_field(obj, "end_point", 1);
+    if (!field_2) {
+        return 0;
+    }
+    if (!retain_option_ref(refs, field_2)) return 0;
+    ifcopenshell_double_list_t *sequence_2 = (ifcopenshell_double_list_t *)PyMem_Calloc(1, sizeof(ifcopenshell_double_list_t));
+    if (!sequence_2) {
+        PyErr_NoMemory();
+        return 0;
+    }
+    if (!make_input_double_list(field_2, sequence_2, refs)) {
+        PyMem_Free(sequence_2);
+        return 0;
+    }
+    out->end_point = sequence_2;
+    return 1;
+}
+
+
+static void free_input_alignment_horizontal_pi(ifcopenshell_alignment_horizontal_pi_t *value) {
+    if (value->point) {
+        free_input_double_list((ifcopenshell_double_list_t *)value->point);
+        PyMem_Free((void *)value->point);
+        value->point = NULL;
+    }
+}
+
+static int fill_input_alignment_horizontal_pi(PyObject *obj, ifcopenshell_alignment_horizontal_pi_t *out, option_ref_owner *refs) {
+    if (!PyMapping_Check(obj)) {
+        PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
+        return 0;
+    }
+    PyObject *field_0 = get_option_field(obj, "point", 1);
+    if (!field_0) {
+        return 0;
+    }
+    if (!retain_option_ref(refs, field_0)) return 0;
+    ifcopenshell_double_list_t *sequence_0 = (ifcopenshell_double_list_t *)PyMem_Calloc(1, sizeof(ifcopenshell_double_list_t));
+    if (!sequence_0) {
+        PyErr_NoMemory();
+        return 0;
+    }
+    if (!make_input_double_list(field_0, sequence_0, refs)) {
+        PyMem_Free(sequence_0);
+        return 0;
+    }
+    out->point = sequence_0;
+    PyObject *field_1 = get_option_field(obj, "radius", 1);
+    if (!field_1) {
+        return 0;
+    }
+    if (!retain_option_ref(refs, field_1)) return 0;
+    out->radius = PyFloat_AsDouble(field_1);
+    if (PyErr_Occurred()) return 0;
+    return 1;
+}
+
+
+static void free_input_alignment_layout_horizontal_by_pi_method_options(ifcopenshell_alignment_layout_horizontal_by_pi_method_options_t *value) {
+    if (value->pis) {
+        free_input_alignment_horizontal_pi_layout((ifcopenshell_alignment_horizontal_pi_layout_t *)value->pis);
+        PyMem_Free((void *)value->pis);
+        value->pis = NULL;
+    }
+}
+
+static int fill_input_alignment_layout_horizontal_by_pi_method_options(PyObject *obj, ifcopenshell_alignment_layout_horizontal_by_pi_method_options_t *out, option_ref_owner *refs) {
+    if (!PyMapping_Check(obj)) {
+        PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
+        return 0;
+    }
+    PyObject *field_0 = get_option_field(obj, "pis", 1);
+    if (!field_0) {
+        return 0;
+    }
+    if (!retain_option_ref(refs, field_0)) return 0;
+    ifcopenshell_alignment_horizontal_pi_layout_t *nested_0 = (ifcopenshell_alignment_horizontal_pi_layout_t *)PyMem_Calloc(1, sizeof(ifcopenshell_alignment_horizontal_pi_layout_t));
+    if (!nested_0) {
+        PyErr_NoMemory();
+        return 0;
+    }
+    if (!fill_input_alignment_horizontal_pi_layout(field_0, nested_0, refs)) {
+        free_input_alignment_horizontal_pi_layout(nested_0);
+        PyMem_Free(nested_0);
+        return 0;
+    }
+    out->pis = nested_0;
+    return 1;
+}
+
+
+static void free_input_alignment_layout_vertical_by_pi_method_options(ifcopenshell_alignment_layout_vertical_by_pi_method_options_t *value) {
+    if (value->pis) {
+        free_input_alignment_vertical_pi_layout((ifcopenshell_alignment_vertical_pi_layout_t *)value->pis);
+        PyMem_Free((void *)value->pis);
+        value->pis = NULL;
+    }
+}
+
+static int fill_input_alignment_layout_vertical_by_pi_method_options(PyObject *obj, ifcopenshell_alignment_layout_vertical_by_pi_method_options_t *out, option_ref_owner *refs) {
+    if (!PyMapping_Check(obj)) {
+        PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
+        return 0;
+    }
+    PyObject *field_0 = get_option_field(obj, "pis", 1);
+    if (!field_0) {
+        return 0;
+    }
+    if (!retain_option_ref(refs, field_0)) return 0;
+    ifcopenshell_alignment_vertical_pi_layout_t *nested_0 = (ifcopenshell_alignment_vertical_pi_layout_t *)PyMem_Calloc(1, sizeof(ifcopenshell_alignment_vertical_pi_layout_t));
+    if (!nested_0) {
+        PyErr_NoMemory();
+        return 0;
+    }
+    if (!fill_input_alignment_vertical_pi_layout(field_0, nested_0, refs)) {
+        free_input_alignment_vertical_pi_layout(nested_0);
+        PyMem_Free(nested_0);
+        return 0;
+    }
+    out->pis = nested_0;
+    return 1;
+}
+
+
 static void free_input_alignment_map_segment_options(ifcopenshell_alignment_map_segment_options_t *value) {
     (void)value;
 }
 
-static int fill_input_alignment_map_segment_options(PyObject *obj, ifcopenshell_alignment_map_segment_options_t *out, PyObject **refs) {
+static int fill_input_alignment_map_segment_options(PyObject *obj, ifcopenshell_alignment_map_segment_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -8374,7 +9303,7 @@ static int fill_input_alignment_map_segment_options(PyObject *obj, ifcopenshell_
     if (!field_0) {
         return 0;
     }
-    refs[0] = field_0;
+    if (!retain_option_ref(refs, field_0)) return 0;
     if (!extract_handle(field_0, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->segment, 0)) {
         return 0;
     }
@@ -8382,7 +9311,7 @@ static int fill_input_alignment_map_segment_options(PyObject *obj, ifcopenshell_
     if (!field_1) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[1] = field_1;
+        if (!retain_option_ref(refs, field_1)) return 0;
         if (field_1 != Py_None) {
             out->rail_head_distance = PyFloat_AsDouble(field_1);
             if (PyErr_Occurred()) return 0;
@@ -8393,11 +9322,122 @@ static int fill_input_alignment_map_segment_options(PyObject *obj, ifcopenshell_
 }
 
 
+static void free_input_alignment_vertical_pi_layout(ifcopenshell_alignment_vertical_pi_layout_t *value) {
+    if (value->start_point) {
+        free_input_double_list((ifcopenshell_double_list_t *)value->start_point);
+        PyMem_Free((void *)value->start_point);
+        value->start_point = NULL;
+    }
+    if (value->intersections) {
+        free_input_alignment_vertical_pi_list((ifcopenshell_alignment_vertical_pi_list_t *)value->intersections);
+        PyMem_Free((void *)value->intersections);
+        value->intersections = NULL;
+    }
+    if (value->end_point) {
+        free_input_double_list((ifcopenshell_double_list_t *)value->end_point);
+        PyMem_Free((void *)value->end_point);
+        value->end_point = NULL;
+    }
+}
+
+static int fill_input_alignment_vertical_pi_layout(PyObject *obj, ifcopenshell_alignment_vertical_pi_layout_t *out, option_ref_owner *refs) {
+    if (!PyMapping_Check(obj)) {
+        PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
+        return 0;
+    }
+    PyObject *field_0 = get_option_field(obj, "start_point", 1);
+    if (!field_0) {
+        return 0;
+    }
+    if (!retain_option_ref(refs, field_0)) return 0;
+    ifcopenshell_double_list_t *sequence_0 = (ifcopenshell_double_list_t *)PyMem_Calloc(1, sizeof(ifcopenshell_double_list_t));
+    if (!sequence_0) {
+        PyErr_NoMemory();
+        return 0;
+    }
+    if (!make_input_double_list(field_0, sequence_0, refs)) {
+        PyMem_Free(sequence_0);
+        return 0;
+    }
+    out->start_point = sequence_0;
+    PyObject *field_1 = get_option_field(obj, "intersections", 1);
+    if (!field_1) {
+        return 0;
+    }
+    if (!retain_option_ref(refs, field_1)) return 0;
+    ifcopenshell_alignment_vertical_pi_list_t *sequence_1 = (ifcopenshell_alignment_vertical_pi_list_t *)PyMem_Calloc(1, sizeof(ifcopenshell_alignment_vertical_pi_list_t));
+    if (!sequence_1) {
+        PyErr_NoMemory();
+        return 0;
+    }
+    if (!make_input_alignment_vertical_pi_list(field_1, sequence_1, refs)) {
+        PyMem_Free(sequence_1);
+        return 0;
+    }
+    out->intersections = sequence_1;
+    PyObject *field_2 = get_option_field(obj, "end_point", 1);
+    if (!field_2) {
+        return 0;
+    }
+    if (!retain_option_ref(refs, field_2)) return 0;
+    ifcopenshell_double_list_t *sequence_2 = (ifcopenshell_double_list_t *)PyMem_Calloc(1, sizeof(ifcopenshell_double_list_t));
+    if (!sequence_2) {
+        PyErr_NoMemory();
+        return 0;
+    }
+    if (!make_input_double_list(field_2, sequence_2, refs)) {
+        PyMem_Free(sequence_2);
+        return 0;
+    }
+    out->end_point = sequence_2;
+    return 1;
+}
+
+
+static void free_input_alignment_vertical_pi(ifcopenshell_alignment_vertical_pi_t *value) {
+    if (value->point) {
+        free_input_double_list((ifcopenshell_double_list_t *)value->point);
+        PyMem_Free((void *)value->point);
+        value->point = NULL;
+    }
+}
+
+static int fill_input_alignment_vertical_pi(PyObject *obj, ifcopenshell_alignment_vertical_pi_t *out, option_ref_owner *refs) {
+    if (!PyMapping_Check(obj)) {
+        PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
+        return 0;
+    }
+    PyObject *field_0 = get_option_field(obj, "point", 1);
+    if (!field_0) {
+        return 0;
+    }
+    if (!retain_option_ref(refs, field_0)) return 0;
+    ifcopenshell_double_list_t *sequence_0 = (ifcopenshell_double_list_t *)PyMem_Calloc(1, sizeof(ifcopenshell_double_list_t));
+    if (!sequence_0) {
+        PyErr_NoMemory();
+        return 0;
+    }
+    if (!make_input_double_list(field_0, sequence_0, refs)) {
+        PyMem_Free(sequence_0);
+        return 0;
+    }
+    out->point = sequence_0;
+    PyObject *field_1 = get_option_field(obj, "curve_length", 1);
+    if (!field_1) {
+        return 0;
+    }
+    if (!retain_option_ref(refs, field_1)) return 0;
+    out->curve_length = PyFloat_AsDouble(field_1);
+    if (PyErr_Occurred()) return 0;
+    return 1;
+}
+
+
 static void free_input_attribute_edit_attributes_options(ifcopenshell_attribute_edit_attributes_options_t *value) {
     (void)value;
 }
 
-static int fill_input_attribute_edit_attributes_options(PyObject *obj, ifcopenshell_attribute_edit_attributes_options_t *out, PyObject **refs) {
+static int fill_input_attribute_edit_attributes_options(PyObject *obj, ifcopenshell_attribute_edit_attributes_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -8406,7 +9446,7 @@ static int fill_input_attribute_edit_attributes_options(PyObject *obj, ifcopensh
     if (!field_0) {
         return 0;
     }
-    refs[0] = field_0;
+    if (!retain_option_ref(refs, field_0)) return 0;
     if (!extract_handle(field_0, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->product, 0)) {
         return 0;
     }
@@ -8414,7 +9454,7 @@ static int fill_input_attribute_edit_attributes_options(PyObject *obj, ifcopensh
     if (!field_1) {
         return 0;
     }
-    refs[1] = field_1;
+    if (!retain_option_ref(refs, field_1)) return 0;
     if (PyCapsule_IsValid(field_1, NULL)) {
         out->attributes = PyCapsule_GetPointer(field_1, NULL);
     } else {
@@ -8425,7 +9465,7 @@ static int fill_input_attribute_edit_attributes_options(PyObject *obj, ifcopensh
     if (!field_2) {
         return 0;
     }
-    refs[2] = field_2;
+    if (!retain_option_ref(refs, field_2)) return 0;
     int value_2 = PyObject_IsTrue(field_2);
     if (value_2 < 0) return 0;
     out->sync_predefined_type = (bool)value_2;
@@ -8433,7 +9473,7 @@ static int fill_input_attribute_edit_attributes_options(PyObject *obj, ifcopensh
     if (!field_3) {
         return 0;
     }
-    refs[3] = field_3;
+    if (!retain_option_ref(refs, field_3)) return 0;
     int value_3 = PyObject_IsTrue(field_3);
     if (value_3 < 0) return 0;
     out->update_owner_history = (bool)value_3;
@@ -8441,7 +9481,7 @@ static int fill_input_attribute_edit_attributes_options(PyObject *obj, ifcopensh
     if (!field_4) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[4] = field_4;
+        if (!retain_option_ref(refs, field_4)) return 0;
         if (field_4 != Py_None) {
             if (!extract_handle(field_4, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->user, 0)) {
                 return 0;
@@ -8453,7 +9493,7 @@ static int fill_input_attribute_edit_attributes_options(PyObject *obj, ifcopensh
     if (!field_5) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[5] = field_5;
+        if (!retain_option_ref(refs, field_5)) return 0;
         if (field_5 != Py_None) {
             if (!extract_handle(field_5, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->application, 0)) {
                 return 0;
@@ -8493,7 +9533,7 @@ static void free_input_boundary_assign_connection_geometry_options(ifcopenshell_
     }
 }
 
-static int fill_input_boundary_assign_connection_geometry_options(PyObject *obj, ifcopenshell_boundary_assign_connection_geometry_options_t *out, PyObject **refs) {
+static int fill_input_boundary_assign_connection_geometry_options(PyObject *obj, ifcopenshell_boundary_assign_connection_geometry_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -8502,13 +9542,13 @@ static int fill_input_boundary_assign_connection_geometry_options(PyObject *obj,
     if (!field_0) {
         return 0;
     }
-    refs[0] = field_0;
+    if (!retain_option_ref(refs, field_0)) return 0;
     ifcopenshell_double_list_list_t *sequence_0 = (ifcopenshell_double_list_list_t *)PyMem_Calloc(1, sizeof(ifcopenshell_double_list_list_t));
     if (!sequence_0) {
         PyErr_NoMemory();
         return 0;
     }
-    if (!make_input_double_list_list(field_0, sequence_0)) {
+    if (!make_input_double_list_list(field_0, sequence_0, refs)) {
         PyMem_Free(sequence_0);
         return 0;
     }
@@ -8517,13 +9557,13 @@ static int fill_input_boundary_assign_connection_geometry_options(PyObject *obj,
     if (!field_1) {
         return 0;
     }
-    refs[1] = field_1;
+    if (!retain_option_ref(refs, field_1)) return 0;
     ifcopenshell_double_list_t *sequence_1 = (ifcopenshell_double_list_t *)PyMem_Calloc(1, sizeof(ifcopenshell_double_list_t));
     if (!sequence_1) {
         PyErr_NoMemory();
         return 0;
     }
-    if (!make_input_double_list(field_1, sequence_1)) {
+    if (!make_input_double_list(field_1, sequence_1, refs)) {
         PyMem_Free(sequence_1);
         return 0;
     }
@@ -8532,13 +9572,13 @@ static int fill_input_boundary_assign_connection_geometry_options(PyObject *obj,
     if (!field_2) {
         return 0;
     }
-    refs[2] = field_2;
+    if (!retain_option_ref(refs, field_2)) return 0;
     ifcopenshell_double_list_t *sequence_2 = (ifcopenshell_double_list_t *)PyMem_Calloc(1, sizeof(ifcopenshell_double_list_t));
     if (!sequence_2) {
         PyErr_NoMemory();
         return 0;
     }
-    if (!make_input_double_list(field_2, sequence_2)) {
+    if (!make_input_double_list(field_2, sequence_2, refs)) {
         PyMem_Free(sequence_2);
         return 0;
     }
@@ -8547,13 +9587,13 @@ static int fill_input_boundary_assign_connection_geometry_options(PyObject *obj,
     if (!field_3) {
         return 0;
     }
-    refs[3] = field_3;
+    if (!retain_option_ref(refs, field_3)) return 0;
     ifcopenshell_double_list_t *sequence_3 = (ifcopenshell_double_list_t *)PyMem_Calloc(1, sizeof(ifcopenshell_double_list_t));
     if (!sequence_3) {
         PyErr_NoMemory();
         return 0;
     }
-    if (!make_input_double_list(field_3, sequence_3)) {
+    if (!make_input_double_list(field_3, sequence_3, refs)) {
         PyMem_Free(sequence_3);
         return 0;
     }
@@ -8562,13 +9602,13 @@ static int fill_input_boundary_assign_connection_geometry_options(PyObject *obj,
     if (!field_4) {
         return 0;
     }
-    refs[4] = field_4;
+    if (!retain_option_ref(refs, field_4)) return 0;
     ifcopenshell_double_list_list_list_t *sequence_4 = (ifcopenshell_double_list_list_list_t *)PyMem_Calloc(1, sizeof(ifcopenshell_double_list_list_list_t));
     if (!sequence_4) {
         PyErr_NoMemory();
         return 0;
     }
-    if (!make_input_double_list_list_list(field_4, sequence_4)) {
+    if (!make_input_double_list_list_list(field_4, sequence_4, refs)) {
         PyMem_Free(sequence_4);
         return 0;
     }
@@ -8577,7 +9617,7 @@ static int fill_input_boundary_assign_connection_geometry_options(PyObject *obj,
     if (!field_5) {
         return 0;
     }
-    refs[5] = field_5;
+    if (!retain_option_ref(refs, field_5)) return 0;
     out->unit_scale = PyFloat_AsDouble(field_5);
     if (PyErr_Occurred()) return 0;
     return 1;
@@ -8588,7 +9628,7 @@ static void free_input_boundary_edit_attributes_options(ifcopenshell_boundary_ed
     (void)value;
 }
 
-static int fill_input_boundary_edit_attributes_options(PyObject *obj, ifcopenshell_boundary_edit_attributes_options_t *out, PyObject **refs) {
+static int fill_input_boundary_edit_attributes_options(PyObject *obj, ifcopenshell_boundary_edit_attributes_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -8597,7 +9637,7 @@ static int fill_input_boundary_edit_attributes_options(PyObject *obj, ifcopenshe
     if (!field_0) {
         return 0;
     }
-    refs[0] = field_0;
+    if (!retain_option_ref(refs, field_0)) return 0;
     if (!extract_handle(field_0, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->relating_space, 0)) {
         return 0;
     }
@@ -8605,7 +9645,7 @@ static int fill_input_boundary_edit_attributes_options(PyObject *obj, ifcopenshe
     if (!field_1) {
         return 0;
     }
-    refs[1] = field_1;
+    if (!retain_option_ref(refs, field_1)) return 0;
     if (!extract_handle(field_1, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->related_building_element, 0)) {
         return 0;
     }
@@ -8613,7 +9653,7 @@ static int fill_input_boundary_edit_attributes_options(PyObject *obj, ifcopenshe
     if (!field_2) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[2] = field_2;
+        if (!retain_option_ref(refs, field_2)) return 0;
         if (field_2 != Py_None) {
             if (!extract_handle(field_2, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->parent_boundary, 0)) {
                 return 0;
@@ -8625,7 +9665,7 @@ static int fill_input_boundary_edit_attributes_options(PyObject *obj, ifcopenshe
     if (!field_3) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[3] = field_3;
+        if (!retain_option_ref(refs, field_3)) return 0;
         if (field_3 != Py_None) {
             if (!extract_handle(field_3, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->corresponding_boundary, 0)) {
                 return 0;
@@ -8637,14 +9677,14 @@ static int fill_input_boundary_edit_attributes_options(PyObject *obj, ifcopenshe
     if (!field_4) {
         return 0;
     }
-    refs[4] = field_4;
+    if (!retain_option_ref(refs, field_4)) return 0;
     out->physical_or_virtual = PyUnicode_AsUTF8(field_4);
     if (!out->physical_or_virtual) return 0;
     PyObject *field_5 = get_option_field(obj, "internal_or_external", 1);
     if (!field_5) {
         return 0;
     }
-    refs[5] = field_5;
+    if (!retain_option_ref(refs, field_5)) return 0;
     out->internal_or_external = PyUnicode_AsUTF8(field_5);
     if (!out->internal_or_external) return 0;
     return 1;
@@ -8658,7 +9698,7 @@ static void free_input_classification_add_reference_options(ifcopenshell_classif
     }
 }
 
-static int fill_input_classification_add_reference_options(PyObject *obj, ifcopenshell_classification_add_reference_options_t *out, PyObject **refs) {
+static int fill_input_classification_add_reference_options(PyObject *obj, ifcopenshell_classification_add_reference_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -8667,9 +9707,9 @@ static int fill_input_classification_add_reference_options(PyObject *obj, ifcope
     if (!field_0) {
         return 0;
     }
-    refs[0] = field_0;
+    if (!retain_option_ref(refs, field_0)) return 0;
     ifcopenshell_instance_list_t products_items_0 = {0};
-    if (!make_input_instance_list(field_0, &products_items_0)) {
+    if (!make_input_instance_list(field_0, &products_items_0, refs)) {
         return 0;
     }
     if (!ifcopenshell_parse_instance_list_create_from_handles(&products_items_0, &out->products)) {
@@ -8682,7 +9722,7 @@ static int fill_input_classification_add_reference_options(PyObject *obj, ifcope
     if (!field_1) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[1] = field_1;
+        if (!retain_option_ref(refs, field_1)) return 0;
         if (field_1 != Py_None) {
             if (!extract_handle(field_1, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->reference, 0)) {
                 return 0;
@@ -8694,7 +9734,7 @@ static int fill_input_classification_add_reference_options(PyObject *obj, ifcope
     if (!field_2) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[2] = field_2;
+        if (!retain_option_ref(refs, field_2)) return 0;
         if (field_2 != Py_None) {
             out->identification = PyUnicode_AsUTF8(field_2);
             if (!out->identification) return 0;
@@ -8705,7 +9745,7 @@ static int fill_input_classification_add_reference_options(PyObject *obj, ifcope
     if (!field_3) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[3] = field_3;
+        if (!retain_option_ref(refs, field_3)) return 0;
         if (field_3 != Py_None) {
             out->name = PyUnicode_AsUTF8(field_3);
             if (!out->name) return 0;
@@ -8716,7 +9756,7 @@ static int fill_input_classification_add_reference_options(PyObject *obj, ifcope
     if (!field_4) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[4] = field_4;
+        if (!retain_option_ref(refs, field_4)) return 0;
         if (field_4 != Py_None) {
             if (!extract_handle(field_4, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->classification, 0)) {
                 return 0;
@@ -8728,7 +9768,7 @@ static int fill_input_classification_add_reference_options(PyObject *obj, ifcope
     if (!field_5) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[5] = field_5;
+        if (!retain_option_ref(refs, field_5)) return 0;
         if (field_5 != Py_None) {
             if (!extract_handle(field_5, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->owner_history, 0)) {
                 return 0;
@@ -8740,7 +9780,7 @@ static int fill_input_classification_add_reference_options(PyObject *obj, ifcope
     if (!field_6) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[6] = field_6;
+        if (!retain_option_ref(refs, field_6)) return 0;
         if (field_6 != Py_None) {
             if (!extract_handle(field_6, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->user, 0)) {
                 return 0;
@@ -8752,7 +9792,7 @@ static int fill_input_classification_add_reference_options(PyObject *obj, ifcope
     if (!field_7) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[7] = field_7;
+        if (!retain_option_ref(refs, field_7)) return 0;
         if (field_7 != Py_None) {
             if (!extract_handle(field_7, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->application, 0)) {
                 return 0;
@@ -8771,7 +9811,7 @@ static void free_input_classification_remove_reference_options(ifcopenshell_clas
     }
 }
 
-static int fill_input_classification_remove_reference_options(PyObject *obj, ifcopenshell_classification_remove_reference_options_t *out, PyObject **refs) {
+static int fill_input_classification_remove_reference_options(PyObject *obj, ifcopenshell_classification_remove_reference_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -8780,7 +9820,7 @@ static int fill_input_classification_remove_reference_options(PyObject *obj, ifc
     if (!field_0) {
         return 0;
     }
-    refs[0] = field_0;
+    if (!retain_option_ref(refs, field_0)) return 0;
     if (!extract_handle(field_0, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->reference, 0)) {
         return 0;
     }
@@ -8788,9 +9828,9 @@ static int fill_input_classification_remove_reference_options(PyObject *obj, ifc
     if (!field_1) {
         return 0;
     }
-    refs[1] = field_1;
+    if (!retain_option_ref(refs, field_1)) return 0;
     ifcopenshell_instance_list_t products_items_1 = {0};
-    if (!make_input_instance_list(field_1, &products_items_1)) {
+    if (!make_input_instance_list(field_1, &products_items_1, refs)) {
         return 0;
     }
     if (!ifcopenshell_parse_instance_list_create_from_handles(&products_items_1, &out->products)) {
@@ -8803,7 +9843,7 @@ static int fill_input_classification_remove_reference_options(PyObject *obj, ifc
     if (!field_2) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[2] = field_2;
+        if (!retain_option_ref(refs, field_2)) return 0;
         if (field_2 != Py_None) {
             if (!extract_handle(field_2, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->user, 0)) {
                 return 0;
@@ -8815,7 +9855,7 @@ static int fill_input_classification_remove_reference_options(PyObject *obj, ifc
     if (!field_3) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[3] = field_3;
+        if (!retain_option_ref(refs, field_3)) return 0;
         if (field_3 != Py_None) {
             if (!extract_handle(field_3, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->application, 0)) {
                 return 0;
@@ -8831,7 +9871,7 @@ static void free_input_cogo_add_survey_point_options(ifcopenshell_cogo_add_surve
     (void)value;
 }
 
-static int fill_input_cogo_add_survey_point_options(PyObject *obj, ifcopenshell_cogo_add_survey_point_options_t *out, PyObject **refs) {
+static int fill_input_cogo_add_survey_point_options(PyObject *obj, ifcopenshell_cogo_add_survey_point_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -8840,7 +9880,7 @@ static int fill_input_cogo_add_survey_point_options(PyObject *obj, ifcopenshell_
     if (!field_0) {
         return 0;
     }
-    refs[0] = field_0;
+    if (!retain_option_ref(refs, field_0)) return 0;
     if (!extract_handle(field_0, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->survey_point, 0)) {
         return 0;
     }
@@ -8848,7 +9888,7 @@ static int fill_input_cogo_add_survey_point_options(PyObject *obj, ifcopenshell_
     if (!field_1) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[1] = field_1;
+        if (!retain_option_ref(refs, field_1)) return 0;
         if (field_1 != Py_None) {
             if (!extract_handle(field_1, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->site, 0)) {
                 return 0;
@@ -8860,7 +9900,7 @@ static int fill_input_cogo_add_survey_point_options(PyObject *obj, ifcopenshell_
     if (!field_2) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[2] = field_2;
+        if (!retain_option_ref(refs, field_2)) return 0;
         if (field_2 != Py_None) {
             if (!extract_handle(field_2, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->owner_history, 0)) {
                 return 0;
@@ -8872,7 +9912,7 @@ static int fill_input_cogo_add_survey_point_options(PyObject *obj, ifcopenshell_
     if (!field_3) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[3] = field_3;
+        if (!retain_option_ref(refs, field_3)) return 0;
         if (field_3 != Py_None) {
             if (!extract_handle(field_3, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->user, 0)) {
                 return 0;
@@ -8884,7 +9924,7 @@ static int fill_input_cogo_add_survey_point_options(PyObject *obj, ifcopenshell_
     if (!field_4) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[4] = field_4;
+        if (!retain_option_ref(refs, field_4)) return 0;
         if (field_4 != Py_None) {
             if (!extract_handle(field_4, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->application, 0)) {
                 return 0;
@@ -8903,7 +9943,7 @@ static void free_input_constraint_assign_constraint_options(ifcopenshell_constra
     }
 }
 
-static int fill_input_constraint_assign_constraint_options(PyObject *obj, ifcopenshell_constraint_assign_constraint_options_t *out, PyObject **refs) {
+static int fill_input_constraint_assign_constraint_options(PyObject *obj, ifcopenshell_constraint_assign_constraint_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -8912,9 +9952,9 @@ static int fill_input_constraint_assign_constraint_options(PyObject *obj, ifcope
     if (!field_0) {
         return 0;
     }
-    refs[0] = field_0;
+    if (!retain_option_ref(refs, field_0)) return 0;
     ifcopenshell_instance_list_t products_items_0 = {0};
-    if (!make_input_instance_list(field_0, &products_items_0)) {
+    if (!make_input_instance_list(field_0, &products_items_0, refs)) {
         return 0;
     }
     if (!ifcopenshell_parse_instance_list_create_from_handles(&products_items_0, &out->products)) {
@@ -8927,7 +9967,7 @@ static int fill_input_constraint_assign_constraint_options(PyObject *obj, ifcope
     if (!field_1) {
         return 0;
     }
-    refs[1] = field_1;
+    if (!retain_option_ref(refs, field_1)) return 0;
     if (!extract_handle(field_1, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->constraint, 0)) {
         return 0;
     }
@@ -8935,7 +9975,7 @@ static int fill_input_constraint_assign_constraint_options(PyObject *obj, ifcope
     if (!field_2) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[2] = field_2;
+        if (!retain_option_ref(refs, field_2)) return 0;
         if (field_2 != Py_None) {
             if (!extract_handle(field_2, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->owner_history, 0)) {
                 return 0;
@@ -8947,7 +9987,7 @@ static int fill_input_constraint_assign_constraint_options(PyObject *obj, ifcope
     if (!field_3) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[3] = field_3;
+        if (!retain_option_ref(refs, field_3)) return 0;
         if (field_3 != Py_None) {
             if (!extract_handle(field_3, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->user, 0)) {
                 return 0;
@@ -8959,7 +9999,7 @@ static int fill_input_constraint_assign_constraint_options(PyObject *obj, ifcope
     if (!field_4) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[4] = field_4;
+        if (!retain_option_ref(refs, field_4)) return 0;
         if (field_4 != Py_None) {
             if (!extract_handle(field_4, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->application, 0)) {
                 return 0;
@@ -8978,7 +10018,7 @@ static void free_input_constraint_unassign_constraint_options(ifcopenshell_const
     }
 }
 
-static int fill_input_constraint_unassign_constraint_options(PyObject *obj, ifcopenshell_constraint_unassign_constraint_options_t *out, PyObject **refs) {
+static int fill_input_constraint_unassign_constraint_options(PyObject *obj, ifcopenshell_constraint_unassign_constraint_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -8987,9 +10027,9 @@ static int fill_input_constraint_unassign_constraint_options(PyObject *obj, ifco
     if (!field_0) {
         return 0;
     }
-    refs[0] = field_0;
+    if (!retain_option_ref(refs, field_0)) return 0;
     ifcopenshell_instance_list_t products_items_0 = {0};
-    if (!make_input_instance_list(field_0, &products_items_0)) {
+    if (!make_input_instance_list(field_0, &products_items_0, refs)) {
         return 0;
     }
     if (!ifcopenshell_parse_instance_list_create_from_handles(&products_items_0, &out->products)) {
@@ -9002,7 +10042,7 @@ static int fill_input_constraint_unassign_constraint_options(PyObject *obj, ifco
     if (!field_1) {
         return 0;
     }
-    refs[1] = field_1;
+    if (!retain_option_ref(refs, field_1)) return 0;
     if (!extract_handle(field_1, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->constraint, 0)) {
         return 0;
     }
@@ -9010,7 +10050,7 @@ static int fill_input_constraint_unassign_constraint_options(PyObject *obj, ifco
     if (!field_2) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[2] = field_2;
+        if (!retain_option_ref(refs, field_2)) return 0;
         if (field_2 != Py_None) {
             if (!extract_handle(field_2, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->user, 0)) {
                 return 0;
@@ -9022,7 +10062,7 @@ static int fill_input_constraint_unassign_constraint_options(PyObject *obj, ifco
     if (!field_3) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[3] = field_3;
+        if (!retain_option_ref(refs, field_3)) return 0;
         if (field_3 != Py_None) {
             if (!extract_handle(field_3, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->application, 0)) {
                 return 0;
@@ -9038,7 +10078,7 @@ static void free_input_context_add_context_options(ifcopenshell_context_add_cont
     (void)value;
 }
 
-static int fill_input_context_add_context_options(PyObject *obj, ifcopenshell_context_add_context_options_t *out, PyObject **refs) {
+static int fill_input_context_add_context_options(PyObject *obj, ifcopenshell_context_add_context_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -9047,28 +10087,28 @@ static int fill_input_context_add_context_options(PyObject *obj, ifcopenshell_co
     if (!field_0) {
         return 0;
     }
-    refs[0] = field_0;
+    if (!retain_option_ref(refs, field_0)) return 0;
     out->context_type = PyUnicode_AsUTF8(field_0);
     if (!out->context_type) return 0;
     PyObject *field_1 = get_option_field(obj, "context_identifier", 1);
     if (!field_1) {
         return 0;
     }
-    refs[1] = field_1;
+    if (!retain_option_ref(refs, field_1)) return 0;
     out->context_identifier = PyUnicode_AsUTF8(field_1);
     if (!out->context_identifier) return 0;
     PyObject *field_2 = get_option_field(obj, "target_view", 1);
     if (!field_2) {
         return 0;
     }
-    refs[2] = field_2;
+    if (!retain_option_ref(refs, field_2)) return 0;
     out->target_view = PyUnicode_AsUTF8(field_2);
     if (!out->target_view) return 0;
     PyObject *field_3 = get_option_field(obj, "target_scale", 0);
     if (!field_3) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[3] = field_3;
+        if (!retain_option_ref(refs, field_3)) return 0;
         if (field_3 != Py_None) {
             out->target_scale = PyFloat_AsDouble(field_3);
             if (PyErr_Occurred()) return 0;
@@ -9079,7 +10119,7 @@ static int fill_input_context_add_context_options(PyObject *obj, ifcopenshell_co
     if (!field_4) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[4] = field_4;
+        if (!retain_option_ref(refs, field_4)) return 0;
         if (field_4 != Py_None) {
             if (!extract_handle(field_4, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->parent, 0)) {
                 return 0;
@@ -9098,7 +10138,7 @@ static void free_input_control_assign_control_options(ifcopenshell_control_assig
     }
 }
 
-static int fill_input_control_assign_control_options(PyObject *obj, ifcopenshell_control_assign_control_options_t *out, PyObject **refs) {
+static int fill_input_control_assign_control_options(PyObject *obj, ifcopenshell_control_assign_control_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -9107,7 +10147,7 @@ static int fill_input_control_assign_control_options(PyObject *obj, ifcopenshell
     if (!field_0) {
         return 0;
     }
-    refs[0] = field_0;
+    if (!retain_option_ref(refs, field_0)) return 0;
     if (!extract_handle(field_0, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->relating_control, 0)) {
         return 0;
     }
@@ -9115,9 +10155,9 @@ static int fill_input_control_assign_control_options(PyObject *obj, ifcopenshell
     if (!field_1) {
         return 0;
     }
-    refs[1] = field_1;
+    if (!retain_option_ref(refs, field_1)) return 0;
     ifcopenshell_instance_list_t related_objects_items_1 = {0};
-    if (!make_input_instance_list(field_1, &related_objects_items_1)) {
+    if (!make_input_instance_list(field_1, &related_objects_items_1, refs)) {
         return 0;
     }
     if (!ifcopenshell_parse_instance_list_create_from_handles(&related_objects_items_1, &out->related_objects)) {
@@ -9130,7 +10170,7 @@ static int fill_input_control_assign_control_options(PyObject *obj, ifcopenshell
     if (!field_2) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[2] = field_2;
+        if (!retain_option_ref(refs, field_2)) return 0;
         if (field_2 != Py_None) {
             if (!extract_handle(field_2, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->owner_history, 0)) {
                 return 0;
@@ -9142,7 +10182,7 @@ static int fill_input_control_assign_control_options(PyObject *obj, ifcopenshell
     if (!field_3) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[3] = field_3;
+        if (!retain_option_ref(refs, field_3)) return 0;
         if (field_3 != Py_None) {
             if (!extract_handle(field_3, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->user, 0)) {
                 return 0;
@@ -9154,7 +10194,7 @@ static int fill_input_control_assign_control_options(PyObject *obj, ifcopenshell
     if (!field_4) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[4] = field_4;
+        if (!retain_option_ref(refs, field_4)) return 0;
         if (field_4 != Py_None) {
             if (!extract_handle(field_4, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->application, 0)) {
                 return 0;
@@ -9173,7 +10213,7 @@ static void free_input_control_unassign_control_options(ifcopenshell_control_una
     }
 }
 
-static int fill_input_control_unassign_control_options(PyObject *obj, ifcopenshell_control_unassign_control_options_t *out, PyObject **refs) {
+static int fill_input_control_unassign_control_options(PyObject *obj, ifcopenshell_control_unassign_control_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -9182,7 +10222,7 @@ static int fill_input_control_unassign_control_options(PyObject *obj, ifcopenshe
     if (!field_0) {
         return 0;
     }
-    refs[0] = field_0;
+    if (!retain_option_ref(refs, field_0)) return 0;
     if (!extract_handle(field_0, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->relating_control, 0)) {
         return 0;
     }
@@ -9190,9 +10230,9 @@ static int fill_input_control_unassign_control_options(PyObject *obj, ifcopenshe
     if (!field_1) {
         return 0;
     }
-    refs[1] = field_1;
+    if (!retain_option_ref(refs, field_1)) return 0;
     ifcopenshell_instance_list_t related_objects_items_1 = {0};
-    if (!make_input_instance_list(field_1, &related_objects_items_1)) {
+    if (!make_input_instance_list(field_1, &related_objects_items_1, refs)) {
         return 0;
     }
     if (!ifcopenshell_parse_instance_list_create_from_handles(&related_objects_items_1, &out->related_objects)) {
@@ -9205,7 +10245,7 @@ static int fill_input_control_unassign_control_options(PyObject *obj, ifcopenshe
     if (!field_2) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[2] = field_2;
+        if (!retain_option_ref(refs, field_2)) return 0;
         if (field_2 != Py_None) {
             if (!extract_handle(field_2, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->user, 0)) {
                 return 0;
@@ -9217,7 +10257,7 @@ static int fill_input_control_unassign_control_options(PyObject *obj, ifcopenshe
     if (!field_3) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[3] = field_3;
+        if (!retain_option_ref(refs, field_3)) return 0;
         if (field_3 != Py_None) {
             if (!extract_handle(field_3, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->application, 0)) {
                 return 0;
@@ -9233,7 +10273,7 @@ static void free_input_cost_add_cost_item_options(ifcopenshell_cost_add_cost_ite
     (void)value;
 }
 
-static int fill_input_cost_add_cost_item_options(PyObject *obj, ifcopenshell_cost_add_cost_item_options_t *out, PyObject **refs) {
+static int fill_input_cost_add_cost_item_options(PyObject *obj, ifcopenshell_cost_add_cost_item_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -9242,7 +10282,7 @@ static int fill_input_cost_add_cost_item_options(PyObject *obj, ifcopenshell_cos
     if (!field_0) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[0] = field_0;
+        if (!retain_option_ref(refs, field_0)) return 0;
         if (field_0 != Py_None) {
             if (!extract_handle(field_0, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->cost_schedule, 0)) {
                 return 0;
@@ -9254,7 +10294,7 @@ static int fill_input_cost_add_cost_item_options(PyObject *obj, ifcopenshell_cos
     if (!field_1) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[1] = field_1;
+        if (!retain_option_ref(refs, field_1)) return 0;
         if (field_1 != Py_None) {
             if (!extract_handle(field_1, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->cost_item, 0)) {
                 return 0;
@@ -9266,7 +10306,7 @@ static int fill_input_cost_add_cost_item_options(PyObject *obj, ifcopenshell_cos
     if (!field_2) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[2] = field_2;
+        if (!retain_option_ref(refs, field_2)) return 0;
         if (field_2 != Py_None) {
             if (!extract_handle(field_2, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->owner_history, 0)) {
                 return 0;
@@ -9278,7 +10318,7 @@ static int fill_input_cost_add_cost_item_options(PyObject *obj, ifcopenshell_cos
     if (!field_3) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[3] = field_3;
+        if (!retain_option_ref(refs, field_3)) return 0;
         if (field_3 != Py_None) {
             if (!extract_handle(field_3, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->user, 0)) {
                 return 0;
@@ -9290,7 +10330,7 @@ static int fill_input_cost_add_cost_item_options(PyObject *obj, ifcopenshell_cos
     if (!field_4) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[4] = field_4;
+        if (!retain_option_ref(refs, field_4)) return 0;
         if (field_4 != Py_None) {
             if (!extract_handle(field_4, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->application, 0)) {
                 return 0;
@@ -9306,7 +10346,7 @@ static void free_input_cost_assign_cost_item_quantity_options(ifcopenshell_cost_
     (void)value;
 }
 
-static int fill_input_cost_assign_cost_item_quantity_options(PyObject *obj, ifcopenshell_cost_assign_cost_item_quantity_options_t *out, PyObject **refs) {
+static int fill_input_cost_assign_cost_item_quantity_options(PyObject *obj, ifcopenshell_cost_assign_cost_item_quantity_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -9315,7 +10355,7 @@ static int fill_input_cost_assign_cost_item_quantity_options(PyObject *obj, ifco
     if (!field_0) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[0] = field_0;
+        if (!retain_option_ref(refs, field_0)) return 0;
         if (field_0 != Py_None) {
             if (!extract_handle(field_0, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->owner_history, 0)) {
                 return 0;
@@ -9327,7 +10367,7 @@ static int fill_input_cost_assign_cost_item_quantity_options(PyObject *obj, ifco
     if (!field_1) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[1] = field_1;
+        if (!retain_option_ref(refs, field_1)) return 0;
         if (field_1 != Py_None) {
             if (!extract_handle(field_1, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->user, 0)) {
                 return 0;
@@ -9339,7 +10379,7 @@ static int fill_input_cost_assign_cost_item_quantity_options(PyObject *obj, ifco
     if (!field_2) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[2] = field_2;
+        if (!retain_option_ref(refs, field_2)) return 0;
         if (field_2 != Py_None) {
             if (!extract_handle(field_2, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->application, 0)) {
                 return 0;
@@ -9355,7 +10395,7 @@ static void free_input_cost_copy_cost_schedule_options(ifcopenshell_cost_copy_co
     (void)value;
 }
 
-static int fill_input_cost_copy_cost_schedule_options(PyObject *obj, ifcopenshell_cost_copy_cost_schedule_options_t *out, PyObject **refs) {
+static int fill_input_cost_copy_cost_schedule_options(PyObject *obj, ifcopenshell_cost_copy_cost_schedule_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -9364,7 +10404,7 @@ static int fill_input_cost_copy_cost_schedule_options(PyObject *obj, ifcopenshel
     if (!field_0) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[0] = field_0;
+        if (!retain_option_ref(refs, field_0)) return 0;
         if (field_0 != Py_None) {
             if (!extract_handle(field_0, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->owner_history, 0)) {
                 return 0;
@@ -9376,7 +10416,7 @@ static int fill_input_cost_copy_cost_schedule_options(PyObject *obj, ifcopenshel
     if (!field_1) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[1] = field_1;
+        if (!retain_option_ref(refs, field_1)) return 0;
         if (field_1 != Py_None) {
             if (!extract_handle(field_1, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->user, 0)) {
                 return 0;
@@ -9388,7 +10428,7 @@ static int fill_input_cost_copy_cost_schedule_options(PyObject *obj, ifcopenshel
     if (!field_2) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[2] = field_2;
+        if (!retain_option_ref(refs, field_2)) return 0;
         if (field_2 != Py_None) {
             if (!extract_handle(field_2, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->application, 0)) {
                 return 0;
@@ -9404,7 +10444,7 @@ static void free_input_cost_edit_cost_value_options(ifcopenshell_cost_edit_cost_
     (void)value;
 }
 
-static int fill_input_cost_edit_cost_value_options(PyObject *obj, ifcopenshell_cost_edit_cost_value_options_t *out, PyObject **refs) {
+static int fill_input_cost_edit_cost_value_options(PyObject *obj, ifcopenshell_cost_edit_cost_value_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -9413,7 +10453,7 @@ static int fill_input_cost_edit_cost_value_options(PyObject *obj, ifcopenshell_c
     if (!field_0) {
         return 0;
     }
-    refs[0] = field_0;
+    if (!retain_option_ref(refs, field_0)) return 0;
     int value_0 = PyObject_IsTrue(field_0);
     if (value_0 < 0) return 0;
     out->edit_unit_basis = (bool)value_0;
@@ -9421,7 +10461,7 @@ static int fill_input_cost_edit_cost_value_options(PyObject *obj, ifcopenshell_c
     if (!field_1) {
         return 0;
     }
-    refs[1] = field_1;
+    if (!retain_option_ref(refs, field_1)) return 0;
     int value_1 = PyObject_IsTrue(field_1);
     if (value_1 < 0) return 0;
     out->clear_unit_basis = (bool)value_1;
@@ -9429,14 +10469,14 @@ static int fill_input_cost_edit_cost_value_options(PyObject *obj, ifcopenshell_c
     if (!field_2) {
         return 0;
     }
-    refs[2] = field_2;
+    if (!retain_option_ref(refs, field_2)) return 0;
     out->value_component = PyFloat_AsDouble(field_2);
     if (PyErr_Occurred()) return 0;
     PyObject *field_3 = get_option_field(obj, "unit_component", 0);
     if (!field_3) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[3] = field_3;
+        if (!retain_option_ref(refs, field_3)) return 0;
         if (field_3 != Py_None) {
             if (!extract_handle(field_3, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->unit_component, 0)) {
                 return 0;
@@ -9452,7 +10492,7 @@ static void free_input_cost_unassign_cost_item_quantity_options(ifcopenshell_cos
     (void)value;
 }
 
-static int fill_input_cost_unassign_cost_item_quantity_options(PyObject *obj, ifcopenshell_cost_unassign_cost_item_quantity_options_t *out, PyObject **refs) {
+static int fill_input_cost_unassign_cost_item_quantity_options(PyObject *obj, ifcopenshell_cost_unassign_cost_item_quantity_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -9461,7 +10501,7 @@ static int fill_input_cost_unassign_cost_item_quantity_options(PyObject *obj, if
     if (!field_0) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[0] = field_0;
+        if (!retain_option_ref(refs, field_0)) return 0;
         if (field_0 != Py_None) {
             if (!extract_handle(field_0, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->user, 0)) {
                 return 0;
@@ -9473,7 +10513,7 @@ static int fill_input_cost_unassign_cost_item_quantity_options(PyObject *obj, if
     if (!field_1) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[1] = field_1;
+        if (!retain_option_ref(refs, field_1)) return 0;
         if (field_1 != Py_None) {
             if (!extract_handle(field_1, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->application, 0)) {
                 return 0;
@@ -9489,7 +10529,7 @@ static void free_input_document_add_information_options(ifcopenshell_document_ad
     (void)value;
 }
 
-static int fill_input_document_add_information_options(PyObject *obj, ifcopenshell_document_add_information_options_t *out, PyObject **refs) {
+static int fill_input_document_add_information_options(PyObject *obj, ifcopenshell_document_add_information_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -9498,7 +10538,7 @@ static int fill_input_document_add_information_options(PyObject *obj, ifcopenshe
     if (!field_0) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[0] = field_0;
+        if (!retain_option_ref(refs, field_0)) return 0;
         if (field_0 != Py_None) {
             if (!extract_handle(field_0, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->parent, 0)) {
                 return 0;
@@ -9510,7 +10550,7 @@ static int fill_input_document_add_information_options(PyObject *obj, ifcopenshe
     if (!field_1) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[1] = field_1;
+        if (!retain_option_ref(refs, field_1)) return 0;
         if (field_1 != Py_None) {
             if (!extract_handle(field_1, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->owner_history, 0)) {
                 return 0;
@@ -9522,7 +10562,7 @@ static int fill_input_document_add_information_options(PyObject *obj, ifcopenshe
     if (!field_2) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[2] = field_2;
+        if (!retain_option_ref(refs, field_2)) return 0;
         if (field_2 != Py_None) {
             if (!extract_handle(field_2, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->user, 0)) {
                 return 0;
@@ -9534,7 +10574,7 @@ static int fill_input_document_add_information_options(PyObject *obj, ifcopenshe
     if (!field_3) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[3] = field_3;
+        if (!retain_option_ref(refs, field_3)) return 0;
         if (field_3 != Py_None) {
             if (!extract_handle(field_3, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->application, 0)) {
                 return 0;
@@ -9553,7 +10593,7 @@ static void free_input_document_assign_document_options(ifcopenshell_document_as
     }
 }
 
-static int fill_input_document_assign_document_options(PyObject *obj, ifcopenshell_document_assign_document_options_t *out, PyObject **refs) {
+static int fill_input_document_assign_document_options(PyObject *obj, ifcopenshell_document_assign_document_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -9562,9 +10602,9 @@ static int fill_input_document_assign_document_options(PyObject *obj, ifcopenshe
     if (!field_0) {
         return 0;
     }
-    refs[0] = field_0;
+    if (!retain_option_ref(refs, field_0)) return 0;
     ifcopenshell_instance_list_t products_items_0 = {0};
-    if (!make_input_instance_list(field_0, &products_items_0)) {
+    if (!make_input_instance_list(field_0, &products_items_0, refs)) {
         return 0;
     }
     if (!ifcopenshell_parse_instance_list_create_from_handles(&products_items_0, &out->products)) {
@@ -9577,7 +10617,7 @@ static int fill_input_document_assign_document_options(PyObject *obj, ifcopenshe
     if (!field_1) {
         return 0;
     }
-    refs[1] = field_1;
+    if (!retain_option_ref(refs, field_1)) return 0;
     if (!extract_handle(field_1, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->document, 0)) {
         return 0;
     }
@@ -9585,7 +10625,7 @@ static int fill_input_document_assign_document_options(PyObject *obj, ifcopenshe
     if (!field_2) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[2] = field_2;
+        if (!retain_option_ref(refs, field_2)) return 0;
         if (field_2 != Py_None) {
             if (!extract_handle(field_2, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->owner_history, 0)) {
                 return 0;
@@ -9597,7 +10637,7 @@ static int fill_input_document_assign_document_options(PyObject *obj, ifcopenshe
     if (!field_3) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[3] = field_3;
+        if (!retain_option_ref(refs, field_3)) return 0;
         if (field_3 != Py_None) {
             if (!extract_handle(field_3, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->user, 0)) {
                 return 0;
@@ -9609,7 +10649,7 @@ static int fill_input_document_assign_document_options(PyObject *obj, ifcopenshe
     if (!field_4) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[4] = field_4;
+        if (!retain_option_ref(refs, field_4)) return 0;
         if (field_4 != Py_None) {
             if (!extract_handle(field_4, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->application, 0)) {
                 return 0;
@@ -9628,7 +10668,7 @@ static void free_input_document_unassign_document_options(ifcopenshell_document_
     }
 }
 
-static int fill_input_document_unassign_document_options(PyObject *obj, ifcopenshell_document_unassign_document_options_t *out, PyObject **refs) {
+static int fill_input_document_unassign_document_options(PyObject *obj, ifcopenshell_document_unassign_document_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -9637,9 +10677,9 @@ static int fill_input_document_unassign_document_options(PyObject *obj, ifcopens
     if (!field_0) {
         return 0;
     }
-    refs[0] = field_0;
+    if (!retain_option_ref(refs, field_0)) return 0;
     ifcopenshell_instance_list_t products_items_0 = {0};
-    if (!make_input_instance_list(field_0, &products_items_0)) {
+    if (!make_input_instance_list(field_0, &products_items_0, refs)) {
         return 0;
     }
     if (!ifcopenshell_parse_instance_list_create_from_handles(&products_items_0, &out->products)) {
@@ -9652,7 +10692,7 @@ static int fill_input_document_unassign_document_options(PyObject *obj, ifcopens
     if (!field_1) {
         return 0;
     }
-    refs[1] = field_1;
+    if (!retain_option_ref(refs, field_1)) return 0;
     if (!extract_handle(field_1, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->document, 0)) {
         return 0;
     }
@@ -9660,7 +10700,7 @@ static int fill_input_document_unassign_document_options(PyObject *obj, ifcopens
     if (!field_2) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[2] = field_2;
+        if (!retain_option_ref(refs, field_2)) return 0;
         if (field_2 != Py_None) {
             if (!extract_handle(field_2, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->user, 0)) {
                 return 0;
@@ -9672,7 +10712,7 @@ static int fill_input_document_unassign_document_options(PyObject *obj, ifcopens
     if (!field_3) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[3] = field_3;
+        if (!retain_option_ref(refs, field_3)) return 0;
         if (field_3 != Py_None) {
             if (!extract_handle(field_3, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->application, 0)) {
                 return 0;
@@ -9688,7 +10728,7 @@ static void free_input_drawing_assign_product_options(ifcopenshell_drawing_assig
     (void)value;
 }
 
-static int fill_input_drawing_assign_product_options(PyObject *obj, ifcopenshell_drawing_assign_product_options_t *out, PyObject **refs) {
+static int fill_input_drawing_assign_product_options(PyObject *obj, ifcopenshell_drawing_assign_product_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -9697,7 +10737,7 @@ static int fill_input_drawing_assign_product_options(PyObject *obj, ifcopenshell
     if (!field_0) {
         return 0;
     }
-    refs[0] = field_0;
+    if (!retain_option_ref(refs, field_0)) return 0;
     if (!extract_handle(field_0, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->relating_product, 0)) {
         return 0;
     }
@@ -9705,7 +10745,7 @@ static int fill_input_drawing_assign_product_options(PyObject *obj, ifcopenshell
     if (!field_1) {
         return 0;
     }
-    refs[1] = field_1;
+    if (!retain_option_ref(refs, field_1)) return 0;
     if (!extract_handle(field_1, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->related_object, 0)) {
         return 0;
     }
@@ -9713,7 +10753,7 @@ static int fill_input_drawing_assign_product_options(PyObject *obj, ifcopenshell
     if (!field_2) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[2] = field_2;
+        if (!retain_option_ref(refs, field_2)) return 0;
         if (field_2 != Py_None) {
             if (!extract_handle(field_2, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->owner_history, 0)) {
                 return 0;
@@ -9725,7 +10765,7 @@ static int fill_input_drawing_assign_product_options(PyObject *obj, ifcopenshell
     if (!field_3) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[3] = field_3;
+        if (!retain_option_ref(refs, field_3)) return 0;
         if (field_3 != Py_None) {
             if (!extract_handle(field_3, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->user, 0)) {
                 return 0;
@@ -9737,7 +10777,7 @@ static int fill_input_drawing_assign_product_options(PyObject *obj, ifcopenshell
     if (!field_4) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[4] = field_4;
+        if (!retain_option_ref(refs, field_4)) return 0;
         if (field_4 != Py_None) {
             if (!extract_handle(field_4, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->application, 0)) {
                 return 0;
@@ -9753,7 +10793,7 @@ static void free_input_drawing_unassign_product_options(ifcopenshell_drawing_una
     (void)value;
 }
 
-static int fill_input_drawing_unassign_product_options(PyObject *obj, ifcopenshell_drawing_unassign_product_options_t *out, PyObject **refs) {
+static int fill_input_drawing_unassign_product_options(PyObject *obj, ifcopenshell_drawing_unassign_product_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -9762,7 +10802,7 @@ static int fill_input_drawing_unassign_product_options(PyObject *obj, ifcopenshe
     if (!field_0) {
         return 0;
     }
-    refs[0] = field_0;
+    if (!retain_option_ref(refs, field_0)) return 0;
     if (!extract_handle(field_0, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->relating_product, 0)) {
         return 0;
     }
@@ -9770,7 +10810,7 @@ static int fill_input_drawing_unassign_product_options(PyObject *obj, ifcopenshe
     if (!field_1) {
         return 0;
     }
-    refs[1] = field_1;
+    if (!retain_option_ref(refs, field_1)) return 0;
     if (!extract_handle(field_1, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->related_object, 0)) {
         return 0;
     }
@@ -9778,7 +10818,7 @@ static int fill_input_drawing_unassign_product_options(PyObject *obj, ifcopenshe
     if (!field_2) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[2] = field_2;
+        if (!retain_option_ref(refs, field_2)) return 0;
         if (field_2 != Py_None) {
             if (!extract_handle(field_2, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->user, 0)) {
                 return 0;
@@ -9790,7 +10830,7 @@ static int fill_input_drawing_unassign_product_options(PyObject *obj, ifcopenshe
     if (!field_3) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[3] = field_3;
+        if (!retain_option_ref(refs, field_3)) return 0;
         if (field_3 != Py_None) {
             if (!extract_handle(field_3, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->application, 0)) {
                 return 0;
@@ -9806,7 +10846,7 @@ static void free_input_element_get_container_options(ifcopenshell_element_get_co
     (void)value;
 }
 
-static int fill_input_element_get_container_options(PyObject *obj, ifcopenshell_element_get_container_options_t *out, PyObject **refs) {
+static int fill_input_element_get_container_options(PyObject *obj, ifcopenshell_element_get_container_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -9815,7 +10855,7 @@ static int fill_input_element_get_container_options(PyObject *obj, ifcopenshell_
     if (!field_0) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[0] = field_0;
+        if (!retain_option_ref(refs, field_0)) return 0;
         if (field_0 != Py_None) {
             int value_0 = PyObject_IsTrue(field_0);
             if (value_0 < 0) return 0;
@@ -9827,7 +10867,7 @@ static int fill_input_element_get_container_options(PyObject *obj, ifcopenshell_
     if (!field_1) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[1] = field_1;
+        if (!retain_option_ref(refs, field_1)) return 0;
         if (field_1 != Py_None) {
             out->ifc_class = PyUnicode_AsUTF8(field_1);
             if (!out->ifc_class) return 0;
@@ -9842,7 +10882,7 @@ static void free_input_element_get_decomposition_options(ifcopenshell_element_ge
     (void)value;
 }
 
-static int fill_input_element_get_decomposition_options(PyObject *obj, ifcopenshell_element_get_decomposition_options_t *out, PyObject **refs) {
+static int fill_input_element_get_decomposition_options(PyObject *obj, ifcopenshell_element_get_decomposition_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -9851,7 +10891,7 @@ static int fill_input_element_get_decomposition_options(PyObject *obj, ifcopensh
     if (!field_0) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[0] = field_0;
+        if (!retain_option_ref(refs, field_0)) return 0;
         if (field_0 != Py_None) {
             int value_0 = PyObject_IsTrue(field_0);
             if (value_0 < 0) return 0;
@@ -9867,7 +10907,7 @@ static void free_input_element_get_material_options(ifcopenshell_element_get_mat
     (void)value;
 }
 
-static int fill_input_element_get_material_options(PyObject *obj, ifcopenshell_element_get_material_options_t *out, PyObject **refs) {
+static int fill_input_element_get_material_options(PyObject *obj, ifcopenshell_element_get_material_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -9876,7 +10916,7 @@ static int fill_input_element_get_material_options(PyObject *obj, ifcopenshell_e
     if (!field_0) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[0] = field_0;
+        if (!retain_option_ref(refs, field_0)) return 0;
         if (field_0 != Py_None) {
             int value_0 = PyObject_IsTrue(field_0);
             if (value_0 < 0) return 0;
@@ -9888,7 +10928,7 @@ static int fill_input_element_get_material_options(PyObject *obj, ifcopenshell_e
     if (!field_1) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[1] = field_1;
+        if (!retain_option_ref(refs, field_1)) return 0;
         if (field_1 != Py_None) {
             int value_1 = PyObject_IsTrue(field_1);
             if (value_1 < 0) return 0;
@@ -9904,7 +10944,7 @@ static void free_input_element_get_pset_ids_options(ifcopenshell_element_get_pse
     (void)value;
 }
 
-static int fill_input_element_get_pset_ids_options(PyObject *obj, ifcopenshell_element_get_pset_ids_options_t *out, PyObject **refs) {
+static int fill_input_element_get_pset_ids_options(PyObject *obj, ifcopenshell_element_get_pset_ids_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -9913,7 +10953,7 @@ static int fill_input_element_get_pset_ids_options(PyObject *obj, ifcopenshell_e
     if (!field_0) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[0] = field_0;
+        if (!retain_option_ref(refs, field_0)) return 0;
         if (field_0 != Py_None) {
             int value_0 = PyObject_IsTrue(field_0);
             if (value_0 < 0) return 0;
@@ -9925,7 +10965,7 @@ static int fill_input_element_get_pset_ids_options(PyObject *obj, ifcopenshell_e
     if (!field_1) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[1] = field_1;
+        if (!retain_option_ref(refs, field_1)) return 0;
         if (field_1 != Py_None) {
             int value_1 = PyObject_IsTrue(field_1);
             if (value_1 < 0) return 0;
@@ -9937,7 +10977,7 @@ static int fill_input_element_get_pset_ids_options(PyObject *obj, ifcopenshell_e
     if (!field_2) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[2] = field_2;
+        if (!retain_option_ref(refs, field_2)) return 0;
         if (field_2 != Py_None) {
             int value_2 = PyObject_IsTrue(field_2);
             if (value_2 < 0) return 0;
@@ -9953,7 +10993,7 @@ static void free_input_element_get_shape_aspects_options(ifcopenshell_element_ge
     (void)value;
 }
 
-static int fill_input_element_get_shape_aspects_options(PyObject *obj, ifcopenshell_element_get_shape_aspects_options_t *out, PyObject **refs) {
+static int fill_input_element_get_shape_aspects_options(PyObject *obj, ifcopenshell_element_get_shape_aspects_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -9962,7 +11002,7 @@ static int fill_input_element_get_shape_aspects_options(PyObject *obj, ifcopensh
     if (!field_0) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[0] = field_0;
+        if (!retain_option_ref(refs, field_0)) return 0;
         if (field_0 != Py_None) {
             int value_0 = PyObject_IsTrue(field_0);
             if (value_0 < 0) return 0;
@@ -9985,7 +11025,7 @@ static void free_input_entity_remove_deep_options(ifcopenshell_entity_remove_dee
     }
 }
 
-static int fill_input_entity_remove_deep_options(PyObject *obj, ifcopenshell_entity_remove_deep_options_t *out, PyObject **refs) {
+static int fill_input_entity_remove_deep_options(PyObject *obj, ifcopenshell_entity_remove_deep_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -9994,9 +11034,9 @@ static int fill_input_entity_remove_deep_options(PyObject *obj, ifcopenshell_ent
     if (!field_0) {
         return 0;
     }
-    refs[0] = field_0;
+    if (!retain_option_ref(refs, field_0)) return 0;
     ifcopenshell_instance_list_t also_consider_items_0 = {0};
-    if (!make_input_instance_list(field_0, &also_consider_items_0)) {
+    if (!make_input_instance_list(field_0, &also_consider_items_0, refs)) {
         return 0;
     }
     if (!ifcopenshell_parse_instance_list_create_from_handles(&also_consider_items_0, &out->also_consider)) {
@@ -10009,9 +11049,9 @@ static int fill_input_entity_remove_deep_options(PyObject *obj, ifcopenshell_ent
     if (!field_1) {
         return 0;
     }
-    refs[1] = field_1;
+    if (!retain_option_ref(refs, field_1)) return 0;
     ifcopenshell_instance_list_t do_not_delete_items_1 = {0};
-    if (!make_input_instance_list(field_1, &do_not_delete_items_1)) {
+    if (!make_input_instance_list(field_1, &do_not_delete_items_1, refs)) {
         return 0;
     }
     if (!ifcopenshell_parse_instance_list_create_from_handles(&do_not_delete_items_1, &out->do_not_delete)) {
@@ -10028,7 +11068,7 @@ static void free_input_feature_add_feature_options(ifcopenshell_feature_add_feat
     (void)value;
 }
 
-static int fill_input_feature_add_feature_options(PyObject *obj, ifcopenshell_feature_add_feature_options_t *out, PyObject **refs) {
+static int fill_input_feature_add_feature_options(PyObject *obj, ifcopenshell_feature_add_feature_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -10037,7 +11077,7 @@ static int fill_input_feature_add_feature_options(PyObject *obj, ifcopenshell_fe
     if (!field_0) {
         return 0;
     }
-    refs[0] = field_0;
+    if (!retain_option_ref(refs, field_0)) return 0;
     if (!extract_handle(field_0, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->feature, 0)) {
         return 0;
     }
@@ -10045,7 +11085,7 @@ static int fill_input_feature_add_feature_options(PyObject *obj, ifcopenshell_fe
     if (!field_1) {
         return 0;
     }
-    refs[1] = field_1;
+    if (!retain_option_ref(refs, field_1)) return 0;
     if (!extract_handle(field_1, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->element, 0)) {
         return 0;
     }
@@ -10053,7 +11093,7 @@ static int fill_input_feature_add_feature_options(PyObject *obj, ifcopenshell_fe
     if (!field_2) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[2] = field_2;
+        if (!retain_option_ref(refs, field_2)) return 0;
         if (field_2 != Py_None) {
             if (!extract_handle(field_2, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->user, 0)) {
                 return 0;
@@ -10065,7 +11105,7 @@ static int fill_input_feature_add_feature_options(PyObject *obj, ifcopenshell_fe
     if (!field_3) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[3] = field_3;
+        if (!retain_option_ref(refs, field_3)) return 0;
         if (field_3 != Py_None) {
             if (!extract_handle(field_3, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->application, 0)) {
                 return 0;
@@ -10081,7 +11121,7 @@ static void free_input_feature_remove_feature_options(ifcopenshell_feature_remov
     (void)value;
 }
 
-static int fill_input_feature_remove_feature_options(PyObject *obj, ifcopenshell_feature_remove_feature_options_t *out, PyObject **refs) {
+static int fill_input_feature_remove_feature_options(PyObject *obj, ifcopenshell_feature_remove_feature_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -10090,7 +11130,7 @@ static int fill_input_feature_remove_feature_options(PyObject *obj, ifcopenshell
     if (!field_0) {
         return 0;
     }
-    refs[0] = field_0;
+    if (!retain_option_ref(refs, field_0)) return 0;
     if (!extract_handle(field_0, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->feature, 0)) {
         return 0;
     }
@@ -10098,7 +11138,7 @@ static int fill_input_feature_remove_feature_options(PyObject *obj, ifcopenshell
     if (!field_1) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[1] = field_1;
+        if (!retain_option_ref(refs, field_1)) return 0;
         if (field_1 != Py_None) {
             if (!extract_handle(field_1, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->user, 0)) {
                 return 0;
@@ -10110,7 +11150,7 @@ static int fill_input_feature_remove_feature_options(PyObject *obj, ifcopenshell
     if (!field_2) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[2] = field_2;
+        if (!retain_option_ref(refs, field_2)) return 0;
         if (field_2 != Py_None) {
             if (!extract_handle(field_2, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->application, 0)) {
                 return 0;
@@ -10124,18 +11164,18 @@ static int fill_input_feature_remove_feature_options(PyObject *obj, ifcopenshell
 
 static void free_input_geometry_add_door_representation_options(ifcopenshell_geometry_add_door_representation_options_t *value) {
     if (value->lining_properties) {
-        free_input_double_list((ifcopenshell_double_list_t *)value->lining_properties);
+        free_input_geometry_door_lining_properties((ifcopenshell_geometry_door_lining_properties_t *)value->lining_properties);
         PyMem_Free((void *)value->lining_properties);
         value->lining_properties = NULL;
     }
     if (value->panel_properties) {
-        free_input_double_list((ifcopenshell_double_list_t *)value->panel_properties);
+        free_input_geometry_door_panel_properties((ifcopenshell_geometry_door_panel_properties_t *)value->panel_properties);
         PyMem_Free((void *)value->panel_properties);
         value->panel_properties = NULL;
     }
 }
 
-static int fill_input_geometry_add_door_representation_options(PyObject *obj, ifcopenshell_geometry_add_door_representation_options_t *out, PyObject **refs) {
+static int fill_input_geometry_add_door_representation_options(PyObject *obj, ifcopenshell_geometry_add_door_representation_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -10144,66 +11184,88 @@ static int fill_input_geometry_add_door_representation_options(PyObject *obj, if
     if (!field_0) {
         return 0;
     }
-    refs[0] = field_0;
+    if (!retain_option_ref(refs, field_0)) return 0;
     if (!extract_handle(field_0, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->context, 0)) {
         return 0;
     }
-    PyObject *field_1 = get_option_field(obj, "overall_height", 1);
+    PyObject *field_1 = get_option_field(obj, "overall_height", 0);
     if (!field_1) {
-        return 0;
+        if (PyErr_Occurred()) return 0;
+    } else {
+        if (!retain_option_ref(refs, field_1)) return 0;
+        if (field_1 != Py_None) {
+            out->overall_height = PyFloat_AsDouble(field_1);
+            if (PyErr_Occurred()) return 0;
+        out->has_overall_height = true;
+        }
     }
-    refs[1] = field_1;
-    out->overall_height = PyFloat_AsDouble(field_1);
-    if (PyErr_Occurred()) return 0;
-    PyObject *field_2 = get_option_field(obj, "overall_width", 1);
+    PyObject *field_2 = get_option_field(obj, "overall_width", 0);
     if (!field_2) {
-        return 0;
+        if (PyErr_Occurred()) return 0;
+    } else {
+        if (!retain_option_ref(refs, field_2)) return 0;
+        if (field_2 != Py_None) {
+            out->overall_width = PyFloat_AsDouble(field_2);
+            if (PyErr_Occurred()) return 0;
+        out->has_overall_width = true;
+        }
     }
-    refs[2] = field_2;
-    out->overall_width = PyFloat_AsDouble(field_2);
-    if (PyErr_Occurred()) return 0;
-    PyObject *field_3 = get_option_field(obj, "operation_type", 1);
+    PyObject *field_3 = get_option_field(obj, "operation_type", 0);
     if (!field_3) {
-        return 0;
+        if (PyErr_Occurred()) return 0;
+    } else {
+        if (!retain_option_ref(refs, field_3)) return 0;
+        if (field_3 != Py_None) {
+            out->operation_type = (int32_t)PyLong_AsLong(field_3);
+            if (PyErr_Occurred()) return 0;
+        out->has_operation_type = true;
+        }
     }
-    refs[3] = field_3;
-    out->operation_type = PyUnicode_AsUTF8(field_3);
-    if (!out->operation_type) return 0;
-    PyObject *field_4 = get_option_field(obj, "lining_properties", 1);
+    PyObject *field_4 = get_option_field(obj, "lining_properties", 0);
     if (!field_4) {
-        return 0;
+        if (PyErr_Occurred()) return 0;
+    } else {
+        if (!retain_option_ref(refs, field_4)) return 0;
+        if (field_4 != Py_None) {
+            ifcopenshell_geometry_door_lining_properties_t *nested_4 = (ifcopenshell_geometry_door_lining_properties_t *)PyMem_Calloc(1, sizeof(ifcopenshell_geometry_door_lining_properties_t));
+            if (!nested_4) {
+                PyErr_NoMemory();
+                return 0;
+            }
+            if (!fill_input_geometry_door_lining_properties(field_4, nested_4, refs)) {
+                free_input_geometry_door_lining_properties(nested_4);
+                PyMem_Free(nested_4);
+                return 0;
+            }
+            out->lining_properties = nested_4;
+        out->has_lining_properties = true;
+        }
     }
-    refs[4] = field_4;
-    ifcopenshell_double_list_t *sequence_4 = (ifcopenshell_double_list_t *)PyMem_Calloc(1, sizeof(ifcopenshell_double_list_t));
-    if (!sequence_4) {
-        PyErr_NoMemory();
-        return 0;
-    }
-    if (!make_input_double_list(field_4, sequence_4)) {
-        PyMem_Free(sequence_4);
-        return 0;
-    }
-    out->lining_properties = sequence_4;
-    PyObject *field_5 = get_option_field(obj, "panel_properties", 1);
+    PyObject *field_5 = get_option_field(obj, "panel_properties", 0);
     if (!field_5) {
-        return 0;
+        if (PyErr_Occurred()) return 0;
+    } else {
+        if (!retain_option_ref(refs, field_5)) return 0;
+        if (field_5 != Py_None) {
+            ifcopenshell_geometry_door_panel_properties_t *nested_5 = (ifcopenshell_geometry_door_panel_properties_t *)PyMem_Calloc(1, sizeof(ifcopenshell_geometry_door_panel_properties_t));
+            if (!nested_5) {
+                PyErr_NoMemory();
+                return 0;
+            }
+            if (!fill_input_geometry_door_panel_properties(field_5, nested_5, refs)) {
+                free_input_geometry_door_panel_properties(nested_5);
+                PyMem_Free(nested_5);
+                return 0;
+            }
+            out->panel_properties = nested_5;
+        out->has_panel_properties = true;
+        }
     }
-    refs[5] = field_5;
-    ifcopenshell_double_list_t *sequence_5 = (ifcopenshell_double_list_t *)PyMem_Calloc(1, sizeof(ifcopenshell_double_list_t));
-    if (!sequence_5) {
-        PyErr_NoMemory();
-        return 0;
-    }
-    if (!make_input_double_list(field_5, sequence_5)) {
-        PyMem_Free(sequence_5);
-        return 0;
-    }
-    out->panel_properties = sequence_5;
     PyObject *field_6 = get_option_field(obj, "part_of_product", 0);
     if (!field_6) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[6] = field_6;
+        if (!retain_option_ref(refs, field_6)) return 0;
         if (field_6 != Py_None) {
             if (!extract_handle(field_6, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->part_of_product, 0)) {
                 return 0;
@@ -10211,74 +11273,93 @@ static int fill_input_geometry_add_door_representation_options(PyObject *obj, if
         out->has_part_of_product = true;
         }
     }
-    PyObject *field_7 = get_option_field(obj, "unit_scale", 1);
+    PyObject *field_7 = get_option_field(obj, "unit_scale", 0);
     if (!field_7) {
-        return 0;
+        if (PyErr_Occurred()) return 0;
+    } else {
+        if (!retain_option_ref(refs, field_7)) return 0;
+        if (field_7 != Py_None) {
+            out->unit_scale = PyFloat_AsDouble(field_7);
+            if (PyErr_Occurred()) return 0;
+        out->has_unit_scale = true;
+        }
     }
-    refs[7] = field_7;
-    out->unit_scale = PyFloat_AsDouble(field_7);
-    if (PyErr_Occurred()) return 0;
     return 1;
 }
 
 
 static void free_input_geometry_add_mesh_representation_options(ifcopenshell_geometry_add_mesh_representation_options_t *value) {
-    if (value->vertices) {
-        free_input_double_list_list_list((ifcopenshell_double_list_list_list_t *)value->vertices);
-        PyMem_Free((void *)value->vertices);
-        value->vertices = NULL;
+    if (value->items) {
+        free_input_geometry_mesh_item_list((ifcopenshell_geometry_mesh_item_list_t *)value->items);
+        PyMem_Free((void *)value->items);
+        value->items = NULL;
     }
-    if (value->faces) {
-        free_input_int32_list_list_list_list((ifcopenshell_int32_list_list_list_list_t *)value->faces);
-        PyMem_Free((void *)value->faces);
-        value->faces = NULL;
+    if (value->coordinate_offset) {
+        free_input_double_list((ifcopenshell_double_list_t *)value->coordinate_offset);
+        PyMem_Free((void *)value->coordinate_offset);
+        value->coordinate_offset = NULL;
     }
 }
 
-static int fill_input_geometry_add_mesh_representation_options(PyObject *obj, ifcopenshell_geometry_add_mesh_representation_options_t *out, PyObject **refs) {
+static int fill_input_geometry_add_mesh_representation_options(PyObject *obj, ifcopenshell_geometry_add_mesh_representation_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
     }
-    PyObject *field_0 = get_option_field(obj, "vertices", 1);
+    PyObject *field_0 = get_option_field(obj, "items", 1);
     if (!field_0) {
         return 0;
     }
-    refs[0] = field_0;
-    ifcopenshell_double_list_list_list_t *sequence_0 = (ifcopenshell_double_list_list_list_t *)PyMem_Calloc(1, sizeof(ifcopenshell_double_list_list_list_t));
+    if (!retain_option_ref(refs, field_0)) return 0;
+    ifcopenshell_geometry_mesh_item_list_t *sequence_0 = (ifcopenshell_geometry_mesh_item_list_t *)PyMem_Calloc(1, sizeof(ifcopenshell_geometry_mesh_item_list_t));
     if (!sequence_0) {
         PyErr_NoMemory();
         return 0;
     }
-    if (!make_input_double_list_list_list(field_0, sequence_0)) {
+    if (!make_input_geometry_mesh_item_list(field_0, sequence_0, refs)) {
         PyMem_Free(sequence_0);
         return 0;
     }
-    out->vertices = sequence_0;
-    PyObject *field_1 = get_option_field(obj, "faces", 1);
+    out->items = sequence_0;
+    PyObject *field_1 = get_option_field(obj, "coordinate_offset", 0);
     if (!field_1) {
-        return 0;
+        if (PyErr_Occurred()) return 0;
+    } else {
+        if (!retain_option_ref(refs, field_1)) return 0;
+        if (field_1 != Py_None) {
+            ifcopenshell_double_list_t *sequence_1 = (ifcopenshell_double_list_t *)PyMem_Calloc(1, sizeof(ifcopenshell_double_list_t));
+            if (!sequence_1) {
+                PyErr_NoMemory();
+                return 0;
+            }
+            if (!make_input_double_list(field_1, sequence_1, refs)) {
+                PyMem_Free(sequence_1);
+                return 0;
+            }
+            out->coordinate_offset = sequence_1;
+        out->has_coordinate_offset = true;
+        }
     }
-    refs[1] = field_1;
-    ifcopenshell_int32_list_list_list_list_t *sequence_1 = (ifcopenshell_int32_list_list_list_list_t *)PyMem_Calloc(1, sizeof(ifcopenshell_int32_list_list_list_list_t));
-    if (!sequence_1) {
-        PyErr_NoMemory();
-        return 0;
-    }
-    if (!make_input_int32_list_list_list_list(field_1, sequence_1)) {
-        PyMem_Free(sequence_1);
-        return 0;
-    }
-    out->faces = sequence_1;
-    PyObject *field_2 = get_option_field(obj, "force_faceted_brep", 0);
+    PyObject *field_2 = get_option_field(obj, "unit_scale", 0);
     if (!field_2) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[2] = field_2;
+        if (!retain_option_ref(refs, field_2)) return 0;
         if (field_2 != Py_None) {
-            int value_2 = PyObject_IsTrue(field_2);
-            if (value_2 < 0) return 0;
-            out->force_faceted_brep = (bool)value_2;
+            out->unit_scale = PyFloat_AsDouble(field_2);
+            if (PyErr_Occurred()) return 0;
+        out->has_unit_scale = true;
+        }
+    }
+    PyObject *field_3 = get_option_field(obj, "force_faceted_brep", 0);
+    if (!field_3) {
+        if (PyErr_Occurred()) return 0;
+    } else {
+        if (!retain_option_ref(refs, field_3)) return 0;
+        if (field_3 != Py_None) {
+            int value_3 = PyObject_IsTrue(field_3);
+            if (value_3 < 0) return 0;
+            out->force_faceted_brep = (bool)value_3;
         out->has_force_faceted_brep = true;
         }
     }
@@ -10297,28 +11378,14 @@ static void free_input_geometry_add_profile_representation_options(ifcopenshell_
         PyMem_Free((void *)value->placement_x_axis);
         value->placement_x_axis = NULL;
     }
-    if (value->clipping_kinds) {
-        free_input_int32_list((ifcopenshell_int32_list_t *)value->clipping_kinds);
-        PyMem_Free((void *)value->clipping_kinds);
-        value->clipping_kinds = NULL;
-    }
-    if (value->clipping_locations) {
-        free_input_double_list_list((ifcopenshell_double_list_list_t *)value->clipping_locations);
-        PyMem_Free((void *)value->clipping_locations);
-        value->clipping_locations = NULL;
-    }
-    if (value->clipping_normals) {
-        free_input_double_list_list((ifcopenshell_double_list_list_t *)value->clipping_normals);
-        PyMem_Free((void *)value->clipping_normals);
-        value->clipping_normals = NULL;
-    }
-    if (value->clipping_entities) {
-        ifcopenshell_parse_instance_list_destroy(value->clipping_entities);
-        value->clipping_entities = NULL;
+    if (value->clippings) {
+        free_input_GeometryPlaneClipping_GeometryEntityClipping_variant_list((ifcopenshell_GeometryPlaneClipping_GeometryEntityClipping_variant_list_t *)value->clippings);
+        PyMem_Free((void *)value->clippings);
+        value->clippings = NULL;
     }
 }
 
-static int fill_input_geometry_add_profile_representation_options(PyObject *obj, ifcopenshell_geometry_add_profile_representation_options_t *out, PyObject **refs) {
+static int fill_input_geometry_add_profile_representation_options(PyObject *obj, ifcopenshell_geometry_add_profile_representation_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -10327,7 +11394,7 @@ static int fill_input_geometry_add_profile_representation_options(PyObject *obj,
     if (!field_0) {
         return 0;
     }
-    refs[0] = field_0;
+    if (!retain_option_ref(refs, field_0)) return 0;
     if (!extract_handle(field_0, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->context, 0)) {
         return 0;
     }
@@ -10335,22 +11402,26 @@ static int fill_input_geometry_add_profile_representation_options(PyObject *obj,
     if (!field_1) {
         return 0;
     }
-    refs[1] = field_1;
+    if (!retain_option_ref(refs, field_1)) return 0;
     if (!extract_handle(field_1, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->profile, 0)) {
         return 0;
     }
-    PyObject *field_2 = get_option_field(obj, "depth", 1);
+    PyObject *field_2 = get_option_field(obj, "depth", 0);
     if (!field_2) {
-        return 0;
+        if (PyErr_Occurred()) return 0;
+    } else {
+        if (!retain_option_ref(refs, field_2)) return 0;
+        if (field_2 != Py_None) {
+            out->depth = PyFloat_AsDouble(field_2);
+            if (PyErr_Occurred()) return 0;
+        out->has_depth = true;
+        }
     }
-    refs[2] = field_2;
-    out->depth = PyFloat_AsDouble(field_2);
-    if (PyErr_Occurred()) return 0;
     PyObject *field_3 = get_option_field(obj, "cardinal_point", 0);
     if (!field_3) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[3] = field_3;
+        if (!retain_option_ref(refs, field_3)) return 0;
         if (field_3 != Py_None) {
             out->cardinal_point = PyUnicode_AsUTF8(field_3);
             if (!out->cardinal_point) return 0;
@@ -10361,14 +11432,14 @@ static int fill_input_geometry_add_profile_representation_options(PyObject *obj,
     if (!field_4) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[4] = field_4;
+        if (!retain_option_ref(refs, field_4)) return 0;
         if (field_4 != Py_None) {
             ifcopenshell_double_list_t *sequence_4 = (ifcopenshell_double_list_t *)PyMem_Calloc(1, sizeof(ifcopenshell_double_list_t));
             if (!sequence_4) {
                 PyErr_NoMemory();
                 return 0;
             }
-            if (!make_input_double_list(field_4, sequence_4)) {
+            if (!make_input_double_list(field_4, sequence_4, refs)) {
                 PyMem_Free(sequence_4);
                 return 0;
             }
@@ -10380,14 +11451,14 @@ static int fill_input_geometry_add_profile_representation_options(PyObject *obj,
     if (!field_5) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[5] = field_5;
+        if (!retain_option_ref(refs, field_5)) return 0;
         if (field_5 != Py_None) {
             ifcopenshell_double_list_t *sequence_5 = (ifcopenshell_double_list_t *)PyMem_Calloc(1, sizeof(ifcopenshell_double_list_t));
             if (!sequence_5) {
                 PyErr_NoMemory();
                 return 0;
             }
-            if (!make_input_double_list(field_5, sequence_5)) {
+            if (!make_input_double_list(field_5, sequence_5, refs)) {
                 PyMem_Free(sequence_5);
                 return 0;
             }
@@ -10395,66 +11466,25 @@ static int fill_input_geometry_add_profile_representation_options(PyObject *obj,
         out->has_placement_x_axis = true;
         }
     }
-    PyObject *field_6 = get_option_field(obj, "clipping_kinds", 1);
+    PyObject *field_6 = get_option_field(obj, "clippings", 0);
     if (!field_6) {
-        return 0;
+        if (PyErr_Occurred()) return 0;
+    } else {
+        if (!retain_option_ref(refs, field_6)) return 0;
+        if (field_6 != Py_None) {
+            ifcopenshell_GeometryPlaneClipping_GeometryEntityClipping_variant_list_t *sequence_6 = (ifcopenshell_GeometryPlaneClipping_GeometryEntityClipping_variant_list_t *)PyMem_Calloc(1, sizeof(ifcopenshell_GeometryPlaneClipping_GeometryEntityClipping_variant_list_t));
+            if (!sequence_6) {
+                PyErr_NoMemory();
+                return 0;
+            }
+            if (!make_input_GeometryPlaneClipping_GeometryEntityClipping_variant_list(field_6, sequence_6, refs)) {
+                PyMem_Free(sequence_6);
+                return 0;
+            }
+            out->clippings = sequence_6;
+        out->has_clippings = true;
+        }
     }
-    refs[6] = field_6;
-    ifcopenshell_int32_list_t *sequence_6 = (ifcopenshell_int32_list_t *)PyMem_Calloc(1, sizeof(ifcopenshell_int32_list_t));
-    if (!sequence_6) {
-        PyErr_NoMemory();
-        return 0;
-    }
-    if (!make_input_int32_list(field_6, sequence_6)) {
-        PyMem_Free(sequence_6);
-        return 0;
-    }
-    out->clipping_kinds = sequence_6;
-    PyObject *field_7 = get_option_field(obj, "clipping_locations", 1);
-    if (!field_7) {
-        return 0;
-    }
-    refs[7] = field_7;
-    ifcopenshell_double_list_list_t *sequence_7 = (ifcopenshell_double_list_list_t *)PyMem_Calloc(1, sizeof(ifcopenshell_double_list_list_t));
-    if (!sequence_7) {
-        PyErr_NoMemory();
-        return 0;
-    }
-    if (!make_input_double_list_list(field_7, sequence_7)) {
-        PyMem_Free(sequence_7);
-        return 0;
-    }
-    out->clipping_locations = sequence_7;
-    PyObject *field_8 = get_option_field(obj, "clipping_normals", 1);
-    if (!field_8) {
-        return 0;
-    }
-    refs[8] = field_8;
-    ifcopenshell_double_list_list_t *sequence_8 = (ifcopenshell_double_list_list_t *)PyMem_Calloc(1, sizeof(ifcopenshell_double_list_list_t));
-    if (!sequence_8) {
-        PyErr_NoMemory();
-        return 0;
-    }
-    if (!make_input_double_list_list(field_8, sequence_8)) {
-        PyMem_Free(sequence_8);
-        return 0;
-    }
-    out->clipping_normals = sequence_8;
-    PyObject *field_9 = get_option_field(obj, "clipping_entities", 1);
-    if (!field_9) {
-        return 0;
-    }
-    refs[9] = field_9;
-    ifcopenshell_instance_list_t clipping_entities_items_9 = {0};
-    if (!make_input_instance_list(field_9, &clipping_entities_items_9)) {
-        return 0;
-    }
-    if (!ifcopenshell_parse_instance_list_create_from_handles(&clipping_entities_items_9, &out->clipping_entities)) {
-        free_input_instance_list(&clipping_entities_items_9);
-        raise_last_error("ifcopenshell_parse_instance_list_create_from_handles failed");
-        return 0;
-    }
-    free_input_instance_list(&clipping_entities_items_9);
     return 1;
 }
 
@@ -10467,7 +11497,7 @@ static void free_input_geometry_add_railing_representation_options(ifcopenshell_
     }
 }
 
-static int fill_input_geometry_add_railing_representation_options(PyObject *obj, ifcopenshell_geometry_add_railing_representation_options_t *out, PyObject **refs) {
+static int fill_input_geometry_add_railing_representation_options(PyObject *obj, ifcopenshell_geometry_add_railing_representation_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -10476,7 +11506,7 @@ static int fill_input_geometry_add_railing_representation_options(PyObject *obj,
     if (!field_0) {
         return 0;
     }
-    refs[0] = field_0;
+    if (!retain_option_ref(refs, field_0)) return 0;
     if (!extract_handle(field_0, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->context, 0)) {
         return 0;
     }
@@ -10484,14 +11514,14 @@ static int fill_input_geometry_add_railing_representation_options(PyObject *obj,
     if (!field_1) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[1] = field_1;
+        if (!retain_option_ref(refs, field_1)) return 0;
         if (field_1 != Py_None) {
             ifcopenshell_double_list_list_t *sequence_1 = (ifcopenshell_double_list_list_t *)PyMem_Calloc(1, sizeof(ifcopenshell_double_list_list_t));
             if (!sequence_1) {
                 PyErr_NoMemory();
                 return 0;
             }
-            if (!make_input_double_list_list(field_1, sequence_1)) {
+            if (!make_input_double_list_list(field_1, sequence_1, refs)) {
                 PyMem_Free(sequence_1);
                 return 0;
             }
@@ -10503,7 +11533,7 @@ static int fill_input_geometry_add_railing_representation_options(PyObject *obj,
     if (!field_2) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[2] = field_2;
+        if (!retain_option_ref(refs, field_2)) return 0;
         if (field_2 != Py_None) {
             int value_2 = PyObject_IsTrue(field_2);
             if (value_2 < 0) return 0;
@@ -10515,7 +11545,7 @@ static int fill_input_geometry_add_railing_representation_options(PyObject *obj,
     if (!field_3) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[3] = field_3;
+        if (!retain_option_ref(refs, field_3)) return 0;
         if (field_3 != Py_None) {
             out->support_spacing = PyFloat_AsDouble(field_3);
             if (PyErr_Occurred()) return 0;
@@ -10526,7 +11556,7 @@ static int fill_input_geometry_add_railing_representation_options(PyObject *obj,
     if (!field_4) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[4] = field_4;
+        if (!retain_option_ref(refs, field_4)) return 0;
         if (field_4 != Py_None) {
             out->railing_diameter = PyFloat_AsDouble(field_4);
             if (PyErr_Occurred()) return 0;
@@ -10537,7 +11567,7 @@ static int fill_input_geometry_add_railing_representation_options(PyObject *obj,
     if (!field_5) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[5] = field_5;
+        if (!retain_option_ref(refs, field_5)) return 0;
         if (field_5 != Py_None) {
             out->clear_width = PyFloat_AsDouble(field_5);
             if (PyErr_Occurred()) return 0;
@@ -10548,7 +11578,7 @@ static int fill_input_geometry_add_railing_representation_options(PyObject *obj,
     if (!field_6) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[6] = field_6;
+        if (!retain_option_ref(refs, field_6)) return 0;
         if (field_6 != Py_None) {
             out->terminal_type = PyUnicode_AsUTF8(field_6);
             if (!out->terminal_type) return 0;
@@ -10559,7 +11589,7 @@ static int fill_input_geometry_add_railing_representation_options(PyObject *obj,
     if (!field_7) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[7] = field_7;
+        if (!retain_option_ref(refs, field_7)) return 0;
         if (field_7 != Py_None) {
             out->height = PyFloat_AsDouble(field_7);
             if (PyErr_Occurred()) return 0;
@@ -10570,7 +11600,7 @@ static int fill_input_geometry_add_railing_representation_options(PyObject *obj,
     if (!field_8) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[8] = field_8;
+        if (!retain_option_ref(refs, field_8)) return 0;
         if (field_8 != Py_None) {
             int value_8 = PyObject_IsTrue(field_8);
             if (value_8 < 0) return 0;
@@ -10582,7 +11612,7 @@ static int fill_input_geometry_add_railing_representation_options(PyObject *obj,
     if (!field_9) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[9] = field_9;
+        if (!retain_option_ref(refs, field_9)) return 0;
         if (field_9 != Py_None) {
             out->unit_scale = PyFloat_AsDouble(field_9);
             if (PyErr_Occurred()) return 0;
@@ -10600,7 +11630,7 @@ static void free_input_geometry_add_shape_aspect_options(ifcopenshell_geometry_a
     }
 }
 
-static int fill_input_geometry_add_shape_aspect_options(PyObject *obj, ifcopenshell_geometry_add_shape_aspect_options_t *out, PyObject **refs) {
+static int fill_input_geometry_add_shape_aspect_options(PyObject *obj, ifcopenshell_geometry_add_shape_aspect_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -10609,16 +11639,16 @@ static int fill_input_geometry_add_shape_aspect_options(PyObject *obj, ifcopensh
     if (!field_0) {
         return 0;
     }
-    refs[0] = field_0;
+    if (!retain_option_ref(refs, field_0)) return 0;
     out->name = PyUnicode_AsUTF8(field_0);
     if (!out->name) return 0;
     PyObject *field_1 = get_option_field(obj, "items", 1);
     if (!field_1) {
         return 0;
     }
-    refs[1] = field_1;
+    if (!retain_option_ref(refs, field_1)) return 0;
     ifcopenshell_instance_list_t items_items_1 = {0};
-    if (!make_input_instance_list(field_1, &items_items_1)) {
+    if (!make_input_instance_list(field_1, &items_items_1, refs)) {
         return 0;
     }
     if (!ifcopenshell_parse_instance_list_create_from_handles(&items_items_1, &out->items)) {
@@ -10631,7 +11661,7 @@ static int fill_input_geometry_add_shape_aspect_options(PyObject *obj, ifcopensh
     if (!field_2) {
         return 0;
     }
-    refs[2] = field_2;
+    if (!retain_option_ref(refs, field_2)) return 0;
     if (!extract_handle(field_2, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->representation, 0)) {
         return 0;
     }
@@ -10639,7 +11669,7 @@ static int fill_input_geometry_add_shape_aspect_options(PyObject *obj, ifcopensh
     if (!field_3) {
         return 0;
     }
-    refs[3] = field_3;
+    if (!retain_option_ref(refs, field_3)) return 0;
     if (!extract_handle(field_3, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->part_of_product, 0)) {
         return 0;
     }
@@ -10647,7 +11677,7 @@ static int fill_input_geometry_add_shape_aspect_options(PyObject *obj, ifcopensh
     if (!field_4) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[4] = field_4;
+        if (!retain_option_ref(refs, field_4)) return 0;
         if (field_4 != Py_None) {
             out->description = PyUnicode_AsUTF8(field_4);
             if (!out->description) return 0;
@@ -10659,24 +11689,10 @@ static int fill_input_geometry_add_shape_aspect_options(PyObject *obj, ifcopensh
 
 
 static void free_input_geometry_add_slab_representation_options(ifcopenshell_geometry_add_slab_representation_options_t *value) {
-    if (value->clipping_kinds) {
-        free_input_int32_list((ifcopenshell_int32_list_t *)value->clipping_kinds);
-        PyMem_Free((void *)value->clipping_kinds);
-        value->clipping_kinds = NULL;
-    }
-    if (value->clipping_locations) {
-        free_input_double_list_list((ifcopenshell_double_list_list_t *)value->clipping_locations);
-        PyMem_Free((void *)value->clipping_locations);
-        value->clipping_locations = NULL;
-    }
-    if (value->clipping_normals) {
-        free_input_double_list_list((ifcopenshell_double_list_list_t *)value->clipping_normals);
-        PyMem_Free((void *)value->clipping_normals);
-        value->clipping_normals = NULL;
-    }
-    if (value->clipping_entities) {
-        ifcopenshell_parse_instance_list_destroy(value->clipping_entities);
-        value->clipping_entities = NULL;
+    if (value->clippings) {
+        free_input_GeometryPlaneClipping_GeometryEntityClipping_variant_list((ifcopenshell_GeometryPlaneClipping_GeometryEntityClipping_variant_list_t *)value->clippings);
+        PyMem_Free((void *)value->clippings);
+        value->clippings = NULL;
     }
     if (value->polyline) {
         free_input_double_list_list((ifcopenshell_double_list_list_t *)value->polyline);
@@ -10685,7 +11701,7 @@ static void free_input_geometry_add_slab_representation_options(ifcopenshell_geo
     }
 }
 
-static int fill_input_geometry_add_slab_representation_options(PyObject *obj, ifcopenshell_geometry_add_slab_representation_options_t *out, PyObject **refs) {
+static int fill_input_geometry_add_slab_representation_options(PyObject *obj, ifcopenshell_geometry_add_slab_representation_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -10694,114 +11710,89 @@ static int fill_input_geometry_add_slab_representation_options(PyObject *obj, if
     if (!field_0) {
         return 0;
     }
-    refs[0] = field_0;
+    if (!retain_option_ref(refs, field_0)) return 0;
     if (!extract_handle(field_0, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->context, 0)) {
         return 0;
     }
-    PyObject *field_1 = get_option_field(obj, "depth", 1);
+    PyObject *field_1 = get_option_field(obj, "depth", 0);
     if (!field_1) {
-        return 0;
-    }
-    refs[1] = field_1;
-    out->depth = PyFloat_AsDouble(field_1);
-    if (PyErr_Occurred()) return 0;
-    PyObject *field_2 = get_option_field(obj, "direction_sense", 1);
-    if (!field_2) {
-        return 0;
-    }
-    refs[2] = field_2;
-    out->direction_sense = PyUnicode_AsUTF8(field_2);
-    if (!out->direction_sense) return 0;
-    PyObject *field_3 = get_option_field(obj, "offset", 1);
-    if (!field_3) {
-        return 0;
-    }
-    refs[3] = field_3;
-    out->offset = PyFloat_AsDouble(field_3);
-    if (PyErr_Occurred()) return 0;
-    PyObject *field_4 = get_option_field(obj, "x_angle", 1);
-    if (!field_4) {
-        return 0;
-    }
-    refs[4] = field_4;
-    out->x_angle = PyFloat_AsDouble(field_4);
-    if (PyErr_Occurred()) return 0;
-    PyObject *field_5 = get_option_field(obj, "clipping_kinds", 1);
-    if (!field_5) {
-        return 0;
-    }
-    refs[5] = field_5;
-    ifcopenshell_int32_list_t *sequence_5 = (ifcopenshell_int32_list_t *)PyMem_Calloc(1, sizeof(ifcopenshell_int32_list_t));
-    if (!sequence_5) {
-        PyErr_NoMemory();
-        return 0;
-    }
-    if (!make_input_int32_list(field_5, sequence_5)) {
-        PyMem_Free(sequence_5);
-        return 0;
-    }
-    out->clipping_kinds = sequence_5;
-    PyObject *field_6 = get_option_field(obj, "clipping_locations", 1);
-    if (!field_6) {
-        return 0;
-    }
-    refs[6] = field_6;
-    ifcopenshell_double_list_list_t *sequence_6 = (ifcopenshell_double_list_list_t *)PyMem_Calloc(1, sizeof(ifcopenshell_double_list_list_t));
-    if (!sequence_6) {
-        PyErr_NoMemory();
-        return 0;
-    }
-    if (!make_input_double_list_list(field_6, sequence_6)) {
-        PyMem_Free(sequence_6);
-        return 0;
-    }
-    out->clipping_locations = sequence_6;
-    PyObject *field_7 = get_option_field(obj, "clipping_normals", 1);
-    if (!field_7) {
-        return 0;
-    }
-    refs[7] = field_7;
-    ifcopenshell_double_list_list_t *sequence_7 = (ifcopenshell_double_list_list_t *)PyMem_Calloc(1, sizeof(ifcopenshell_double_list_list_t));
-    if (!sequence_7) {
-        PyErr_NoMemory();
-        return 0;
-    }
-    if (!make_input_double_list_list(field_7, sequence_7)) {
-        PyMem_Free(sequence_7);
-        return 0;
-    }
-    out->clipping_normals = sequence_7;
-    PyObject *field_8 = get_option_field(obj, "clipping_entities", 1);
-    if (!field_8) {
-        return 0;
-    }
-    refs[8] = field_8;
-    ifcopenshell_instance_list_t clipping_entities_items_8 = {0};
-    if (!make_input_instance_list(field_8, &clipping_entities_items_8)) {
-        return 0;
-    }
-    if (!ifcopenshell_parse_instance_list_create_from_handles(&clipping_entities_items_8, &out->clipping_entities)) {
-        free_input_instance_list(&clipping_entities_items_8);
-        raise_last_error("ifcopenshell_parse_instance_list_create_from_handles failed");
-        return 0;
-    }
-    free_input_instance_list(&clipping_entities_items_8);
-    PyObject *field_9 = get_option_field(obj, "polyline", 0);
-    if (!field_9) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[9] = field_9;
-        if (field_9 != Py_None) {
-            ifcopenshell_double_list_list_t *sequence_9 = (ifcopenshell_double_list_list_t *)PyMem_Calloc(1, sizeof(ifcopenshell_double_list_list_t));
-            if (!sequence_9) {
+        if (!retain_option_ref(refs, field_1)) return 0;
+        if (field_1 != Py_None) {
+            out->depth = PyFloat_AsDouble(field_1);
+            if (PyErr_Occurred()) return 0;
+        out->has_depth = true;
+        }
+    }
+    PyObject *field_2 = get_option_field(obj, "direction_sense", 0);
+    if (!field_2) {
+        if (PyErr_Occurred()) return 0;
+    } else {
+        if (!retain_option_ref(refs, field_2)) return 0;
+        if (field_2 != Py_None) {
+            out->direction_sense = PyUnicode_AsUTF8(field_2);
+            if (!out->direction_sense) return 0;
+        out->has_direction_sense = true;
+        }
+    }
+    PyObject *field_3 = get_option_field(obj, "offset", 0);
+    if (!field_3) {
+        if (PyErr_Occurred()) return 0;
+    } else {
+        if (!retain_option_ref(refs, field_3)) return 0;
+        if (field_3 != Py_None) {
+            out->offset = PyFloat_AsDouble(field_3);
+            if (PyErr_Occurred()) return 0;
+        out->has_offset = true;
+        }
+    }
+    PyObject *field_4 = get_option_field(obj, "x_angle", 0);
+    if (!field_4) {
+        if (PyErr_Occurred()) return 0;
+    } else {
+        if (!retain_option_ref(refs, field_4)) return 0;
+        if (field_4 != Py_None) {
+            out->x_angle = PyFloat_AsDouble(field_4);
+            if (PyErr_Occurred()) return 0;
+        out->has_x_angle = true;
+        }
+    }
+    PyObject *field_5 = get_option_field(obj, "clippings", 0);
+    if (!field_5) {
+        if (PyErr_Occurred()) return 0;
+    } else {
+        if (!retain_option_ref(refs, field_5)) return 0;
+        if (field_5 != Py_None) {
+            ifcopenshell_GeometryPlaneClipping_GeometryEntityClipping_variant_list_t *sequence_5 = (ifcopenshell_GeometryPlaneClipping_GeometryEntityClipping_variant_list_t *)PyMem_Calloc(1, sizeof(ifcopenshell_GeometryPlaneClipping_GeometryEntityClipping_variant_list_t));
+            if (!sequence_5) {
                 PyErr_NoMemory();
                 return 0;
             }
-            if (!make_input_double_list_list(field_9, sequence_9)) {
-                PyMem_Free(sequence_9);
+            if (!make_input_GeometryPlaneClipping_GeometryEntityClipping_variant_list(field_5, sequence_5, refs)) {
+                PyMem_Free(sequence_5);
                 return 0;
             }
-            out->polyline = sequence_9;
+            out->clippings = sequence_5;
+        out->has_clippings = true;
+        }
+    }
+    PyObject *field_6 = get_option_field(obj, "polyline", 0);
+    if (!field_6) {
+        if (PyErr_Occurred()) return 0;
+    } else {
+        if (!retain_option_ref(refs, field_6)) return 0;
+        if (field_6 != Py_None) {
+            ifcopenshell_double_list_list_t *sequence_6 = (ifcopenshell_double_list_list_t *)PyMem_Calloc(1, sizeof(ifcopenshell_double_list_list_t));
+            if (!sequence_6) {
+                PyErr_NoMemory();
+                return 0;
+            }
+            if (!make_input_double_list_list(field_6, sequence_6, refs)) {
+                PyMem_Free(sequence_6);
+                return 0;
+            }
+            out->polyline = sequence_6;
         out->has_polyline = true;
         }
     }
@@ -10813,7 +11804,7 @@ static void free_input_geometry_add_topology_representation_options(ifcopenshell
     (void)value;
 }
 
-static int fill_input_geometry_add_topology_representation_options(PyObject *obj, ifcopenshell_geometry_add_topology_representation_options_t *out, PyObject **refs) {
+static int fill_input_geometry_add_topology_representation_options(PyObject *obj, ifcopenshell_geometry_add_topology_representation_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -10822,7 +11813,7 @@ static int fill_input_geometry_add_topology_representation_options(PyObject *obj
     if (!field_0) {
         return 0;
     }
-    refs[0] = field_0;
+    if (!retain_option_ref(refs, field_0)) return 0;
     if (!extract_handle(field_0, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->context, 0)) {
         return 0;
     }
@@ -10830,7 +11821,7 @@ static int fill_input_geometry_add_topology_representation_options(PyObject *obj
     if (!field_1) {
         return 0;
     }
-    refs[1] = field_1;
+    if (!retain_option_ref(refs, field_1)) return 0;
     if (!extract_handle(field_1, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->item, 0)) {
         return 0;
     }
@@ -10838,7 +11829,7 @@ static int fill_input_geometry_add_topology_representation_options(PyObject *obj
     if (!field_2) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[2] = field_2;
+        if (!retain_option_ref(refs, field_2)) return 0;
         if (field_2 != Py_None) {
             out->representation_identifier = PyUnicode_AsUTF8(field_2);
             if (!out->representation_identifier) return 0;
@@ -10849,7 +11840,7 @@ static int fill_input_geometry_add_topology_representation_options(PyObject *obj
     if (!field_3) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[3] = field_3;
+        if (!retain_option_ref(refs, field_3)) return 0;
         if (field_3 != Py_None) {
             out->representation_type = PyUnicode_AsUTF8(field_3);
             if (!out->representation_type) return 0;
@@ -10861,24 +11852,10 @@ static int fill_input_geometry_add_topology_representation_options(PyObject *obj
 
 
 static void free_input_geometry_add_wall_representation_options(ifcopenshell_geometry_add_wall_representation_options_t *value) {
-    if (value->clipping_kinds) {
-        free_input_int32_list((ifcopenshell_int32_list_t *)value->clipping_kinds);
-        PyMem_Free((void *)value->clipping_kinds);
-        value->clipping_kinds = NULL;
-    }
-    if (value->clipping_locations) {
-        free_input_double_list_list((ifcopenshell_double_list_list_t *)value->clipping_locations);
-        PyMem_Free((void *)value->clipping_locations);
-        value->clipping_locations = NULL;
-    }
-    if (value->clipping_normals) {
-        free_input_double_list_list((ifcopenshell_double_list_list_t *)value->clipping_normals);
-        PyMem_Free((void *)value->clipping_normals);
-        value->clipping_normals = NULL;
-    }
-    if (value->clipping_entities) {
-        ifcopenshell_parse_instance_list_destroy(value->clipping_entities);
-        value->clipping_entities = NULL;
+    if (value->clippings) {
+        free_input_GeometryPlaneClipping_GeometryEntityClipping_variant_list((ifcopenshell_GeometryPlaneClipping_GeometryEntityClipping_variant_list_t *)value->clippings);
+        PyMem_Free((void *)value->clippings);
+        value->clippings = NULL;
     }
     if (value->booleans) {
         ifcopenshell_parse_instance_list_destroy(value->booleans);
@@ -10886,7 +11863,7 @@ static void free_input_geometry_add_wall_representation_options(ifcopenshell_geo
     }
 }
 
-static int fill_input_geometry_add_wall_representation_options(PyObject *obj, ifcopenshell_geometry_add_wall_representation_options_t *out, PyObject **refs) {
+static int fill_input_geometry_add_wall_representation_options(PyObject *obj, ifcopenshell_geometry_add_wall_representation_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -10895,150 +11872,132 @@ static int fill_input_geometry_add_wall_representation_options(PyObject *obj, if
     if (!field_0) {
         return 0;
     }
-    refs[0] = field_0;
+    if (!retain_option_ref(refs, field_0)) return 0;
     if (!extract_handle(field_0, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->context, 0)) {
         return 0;
     }
-    PyObject *field_1 = get_option_field(obj, "length", 1);
+    PyObject *field_1 = get_option_field(obj, "length", 0);
     if (!field_1) {
-        return 0;
+        if (PyErr_Occurred()) return 0;
+    } else {
+        if (!retain_option_ref(refs, field_1)) return 0;
+        if (field_1 != Py_None) {
+            out->length = PyFloat_AsDouble(field_1);
+            if (PyErr_Occurred()) return 0;
+        out->has_length = true;
+        }
     }
-    refs[1] = field_1;
-    out->length = PyFloat_AsDouble(field_1);
-    if (PyErr_Occurred()) return 0;
-    PyObject *field_2 = get_option_field(obj, "height", 1);
+    PyObject *field_2 = get_option_field(obj, "height", 0);
     if (!field_2) {
-        return 0;
+        if (PyErr_Occurred()) return 0;
+    } else {
+        if (!retain_option_ref(refs, field_2)) return 0;
+        if (field_2 != Py_None) {
+            out->height = PyFloat_AsDouble(field_2);
+            if (PyErr_Occurred()) return 0;
+        out->has_height = true;
+        }
     }
-    refs[2] = field_2;
-    out->height = PyFloat_AsDouble(field_2);
-    if (PyErr_Occurred()) return 0;
-    PyObject *field_3 = get_option_field(obj, "direction_sense", 1);
+    PyObject *field_3 = get_option_field(obj, "direction_sense", 0);
     if (!field_3) {
-        return 0;
+        if (PyErr_Occurred()) return 0;
+    } else {
+        if (!retain_option_ref(refs, field_3)) return 0;
+        if (field_3 != Py_None) {
+            out->direction_sense = PyUnicode_AsUTF8(field_3);
+            if (!out->direction_sense) return 0;
+        out->has_direction_sense = true;
+        }
     }
-    refs[3] = field_3;
-    out->direction_sense = PyUnicode_AsUTF8(field_3);
-    if (!out->direction_sense) return 0;
-    PyObject *field_4 = get_option_field(obj, "offset", 1);
+    PyObject *field_4 = get_option_field(obj, "offset", 0);
     if (!field_4) {
-        return 0;
+        if (PyErr_Occurred()) return 0;
+    } else {
+        if (!retain_option_ref(refs, field_4)) return 0;
+        if (field_4 != Py_None) {
+            out->offset = PyFloat_AsDouble(field_4);
+            if (PyErr_Occurred()) return 0;
+        out->has_offset = true;
+        }
     }
-    refs[4] = field_4;
-    out->offset = PyFloat_AsDouble(field_4);
-    if (PyErr_Occurred()) return 0;
-    PyObject *field_5 = get_option_field(obj, "thickness", 1);
+    PyObject *field_5 = get_option_field(obj, "thickness", 0);
     if (!field_5) {
-        return 0;
+        if (PyErr_Occurred()) return 0;
+    } else {
+        if (!retain_option_ref(refs, field_5)) return 0;
+        if (field_5 != Py_None) {
+            out->thickness = PyFloat_AsDouble(field_5);
+            if (PyErr_Occurred()) return 0;
+        out->has_thickness = true;
+        }
     }
-    refs[5] = field_5;
-    out->thickness = PyFloat_AsDouble(field_5);
-    if (PyErr_Occurred()) return 0;
-    PyObject *field_6 = get_option_field(obj, "x_angle", 1);
+    PyObject *field_6 = get_option_field(obj, "x_angle", 0);
     if (!field_6) {
-        return 0;
+        if (PyErr_Occurred()) return 0;
+    } else {
+        if (!retain_option_ref(refs, field_6)) return 0;
+        if (field_6 != Py_None) {
+            out->x_angle = PyFloat_AsDouble(field_6);
+            if (PyErr_Occurred()) return 0;
+        out->has_x_angle = true;
+        }
     }
-    refs[6] = field_6;
-    out->x_angle = PyFloat_AsDouble(field_6);
-    if (PyErr_Occurred()) return 0;
-    PyObject *field_7 = get_option_field(obj, "clipping_kinds", 1);
+    PyObject *field_7 = get_option_field(obj, "clippings", 0);
     if (!field_7) {
-        return 0;
+        if (PyErr_Occurred()) return 0;
+    } else {
+        if (!retain_option_ref(refs, field_7)) return 0;
+        if (field_7 != Py_None) {
+            ifcopenshell_GeometryPlaneClipping_GeometryEntityClipping_variant_list_t *sequence_7 = (ifcopenshell_GeometryPlaneClipping_GeometryEntityClipping_variant_list_t *)PyMem_Calloc(1, sizeof(ifcopenshell_GeometryPlaneClipping_GeometryEntityClipping_variant_list_t));
+            if (!sequence_7) {
+                PyErr_NoMemory();
+                return 0;
+            }
+            if (!make_input_GeometryPlaneClipping_GeometryEntityClipping_variant_list(field_7, sequence_7, refs)) {
+                PyMem_Free(sequence_7);
+                return 0;
+            }
+            out->clippings = sequence_7;
+        out->has_clippings = true;
+        }
     }
-    refs[7] = field_7;
-    ifcopenshell_int32_list_t *sequence_7 = (ifcopenshell_int32_list_t *)PyMem_Calloc(1, sizeof(ifcopenshell_int32_list_t));
-    if (!sequence_7) {
-        PyErr_NoMemory();
-        return 0;
-    }
-    if (!make_input_int32_list(field_7, sequence_7)) {
-        PyMem_Free(sequence_7);
-        return 0;
-    }
-    out->clipping_kinds = sequence_7;
-    PyObject *field_8 = get_option_field(obj, "clipping_locations", 1);
+    PyObject *field_8 = get_option_field(obj, "booleans", 0);
     if (!field_8) {
-        return 0;
+        if (PyErr_Occurred()) return 0;
+    } else {
+        if (!retain_option_ref(refs, field_8)) return 0;
+        if (field_8 != Py_None) {
+            ifcopenshell_instance_list_t booleans_items_8 = {0};
+            if (!make_input_instance_list(field_8, &booleans_items_8, refs)) {
+                return 0;
+            }
+            if (!ifcopenshell_parse_instance_list_create_from_handles(&booleans_items_8, &out->booleans)) {
+                free_input_instance_list(&booleans_items_8);
+                raise_last_error("ifcopenshell_parse_instance_list_create_from_handles failed");
+                return 0;
+            }
+            free_input_instance_list(&booleans_items_8);
+        out->has_booleans = true;
+        }
     }
-    refs[8] = field_8;
-    ifcopenshell_double_list_list_t *sequence_8 = (ifcopenshell_double_list_list_t *)PyMem_Calloc(1, sizeof(ifcopenshell_double_list_list_t));
-    if (!sequence_8) {
-        PyErr_NoMemory();
-        return 0;
-    }
-    if (!make_input_double_list_list(field_8, sequence_8)) {
-        PyMem_Free(sequence_8);
-        return 0;
-    }
-    out->clipping_locations = sequence_8;
-    PyObject *field_9 = get_option_field(obj, "clipping_normals", 1);
-    if (!field_9) {
-        return 0;
-    }
-    refs[9] = field_9;
-    ifcopenshell_double_list_list_t *sequence_9 = (ifcopenshell_double_list_list_t *)PyMem_Calloc(1, sizeof(ifcopenshell_double_list_list_t));
-    if (!sequence_9) {
-        PyErr_NoMemory();
-        return 0;
-    }
-    if (!make_input_double_list_list(field_9, sequence_9)) {
-        PyMem_Free(sequence_9);
-        return 0;
-    }
-    out->clipping_normals = sequence_9;
-    PyObject *field_10 = get_option_field(obj, "clipping_entities", 1);
-    if (!field_10) {
-        return 0;
-    }
-    refs[10] = field_10;
-    ifcopenshell_instance_list_t clipping_entities_items_10 = {0};
-    if (!make_input_instance_list(field_10, &clipping_entities_items_10)) {
-        return 0;
-    }
-    if (!ifcopenshell_parse_instance_list_create_from_handles(&clipping_entities_items_10, &out->clipping_entities)) {
-        free_input_instance_list(&clipping_entities_items_10);
-        raise_last_error("ifcopenshell_parse_instance_list_create_from_handles failed");
-        return 0;
-    }
-    free_input_instance_list(&clipping_entities_items_10);
-    PyObject *field_11 = get_option_field(obj, "booleans", 1);
-    if (!field_11) {
-        return 0;
-    }
-    refs[11] = field_11;
-    ifcopenshell_instance_list_t booleans_items_11 = {0};
-    if (!make_input_instance_list(field_11, &booleans_items_11)) {
-        return 0;
-    }
-    if (!ifcopenshell_parse_instance_list_create_from_handles(&booleans_items_11, &out->booleans)) {
-        free_input_instance_list(&booleans_items_11);
-        raise_last_error("ifcopenshell_parse_instance_list_create_from_handles failed");
-        return 0;
-    }
-    free_input_instance_list(&booleans_items_11);
     return 1;
 }
 
 
 static void free_input_geometry_add_window_representation_options(ifcopenshell_geometry_add_window_representation_options_t *value) {
-    if (value->panel_schema) {
-        free_input_int32_list_list((ifcopenshell_int32_list_list_t *)value->panel_schema);
-        PyMem_Free((void *)value->panel_schema);
-        value->panel_schema = NULL;
-    }
     if (value->lining_properties) {
-        free_input_double_list((ifcopenshell_double_list_t *)value->lining_properties);
+        free_input_geometry_window_lining_properties((ifcopenshell_geometry_window_lining_properties_t *)value->lining_properties);
         PyMem_Free((void *)value->lining_properties);
         value->lining_properties = NULL;
     }
     if (value->panel_properties) {
-        free_input_double_list_list((ifcopenshell_double_list_list_t *)value->panel_properties);
+        free_input_geometry_window_panel_properties_list((ifcopenshell_geometry_window_panel_properties_list_t *)value->panel_properties);
         PyMem_Free((void *)value->panel_properties);
         value->panel_properties = NULL;
     }
 }
 
-static int fill_input_geometry_add_window_representation_options(PyObject *obj, ifcopenshell_geometry_add_window_representation_options_t *out, PyObject **refs) {
+static int fill_input_geometry_add_window_representation_options(PyObject *obj, ifcopenshell_geometry_add_window_representation_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -11047,74 +12006,87 @@ static int fill_input_geometry_add_window_representation_options(PyObject *obj, 
     if (!field_0) {
         return 0;
     }
-    refs[0] = field_0;
+    if (!retain_option_ref(refs, field_0)) return 0;
     if (!extract_handle(field_0, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->context, 0)) {
         return 0;
     }
-    PyObject *field_1 = get_option_field(obj, "overall_height", 1);
+    PyObject *field_1 = get_option_field(obj, "overall_height", 0);
     if (!field_1) {
-        return 0;
+        if (PyErr_Occurred()) return 0;
+    } else {
+        if (!retain_option_ref(refs, field_1)) return 0;
+        if (field_1 != Py_None) {
+            out->overall_height = PyFloat_AsDouble(field_1);
+            if (PyErr_Occurred()) return 0;
+        out->has_overall_height = true;
+        }
     }
-    refs[1] = field_1;
-    out->overall_height = PyFloat_AsDouble(field_1);
-    if (PyErr_Occurred()) return 0;
-    PyObject *field_2 = get_option_field(obj, "overall_width", 1);
+    PyObject *field_2 = get_option_field(obj, "overall_width", 0);
     if (!field_2) {
-        return 0;
+        if (PyErr_Occurred()) return 0;
+    } else {
+        if (!retain_option_ref(refs, field_2)) return 0;
+        if (field_2 != Py_None) {
+            out->overall_width = PyFloat_AsDouble(field_2);
+            if (PyErr_Occurred()) return 0;
+        out->has_overall_width = true;
+        }
     }
-    refs[2] = field_2;
-    out->overall_width = PyFloat_AsDouble(field_2);
-    if (PyErr_Occurred()) return 0;
-    PyObject *field_3 = get_option_field(obj, "panel_schema", 1);
+    PyObject *field_3 = get_option_field(obj, "partition_type", 0);
     if (!field_3) {
-        return 0;
+        if (PyErr_Occurred()) return 0;
+    } else {
+        if (!retain_option_ref(refs, field_3)) return 0;
+        if (field_3 != Py_None) {
+            out->partition_type = (int32_t)PyLong_AsLong(field_3);
+            if (PyErr_Occurred()) return 0;
+        out->has_partition_type = true;
+        }
     }
-    refs[3] = field_3;
-    ifcopenshell_int32_list_list_t *sequence_3 = (ifcopenshell_int32_list_list_t *)PyMem_Calloc(1, sizeof(ifcopenshell_int32_list_list_t));
-    if (!sequence_3) {
-        PyErr_NoMemory();
-        return 0;
-    }
-    if (!make_input_int32_list_list(field_3, sequence_3)) {
-        PyMem_Free(sequence_3);
-        return 0;
-    }
-    out->panel_schema = sequence_3;
-    PyObject *field_4 = get_option_field(obj, "lining_properties", 1);
+    PyObject *field_4 = get_option_field(obj, "lining_properties", 0);
     if (!field_4) {
-        return 0;
+        if (PyErr_Occurred()) return 0;
+    } else {
+        if (!retain_option_ref(refs, field_4)) return 0;
+        if (field_4 != Py_None) {
+            ifcopenshell_geometry_window_lining_properties_t *nested_4 = (ifcopenshell_geometry_window_lining_properties_t *)PyMem_Calloc(1, sizeof(ifcopenshell_geometry_window_lining_properties_t));
+            if (!nested_4) {
+                PyErr_NoMemory();
+                return 0;
+            }
+            if (!fill_input_geometry_window_lining_properties(field_4, nested_4, refs)) {
+                free_input_geometry_window_lining_properties(nested_4);
+                PyMem_Free(nested_4);
+                return 0;
+            }
+            out->lining_properties = nested_4;
+        out->has_lining_properties = true;
+        }
     }
-    refs[4] = field_4;
-    ifcopenshell_double_list_t *sequence_4 = (ifcopenshell_double_list_t *)PyMem_Calloc(1, sizeof(ifcopenshell_double_list_t));
-    if (!sequence_4) {
-        PyErr_NoMemory();
-        return 0;
-    }
-    if (!make_input_double_list(field_4, sequence_4)) {
-        PyMem_Free(sequence_4);
-        return 0;
-    }
-    out->lining_properties = sequence_4;
-    PyObject *field_5 = get_option_field(obj, "panel_properties", 1);
+    PyObject *field_5 = get_option_field(obj, "panel_properties", 0);
     if (!field_5) {
-        return 0;
+        if (PyErr_Occurred()) return 0;
+    } else {
+        if (!retain_option_ref(refs, field_5)) return 0;
+        if (field_5 != Py_None) {
+            ifcopenshell_geometry_window_panel_properties_list_t *sequence_5 = (ifcopenshell_geometry_window_panel_properties_list_t *)PyMem_Calloc(1, sizeof(ifcopenshell_geometry_window_panel_properties_list_t));
+            if (!sequence_5) {
+                PyErr_NoMemory();
+                return 0;
+            }
+            if (!make_input_geometry_window_panel_properties_list(field_5, sequence_5, refs)) {
+                PyMem_Free(sequence_5);
+                return 0;
+            }
+            out->panel_properties = sequence_5;
+        out->has_panel_properties = true;
+        }
     }
-    refs[5] = field_5;
-    ifcopenshell_double_list_list_t *sequence_5 = (ifcopenshell_double_list_list_t *)PyMem_Calloc(1, sizeof(ifcopenshell_double_list_list_t));
-    if (!sequence_5) {
-        PyErr_NoMemory();
-        return 0;
-    }
-    if (!make_input_double_list_list(field_5, sequence_5)) {
-        PyMem_Free(sequence_5);
-        return 0;
-    }
-    out->panel_properties = sequence_5;
     PyObject *field_6 = get_option_field(obj, "part_of_product", 0);
     if (!field_6) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[6] = field_6;
+        if (!retain_option_ref(refs, field_6)) return 0;
         if (field_6 != Py_None) {
             if (!extract_handle(field_6, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->part_of_product, 0)) {
                 return 0;
@@ -11122,13 +12094,17 @@ static int fill_input_geometry_add_window_representation_options(PyObject *obj, 
         out->has_part_of_product = true;
         }
     }
-    PyObject *field_7 = get_option_field(obj, "glass_thickness", 1);
+    PyObject *field_7 = get_option_field(obj, "unit_scale", 0);
     if (!field_7) {
-        return 0;
+        if (PyErr_Occurred()) return 0;
+    } else {
+        if (!retain_option_ref(refs, field_7)) return 0;
+        if (field_7 != Py_None) {
+            out->unit_scale = PyFloat_AsDouble(field_7);
+            if (PyErr_Occurred()) return 0;
+        out->has_unit_scale = true;
+        }
     }
-    refs[7] = field_7;
-    out->glass_thickness = PyFloat_AsDouble(field_7);
-    if (PyErr_Occurred()) return 0;
     return 1;
 }
 
@@ -11156,7 +12132,7 @@ static void free_input_geometry_clip_solid_bounded_options(ifcopenshell_geometry
     }
 }
 
-static int fill_input_geometry_clip_solid_bounded_options(PyObject *obj, ifcopenshell_geometry_clip_solid_bounded_options_t *out, PyObject **refs) {
+static int fill_input_geometry_clip_solid_bounded_options(PyObject *obj, ifcopenshell_geometry_clip_solid_bounded_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -11165,7 +12141,7 @@ static int fill_input_geometry_clip_solid_bounded_options(PyObject *obj, ifcopen
     if (!field_0) {
         return 0;
     }
-    refs[0] = field_0;
+    if (!retain_option_ref(refs, field_0)) return 0;
     if (!extract_handle(field_0, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->item, 0)) {
         return 0;
     }
@@ -11173,13 +12149,13 @@ static int fill_input_geometry_clip_solid_bounded_options(PyObject *obj, ifcopen
     if (!field_1) {
         return 0;
     }
-    refs[1] = field_1;
+    if (!retain_option_ref(refs, field_1)) return 0;
     ifcopenshell_double_list_t *sequence_1 = (ifcopenshell_double_list_t *)PyMem_Calloc(1, sizeof(ifcopenshell_double_list_t));
     if (!sequence_1) {
         PyErr_NoMemory();
         return 0;
     }
-    if (!make_input_double_list(field_1, sequence_1)) {
+    if (!make_input_double_list(field_1, sequence_1, refs)) {
         PyMem_Free(sequence_1);
         return 0;
     }
@@ -11188,13 +12164,13 @@ static int fill_input_geometry_clip_solid_bounded_options(PyObject *obj, ifcopen
     if (!field_2) {
         return 0;
     }
-    refs[2] = field_2;
+    if (!retain_option_ref(refs, field_2)) return 0;
     ifcopenshell_double_list_t *sequence_2 = (ifcopenshell_double_list_t *)PyMem_Calloc(1, sizeof(ifcopenshell_double_list_t));
     if (!sequence_2) {
         PyErr_NoMemory();
         return 0;
     }
-    if (!make_input_double_list(field_2, sequence_2)) {
+    if (!make_input_double_list(field_2, sequence_2, refs)) {
         PyMem_Free(sequence_2);
         return 0;
     }
@@ -11203,13 +12179,13 @@ static int fill_input_geometry_clip_solid_bounded_options(PyObject *obj, ifcopen
     if (!field_3) {
         return 0;
     }
-    refs[3] = field_3;
+    if (!retain_option_ref(refs, field_3)) return 0;
     ifcopenshell_double_list_list_t *sequence_3 = (ifcopenshell_double_list_list_t *)PyMem_Calloc(1, sizeof(ifcopenshell_double_list_list_t));
     if (!sequence_3) {
         PyErr_NoMemory();
         return 0;
     }
-    if (!make_input_double_list_list(field_3, sequence_3)) {
+    if (!make_input_double_list_list(field_3, sequence_3, refs)) {
         PyMem_Free(sequence_3);
         return 0;
     }
@@ -11218,13 +12194,13 @@ static int fill_input_geometry_clip_solid_bounded_options(PyObject *obj, ifcopen
     if (!field_4) {
         return 0;
     }
-    refs[4] = field_4;
+    if (!retain_option_ref(refs, field_4)) return 0;
     ifcopenshell_double_list_t *sequence_4 = (ifcopenshell_double_list_t *)PyMem_Calloc(1, sizeof(ifcopenshell_double_list_t));
     if (!sequence_4) {
         PyErr_NoMemory();
         return 0;
     }
-    if (!make_input_double_list(field_4, sequence_4)) {
+    if (!make_input_double_list(field_4, sequence_4, refs)) {
         PyMem_Free(sequence_4);
         return 0;
     }
@@ -11233,7 +12209,7 @@ static int fill_input_geometry_clip_solid_bounded_options(PyObject *obj, ifcopen
     if (!field_5) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[5] = field_5;
+        if (!retain_option_ref(refs, field_5)) return 0;
         if (field_5 != Py_None) {
             if (!extract_handle(field_5, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->element, 0)) {
                 return 0;
@@ -11245,7 +12221,7 @@ static int fill_input_geometry_clip_solid_bounded_options(PyObject *obj, ifcopen
     if (!field_6) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[6] = field_6;
+        if (!retain_option_ref(refs, field_6)) return 0;
         if (field_6 != Py_None) {
             if (!extract_handle(field_6, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->owner_history, 0)) {
                 return 0;
@@ -11257,7 +12233,7 @@ static int fill_input_geometry_clip_solid_bounded_options(PyObject *obj, ifcopen
     if (!field_7) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[7] = field_7;
+        if (!retain_option_ref(refs, field_7)) return 0;
         if (field_7 != Py_None) {
             if (!extract_handle(field_7, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->user, 0)) {
                 return 0;
@@ -11269,7 +12245,7 @@ static int fill_input_geometry_clip_solid_bounded_options(PyObject *obj, ifcopen
     if (!field_8) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[8] = field_8;
+        if (!retain_option_ref(refs, field_8)) return 0;
         if (field_8 != Py_None) {
             if (!extract_handle(field_8, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->application, 0)) {
                 return 0;
@@ -11294,7 +12270,7 @@ static void free_input_geometry_clip_solid_options(ifcopenshell_geometry_clip_so
     }
 }
 
-static int fill_input_geometry_clip_solid_options(PyObject *obj, ifcopenshell_geometry_clip_solid_options_t *out, PyObject **refs) {
+static int fill_input_geometry_clip_solid_options(PyObject *obj, ifcopenshell_geometry_clip_solid_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -11303,7 +12279,7 @@ static int fill_input_geometry_clip_solid_options(PyObject *obj, ifcopenshell_ge
     if (!field_0) {
         return 0;
     }
-    refs[0] = field_0;
+    if (!retain_option_ref(refs, field_0)) return 0;
     if (!extract_handle(field_0, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->item, 0)) {
         return 0;
     }
@@ -11311,13 +12287,13 @@ static int fill_input_geometry_clip_solid_options(PyObject *obj, ifcopenshell_ge
     if (!field_1) {
         return 0;
     }
-    refs[1] = field_1;
+    if (!retain_option_ref(refs, field_1)) return 0;
     ifcopenshell_double_list_t *sequence_1 = (ifcopenshell_double_list_t *)PyMem_Calloc(1, sizeof(ifcopenshell_double_list_t));
     if (!sequence_1) {
         PyErr_NoMemory();
         return 0;
     }
-    if (!make_input_double_list(field_1, sequence_1)) {
+    if (!make_input_double_list(field_1, sequence_1, refs)) {
         PyMem_Free(sequence_1);
         return 0;
     }
@@ -11326,13 +12302,13 @@ static int fill_input_geometry_clip_solid_options(PyObject *obj, ifcopenshell_ge
     if (!field_2) {
         return 0;
     }
-    refs[2] = field_2;
+    if (!retain_option_ref(refs, field_2)) return 0;
     ifcopenshell_double_list_t *sequence_2 = (ifcopenshell_double_list_t *)PyMem_Calloc(1, sizeof(ifcopenshell_double_list_t));
     if (!sequence_2) {
         PyErr_NoMemory();
         return 0;
     }
-    if (!make_input_double_list(field_2, sequence_2)) {
+    if (!make_input_double_list(field_2, sequence_2, refs)) {
         PyMem_Free(sequence_2);
         return 0;
     }
@@ -11341,7 +12317,7 @@ static int fill_input_geometry_clip_solid_options(PyObject *obj, ifcopenshell_ge
     if (!field_3) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[3] = field_3;
+        if (!retain_option_ref(refs, field_3)) return 0;
         if (field_3 != Py_None) {
             if (!extract_handle(field_3, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->element, 0)) {
                 return 0;
@@ -11353,7 +12329,7 @@ static int fill_input_geometry_clip_solid_options(PyObject *obj, ifcopenshell_ge
     if (!field_4) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[4] = field_4;
+        if (!retain_option_ref(refs, field_4)) return 0;
         if (field_4 != Py_None) {
             if (!extract_handle(field_4, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->owner_history, 0)) {
                 return 0;
@@ -11365,7 +12341,7 @@ static int fill_input_geometry_clip_solid_options(PyObject *obj, ifcopenshell_ge
     if (!field_5) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[5] = field_5;
+        if (!retain_option_ref(refs, field_5)) return 0;
         if (field_5 != Py_None) {
             if (!extract_handle(field_5, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->user, 0)) {
                 return 0;
@@ -11377,7 +12353,7 @@ static int fill_input_geometry_clip_solid_options(PyObject *obj, ifcopenshell_ge
     if (!field_6) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[6] = field_6;
+        if (!retain_option_ref(refs, field_6)) return 0;
         if (field_6 != Py_None) {
             if (!extract_handle(field_6, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->application, 0)) {
                 return 0;
@@ -11397,7 +12373,7 @@ static void free_input_geometry_compute_wall_mounted_handrail_options(ifcopenshe
     }
 }
 
-static int fill_input_geometry_compute_wall_mounted_handrail_options(PyObject *obj, ifcopenshell_geometry_compute_wall_mounted_handrail_options_t *out, PyObject **refs) {
+static int fill_input_geometry_compute_wall_mounted_handrail_options(PyObject *obj, ifcopenshell_geometry_compute_wall_mounted_handrail_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -11406,13 +12382,13 @@ static int fill_input_geometry_compute_wall_mounted_handrail_options(PyObject *o
     if (!field_0) {
         return 0;
     }
-    refs[0] = field_0;
+    if (!retain_option_ref(refs, field_0)) return 0;
     ifcopenshell_double_list_list_t *sequence_0 = (ifcopenshell_double_list_list_t *)PyMem_Calloc(1, sizeof(ifcopenshell_double_list_list_t));
     if (!sequence_0) {
         PyErr_NoMemory();
         return 0;
     }
-    if (!make_input_double_list_list(field_0, sequence_0)) {
+    if (!make_input_double_list_list(field_0, sequence_0, refs)) {
         PyMem_Free(sequence_0);
         return 0;
     }
@@ -11421,35 +12397,35 @@ static int fill_input_geometry_compute_wall_mounted_handrail_options(PyObject *o
     if (!field_1) {
         return 0;
     }
-    refs[1] = field_1;
+    if (!retain_option_ref(refs, field_1)) return 0;
     out->support_spacing = PyFloat_AsDouble(field_1);
     if (PyErr_Occurred()) return 0;
     PyObject *field_2 = get_option_field(obj, "railing_diameter", 1);
     if (!field_2) {
         return 0;
     }
-    refs[2] = field_2;
+    if (!retain_option_ref(refs, field_2)) return 0;
     out->railing_diameter = PyFloat_AsDouble(field_2);
     if (PyErr_Occurred()) return 0;
     PyObject *field_3 = get_option_field(obj, "clear_width", 1);
     if (!field_3) {
         return 0;
     }
-    refs[3] = field_3;
+    if (!retain_option_ref(refs, field_3)) return 0;
     out->clear_width = PyFloat_AsDouble(field_3);
     if (PyErr_Occurred()) return 0;
     PyObject *field_4 = get_option_field(obj, "height", 1);
     if (!field_4) {
         return 0;
     }
-    refs[4] = field_4;
+    if (!retain_option_ref(refs, field_4)) return 0;
     out->height = PyFloat_AsDouble(field_4);
     if (PyErr_Occurred()) return 0;
     PyObject *field_5 = get_option_field(obj, "use_manual_supports", 0);
     if (!field_5) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[5] = field_5;
+        if (!retain_option_ref(refs, field_5)) return 0;
         if (field_5 != Py_None) {
             int value_5 = PyObject_IsTrue(field_5);
             if (value_5 < 0) return 0;
@@ -11461,7 +12437,7 @@ static int fill_input_geometry_compute_wall_mounted_handrail_options(PyObject *o
     if (!field_6) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[6] = field_6;
+        if (!retain_option_ref(refs, field_6)) return 0;
         if (field_6 != Py_None) {
             out->terminal_type = PyUnicode_AsUTF8(field_6);
             if (!out->terminal_type) return 0;
@@ -11472,7 +12448,7 @@ static int fill_input_geometry_compute_wall_mounted_handrail_options(PyObject *o
     if (!field_7) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[7] = field_7;
+        if (!retain_option_ref(refs, field_7)) return 0;
         if (field_7 != Py_None) {
             int value_7 = PyObject_IsTrue(field_7);
             if (value_7 < 0) return 0;
@@ -11484,7 +12460,7 @@ static int fill_input_geometry_compute_wall_mounted_handrail_options(PyObject *o
     if (!field_8) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[8] = field_8;
+        if (!retain_option_ref(refs, field_8)) return 0;
         if (field_8 != Py_None) {
             out->unit_scale = PyFloat_AsDouble(field_8);
             if (PyErr_Occurred()) return 0;
@@ -11499,7 +12475,7 @@ static void free_input_geometry_connect_element_options(ifcopenshell_geometry_co
     (void)value;
 }
 
-static int fill_input_geometry_connect_element_options(PyObject *obj, ifcopenshell_geometry_connect_element_options_t *out, PyObject **refs) {
+static int fill_input_geometry_connect_element_options(PyObject *obj, ifcopenshell_geometry_connect_element_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -11508,7 +12484,7 @@ static int fill_input_geometry_connect_element_options(PyObject *obj, ifcopenshe
     if (!field_0) {
         return 0;
     }
-    refs[0] = field_0;
+    if (!retain_option_ref(refs, field_0)) return 0;
     if (!extract_handle(field_0, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->relating_element, 0)) {
         return 0;
     }
@@ -11516,7 +12492,7 @@ static int fill_input_geometry_connect_element_options(PyObject *obj, ifcopenshe
     if (!field_1) {
         return 0;
     }
-    refs[1] = field_1;
+    if (!retain_option_ref(refs, field_1)) return 0;
     if (!extract_handle(field_1, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->related_element, 0)) {
         return 0;
     }
@@ -11524,7 +12500,7 @@ static int fill_input_geometry_connect_element_options(PyObject *obj, ifcopenshe
     if (!field_2) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[2] = field_2;
+        if (!retain_option_ref(refs, field_2)) return 0;
         if (field_2 != Py_None) {
             out->description = PyUnicode_AsUTF8(field_2);
             if (!out->description) return 0;
@@ -11535,7 +12511,7 @@ static int fill_input_geometry_connect_element_options(PyObject *obj, ifcopenshe
     if (!field_3) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[3] = field_3;
+        if (!retain_option_ref(refs, field_3)) return 0;
         if (field_3 != Py_None) {
             if (!extract_handle(field_3, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->owner_history, 0)) {
                 return 0;
@@ -11547,7 +12523,7 @@ static int fill_input_geometry_connect_element_options(PyObject *obj, ifcopenshe
     if (!field_4) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[4] = field_4;
+        if (!retain_option_ref(refs, field_4)) return 0;
         if (field_4 != Py_None) {
             if (!extract_handle(field_4, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->user, 0)) {
                 return 0;
@@ -11559,7 +12535,7 @@ static int fill_input_geometry_connect_element_options(PyObject *obj, ifcopenshe
     if (!field_5) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[5] = field_5;
+        if (!retain_option_ref(refs, field_5)) return 0;
         if (field_5 != Py_None) {
             if (!extract_handle(field_5, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->application, 0)) {
                 return 0;
@@ -11575,7 +12551,7 @@ static void free_input_geometry_connect_path_options(ifcopenshell_geometry_conne
     (void)value;
 }
 
-static int fill_input_geometry_connect_path_options(PyObject *obj, ifcopenshell_geometry_connect_path_options_t *out, PyObject **refs) {
+static int fill_input_geometry_connect_path_options(PyObject *obj, ifcopenshell_geometry_connect_path_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -11584,7 +12560,7 @@ static int fill_input_geometry_connect_path_options(PyObject *obj, ifcopenshell_
     if (!field_0) {
         return 0;
     }
-    refs[0] = field_0;
+    if (!retain_option_ref(refs, field_0)) return 0;
     if (!extract_handle(field_0, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->relating_element, 0)) {
         return 0;
     }
@@ -11592,7 +12568,7 @@ static int fill_input_geometry_connect_path_options(PyObject *obj, ifcopenshell_
     if (!field_1) {
         return 0;
     }
-    refs[1] = field_1;
+    if (!retain_option_ref(refs, field_1)) return 0;
     if (!extract_handle(field_1, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->related_element, 0)) {
         return 0;
     }
@@ -11600,21 +12576,21 @@ static int fill_input_geometry_connect_path_options(PyObject *obj, ifcopenshell_
     if (!field_2) {
         return 0;
     }
-    refs[2] = field_2;
+    if (!retain_option_ref(refs, field_2)) return 0;
     out->relating_connection = PyUnicode_AsUTF8(field_2);
     if (!out->relating_connection) return 0;
     PyObject *field_3 = get_option_field(obj, "related_connection", 1);
     if (!field_3) {
         return 0;
     }
-    refs[3] = field_3;
+    if (!retain_option_ref(refs, field_3)) return 0;
     out->related_connection = PyUnicode_AsUTF8(field_3);
     if (!out->related_connection) return 0;
     PyObject *field_4 = get_option_field(obj, "description", 0);
     if (!field_4) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[4] = field_4;
+        if (!retain_option_ref(refs, field_4)) return 0;
         if (field_4 != Py_None) {
             out->description = PyUnicode_AsUTF8(field_4);
             if (!out->description) return 0;
@@ -11625,7 +12601,7 @@ static int fill_input_geometry_connect_path_options(PyObject *obj, ifcopenshell_
     if (!field_5) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[5] = field_5;
+        if (!retain_option_ref(refs, field_5)) return 0;
         if (field_5 != Py_None) {
             if (!extract_handle(field_5, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->connection_geometry, 0)) {
                 return 0;
@@ -11637,7 +12613,7 @@ static int fill_input_geometry_connect_path_options(PyObject *obj, ifcopenshell_
     if (!field_6) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[6] = field_6;
+        if (!retain_option_ref(refs, field_6)) return 0;
         if (field_6 != Py_None) {
             if (!extract_handle(field_6, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->owner_history, 0)) {
                 return 0;
@@ -11649,7 +12625,7 @@ static int fill_input_geometry_connect_path_options(PyObject *obj, ifcopenshell_
     if (!field_7) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[7] = field_7;
+        if (!retain_option_ref(refs, field_7)) return 0;
         if (field_7 != Py_None) {
             if (!extract_handle(field_7, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->user, 0)) {
                 return 0;
@@ -11661,7 +12637,7 @@ static int fill_input_geometry_connect_path_options(PyObject *obj, ifcopenshell_
     if (!field_8) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[8] = field_8;
+        if (!retain_option_ref(refs, field_8)) return 0;
         if (field_8 != Py_None) {
             if (!extract_handle(field_8, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->application, 0)) {
                 return 0;
@@ -11677,7 +12653,7 @@ static void free_input_geometry_connect_wall_options(ifcopenshell_geometry_conne
     (void)value;
 }
 
-static int fill_input_geometry_connect_wall_options(PyObject *obj, ifcopenshell_geometry_connect_wall_options_t *out, PyObject **refs) {
+static int fill_input_geometry_connect_wall_options(PyObject *obj, ifcopenshell_geometry_connect_wall_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -11686,7 +12662,7 @@ static int fill_input_geometry_connect_wall_options(PyObject *obj, ifcopenshell_
     if (!field_0) {
         return 0;
     }
-    refs[0] = field_0;
+    if (!retain_option_ref(refs, field_0)) return 0;
     if (!extract_handle(field_0, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->first_wall, 0)) {
         return 0;
     }
@@ -11694,7 +12670,7 @@ static int fill_input_geometry_connect_wall_options(PyObject *obj, ifcopenshell_
     if (!field_1) {
         return 0;
     }
-    refs[1] = field_1;
+    if (!retain_option_ref(refs, field_1)) return 0;
     if (!extract_handle(field_1, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->second_wall, 0)) {
         return 0;
     }
@@ -11702,7 +12678,7 @@ static int fill_input_geometry_connect_wall_options(PyObject *obj, ifcopenshell_
     if (!field_2) {
         return 0;
     }
-    refs[2] = field_2;
+    if (!retain_option_ref(refs, field_2)) return 0;
     int value_2 = PyObject_IsTrue(field_2);
     if (value_2 < 0) return 0;
     out->is_atpath = (bool)value_2;
@@ -11710,7 +12686,7 @@ static int fill_input_geometry_connect_wall_options(PyObject *obj, ifcopenshell_
     if (!field_3) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[3] = field_3;
+        if (!retain_option_ref(refs, field_3)) return 0;
         if (field_3 != Py_None) {
             if (!extract_handle(field_3, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->owner_history, 0)) {
                 return 0;
@@ -11722,7 +12698,7 @@ static int fill_input_geometry_connect_wall_options(PyObject *obj, ifcopenshell_
     if (!field_4) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[4] = field_4;
+        if (!retain_option_ref(refs, field_4)) return 0;
         if (field_4 != Py_None) {
             if (!extract_handle(field_4, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->user, 0)) {
                 return 0;
@@ -11734,7 +12710,7 @@ static int fill_input_geometry_connect_wall_options(PyObject *obj, ifcopenshell_
     if (!field_5) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[5] = field_5;
+        if (!retain_option_ref(refs, field_5)) return 0;
         if (field_5 != Py_None) {
             if (!extract_handle(field_5, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->application, 0)) {
                 return 0;
@@ -11750,7 +12726,7 @@ static void free_input_geometry_copy_representation_options(ifcopenshell_geometr
     (void)value;
 }
 
-static int fill_input_geometry_copy_representation_options(PyObject *obj, ifcopenshell_geometry_copy_representation_options_t *out, PyObject **refs) {
+static int fill_input_geometry_copy_representation_options(PyObject *obj, ifcopenshell_geometry_copy_representation_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -11759,7 +12735,7 @@ static int fill_input_geometry_copy_representation_options(PyObject *obj, ifcope
     if (!field_0) {
         return 0;
     }
-    refs[0] = field_0;
+    if (!retain_option_ref(refs, field_0)) return 0;
     if (!extract_handle(field_0, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->source, 0)) {
         return 0;
     }
@@ -11767,7 +12743,7 @@ static int fill_input_geometry_copy_representation_options(PyObject *obj, ifcope
     if (!field_1) {
         return 0;
     }
-    refs[1] = field_1;
+    if (!retain_option_ref(refs, field_1)) return 0;
     if (!extract_handle(field_1, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->target, 0)) {
         return 0;
     }
@@ -11775,7 +12751,7 @@ static int fill_input_geometry_copy_representation_options(PyObject *obj, ifcope
     if (!field_2) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[2] = field_2;
+        if (!retain_option_ref(refs, field_2)) return 0;
         if (field_2 != Py_None) {
             out->context_identifier = PyUnicode_AsUTF8(field_2);
             if (!out->context_identifier) return 0;
@@ -11799,7 +12775,7 @@ static void free_input_geometry_create2_pt_wall_options(ifcopenshell_geometry_cr
     }
 }
 
-static int fill_input_geometry_create2_pt_wall_options(PyObject *obj, ifcopenshell_geometry_create2_pt_wall_options_t *out, PyObject **refs) {
+static int fill_input_geometry_create2_pt_wall_options(PyObject *obj, ifcopenshell_geometry_create2_pt_wall_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -11808,7 +12784,7 @@ static int fill_input_geometry_create2_pt_wall_options(PyObject *obj, ifcopenshe
     if (!field_0) {
         return 0;
     }
-    refs[0] = field_0;
+    if (!retain_option_ref(refs, field_0)) return 0;
     if (!extract_handle(field_0, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->element, 0)) {
         return 0;
     }
@@ -11816,7 +12792,7 @@ static int fill_input_geometry_create2_pt_wall_options(PyObject *obj, ifcopenshe
     if (!field_1) {
         return 0;
     }
-    refs[1] = field_1;
+    if (!retain_option_ref(refs, field_1)) return 0;
     if (!extract_handle(field_1, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->context, 0)) {
         return 0;
     }
@@ -11824,13 +12800,13 @@ static int fill_input_geometry_create2_pt_wall_options(PyObject *obj, ifcopenshe
     if (!field_2) {
         return 0;
     }
-    refs[2] = field_2;
+    if (!retain_option_ref(refs, field_2)) return 0;
     ifcopenshell_double_list_t *sequence_2 = (ifcopenshell_double_list_t *)PyMem_Calloc(1, sizeof(ifcopenshell_double_list_t));
     if (!sequence_2) {
         PyErr_NoMemory();
         return 0;
     }
-    if (!make_input_double_list(field_2, sequence_2)) {
+    if (!make_input_double_list(field_2, sequence_2, refs)) {
         PyMem_Free(sequence_2);
         return 0;
     }
@@ -11839,13 +12815,13 @@ static int fill_input_geometry_create2_pt_wall_options(PyObject *obj, ifcopenshe
     if (!field_3) {
         return 0;
     }
-    refs[3] = field_3;
+    if (!retain_option_ref(refs, field_3)) return 0;
     ifcopenshell_double_list_t *sequence_3 = (ifcopenshell_double_list_t *)PyMem_Calloc(1, sizeof(ifcopenshell_double_list_t));
     if (!sequence_3) {
         PyErr_NoMemory();
         return 0;
     }
-    if (!make_input_double_list(field_3, sequence_3)) {
+    if (!make_input_double_list(field_3, sequence_3, refs)) {
         PyMem_Free(sequence_3);
         return 0;
     }
@@ -11854,28 +12830,28 @@ static int fill_input_geometry_create2_pt_wall_options(PyObject *obj, ifcopenshe
     if (!field_4) {
         return 0;
     }
-    refs[4] = field_4;
+    if (!retain_option_ref(refs, field_4)) return 0;
     out->elevation = PyFloat_AsDouble(field_4);
     if (PyErr_Occurred()) return 0;
     PyObject *field_5 = get_option_field(obj, "height", 1);
     if (!field_5) {
         return 0;
     }
-    refs[5] = field_5;
+    if (!retain_option_ref(refs, field_5)) return 0;
     out->height = PyFloat_AsDouble(field_5);
     if (PyErr_Occurred()) return 0;
     PyObject *field_6 = get_option_field(obj, "thickness", 1);
     if (!field_6) {
         return 0;
     }
-    refs[6] = field_6;
+    if (!retain_option_ref(refs, field_6)) return 0;
     out->thickness = PyFloat_AsDouble(field_6);
     if (PyErr_Occurred()) return 0;
     PyObject *field_7 = get_option_field(obj, "is_si", 1);
     if (!field_7) {
         return 0;
     }
-    refs[7] = field_7;
+    if (!retain_option_ref(refs, field_7)) return 0;
     int value_7 = PyObject_IsTrue(field_7);
     if (value_7 < 0) return 0;
     out->is_si = (bool)value_7;
@@ -11887,7 +12863,7 @@ static void free_input_geometry_disconnect_path_options(ifcopenshell_geometry_di
     (void)value;
 }
 
-static int fill_input_geometry_disconnect_path_options(PyObject *obj, ifcopenshell_geometry_disconnect_path_options_t *out, PyObject **refs) {
+static int fill_input_geometry_disconnect_path_options(PyObject *obj, ifcopenshell_geometry_disconnect_path_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -11896,7 +12872,7 @@ static int fill_input_geometry_disconnect_path_options(PyObject *obj, ifcopenshe
     if (!field_0) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[0] = field_0;
+        if (!retain_option_ref(refs, field_0)) return 0;
         if (field_0 != Py_None) {
             if (!extract_handle(field_0, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->element, 0)) {
                 return 0;
@@ -11908,7 +12884,7 @@ static int fill_input_geometry_disconnect_path_options(PyObject *obj, ifcopenshe
     if (!field_1) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[1] = field_1;
+        if (!retain_option_ref(refs, field_1)) return 0;
         if (field_1 != Py_None) {
             out->connection_type = PyUnicode_AsUTF8(field_1);
             if (!out->connection_type) return 0;
@@ -11919,7 +12895,7 @@ static int fill_input_geometry_disconnect_path_options(PyObject *obj, ifcopenshe
     if (!field_2) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[2] = field_2;
+        if (!retain_option_ref(refs, field_2)) return 0;
         if (field_2 != Py_None) {
             if (!extract_handle(field_2, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->relating_element, 0)) {
                 return 0;
@@ -11931,12 +12907,214 @@ static int fill_input_geometry_disconnect_path_options(PyObject *obj, ifcopenshe
     if (!field_3) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[3] = field_3;
+        if (!retain_option_ref(refs, field_3)) return 0;
         if (field_3 != Py_None) {
             if (!extract_handle(field_3, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->related_element, 0)) {
                 return 0;
             }
         out->has_related_element = true;
+        }
+    }
+    return 1;
+}
+
+
+static void free_input_geometry_door_lining_properties(ifcopenshell_geometry_door_lining_properties_t *value) {
+    (void)value;
+}
+
+static int fill_input_geometry_door_lining_properties(PyObject *obj, ifcopenshell_geometry_door_lining_properties_t *out, option_ref_owner *refs) {
+    if (!PyMapping_Check(obj)) {
+        PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
+        return 0;
+    }
+    PyObject *field_0 = get_option_field(obj, "lining_depth", 0);
+    if (!field_0) {
+        if (PyErr_Occurred()) return 0;
+    } else {
+        if (!retain_option_ref(refs, field_0)) return 0;
+        if (field_0 != Py_None) {
+            out->lining_depth = PyFloat_AsDouble(field_0);
+            if (PyErr_Occurred()) return 0;
+        out->has_lining_depth = true;
+        }
+    }
+    PyObject *field_1 = get_option_field(obj, "lining_thickness", 0);
+    if (!field_1) {
+        if (PyErr_Occurred()) return 0;
+    } else {
+        if (!retain_option_ref(refs, field_1)) return 0;
+        if (field_1 != Py_None) {
+            out->lining_thickness = PyFloat_AsDouble(field_1);
+            if (PyErr_Occurred()) return 0;
+        out->has_lining_thickness = true;
+        }
+    }
+    PyObject *field_2 = get_option_field(obj, "lining_offset", 0);
+    if (!field_2) {
+        if (PyErr_Occurred()) return 0;
+    } else {
+        if (!retain_option_ref(refs, field_2)) return 0;
+        if (field_2 != Py_None) {
+            out->lining_offset = PyFloat_AsDouble(field_2);
+            if (PyErr_Occurred()) return 0;
+        out->has_lining_offset = true;
+        }
+    }
+    PyObject *field_3 = get_option_field(obj, "lining_to_panel_offset_x", 0);
+    if (!field_3) {
+        if (PyErr_Occurred()) return 0;
+    } else {
+        if (!retain_option_ref(refs, field_3)) return 0;
+        if (field_3 != Py_None) {
+            out->lining_to_panel_offset_x = PyFloat_AsDouble(field_3);
+            if (PyErr_Occurred()) return 0;
+        out->has_lining_to_panel_offset_x = true;
+        }
+    }
+    PyObject *field_4 = get_option_field(obj, "lining_to_panel_offset_y", 0);
+    if (!field_4) {
+        if (PyErr_Occurred()) return 0;
+    } else {
+        if (!retain_option_ref(refs, field_4)) return 0;
+        if (field_4 != Py_None) {
+            out->lining_to_panel_offset_y = PyFloat_AsDouble(field_4);
+            if (PyErr_Occurred()) return 0;
+        out->has_lining_to_panel_offset_y = true;
+        }
+    }
+    PyObject *field_5 = get_option_field(obj, "transom_thickness", 0);
+    if (!field_5) {
+        if (PyErr_Occurred()) return 0;
+    } else {
+        if (!retain_option_ref(refs, field_5)) return 0;
+        if (field_5 != Py_None) {
+            out->transom_thickness = PyFloat_AsDouble(field_5);
+            if (PyErr_Occurred()) return 0;
+        out->has_transom_thickness = true;
+        }
+    }
+    PyObject *field_6 = get_option_field(obj, "transom_offset", 0);
+    if (!field_6) {
+        if (PyErr_Occurred()) return 0;
+    } else {
+        if (!retain_option_ref(refs, field_6)) return 0;
+        if (field_6 != Py_None) {
+            out->transom_offset = PyFloat_AsDouble(field_6);
+            if (PyErr_Occurred()) return 0;
+        out->has_transom_offset = true;
+        }
+    }
+    PyObject *field_7 = get_option_field(obj, "casing_depth", 0);
+    if (!field_7) {
+        if (PyErr_Occurred()) return 0;
+    } else {
+        if (!retain_option_ref(refs, field_7)) return 0;
+        if (field_7 != Py_None) {
+            out->casing_depth = PyFloat_AsDouble(field_7);
+            if (PyErr_Occurred()) return 0;
+        out->has_casing_depth = true;
+        }
+    }
+    PyObject *field_8 = get_option_field(obj, "casing_thickness", 0);
+    if (!field_8) {
+        if (PyErr_Occurred()) return 0;
+    } else {
+        if (!retain_option_ref(refs, field_8)) return 0;
+        if (field_8 != Py_None) {
+            out->casing_thickness = PyFloat_AsDouble(field_8);
+            if (PyErr_Occurred()) return 0;
+        out->has_casing_thickness = true;
+        }
+    }
+    PyObject *field_9 = get_option_field(obj, "threshold_depth", 0);
+    if (!field_9) {
+        if (PyErr_Occurred()) return 0;
+    } else {
+        if (!retain_option_ref(refs, field_9)) return 0;
+        if (field_9 != Py_None) {
+            out->threshold_depth = PyFloat_AsDouble(field_9);
+            if (PyErr_Occurred()) return 0;
+        out->has_threshold_depth = true;
+        }
+    }
+    PyObject *field_10 = get_option_field(obj, "threshold_thickness", 0);
+    if (!field_10) {
+        if (PyErr_Occurred()) return 0;
+    } else {
+        if (!retain_option_ref(refs, field_10)) return 0;
+        if (field_10 != Py_None) {
+            out->threshold_thickness = PyFloat_AsDouble(field_10);
+            if (PyErr_Occurred()) return 0;
+        out->has_threshold_thickness = true;
+        }
+    }
+    PyObject *field_11 = get_option_field(obj, "threshold_offset", 0);
+    if (!field_11) {
+        if (PyErr_Occurred()) return 0;
+    } else {
+        if (!retain_option_ref(refs, field_11)) return 0;
+        if (field_11 != Py_None) {
+            out->threshold_offset = PyFloat_AsDouble(field_11);
+            if (PyErr_Occurred()) return 0;
+        out->has_threshold_offset = true;
+        }
+    }
+    return 1;
+}
+
+
+static void free_input_geometry_door_panel_properties(ifcopenshell_geometry_door_panel_properties_t *value) {
+    (void)value;
+}
+
+static int fill_input_geometry_door_panel_properties(PyObject *obj, ifcopenshell_geometry_door_panel_properties_t *out, option_ref_owner *refs) {
+    if (!PyMapping_Check(obj)) {
+        PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
+        return 0;
+    }
+    PyObject *field_0 = get_option_field(obj, "panel_depth", 0);
+    if (!field_0) {
+        if (PyErr_Occurred()) return 0;
+    } else {
+        if (!retain_option_ref(refs, field_0)) return 0;
+        if (field_0 != Py_None) {
+            out->panel_depth = PyFloat_AsDouble(field_0);
+            if (PyErr_Occurred()) return 0;
+        out->has_panel_depth = true;
+        }
+    }
+    PyObject *field_1 = get_option_field(obj, "panel_width", 0);
+    if (!field_1) {
+        if (PyErr_Occurred()) return 0;
+    } else {
+        if (!retain_option_ref(refs, field_1)) return 0;
+        if (field_1 != Py_None) {
+            out->panel_width = PyFloat_AsDouble(field_1);
+            if (PyErr_Occurred()) return 0;
+        out->has_panel_width = true;
+        }
+    }
+    PyObject *field_2 = get_option_field(obj, "frame_depth", 0);
+    if (!field_2) {
+        if (PyErr_Occurred()) return 0;
+    } else {
+        if (!retain_option_ref(refs, field_2)) return 0;
+        if (field_2 != Py_None) {
+            out->frame_depth = PyFloat_AsDouble(field_2);
+            if (PyErr_Occurred()) return 0;
+        out->has_frame_depth = true;
+        }
+    }
+    PyObject *field_3 = get_option_field(obj, "frame_thickness", 0);
+    if (!field_3) {
+        if (PyErr_Occurred()) return 0;
+    } else {
+        if (!retain_option_ref(refs, field_3)) return 0;
+        if (field_3 != Py_None) {
+            out->frame_thickness = PyFloat_AsDouble(field_3);
+            if (PyErr_Occurred()) return 0;
+        out->has_frame_thickness = true;
         }
     }
     return 1;
@@ -11951,7 +13129,7 @@ static void free_input_geometry_edit_object_placement_options(ifcopenshell_geome
     }
 }
 
-static int fill_input_geometry_edit_object_placement_options(PyObject *obj, ifcopenshell_geometry_edit_object_placement_options_t *out, PyObject **refs) {
+static int fill_input_geometry_edit_object_placement_options(PyObject *obj, ifcopenshell_geometry_edit_object_placement_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -11960,30 +13138,34 @@ static int fill_input_geometry_edit_object_placement_options(PyObject *obj, ifco
     if (!field_0) {
         return 0;
     }
-    refs[0] = field_0;
+    if (!retain_option_ref(refs, field_0)) return 0;
     if (!extract_handle(field_0, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->product, 0)) {
         return 0;
     }
-    PyObject *field_1 = get_option_field(obj, "matrix", 1);
+    PyObject *field_1 = get_option_field(obj, "matrix", 0);
     if (!field_1) {
-        return 0;
+        if (PyErr_Occurred()) return 0;
+    } else {
+        if (!retain_option_ref(refs, field_1)) return 0;
+        if (field_1 != Py_None) {
+            ifcopenshell_double_list_t *sequence_1 = (ifcopenshell_double_list_t *)PyMem_Calloc(1, sizeof(ifcopenshell_double_list_t));
+            if (!sequence_1) {
+                PyErr_NoMemory();
+                return 0;
+            }
+            if (!make_input_double_list(field_1, sequence_1, refs)) {
+                PyMem_Free(sequence_1);
+                return 0;
+            }
+            out->matrix = sequence_1;
+        out->has_matrix = true;
+        }
     }
-    refs[1] = field_1;
-    ifcopenshell_double_list_t *sequence_1 = (ifcopenshell_double_list_t *)PyMem_Calloc(1, sizeof(ifcopenshell_double_list_t));
-    if (!sequence_1) {
-        PyErr_NoMemory();
-        return 0;
-    }
-    if (!make_input_double_list(field_1, sequence_1)) {
-        PyMem_Free(sequence_1);
-        return 0;
-    }
-    out->matrix = sequence_1;
     PyObject *field_2 = get_option_field(obj, "is_si", 1);
     if (!field_2) {
         return 0;
     }
-    refs[2] = field_2;
+    if (!retain_option_ref(refs, field_2)) return 0;
     int value_2 = PyObject_IsTrue(field_2);
     if (value_2 < 0) return 0;
     out->is_si = (bool)value_2;
@@ -11991,10 +13173,191 @@ static int fill_input_geometry_edit_object_placement_options(PyObject *obj, ifco
     if (!field_3) {
         return 0;
     }
-    refs[3] = field_3;
+    if (!retain_option_ref(refs, field_3)) return 0;
     int value_3 = PyObject_IsTrue(field_3);
     if (value_3 < 0) return 0;
     out->should_transform_children = (bool)value_3;
+    return 1;
+}
+
+
+static void free_input_geometry_entity_clipping(ifcopenshell_geometry_entity_clipping_t *value) {
+    (void)value;
+}
+
+static int fill_input_geometry_entity_clipping(PyObject *obj, ifcopenshell_geometry_entity_clipping_t *out, option_ref_owner *refs) {
+    if (!PyMapping_Check(obj)) {
+        PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
+        return 0;
+    }
+    PyObject *field_0 = get_option_field(obj, "entity", 1);
+    if (!field_0) {
+        return 0;
+    }
+    if (!retain_option_ref(refs, field_0)) return 0;
+    if (!extract_handle(field_0, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->entity, 0)) {
+        return 0;
+    }
+    return 1;
+}
+
+
+static void free_input_geometry_mesh_face(ifcopenshell_geometry_mesh_face_t *value) {
+    if (value->outer) {
+        free_input_uint32_list((ifcopenshell_uint32_list_t *)value->outer);
+        PyMem_Free((void *)value->outer);
+        value->outer = NULL;
+    }
+    if (value->inner_loops) {
+        free_input_uint32_list_list((ifcopenshell_uint32_list_list_t *)value->inner_loops);
+        PyMem_Free((void *)value->inner_loops);
+        value->inner_loops = NULL;
+    }
+}
+
+static int fill_input_geometry_mesh_face(PyObject *obj, ifcopenshell_geometry_mesh_face_t *out, option_ref_owner *refs) {
+    if (!PyMapping_Check(obj)) {
+        PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
+        return 0;
+    }
+    PyObject *field_0 = get_option_field(obj, "outer", 1);
+    if (!field_0) {
+        return 0;
+    }
+    if (!retain_option_ref(refs, field_0)) return 0;
+    ifcopenshell_uint32_list_t *sequence_0 = (ifcopenshell_uint32_list_t *)PyMem_Calloc(1, sizeof(ifcopenshell_uint32_list_t));
+    if (!sequence_0) {
+        PyErr_NoMemory();
+        return 0;
+    }
+    if (!make_input_uint32_list(field_0, sequence_0, refs)) {
+        PyMem_Free(sequence_0);
+        return 0;
+    }
+    out->outer = sequence_0;
+    PyObject *field_1 = get_option_field(obj, "inner_loops", 0);
+    if (!field_1) {
+        if (PyErr_Occurred()) return 0;
+    } else {
+        if (!retain_option_ref(refs, field_1)) return 0;
+        if (field_1 != Py_None) {
+            ifcopenshell_uint32_list_list_t *sequence_1 = (ifcopenshell_uint32_list_list_t *)PyMem_Calloc(1, sizeof(ifcopenshell_uint32_list_list_t));
+            if (!sequence_1) {
+                PyErr_NoMemory();
+                return 0;
+            }
+            if (!make_input_uint32_list_list(field_1, sequence_1, refs)) {
+                PyMem_Free(sequence_1);
+                return 0;
+            }
+            out->inner_loops = sequence_1;
+        out->has_inner_loops = true;
+        }
+    }
+    return 1;
+}
+
+
+static void free_input_geometry_mesh_item(ifcopenshell_geometry_mesh_item_t *value) {
+    if (value->vertices) {
+        free_input_double_list_list((ifcopenshell_double_list_list_t *)value->vertices);
+        PyMem_Free((void *)value->vertices);
+        value->vertices = NULL;
+    }
+    if (value->faces) {
+        free_input_geometry_mesh_face_list((ifcopenshell_geometry_mesh_face_list_t *)value->faces);
+        PyMem_Free((void *)value->faces);
+        value->faces = NULL;
+    }
+}
+
+static int fill_input_geometry_mesh_item(PyObject *obj, ifcopenshell_geometry_mesh_item_t *out, option_ref_owner *refs) {
+    if (!PyMapping_Check(obj)) {
+        PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
+        return 0;
+    }
+    PyObject *field_0 = get_option_field(obj, "vertices", 1);
+    if (!field_0) {
+        return 0;
+    }
+    if (!retain_option_ref(refs, field_0)) return 0;
+    ifcopenshell_double_list_list_t *sequence_0 = (ifcopenshell_double_list_list_t *)PyMem_Calloc(1, sizeof(ifcopenshell_double_list_list_t));
+    if (!sequence_0) {
+        PyErr_NoMemory();
+        return 0;
+    }
+    if (!make_input_double_list_list(field_0, sequence_0, refs)) {
+        PyMem_Free(sequence_0);
+        return 0;
+    }
+    out->vertices = sequence_0;
+    PyObject *field_1 = get_option_field(obj, "faces", 1);
+    if (!field_1) {
+        return 0;
+    }
+    if (!retain_option_ref(refs, field_1)) return 0;
+    ifcopenshell_geometry_mesh_face_list_t *sequence_1 = (ifcopenshell_geometry_mesh_face_list_t *)PyMem_Calloc(1, sizeof(ifcopenshell_geometry_mesh_face_list_t));
+    if (!sequence_1) {
+        PyErr_NoMemory();
+        return 0;
+    }
+    if (!make_input_geometry_mesh_face_list(field_1, sequence_1, refs)) {
+        PyMem_Free(sequence_1);
+        return 0;
+    }
+    out->faces = sequence_1;
+    return 1;
+}
+
+
+static void free_input_geometry_plane_clipping(ifcopenshell_geometry_plane_clipping_t *value) {
+    if (value->location) {
+        free_input_double_list((ifcopenshell_double_list_t *)value->location);
+        PyMem_Free((void *)value->location);
+        value->location = NULL;
+    }
+    if (value->normal) {
+        free_input_double_list((ifcopenshell_double_list_t *)value->normal);
+        PyMem_Free((void *)value->normal);
+        value->normal = NULL;
+    }
+}
+
+static int fill_input_geometry_plane_clipping(PyObject *obj, ifcopenshell_geometry_plane_clipping_t *out, option_ref_owner *refs) {
+    if (!PyMapping_Check(obj)) {
+        PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
+        return 0;
+    }
+    PyObject *field_0 = get_option_field(obj, "location", 1);
+    if (!field_0) {
+        return 0;
+    }
+    if (!retain_option_ref(refs, field_0)) return 0;
+    ifcopenshell_double_list_t *sequence_0 = (ifcopenshell_double_list_t *)PyMem_Calloc(1, sizeof(ifcopenshell_double_list_t));
+    if (!sequence_0) {
+        PyErr_NoMemory();
+        return 0;
+    }
+    if (!make_input_double_list(field_0, sequence_0, refs)) {
+        PyMem_Free(sequence_0);
+        return 0;
+    }
+    out->location = sequence_0;
+    PyObject *field_1 = get_option_field(obj, "normal", 1);
+    if (!field_1) {
+        return 0;
+    }
+    if (!retain_option_ref(refs, field_1)) return 0;
+    ifcopenshell_double_list_t *sequence_1 = (ifcopenshell_double_list_t *)PyMem_Calloc(1, sizeof(ifcopenshell_double_list_t));
+    if (!sequence_1) {
+        PyErr_NoMemory();
+        return 0;
+    }
+    if (!make_input_double_list(field_1, sequence_1, refs)) {
+        PyMem_Free(sequence_1);
+        return 0;
+    }
+    out->normal = sequence_1;
     return 1;
 }
 
@@ -12003,7 +13366,7 @@ static void free_input_geometry_regenerate_wall_representation_options(ifcopensh
     (void)value;
 }
 
-static int fill_input_geometry_regenerate_wall_representation_options(PyObject *obj, ifcopenshell_geometry_regenerate_wall_representation_options_t *out, PyObject **refs) {
+static int fill_input_geometry_regenerate_wall_representation_options(PyObject *obj, ifcopenshell_geometry_regenerate_wall_representation_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -12012,7 +13375,7 @@ static int fill_input_geometry_regenerate_wall_representation_options(PyObject *
     if (!field_0) {
         return 0;
     }
-    refs[0] = field_0;
+    if (!retain_option_ref(refs, field_0)) return 0;
     if (!extract_handle(field_0, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->wall, 0)) {
         return 0;
     }
@@ -12020,21 +13383,21 @@ static int fill_input_geometry_regenerate_wall_representation_options(PyObject *
     if (!field_1) {
         return 0;
     }
-    refs[1] = field_1;
+    if (!retain_option_ref(refs, field_1)) return 0;
     out->length = PyFloat_AsDouble(field_1);
     if (PyErr_Occurred()) return 0;
     PyObject *field_2 = get_option_field(obj, "height", 1);
     if (!field_2) {
         return 0;
     }
-    refs[2] = field_2;
+    if (!retain_option_ref(refs, field_2)) return 0;
     out->height = PyFloat_AsDouble(field_2);
     if (PyErr_Occurred()) return 0;
     PyObject *field_3 = get_option_field(obj, "angle", 0);
     if (!field_3) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[3] = field_3;
+        if (!retain_option_ref(refs, field_3)) return 0;
         if (field_3 != Py_None) {
             out->angle = PyFloat_AsDouble(field_3);
             if (PyErr_Occurred()) return 0;
@@ -12049,7 +13412,7 @@ static void free_input_geometry_remove_representation_options(ifcopenshell_geome
     (void)value;
 }
 
-static int fill_input_geometry_remove_representation_options(PyObject *obj, ifcopenshell_geometry_remove_representation_options_t *out, PyObject **refs) {
+static int fill_input_geometry_remove_representation_options(PyObject *obj, ifcopenshell_geometry_remove_representation_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -12058,7 +13421,7 @@ static int fill_input_geometry_remove_representation_options(PyObject *obj, ifco
     if (!field_0) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[0] = field_0;
+        if (!retain_option_ref(refs, field_0)) return 0;
         if (field_0 != Py_None) {
             int value_0 = PyObject_IsTrue(field_0);
             if (value_0 < 0) return 0;
@@ -12074,7 +13437,7 @@ static void free_input_geometry_validate_type_options(ifcopenshell_geometry_vali
     (void)value;
 }
 
-static int fill_input_geometry_validate_type_options(PyObject *obj, ifcopenshell_geometry_validate_type_options_t *out, PyObject **refs) {
+static int fill_input_geometry_validate_type_options(PyObject *obj, ifcopenshell_geometry_validate_type_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -12083,7 +13446,7 @@ static int fill_input_geometry_validate_type_options(PyObject *obj, ifcopenshell
     if (!field_0) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[0] = field_0;
+        if (!retain_option_ref(refs, field_0)) return 0;
         if (field_0 != Py_None) {
             if (!extract_handle(field_0, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->preferred_item, 0)) {
                 return 0;
@@ -12095,11 +13458,180 @@ static int fill_input_geometry_validate_type_options(PyObject *obj, ifcopenshell
 }
 
 
+static void free_input_geometry_window_lining_properties(ifcopenshell_geometry_window_lining_properties_t *value) {
+    (void)value;
+}
+
+static int fill_input_geometry_window_lining_properties(PyObject *obj, ifcopenshell_geometry_window_lining_properties_t *out, option_ref_owner *refs) {
+    if (!PyMapping_Check(obj)) {
+        PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
+        return 0;
+    }
+    PyObject *field_0 = get_option_field(obj, "lining_depth", 0);
+    if (!field_0) {
+        if (PyErr_Occurred()) return 0;
+    } else {
+        if (!retain_option_ref(refs, field_0)) return 0;
+        if (field_0 != Py_None) {
+            out->lining_depth = PyFloat_AsDouble(field_0);
+            if (PyErr_Occurred()) return 0;
+        out->has_lining_depth = true;
+        }
+    }
+    PyObject *field_1 = get_option_field(obj, "lining_thickness", 0);
+    if (!field_1) {
+        if (PyErr_Occurred()) return 0;
+    } else {
+        if (!retain_option_ref(refs, field_1)) return 0;
+        if (field_1 != Py_None) {
+            out->lining_thickness = PyFloat_AsDouble(field_1);
+            if (PyErr_Occurred()) return 0;
+        out->has_lining_thickness = true;
+        }
+    }
+    PyObject *field_2 = get_option_field(obj, "lining_offset", 0);
+    if (!field_2) {
+        if (PyErr_Occurred()) return 0;
+    } else {
+        if (!retain_option_ref(refs, field_2)) return 0;
+        if (field_2 != Py_None) {
+            out->lining_offset = PyFloat_AsDouble(field_2);
+            if (PyErr_Occurred()) return 0;
+        out->has_lining_offset = true;
+        }
+    }
+    PyObject *field_3 = get_option_field(obj, "lining_to_panel_offset_x", 0);
+    if (!field_3) {
+        if (PyErr_Occurred()) return 0;
+    } else {
+        if (!retain_option_ref(refs, field_3)) return 0;
+        if (field_3 != Py_None) {
+            out->lining_to_panel_offset_x = PyFloat_AsDouble(field_3);
+            if (PyErr_Occurred()) return 0;
+        out->has_lining_to_panel_offset_x = true;
+        }
+    }
+    PyObject *field_4 = get_option_field(obj, "lining_to_panel_offset_y", 0);
+    if (!field_4) {
+        if (PyErr_Occurred()) return 0;
+    } else {
+        if (!retain_option_ref(refs, field_4)) return 0;
+        if (field_4 != Py_None) {
+            out->lining_to_panel_offset_y = PyFloat_AsDouble(field_4);
+            if (PyErr_Occurred()) return 0;
+        out->has_lining_to_panel_offset_y = true;
+        }
+    }
+    PyObject *field_5 = get_option_field(obj, "mullion_thickness", 0);
+    if (!field_5) {
+        if (PyErr_Occurred()) return 0;
+    } else {
+        if (!retain_option_ref(refs, field_5)) return 0;
+        if (field_5 != Py_None) {
+            out->mullion_thickness = PyFloat_AsDouble(field_5);
+            if (PyErr_Occurred()) return 0;
+        out->has_mullion_thickness = true;
+        }
+    }
+    PyObject *field_6 = get_option_field(obj, "first_mullion_offset", 0);
+    if (!field_6) {
+        if (PyErr_Occurred()) return 0;
+    } else {
+        if (!retain_option_ref(refs, field_6)) return 0;
+        if (field_6 != Py_None) {
+            out->first_mullion_offset = PyFloat_AsDouble(field_6);
+            if (PyErr_Occurred()) return 0;
+        out->has_first_mullion_offset = true;
+        }
+    }
+    PyObject *field_7 = get_option_field(obj, "second_mullion_offset", 0);
+    if (!field_7) {
+        if (PyErr_Occurred()) return 0;
+    } else {
+        if (!retain_option_ref(refs, field_7)) return 0;
+        if (field_7 != Py_None) {
+            out->second_mullion_offset = PyFloat_AsDouble(field_7);
+            if (PyErr_Occurred()) return 0;
+        out->has_second_mullion_offset = true;
+        }
+    }
+    PyObject *field_8 = get_option_field(obj, "transom_thickness", 0);
+    if (!field_8) {
+        if (PyErr_Occurred()) return 0;
+    } else {
+        if (!retain_option_ref(refs, field_8)) return 0;
+        if (field_8 != Py_None) {
+            out->transom_thickness = PyFloat_AsDouble(field_8);
+            if (PyErr_Occurred()) return 0;
+        out->has_transom_thickness = true;
+        }
+    }
+    PyObject *field_9 = get_option_field(obj, "first_transom_offset", 0);
+    if (!field_9) {
+        if (PyErr_Occurred()) return 0;
+    } else {
+        if (!retain_option_ref(refs, field_9)) return 0;
+        if (field_9 != Py_None) {
+            out->first_transom_offset = PyFloat_AsDouble(field_9);
+            if (PyErr_Occurred()) return 0;
+        out->has_first_transom_offset = true;
+        }
+    }
+    PyObject *field_10 = get_option_field(obj, "second_transom_offset", 0);
+    if (!field_10) {
+        if (PyErr_Occurred()) return 0;
+    } else {
+        if (!retain_option_ref(refs, field_10)) return 0;
+        if (field_10 != Py_None) {
+            out->second_transom_offset = PyFloat_AsDouble(field_10);
+            if (PyErr_Occurred()) return 0;
+        out->has_second_transom_offset = true;
+        }
+    }
+    return 1;
+}
+
+
+static void free_input_geometry_window_panel_properties(ifcopenshell_geometry_window_panel_properties_t *value) {
+    (void)value;
+}
+
+static int fill_input_geometry_window_panel_properties(PyObject *obj, ifcopenshell_geometry_window_panel_properties_t *out, option_ref_owner *refs) {
+    if (!PyMapping_Check(obj)) {
+        PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
+        return 0;
+    }
+    PyObject *field_0 = get_option_field(obj, "frame_depth", 0);
+    if (!field_0) {
+        if (PyErr_Occurred()) return 0;
+    } else {
+        if (!retain_option_ref(refs, field_0)) return 0;
+        if (field_0 != Py_None) {
+            out->frame_depth = PyFloat_AsDouble(field_0);
+            if (PyErr_Occurred()) return 0;
+        out->has_frame_depth = true;
+        }
+    }
+    PyObject *field_1 = get_option_field(obj, "frame_thickness", 0);
+    if (!field_1) {
+        if (PyErr_Occurred()) return 0;
+    } else {
+        if (!retain_option_ref(refs, field_1)) return 0;
+        if (field_1 != Py_None) {
+            out->frame_thickness = PyFloat_AsDouble(field_1);
+            if (PyErr_Occurred()) return 0;
+        out->has_frame_thickness = true;
+        }
+    }
+    return 1;
+}
+
+
 static void free_input_georeference_add_georeferencing_options(ifcopenshell_georeference_add_georeferencing_options_t *value) {
     (void)value;
 }
 
-static int fill_input_georeference_add_georeferencing_options(PyObject *obj, ifcopenshell_georeference_add_georeferencing_options_t *out, PyObject **refs) {
+static int fill_input_georeference_add_georeferencing_options(PyObject *obj, ifcopenshell_georeference_add_georeferencing_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -12108,21 +13640,21 @@ static int fill_input_georeference_add_georeferencing_options(PyObject *obj, ifc
     if (!field_0) {
         return 0;
     }
-    refs[0] = field_0;
+    if (!retain_option_ref(refs, field_0)) return 0;
     out->ifc_class = PyUnicode_AsUTF8(field_0);
     if (!out->ifc_class) return 0;
     PyObject *field_1 = get_option_field(obj, "name", 1);
     if (!field_1) {
         return 0;
     }
-    refs[1] = field_1;
+    if (!retain_option_ref(refs, field_1)) return 0;
     out->name = PyUnicode_AsUTF8(field_1);
     if (!out->name) return 0;
     PyObject *field_2 = get_option_field(obj, "owner_history", 0);
     if (!field_2) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[2] = field_2;
+        if (!retain_option_ref(refs, field_2)) return 0;
         if (field_2 != Py_None) {
             if (!extract_handle(field_2, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->owner_history, 0)) {
                 return 0;
@@ -12134,7 +13666,7 @@ static int fill_input_georeference_add_georeferencing_options(PyObject *obj, ifc
     if (!field_3) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[3] = field_3;
+        if (!retain_option_ref(refs, field_3)) return 0;
         if (field_3 != Py_None) {
             if (!extract_handle(field_3, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->user, 0)) {
                 return 0;
@@ -12146,7 +13678,7 @@ static int fill_input_georeference_add_georeferencing_options(PyObject *obj, ifc
     if (!field_4) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[4] = field_4;
+        if (!retain_option_ref(refs, field_4)) return 0;
         if (field_4 != Py_None) {
             if (!extract_handle(field_4, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->application, 0)) {
                 return 0;
@@ -12162,7 +13694,7 @@ static void free_input_georeference_edit_georeferencing_options(ifcopenshell_geo
     (void)value;
 }
 
-static int fill_input_georeference_edit_georeferencing_options(PyObject *obj, ifcopenshell_georeference_edit_georeferencing_options_t *out, PyObject **refs) {
+static int fill_input_georeference_edit_georeferencing_options(PyObject *obj, ifcopenshell_georeference_edit_georeferencing_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -12171,7 +13703,7 @@ static int fill_input_georeference_edit_georeferencing_options(PyObject *obj, if
     if (!field_0) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[0] = field_0;
+        if (!retain_option_ref(refs, field_0)) return 0;
         if (field_0 != Py_None) {
             if (PyCapsule_IsValid(field_0, NULL)) {
                 out->coordinate_operation = PyCapsule_GetPointer(field_0, NULL);
@@ -12186,7 +13718,7 @@ static int fill_input_georeference_edit_georeferencing_options(PyObject *obj, if
     if (!field_1) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[1] = field_1;
+        if (!retain_option_ref(refs, field_1)) return 0;
         if (field_1 != Py_None) {
             if (PyCapsule_IsValid(field_1, NULL)) {
                 out->projected_crs = PyCapsule_GetPointer(field_1, NULL);
@@ -12209,7 +13741,7 @@ static void free_input_georeference_edit_true_north_options(ifcopenshell_georefe
     }
 }
 
-static int fill_input_georeference_edit_true_north_options(PyObject *obj, ifcopenshell_georeference_edit_true_north_options_t *out, PyObject **refs) {
+static int fill_input_georeference_edit_true_north_options(PyObject *obj, ifcopenshell_georeference_edit_true_north_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -12218,14 +13750,14 @@ static int fill_input_georeference_edit_true_north_options(PyObject *obj, ifcope
     if (!field_0) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[0] = field_0;
+        if (!retain_option_ref(refs, field_0)) return 0;
         if (field_0 != Py_None) {
             ifcopenshell_double_list_t *sequence_0 = (ifcopenshell_double_list_t *)PyMem_Calloc(1, sizeof(ifcopenshell_double_list_t));
             if (!sequence_0) {
                 PyErr_NoMemory();
                 return 0;
             }
-            if (!make_input_double_list(field_0, sequence_0)) {
+            if (!make_input_double_list(field_0, sequence_0, refs)) {
                 PyMem_Free(sequence_0);
                 return 0;
             }
@@ -12241,7 +13773,7 @@ static void free_input_georeference_edit_wcs_options(ifcopenshell_georeference_e
     (void)value;
 }
 
-static int fill_input_georeference_edit_wcs_options(PyObject *obj, ifcopenshell_georeference_edit_wcs_options_t *out, PyObject **refs) {
+static int fill_input_georeference_edit_wcs_options(PyObject *obj, ifcopenshell_georeference_edit_wcs_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -12250,7 +13782,7 @@ static int fill_input_georeference_edit_wcs_options(PyObject *obj, ifcopenshell_
     if (!field_0) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[0] = field_0;
+        if (!retain_option_ref(refs, field_0)) return 0;
         if (field_0 != Py_None) {
             out->x = PyFloat_AsDouble(field_0);
             if (PyErr_Occurred()) return 0;
@@ -12261,7 +13793,7 @@ static int fill_input_georeference_edit_wcs_options(PyObject *obj, ifcopenshell_
     if (!field_1) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[1] = field_1;
+        if (!retain_option_ref(refs, field_1)) return 0;
         if (field_1 != Py_None) {
             out->y = PyFloat_AsDouble(field_1);
             if (PyErr_Occurred()) return 0;
@@ -12272,7 +13804,7 @@ static int fill_input_georeference_edit_wcs_options(PyObject *obj, ifcopenshell_
     if (!field_2) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[2] = field_2;
+        if (!retain_option_ref(refs, field_2)) return 0;
         if (field_2 != Py_None) {
             out->z = PyFloat_AsDouble(field_2);
             if (PyErr_Occurred()) return 0;
@@ -12283,7 +13815,7 @@ static int fill_input_georeference_edit_wcs_options(PyObject *obj, ifcopenshell_
     if (!field_3) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[3] = field_3;
+        if (!retain_option_ref(refs, field_3)) return 0;
         if (field_3 != Py_None) {
             out->rotation = PyFloat_AsDouble(field_3);
             if (PyErr_Occurred()) return 0;
@@ -12294,7 +13826,7 @@ static int fill_input_georeference_edit_wcs_options(PyObject *obj, ifcopenshell_
     if (!field_4) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[4] = field_4;
+        if (!retain_option_ref(refs, field_4)) return 0;
         if (field_4 != Py_None) {
             int value_4 = PyObject_IsTrue(field_4);
             if (value_4 < 0) return 0;
@@ -12310,7 +13842,7 @@ static void free_input_group_add_group_options(ifcopenshell_group_add_group_opti
     (void)value;
 }
 
-static int fill_input_group_add_group_options(PyObject *obj, ifcopenshell_group_add_group_options_t *out, PyObject **refs) {
+static int fill_input_group_add_group_options(PyObject *obj, ifcopenshell_group_add_group_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -12319,14 +13851,14 @@ static int fill_input_group_add_group_options(PyObject *obj, ifcopenshell_group_
     if (!field_0) {
         return 0;
     }
-    refs[0] = field_0;
+    if (!retain_option_ref(refs, field_0)) return 0;
     out->name = PyUnicode_AsUTF8(field_0);
     if (!out->name) return 0;
     PyObject *field_1 = get_option_field(obj, "description", 0);
     if (!field_1) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[1] = field_1;
+        if (!retain_option_ref(refs, field_1)) return 0;
         if (field_1 != Py_None) {
             out->description = PyUnicode_AsUTF8(field_1);
             if (!out->description) return 0;
@@ -12337,7 +13869,7 @@ static int fill_input_group_add_group_options(PyObject *obj, ifcopenshell_group_
     if (!field_2) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[2] = field_2;
+        if (!retain_option_ref(refs, field_2)) return 0;
         if (field_2 != Py_None) {
             if (!extract_handle(field_2, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->owner_history, 0)) {
                 return 0;
@@ -12349,7 +13881,7 @@ static int fill_input_group_add_group_options(PyObject *obj, ifcopenshell_group_
     if (!field_3) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[3] = field_3;
+        if (!retain_option_ref(refs, field_3)) return 0;
         if (field_3 != Py_None) {
             if (!extract_handle(field_3, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->user, 0)) {
                 return 0;
@@ -12361,7 +13893,7 @@ static int fill_input_group_add_group_options(PyObject *obj, ifcopenshell_group_
     if (!field_4) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[4] = field_4;
+        if (!retain_option_ref(refs, field_4)) return 0;
         if (field_4 != Py_None) {
             if (!extract_handle(field_4, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->application, 0)) {
                 return 0;
@@ -12380,7 +13912,7 @@ static void free_input_group_assign_group_options(ifcopenshell_group_assign_grou
     }
 }
 
-static int fill_input_group_assign_group_options(PyObject *obj, ifcopenshell_group_assign_group_options_t *out, PyObject **refs) {
+static int fill_input_group_assign_group_options(PyObject *obj, ifcopenshell_group_assign_group_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -12389,9 +13921,9 @@ static int fill_input_group_assign_group_options(PyObject *obj, ifcopenshell_gro
     if (!field_0) {
         return 0;
     }
-    refs[0] = field_0;
+    if (!retain_option_ref(refs, field_0)) return 0;
     ifcopenshell_instance_list_t products_items_0 = {0};
-    if (!make_input_instance_list(field_0, &products_items_0)) {
+    if (!make_input_instance_list(field_0, &products_items_0, refs)) {
         return 0;
     }
     if (!ifcopenshell_parse_instance_list_create_from_handles(&products_items_0, &out->products)) {
@@ -12404,7 +13936,7 @@ static int fill_input_group_assign_group_options(PyObject *obj, ifcopenshell_gro
     if (!field_1) {
         return 0;
     }
-    refs[1] = field_1;
+    if (!retain_option_ref(refs, field_1)) return 0;
     if (!extract_handle(field_1, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->group, 0)) {
         return 0;
     }
@@ -12412,7 +13944,7 @@ static int fill_input_group_assign_group_options(PyObject *obj, ifcopenshell_gro
     if (!field_2) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[2] = field_2;
+        if (!retain_option_ref(refs, field_2)) return 0;
         if (field_2 != Py_None) {
             if (!extract_handle(field_2, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->owner_history, 0)) {
                 return 0;
@@ -12424,7 +13956,7 @@ static int fill_input_group_assign_group_options(PyObject *obj, ifcopenshell_gro
     if (!field_3) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[3] = field_3;
+        if (!retain_option_ref(refs, field_3)) return 0;
         if (field_3 != Py_None) {
             if (!extract_handle(field_3, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->user, 0)) {
                 return 0;
@@ -12436,7 +13968,7 @@ static int fill_input_group_assign_group_options(PyObject *obj, ifcopenshell_gro
     if (!field_4) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[4] = field_4;
+        if (!retain_option_ref(refs, field_4)) return 0;
         if (field_4 != Py_None) {
             if (!extract_handle(field_4, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->application, 0)) {
                 return 0;
@@ -12455,7 +13987,7 @@ static void free_input_group_unassign_group_options(ifcopenshell_group_unassign_
     }
 }
 
-static int fill_input_group_unassign_group_options(PyObject *obj, ifcopenshell_group_unassign_group_options_t *out, PyObject **refs) {
+static int fill_input_group_unassign_group_options(PyObject *obj, ifcopenshell_group_unassign_group_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -12464,9 +13996,9 @@ static int fill_input_group_unassign_group_options(PyObject *obj, ifcopenshell_g
     if (!field_0) {
         return 0;
     }
-    refs[0] = field_0;
+    if (!retain_option_ref(refs, field_0)) return 0;
     ifcopenshell_instance_list_t products_items_0 = {0};
-    if (!make_input_instance_list(field_0, &products_items_0)) {
+    if (!make_input_instance_list(field_0, &products_items_0, refs)) {
         return 0;
     }
     if (!ifcopenshell_parse_instance_list_create_from_handles(&products_items_0, &out->products)) {
@@ -12479,7 +14011,7 @@ static int fill_input_group_unassign_group_options(PyObject *obj, ifcopenshell_g
     if (!field_1) {
         return 0;
     }
-    refs[1] = field_1;
+    if (!retain_option_ref(refs, field_1)) return 0;
     if (!extract_handle(field_1, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->group, 0)) {
         return 0;
     }
@@ -12487,7 +14019,7 @@ static int fill_input_group_unassign_group_options(PyObject *obj, ifcopenshell_g
     if (!field_2) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[2] = field_2;
+        if (!retain_option_ref(refs, field_2)) return 0;
         if (field_2 != Py_None) {
             if (!extract_handle(field_2, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->user, 0)) {
                 return 0;
@@ -12499,7 +14031,7 @@ static int fill_input_group_unassign_group_options(PyObject *obj, ifcopenshell_g
     if (!field_3) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[3] = field_3;
+        if (!retain_option_ref(refs, field_3)) return 0;
         if (field_3 != Py_None) {
             if (!extract_handle(field_3, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->application, 0)) {
                 return 0;
@@ -12518,7 +14050,7 @@ static void free_input_group_update_group_products_options(ifcopenshell_group_up
     }
 }
 
-static int fill_input_group_update_group_products_options(PyObject *obj, ifcopenshell_group_update_group_products_options_t *out, PyObject **refs) {
+static int fill_input_group_update_group_products_options(PyObject *obj, ifcopenshell_group_update_group_products_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -12527,7 +14059,7 @@ static int fill_input_group_update_group_products_options(PyObject *obj, ifcopen
     if (!field_0) {
         return 0;
     }
-    refs[0] = field_0;
+    if (!retain_option_ref(refs, field_0)) return 0;
     if (!extract_handle(field_0, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->group, 0)) {
         return 0;
     }
@@ -12535,9 +14067,9 @@ static int fill_input_group_update_group_products_options(PyObject *obj, ifcopen
     if (!field_1) {
         return 0;
     }
-    refs[1] = field_1;
+    if (!retain_option_ref(refs, field_1)) return 0;
     ifcopenshell_instance_list_t products_items_1 = {0};
-    if (!make_input_instance_list(field_1, &products_items_1)) {
+    if (!make_input_instance_list(field_1, &products_items_1, refs)) {
         return 0;
     }
     if (!ifcopenshell_parse_instance_list_create_from_handles(&products_items_1, &out->products)) {
@@ -12550,7 +14082,7 @@ static int fill_input_group_update_group_products_options(PyObject *obj, ifcopen
     if (!field_2) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[2] = field_2;
+        if (!retain_option_ref(refs, field_2)) return 0;
         if (field_2 != Py_None) {
             if (!extract_handle(field_2, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->owner_history, 0)) {
                 return 0;
@@ -12562,7 +14094,7 @@ static int fill_input_group_update_group_products_options(PyObject *obj, ifcopen
     if (!field_3) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[3] = field_3;
+        if (!retain_option_ref(refs, field_3)) return 0;
         if (field_3 != Py_None) {
             if (!extract_handle(field_3, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->user, 0)) {
                 return 0;
@@ -12574,7 +14106,7 @@ static int fill_input_group_update_group_products_options(PyObject *obj, ifcopen
     if (!field_4) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[4] = field_4;
+        if (!retain_option_ref(refs, field_4)) return 0;
         if (field_4 != Py_None) {
             if (!extract_handle(field_4, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->application, 0)) {
                 return 0;
@@ -12593,7 +14125,7 @@ static void free_input_layer_add_layer_with_style_options(ifcopenshell_layer_add
     }
 }
 
-static int fill_input_layer_add_layer_with_style_options(PyObject *obj, ifcopenshell_layer_add_layer_with_style_options_t *out, PyObject **refs) {
+static int fill_input_layer_add_layer_with_style_options(PyObject *obj, ifcopenshell_layer_add_layer_with_style_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -12602,7 +14134,7 @@ static int fill_input_layer_add_layer_with_style_options(PyObject *obj, ifcopens
     if (!field_0) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[0] = field_0;
+        if (!retain_option_ref(refs, field_0)) return 0;
         if (field_0 != Py_None) {
             int value_0 = PyObject_IsTrue(field_0);
             if (value_0 < 0) return 0;
@@ -12614,7 +14146,7 @@ static int fill_input_layer_add_layer_with_style_options(PyObject *obj, ifcopens
     if (!field_1) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[1] = field_1;
+        if (!retain_option_ref(refs, field_1)) return 0;
         if (field_1 != Py_None) {
             int value_1 = PyObject_IsTrue(field_1);
             if (value_1 < 0) return 0;
@@ -12626,7 +14158,7 @@ static int fill_input_layer_add_layer_with_style_options(PyObject *obj, ifcopens
     if (!field_2) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[2] = field_2;
+        if (!retain_option_ref(refs, field_2)) return 0;
         if (field_2 != Py_None) {
             int value_2 = PyObject_IsTrue(field_2);
             if (value_2 < 0) return 0;
@@ -12638,9 +14170,9 @@ static int fill_input_layer_add_layer_with_style_options(PyObject *obj, ifcopens
     if (!field_3) {
         return 0;
     }
-    refs[3] = field_3;
+    if (!retain_option_ref(refs, field_3)) return 0;
     ifcopenshell_instance_list_t styles_items_3 = {0};
-    if (!make_input_instance_list(field_3, &styles_items_3)) {
+    if (!make_input_instance_list(field_3, &styles_items_3, refs)) {
         return 0;
     }
     if (!ifcopenshell_parse_instance_list_create_from_handles(&styles_items_3, &out->styles)) {
@@ -12660,7 +14192,7 @@ static void free_input_library_assign_reference_options(ifcopenshell_library_ass
     }
 }
 
-static int fill_input_library_assign_reference_options(PyObject *obj, ifcopenshell_library_assign_reference_options_t *out, PyObject **refs) {
+static int fill_input_library_assign_reference_options(PyObject *obj, ifcopenshell_library_assign_reference_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -12669,9 +14201,9 @@ static int fill_input_library_assign_reference_options(PyObject *obj, ifcopenshe
     if (!field_0) {
         return 0;
     }
-    refs[0] = field_0;
+    if (!retain_option_ref(refs, field_0)) return 0;
     ifcopenshell_instance_list_t products_items_0 = {0};
-    if (!make_input_instance_list(field_0, &products_items_0)) {
+    if (!make_input_instance_list(field_0, &products_items_0, refs)) {
         return 0;
     }
     if (!ifcopenshell_parse_instance_list_create_from_handles(&products_items_0, &out->products)) {
@@ -12684,7 +14216,7 @@ static int fill_input_library_assign_reference_options(PyObject *obj, ifcopenshe
     if (!field_1) {
         return 0;
     }
-    refs[1] = field_1;
+    if (!retain_option_ref(refs, field_1)) return 0;
     if (!extract_handle(field_1, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->reference, 0)) {
         return 0;
     }
@@ -12692,7 +14224,7 @@ static int fill_input_library_assign_reference_options(PyObject *obj, ifcopenshe
     if (!field_2) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[2] = field_2;
+        if (!retain_option_ref(refs, field_2)) return 0;
         if (field_2 != Py_None) {
             if (!extract_handle(field_2, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->owner_history, 0)) {
                 return 0;
@@ -12704,7 +14236,7 @@ static int fill_input_library_assign_reference_options(PyObject *obj, ifcopenshe
     if (!field_3) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[3] = field_3;
+        if (!retain_option_ref(refs, field_3)) return 0;
         if (field_3 != Py_None) {
             if (!extract_handle(field_3, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->user, 0)) {
                 return 0;
@@ -12716,7 +14248,7 @@ static int fill_input_library_assign_reference_options(PyObject *obj, ifcopenshe
     if (!field_4) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[4] = field_4;
+        if (!retain_option_ref(refs, field_4)) return 0;
         if (field_4 != Py_None) {
             if (!extract_handle(field_4, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->application, 0)) {
                 return 0;
@@ -12735,7 +14267,7 @@ static void free_input_library_unassign_reference_options(ifcopenshell_library_u
     }
 }
 
-static int fill_input_library_unassign_reference_options(PyObject *obj, ifcopenshell_library_unassign_reference_options_t *out, PyObject **refs) {
+static int fill_input_library_unassign_reference_options(PyObject *obj, ifcopenshell_library_unassign_reference_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -12744,7 +14276,7 @@ static int fill_input_library_unassign_reference_options(PyObject *obj, ifcopens
     if (!field_0) {
         return 0;
     }
-    refs[0] = field_0;
+    if (!retain_option_ref(refs, field_0)) return 0;
     if (!extract_handle(field_0, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->reference, 0)) {
         return 0;
     }
@@ -12752,9 +14284,9 @@ static int fill_input_library_unassign_reference_options(PyObject *obj, ifcopens
     if (!field_1) {
         return 0;
     }
-    refs[1] = field_1;
+    if (!retain_option_ref(refs, field_1)) return 0;
     ifcopenshell_instance_list_t products_items_1 = {0};
-    if (!make_input_instance_list(field_1, &products_items_1)) {
+    if (!make_input_instance_list(field_1, &products_items_1, refs)) {
         return 0;
     }
     if (!ifcopenshell_parse_instance_list_create_from_handles(&products_items_1, &out->products)) {
@@ -12767,7 +14299,7 @@ static int fill_input_library_unassign_reference_options(PyObject *obj, ifcopens
     if (!field_2) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[2] = field_2;
+        if (!retain_option_ref(refs, field_2)) return 0;
         if (field_2 != Py_None) {
             if (!extract_handle(field_2, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->user, 0)) {
                 return 0;
@@ -12779,7 +14311,7 @@ static int fill_input_library_unassign_reference_options(PyObject *obj, ifcopens
     if (!field_3) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[3] = field_3;
+        if (!retain_option_ref(refs, field_3)) return 0;
         if (field_3 != Py_None) {
             if (!extract_handle(field_3, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->application, 0)) {
                 return 0;
@@ -12795,7 +14327,7 @@ static void free_input_material_add_constituent_options(ifcopenshell_material_ad
     (void)value;
 }
 
-static int fill_input_material_add_constituent_options(PyObject *obj, ifcopenshell_material_add_constituent_options_t *out, PyObject **refs) {
+static int fill_input_material_add_constituent_options(PyObject *obj, ifcopenshell_material_add_constituent_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -12804,7 +14336,7 @@ static int fill_input_material_add_constituent_options(PyObject *obj, ifcopenshe
     if (!field_0) {
         return 0;
     }
-    refs[0] = field_0;
+    if (!retain_option_ref(refs, field_0)) return 0;
     if (!extract_handle(field_0, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->material, 0)) {
         return 0;
     }
@@ -12812,7 +14344,7 @@ static int fill_input_material_add_constituent_options(PyObject *obj, ifcopenshe
     if (!field_1) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[1] = field_1;
+        if (!retain_option_ref(refs, field_1)) return 0;
         if (field_1 != Py_None) {
             out->name = PyUnicode_AsUTF8(field_1);
             if (!out->name) return 0;
@@ -12827,7 +14359,7 @@ static void free_input_material_add_layer_options(ifcopenshell_material_add_laye
     (void)value;
 }
 
-static int fill_input_material_add_layer_options(PyObject *obj, ifcopenshell_material_add_layer_options_t *out, PyObject **refs) {
+static int fill_input_material_add_layer_options(PyObject *obj, ifcopenshell_material_add_layer_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -12836,7 +14368,7 @@ static int fill_input_material_add_layer_options(PyObject *obj, ifcopenshell_mat
     if (!field_0) {
         return 0;
     }
-    refs[0] = field_0;
+    if (!retain_option_ref(refs, field_0)) return 0;
     if (!extract_handle(field_0, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->material, 0)) {
         return 0;
     }
@@ -12844,7 +14376,7 @@ static int fill_input_material_add_layer_options(PyObject *obj, ifcopenshell_mat
     if (!field_1) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[1] = field_1;
+        if (!retain_option_ref(refs, field_1)) return 0;
         if (field_1 != Py_None) {
             out->name = PyUnicode_AsUTF8(field_1);
             if (!out->name) return 0;
@@ -12859,7 +14391,7 @@ static void free_input_material_add_material_options(ifcopenshell_material_add_m
     (void)value;
 }
 
-static int fill_input_material_add_material_options(PyObject *obj, ifcopenshell_material_add_material_options_t *out, PyObject **refs) {
+static int fill_input_material_add_material_options(PyObject *obj, ifcopenshell_material_add_material_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -12868,7 +14400,7 @@ static int fill_input_material_add_material_options(PyObject *obj, ifcopenshell_
     if (!field_0) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[0] = field_0;
+        if (!retain_option_ref(refs, field_0)) return 0;
         if (field_0 != Py_None) {
             out->name = PyUnicode_AsUTF8(field_0);
             if (!out->name) return 0;
@@ -12879,7 +14411,7 @@ static int fill_input_material_add_material_options(PyObject *obj, ifcopenshell_
     if (!field_1) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[1] = field_1;
+        if (!retain_option_ref(refs, field_1)) return 0;
         if (field_1 != Py_None) {
             out->category = PyUnicode_AsUTF8(field_1);
             if (!out->category) return 0;
@@ -12890,7 +14422,7 @@ static int fill_input_material_add_material_options(PyObject *obj, ifcopenshell_
     if (!field_2) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[2] = field_2;
+        if (!retain_option_ref(refs, field_2)) return 0;
         if (field_2 != Py_None) {
             out->description = PyUnicode_AsUTF8(field_2);
             if (!out->description) return 0;
@@ -12905,7 +14437,7 @@ static void free_input_material_add_material_set_options(ifcopenshell_material_a
     (void)value;
 }
 
-static int fill_input_material_add_material_set_options(PyObject *obj, ifcopenshell_material_add_material_set_options_t *out, PyObject **refs) {
+static int fill_input_material_add_material_set_options(PyObject *obj, ifcopenshell_material_add_material_set_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -12914,7 +14446,7 @@ static int fill_input_material_add_material_set_options(PyObject *obj, ifcopensh
     if (!field_0) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[0] = field_0;
+        if (!retain_option_ref(refs, field_0)) return 0;
         if (field_0 != Py_None) {
             out->name = PyUnicode_AsUTF8(field_0);
             if (!out->name) return 0;
@@ -12925,7 +14457,7 @@ static int fill_input_material_add_material_set_options(PyObject *obj, ifcopensh
     if (!field_1) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[1] = field_1;
+        if (!retain_option_ref(refs, field_1)) return 0;
         if (field_1 != Py_None) {
             out->set_type = PyUnicode_AsUTF8(field_1);
             if (!out->set_type) return 0;
@@ -12940,7 +14472,7 @@ static void free_input_material_add_profile_options(ifcopenshell_material_add_pr
     (void)value;
 }
 
-static int fill_input_material_add_profile_options(PyObject *obj, ifcopenshell_material_add_profile_options_t *out, PyObject **refs) {
+static int fill_input_material_add_profile_options(PyObject *obj, ifcopenshell_material_add_profile_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -12949,7 +14481,7 @@ static int fill_input_material_add_profile_options(PyObject *obj, ifcopenshell_m
     if (!field_0) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[0] = field_0;
+        if (!retain_option_ref(refs, field_0)) return 0;
         if (field_0 != Py_None) {
             if (!extract_handle(field_0, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->material, 0)) {
                 return 0;
@@ -12961,7 +14493,7 @@ static int fill_input_material_add_profile_options(PyObject *obj, ifcopenshell_m
     if (!field_1) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[1] = field_1;
+        if (!retain_option_ref(refs, field_1)) return 0;
         if (field_1 != Py_None) {
             if (!extract_handle(field_1, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->profile, 0)) {
                 return 0;
@@ -12973,7 +14505,7 @@ static int fill_input_material_add_profile_options(PyObject *obj, ifcopenshell_m
     if (!field_2) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[2] = field_2;
+        if (!retain_option_ref(refs, field_2)) return 0;
         if (field_2 != Py_None) {
             out->name = PyUnicode_AsUTF8(field_2);
             if (!out->name) return 0;
@@ -12988,7 +14520,7 @@ static void free_input_material_assign_material_options(ifcopenshell_material_as
     (void)value;
 }
 
-static int fill_input_material_assign_material_options(PyObject *obj, ifcopenshell_material_assign_material_options_t *out, PyObject **refs) {
+static int fill_input_material_assign_material_options(PyObject *obj, ifcopenshell_material_assign_material_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -12997,7 +14529,7 @@ static int fill_input_material_assign_material_options(PyObject *obj, ifcopenshe
     if (!field_0) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[0] = field_0;
+        if (!retain_option_ref(refs, field_0)) return 0;
         if (field_0 != Py_None) {
             out->type = PyUnicode_AsUTF8(field_0);
             if (!out->type) return 0;
@@ -13008,7 +14540,7 @@ static int fill_input_material_assign_material_options(PyObject *obj, ifcopenshe
     if (!field_1) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[1] = field_1;
+        if (!retain_option_ref(refs, field_1)) return 0;
         if (field_1 != Py_None) {
             if (!extract_handle(field_1, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->material, 0)) {
                 return 0;
@@ -13020,7 +14552,7 @@ static int fill_input_material_assign_material_options(PyObject *obj, ifcopenshe
     if (!field_2) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[2] = field_2;
+        if (!retain_option_ref(refs, field_2)) return 0;
         if (field_2 != Py_None) {
             if (!extract_handle(field_2, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->owner_history, 0)) {
                 return 0;
@@ -13032,7 +14564,7 @@ static int fill_input_material_assign_material_options(PyObject *obj, ifcopenshe
     if (!field_3) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[3] = field_3;
+        if (!retain_option_ref(refs, field_3)) return 0;
         if (field_3 != Py_None) {
             if (!extract_handle(field_3, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->user, 0)) {
                 return 0;
@@ -13044,7 +14576,7 @@ static int fill_input_material_assign_material_options(PyObject *obj, ifcopenshe
     if (!field_4) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[4] = field_4;
+        if (!retain_option_ref(refs, field_4)) return 0;
         if (field_4 != Py_None) {
             if (!extract_handle(field_4, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->application, 0)) {
                 return 0;
@@ -13060,7 +14592,7 @@ static void free_input_material_constituent_entry_options(ifcopenshell_material_
     (void)value;
 }
 
-static int fill_input_material_constituent_entry_options(PyObject *obj, ifcopenshell_material_constituent_entry_options_t *out, PyObject **refs) {
+static int fill_input_material_constituent_entry_options(PyObject *obj, ifcopenshell_material_constituent_entry_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -13069,14 +14601,14 @@ static int fill_input_material_constituent_entry_options(PyObject *obj, ifcopens
     if (!field_0) {
         return 0;
     }
-    refs[0] = field_0;
+    if (!retain_option_ref(refs, field_0)) return 0;
     out->name = PyUnicode_AsUTF8(field_0);
     if (!out->name) return 0;
     PyObject *field_1 = get_option_field(obj, "material", 1);
     if (!field_1) {
         return 0;
     }
-    refs[1] = field_1;
+    if (!retain_option_ref(refs, field_1)) return 0;
     if (!extract_handle(field_1, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->material, 0)) {
         return 0;
     }
@@ -13088,7 +14620,7 @@ static void free_input_material_edit_profile_usage_options(ifcopenshell_material
     (void)value;
 }
 
-static int fill_input_material_edit_profile_usage_options(PyObject *obj, ifcopenshell_material_edit_profile_usage_options_t *out, PyObject **refs) {
+static int fill_input_material_edit_profile_usage_options(PyObject *obj, ifcopenshell_material_edit_profile_usage_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -13097,7 +14629,7 @@ static int fill_input_material_edit_profile_usage_options(PyObject *obj, ifcopen
     if (!field_0) {
         return 0;
     }
-    refs[0] = field_0;
+    if (!retain_option_ref(refs, field_0)) return 0;
     if (PyCapsule_IsValid(field_0, NULL)) {
         out->attributes = PyCapsule_GetPointer(field_0, NULL);
     } else {
@@ -13108,7 +14640,7 @@ static int fill_input_material_edit_profile_usage_options(PyObject *obj, ifcopen
     if (!field_1) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[1] = field_1;
+        if (!retain_option_ref(refs, field_1)) return 0;
         if (field_1 != Py_None) {
             out->profile_width = PyFloat_AsDouble(field_1);
             if (PyErr_Occurred()) return 0;
@@ -13119,7 +14651,7 @@ static int fill_input_material_edit_profile_usage_options(PyObject *obj, ifcopen
     if (!field_2) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[2] = field_2;
+        if (!retain_option_ref(refs, field_2)) return 0;
         if (field_2 != Py_None) {
             out->profile_height = PyFloat_AsDouble(field_2);
             if (PyErr_Occurred()) return 0;
@@ -13134,7 +14666,7 @@ static void free_input_material_remove_item_options(ifcopenshell_material_remove
     (void)value;
 }
 
-static int fill_input_material_remove_item_options(PyObject *obj, ifcopenshell_material_remove_item_options_t *out, PyObject **refs) {
+static int fill_input_material_remove_item_options(PyObject *obj, ifcopenshell_material_remove_item_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -13143,7 +14675,7 @@ static int fill_input_material_remove_item_options(PyObject *obj, ifcopenshell_m
     if (!field_0) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[0] = field_0;
+        if (!retain_option_ref(refs, field_0)) return 0;
         if (field_0 != Py_None) {
             int value_0 = PyObject_IsTrue(field_0);
             if (value_0 < 0) return 0;
@@ -13159,7 +14691,7 @@ static void free_input_material_remove_list_item_options(ifcopenshell_material_r
     (void)value;
 }
 
-static int fill_input_material_remove_list_item_options(PyObject *obj, ifcopenshell_material_remove_list_item_options_t *out, PyObject **refs) {
+static int fill_input_material_remove_list_item_options(PyObject *obj, ifcopenshell_material_remove_list_item_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -13168,7 +14700,7 @@ static int fill_input_material_remove_list_item_options(PyObject *obj, ifcopensh
     if (!field_0) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[0] = field_0;
+        if (!retain_option_ref(refs, field_0)) return 0;
         if (field_0 != Py_None) {
             out->material_index = (int32_t)PyLong_AsLong(field_0);
             if (PyErr_Occurred()) return 0;
@@ -13183,7 +14715,7 @@ static void free_input_material_remove_profile_options(ifcopenshell_material_rem
     (void)value;
 }
 
-static int fill_input_material_remove_profile_options(PyObject *obj, ifcopenshell_material_remove_profile_options_t *out, PyObject **refs) {
+static int fill_input_material_remove_profile_options(PyObject *obj, ifcopenshell_material_remove_profile_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -13192,7 +14724,7 @@ static int fill_input_material_remove_profile_options(PyObject *obj, ifcopenshel
     if (!field_0) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[0] = field_0;
+        if (!retain_option_ref(refs, field_0)) return 0;
         if (field_0 != Py_None) {
             int value_0 = PyObject_IsTrue(field_0);
             if (value_0 < 0) return 0;
@@ -13204,7 +14736,7 @@ static int fill_input_material_remove_profile_options(PyObject *obj, ifcopenshel
     if (!field_1) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[1] = field_1;
+        if (!retain_option_ref(refs, field_1)) return 0;
         if (field_1 != Py_None) {
             int value_1 = PyObject_IsTrue(field_1);
             if (value_1 < 0) return 0;
@@ -13220,7 +14752,7 @@ static void free_input_material_reorder_set_item_options(ifcopenshell_material_r
     (void)value;
 }
 
-static int fill_input_material_reorder_set_item_options(PyObject *obj, ifcopenshell_material_reorder_set_item_options_t *out, PyObject **refs) {
+static int fill_input_material_reorder_set_item_options(PyObject *obj, ifcopenshell_material_reorder_set_item_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -13229,7 +14761,7 @@ static int fill_input_material_reorder_set_item_options(PyObject *obj, ifcopensh
     if (!field_0) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[0] = field_0;
+        if (!retain_option_ref(refs, field_0)) return 0;
         if (field_0 != Py_None) {
             out->old_index = (int32_t)PyLong_AsLong(field_0);
             if (PyErr_Occurred()) return 0;
@@ -13240,7 +14772,7 @@ static int fill_input_material_reorder_set_item_options(PyObject *obj, ifcopensh
     if (!field_1) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[1] = field_1;
+        if (!retain_option_ref(refs, field_1)) return 0;
         if (field_1 != Py_None) {
             out->new_index = (int32_t)PyLong_AsLong(field_1);
             if (PyErr_Occurred()) return 0;
@@ -13255,7 +14787,7 @@ static void free_input_material_set_shape_aspect_constituents_options(ifcopenshe
     (void)value;
 }
 
-static int fill_input_material_set_shape_aspect_constituents_options(PyObject *obj, ifcopenshell_material_set_shape_aspect_constituents_options_t *out, PyObject **refs) {
+static int fill_input_material_set_shape_aspect_constituents_options(PyObject *obj, ifcopenshell_material_set_shape_aspect_constituents_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -13264,7 +14796,7 @@ static int fill_input_material_set_shape_aspect_constituents_options(PyObject *o
     if (!field_0) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[0] = field_0;
+        if (!retain_option_ref(refs, field_0)) return 0;
         if (field_0 != Py_None) {
             if (!extract_handle(field_0, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->owner_history, 0)) {
                 return 0;
@@ -13276,7 +14808,7 @@ static int fill_input_material_set_shape_aspect_constituents_options(PyObject *o
     if (!field_1) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[1] = field_1;
+        if (!retain_option_ref(refs, field_1)) return 0;
         if (field_1 != Py_None) {
             if (!extract_handle(field_1, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->user, 0)) {
                 return 0;
@@ -13288,7 +14820,7 @@ static int fill_input_material_set_shape_aspect_constituents_options(PyObject *o
     if (!field_2) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[2] = field_2;
+        if (!retain_option_ref(refs, field_2)) return 0;
         if (field_2 != Py_None) {
             if (!extract_handle(field_2, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->application, 0)) {
                 return 0;
@@ -13304,7 +14836,7 @@ static void free_input_material_unassign_material_options(ifcopenshell_material_
     (void)value;
 }
 
-static int fill_input_material_unassign_material_options(PyObject *obj, ifcopenshell_material_unassign_material_options_t *out, PyObject **refs) {
+static int fill_input_material_unassign_material_options(PyObject *obj, ifcopenshell_material_unassign_material_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -13313,7 +14845,7 @@ static int fill_input_material_unassign_material_options(PyObject *obj, ifcopens
     if (!field_0) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[0] = field_0;
+        if (!retain_option_ref(refs, field_0)) return 0;
         if (field_0 != Py_None) {
             if (!extract_handle(field_0, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->user, 0)) {
                 return 0;
@@ -13325,7 +14857,7 @@ static int fill_input_material_unassign_material_options(PyObject *obj, ifcopens
     if (!field_1) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[1] = field_1;
+        if (!retain_option_ref(refs, field_1)) return 0;
         if (field_1 != Py_None) {
             if (!extract_handle(field_1, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->application, 0)) {
                 return 0;
@@ -13344,7 +14876,7 @@ static void free_input_nest_assign_object_options(ifcopenshell_nest_assign_objec
     }
 }
 
-static int fill_input_nest_assign_object_options(PyObject *obj, ifcopenshell_nest_assign_object_options_t *out, PyObject **refs) {
+static int fill_input_nest_assign_object_options(PyObject *obj, ifcopenshell_nest_assign_object_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -13353,9 +14885,9 @@ static int fill_input_nest_assign_object_options(PyObject *obj, ifcopenshell_nes
     if (!field_0) {
         return 0;
     }
-    refs[0] = field_0;
+    if (!retain_option_ref(refs, field_0)) return 0;
     ifcopenshell_instance_list_t products_items_0 = {0};
-    if (!make_input_instance_list(field_0, &products_items_0)) {
+    if (!make_input_instance_list(field_0, &products_items_0, refs)) {
         return 0;
     }
     if (!ifcopenshell_parse_instance_list_create_from_handles(&products_items_0, &out->products)) {
@@ -13368,7 +14900,7 @@ static int fill_input_nest_assign_object_options(PyObject *obj, ifcopenshell_nes
     if (!field_1) {
         return 0;
     }
-    refs[1] = field_1;
+    if (!retain_option_ref(refs, field_1)) return 0;
     if (!extract_handle(field_1, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->relating_object, 0)) {
         return 0;
     }
@@ -13376,7 +14908,7 @@ static int fill_input_nest_assign_object_options(PyObject *obj, ifcopenshell_nes
     if (!field_2) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[2] = field_2;
+        if (!retain_option_ref(refs, field_2)) return 0;
         if (field_2 != Py_None) {
             if (!extract_handle(field_2, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->owner_history, 0)) {
                 return 0;
@@ -13388,7 +14920,7 @@ static int fill_input_nest_assign_object_options(PyObject *obj, ifcopenshell_nes
     if (!field_3) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[3] = field_3;
+        if (!retain_option_ref(refs, field_3)) return 0;
         if (field_3 != Py_None) {
             if (!extract_handle(field_3, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->user, 0)) {
                 return 0;
@@ -13400,7 +14932,7 @@ static int fill_input_nest_assign_object_options(PyObject *obj, ifcopenshell_nes
     if (!field_4) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[4] = field_4;
+        if (!retain_option_ref(refs, field_4)) return 0;
         if (field_4 != Py_None) {
             if (!extract_handle(field_4, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->application, 0)) {
                 return 0;
@@ -13416,7 +14948,7 @@ static void free_input_nest_change_nest_options(ifcopenshell_nest_change_nest_op
     (void)value;
 }
 
-static int fill_input_nest_change_nest_options(PyObject *obj, ifcopenshell_nest_change_nest_options_t *out, PyObject **refs) {
+static int fill_input_nest_change_nest_options(PyObject *obj, ifcopenshell_nest_change_nest_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -13425,7 +14957,7 @@ static int fill_input_nest_change_nest_options(PyObject *obj, ifcopenshell_nest_
     if (!field_0) {
         return 0;
     }
-    refs[0] = field_0;
+    if (!retain_option_ref(refs, field_0)) return 0;
     if (!extract_handle(field_0, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->item, 0)) {
         return 0;
     }
@@ -13433,7 +14965,7 @@ static int fill_input_nest_change_nest_options(PyObject *obj, ifcopenshell_nest_
     if (!field_1) {
         return 0;
     }
-    refs[1] = field_1;
+    if (!retain_option_ref(refs, field_1)) return 0;
     if (!extract_handle(field_1, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->new_parent, 0)) {
         return 0;
     }
@@ -13441,7 +14973,7 @@ static int fill_input_nest_change_nest_options(PyObject *obj, ifcopenshell_nest_
     if (!field_2) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[2] = field_2;
+        if (!retain_option_ref(refs, field_2)) return 0;
         if (field_2 != Py_None) {
             if (!extract_handle(field_2, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->owner_history, 0)) {
                 return 0;
@@ -13453,7 +14985,7 @@ static int fill_input_nest_change_nest_options(PyObject *obj, ifcopenshell_nest_
     if (!field_3) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[3] = field_3;
+        if (!retain_option_ref(refs, field_3)) return 0;
         if (field_3 != Py_None) {
             if (!extract_handle(field_3, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->user, 0)) {
                 return 0;
@@ -13465,7 +14997,7 @@ static int fill_input_nest_change_nest_options(PyObject *obj, ifcopenshell_nest_
     if (!field_4) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[4] = field_4;
+        if (!retain_option_ref(refs, field_4)) return 0;
         if (field_4 != Py_None) {
             if (!extract_handle(field_4, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->application, 0)) {
                 return 0;
@@ -13481,7 +15013,7 @@ static void free_input_nest_reorder_nesting_options(ifcopenshell_nest_reorder_ne
     (void)value;
 }
 
-static int fill_input_nest_reorder_nesting_options(PyObject *obj, ifcopenshell_nest_reorder_nesting_options_t *out, PyObject **refs) {
+static int fill_input_nest_reorder_nesting_options(PyObject *obj, ifcopenshell_nest_reorder_nesting_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -13490,7 +15022,7 @@ static int fill_input_nest_reorder_nesting_options(PyObject *obj, ifcopenshell_n
     if (!field_0) {
         return 0;
     }
-    refs[0] = field_0;
+    if (!retain_option_ref(refs, field_0)) return 0;
     if (!extract_handle(field_0, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->item, 0)) {
         return 0;
     }
@@ -13498,7 +15030,7 @@ static int fill_input_nest_reorder_nesting_options(PyObject *obj, ifcopenshell_n
     if (!field_1) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[1] = field_1;
+        if (!retain_option_ref(refs, field_1)) return 0;
         if (field_1 != Py_None) {
             out->old_index = (int32_t)PyLong_AsLong(field_1);
             if (PyErr_Occurred()) return 0;
@@ -13509,7 +15041,7 @@ static int fill_input_nest_reorder_nesting_options(PyObject *obj, ifcopenshell_n
     if (!field_2) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[2] = field_2;
+        if (!retain_option_ref(refs, field_2)) return 0;
         if (field_2 != Py_None) {
             out->new_index = (int32_t)PyLong_AsLong(field_2);
             if (PyErr_Occurred()) return 0;
@@ -13520,7 +15052,7 @@ static int fill_input_nest_reorder_nesting_options(PyObject *obj, ifcopenshell_n
     if (!field_3) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[3] = field_3;
+        if (!retain_option_ref(refs, field_3)) return 0;
         if (field_3 != Py_None) {
             if (!extract_handle(field_3, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->user, 0)) {
                 return 0;
@@ -13532,7 +15064,7 @@ static int fill_input_nest_reorder_nesting_options(PyObject *obj, ifcopenshell_n
     if (!field_4) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[4] = field_4;
+        if (!retain_option_ref(refs, field_4)) return 0;
         if (field_4 != Py_None) {
             if (!extract_handle(field_4, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->application, 0)) {
                 return 0;
@@ -13551,7 +15083,7 @@ static void free_input_nest_unassign_object_options(ifcopenshell_nest_unassign_o
     }
 }
 
-static int fill_input_nest_unassign_object_options(PyObject *obj, ifcopenshell_nest_unassign_object_options_t *out, PyObject **refs) {
+static int fill_input_nest_unassign_object_options(PyObject *obj, ifcopenshell_nest_unassign_object_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -13560,9 +15092,9 @@ static int fill_input_nest_unassign_object_options(PyObject *obj, ifcopenshell_n
     if (!field_0) {
         return 0;
     }
-    refs[0] = field_0;
+    if (!retain_option_ref(refs, field_0)) return 0;
     ifcopenshell_instance_list_t products_items_0 = {0};
-    if (!make_input_instance_list(field_0, &products_items_0)) {
+    if (!make_input_instance_list(field_0, &products_items_0, refs)) {
         return 0;
     }
     if (!ifcopenshell_parse_instance_list_create_from_handles(&products_items_0, &out->products)) {
@@ -13575,7 +15107,7 @@ static int fill_input_nest_unassign_object_options(PyObject *obj, ifcopenshell_n
     if (!field_1) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[1] = field_1;
+        if (!retain_option_ref(refs, field_1)) return 0;
         if (field_1 != Py_None) {
             if (!extract_handle(field_1, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->user, 0)) {
                 return 0;
@@ -13587,7 +15119,7 @@ static int fill_input_nest_unassign_object_options(PyObject *obj, ifcopenshell_n
     if (!field_2) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[2] = field_2;
+        if (!retain_option_ref(refs, field_2)) return 0;
         if (field_2 != Py_None) {
             if (!extract_handle(field_2, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->application, 0)) {
                 return 0;
@@ -13603,7 +15135,7 @@ static void free_input_owner_add_actor_options(ifcopenshell_owner_add_actor_opti
     (void)value;
 }
 
-static int fill_input_owner_add_actor_options(PyObject *obj, ifcopenshell_owner_add_actor_options_t *out, PyObject **refs) {
+static int fill_input_owner_add_actor_options(PyObject *obj, ifcopenshell_owner_add_actor_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -13612,7 +15144,7 @@ static int fill_input_owner_add_actor_options(PyObject *obj, ifcopenshell_owner_
     if (!field_0) {
         return 0;
     }
-    refs[0] = field_0;
+    if (!retain_option_ref(refs, field_0)) return 0;
     if (!extract_handle(field_0, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->actor, 0)) {
         return 0;
     }
@@ -13620,14 +15152,14 @@ static int fill_input_owner_add_actor_options(PyObject *obj, ifcopenshell_owner_
     if (!field_1) {
         return 0;
     }
-    refs[1] = field_1;
+    if (!retain_option_ref(refs, field_1)) return 0;
     out->ifc_class = PyUnicode_AsUTF8(field_1);
     if (!out->ifc_class) return 0;
     PyObject *field_2 = get_option_field(obj, "owner_history", 0);
     if (!field_2) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[2] = field_2;
+        if (!retain_option_ref(refs, field_2)) return 0;
         if (field_2 != Py_None) {
             if (!extract_handle(field_2, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->owner_history, 0)) {
                 return 0;
@@ -13639,7 +15171,7 @@ static int fill_input_owner_add_actor_options(PyObject *obj, ifcopenshell_owner_
     if (!field_3) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[3] = field_3;
+        if (!retain_option_ref(refs, field_3)) return 0;
         if (field_3 != Py_None) {
             if (!extract_handle(field_3, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->user, 0)) {
                 return 0;
@@ -13651,7 +15183,7 @@ static int fill_input_owner_add_actor_options(PyObject *obj, ifcopenshell_owner_
     if (!field_4) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[4] = field_4;
+        if (!retain_option_ref(refs, field_4)) return 0;
         if (field_4 != Py_None) {
             if (!extract_handle(field_4, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->application, 0)) {
                 return 0;
@@ -13667,7 +15199,7 @@ static void free_input_owner_add_application_options(ifcopenshell_owner_add_appl
     (void)value;
 }
 
-static int fill_input_owner_add_application_options(PyObject *obj, ifcopenshell_owner_add_application_options_t *out, PyObject **refs) {
+static int fill_input_owner_add_application_options(PyObject *obj, ifcopenshell_owner_add_application_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -13676,7 +15208,7 @@ static int fill_input_owner_add_application_options(PyObject *obj, ifcopenshell_
     if (!field_0) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[0] = field_0;
+        if (!retain_option_ref(refs, field_0)) return 0;
         if (field_0 != Py_None) {
             if (!extract_handle(field_0, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->application_developer, 0)) {
                 return 0;
@@ -13688,28 +15220,28 @@ static int fill_input_owner_add_application_options(PyObject *obj, ifcopenshell_
     if (!field_1) {
         return 0;
     }
-    refs[1] = field_1;
+    if (!retain_option_ref(refs, field_1)) return 0;
     out->version = PyUnicode_AsUTF8(field_1);
     if (!out->version) return 0;
     PyObject *field_2 = get_option_field(obj, "application_full_name", 1);
     if (!field_2) {
         return 0;
     }
-    refs[2] = field_2;
+    if (!retain_option_ref(refs, field_2)) return 0;
     out->application_full_name = PyUnicode_AsUTF8(field_2);
     if (!out->application_full_name) return 0;
     PyObject *field_3 = get_option_field(obj, "application_identifier", 1);
     if (!field_3) {
         return 0;
     }
-    refs[3] = field_3;
+    if (!retain_option_ref(refs, field_3)) return 0;
     out->application_identifier = PyUnicode_AsUTF8(field_3);
     if (!out->application_identifier) return 0;
     PyObject *field_4 = get_option_field(obj, "owner_history", 0);
     if (!field_4) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[4] = field_4;
+        if (!retain_option_ref(refs, field_4)) return 0;
         if (field_4 != Py_None) {
             if (!extract_handle(field_4, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->owner_history, 0)) {
                 return 0;
@@ -13721,7 +15253,7 @@ static int fill_input_owner_add_application_options(PyObject *obj, ifcopenshell_
     if (!field_5) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[5] = field_5;
+        if (!retain_option_ref(refs, field_5)) return 0;
         if (field_5 != Py_None) {
             if (!extract_handle(field_5, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->user, 0)) {
                 return 0;
@@ -13733,7 +15265,7 @@ static int fill_input_owner_add_application_options(PyObject *obj, ifcopenshell_
     if (!field_6) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[6] = field_6;
+        if (!retain_option_ref(refs, field_6)) return 0;
         if (field_6 != Py_None) {
             if (!extract_handle(field_6, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->application, 0)) {
                 return 0;
@@ -13749,7 +15281,7 @@ static void free_input_owner_assign_actor_options(ifcopenshell_owner_assign_acto
     (void)value;
 }
 
-static int fill_input_owner_assign_actor_options(PyObject *obj, ifcopenshell_owner_assign_actor_options_t *out, PyObject **refs) {
+static int fill_input_owner_assign_actor_options(PyObject *obj, ifcopenshell_owner_assign_actor_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -13758,7 +15290,7 @@ static int fill_input_owner_assign_actor_options(PyObject *obj, ifcopenshell_own
     if (!field_0) {
         return 0;
     }
-    refs[0] = field_0;
+    if (!retain_option_ref(refs, field_0)) return 0;
     if (!extract_handle(field_0, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->relating_actor, 0)) {
         return 0;
     }
@@ -13766,7 +15298,7 @@ static int fill_input_owner_assign_actor_options(PyObject *obj, ifcopenshell_own
     if (!field_1) {
         return 0;
     }
-    refs[1] = field_1;
+    if (!retain_option_ref(refs, field_1)) return 0;
     if (!extract_handle(field_1, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->related_object, 0)) {
         return 0;
     }
@@ -13774,7 +15306,7 @@ static int fill_input_owner_assign_actor_options(PyObject *obj, ifcopenshell_own
     if (!field_2) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[2] = field_2;
+        if (!retain_option_ref(refs, field_2)) return 0;
         if (field_2 != Py_None) {
             if (!extract_handle(field_2, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->owner_history, 0)) {
                 return 0;
@@ -13786,7 +15318,7 @@ static int fill_input_owner_assign_actor_options(PyObject *obj, ifcopenshell_own
     if (!field_3) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[3] = field_3;
+        if (!retain_option_ref(refs, field_3)) return 0;
         if (field_3 != Py_None) {
             if (!extract_handle(field_3, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->user, 0)) {
                 return 0;
@@ -13798,7 +15330,7 @@ static int fill_input_owner_assign_actor_options(PyObject *obj, ifcopenshell_own
     if (!field_4) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[4] = field_4;
+        if (!retain_option_ref(refs, field_4)) return 0;
         if (field_4 != Py_None) {
             if (!extract_handle(field_4, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->application, 0)) {
                 return 0;
@@ -13814,7 +15346,7 @@ static void free_input_owner_create_owner_history_options(ifcopenshell_owner_cre
     (void)value;
 }
 
-static int fill_input_owner_create_owner_history_options(PyObject *obj, ifcopenshell_owner_create_owner_history_options_t *out, PyObject **refs) {
+static int fill_input_owner_create_owner_history_options(PyObject *obj, ifcopenshell_owner_create_owner_history_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -13823,7 +15355,7 @@ static int fill_input_owner_create_owner_history_options(PyObject *obj, ifcopens
     if (!field_0) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[0] = field_0;
+        if (!retain_option_ref(refs, field_0)) return 0;
         if (field_0 != Py_None) {
             if (!extract_handle(field_0, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->user, 0)) {
                 return 0;
@@ -13835,7 +15367,7 @@ static int fill_input_owner_create_owner_history_options(PyObject *obj, ifcopens
     if (!field_1) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[1] = field_1;
+        if (!retain_option_ref(refs, field_1)) return 0;
         if (field_1 != Py_None) {
             if (!extract_handle(field_1, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->application, 0)) {
                 return 0;
@@ -13851,7 +15383,7 @@ static void free_input_owner_unassign_actor_options(ifcopenshell_owner_unassign_
     (void)value;
 }
 
-static int fill_input_owner_unassign_actor_options(PyObject *obj, ifcopenshell_owner_unassign_actor_options_t *out, PyObject **refs) {
+static int fill_input_owner_unassign_actor_options(PyObject *obj, ifcopenshell_owner_unassign_actor_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -13860,7 +15392,7 @@ static int fill_input_owner_unassign_actor_options(PyObject *obj, ifcopenshell_o
     if (!field_0) {
         return 0;
     }
-    refs[0] = field_0;
+    if (!retain_option_ref(refs, field_0)) return 0;
     if (!extract_handle(field_0, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->relating_actor, 0)) {
         return 0;
     }
@@ -13868,7 +15400,7 @@ static int fill_input_owner_unassign_actor_options(PyObject *obj, ifcopenshell_o
     if (!field_1) {
         return 0;
     }
-    refs[1] = field_1;
+    if (!retain_option_ref(refs, field_1)) return 0;
     if (!extract_handle(field_1, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->related_object, 0)) {
         return 0;
     }
@@ -13876,7 +15408,7 @@ static int fill_input_owner_unassign_actor_options(PyObject *obj, ifcopenshell_o
     if (!field_2) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[2] = field_2;
+        if (!retain_option_ref(refs, field_2)) return 0;
         if (field_2 != Py_None) {
             if (!extract_handle(field_2, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->user, 0)) {
                 return 0;
@@ -13888,7 +15420,7 @@ static int fill_input_owner_unassign_actor_options(PyObject *obj, ifcopenshell_o
     if (!field_3) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[3] = field_3;
+        if (!retain_option_ref(refs, field_3)) return 0;
         if (field_3 != Py_None) {
             if (!extract_handle(field_3, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->application, 0)) {
                 return 0;
@@ -13904,7 +15436,7 @@ static void free_input_owner_update_owner_history_options(ifcopenshell_owner_upd
     (void)value;
 }
 
-static int fill_input_owner_update_owner_history_options(PyObject *obj, ifcopenshell_owner_update_owner_history_options_t *out, PyObject **refs) {
+static int fill_input_owner_update_owner_history_options(PyObject *obj, ifcopenshell_owner_update_owner_history_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -13913,7 +15445,7 @@ static int fill_input_owner_update_owner_history_options(PyObject *obj, ifcopens
     if (!field_0) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[0] = field_0;
+        if (!retain_option_ref(refs, field_0)) return 0;
         if (field_0 != Py_None) {
             if (!extract_handle(field_0, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->element, 0)) {
                 return 0;
@@ -13925,7 +15457,7 @@ static int fill_input_owner_update_owner_history_options(PyObject *obj, ifcopens
     if (!field_1) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[1] = field_1;
+        if (!retain_option_ref(refs, field_1)) return 0;
         if (field_1 != Py_None) {
             if (!extract_handle(field_1, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->user, 0)) {
                 return 0;
@@ -13937,7 +15469,7 @@ static int fill_input_owner_update_owner_history_options(PyObject *obj, ifcopens
     if (!field_2) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[2] = field_2;
+        if (!retain_option_ref(refs, field_2)) return 0;
         if (field_2 != Py_None) {
             if (!extract_handle(field_2, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->application, 0)) {
                 return 0;
@@ -13951,13 +15483,13 @@ static int fill_input_owner_update_owner_history_options(PyObject *obj, ifcopens
 
 static void free_input_profile_add_arbitrary_profile_options(ifcopenshell_profile_add_arbitrary_profile_options_t *value) {
     if (value->profile) {
-        free_input_double_list_list((ifcopenshell_double_list_list_t *)value->profile);
+        free_input_double_list_list_any_2_double_list_list_any_3_variant((ifcopenshell_double_list_list_any_2_double_list_list_any_3_variant_t *)value->profile);
         PyMem_Free((void *)value->profile);
         value->profile = NULL;
     }
 }
 
-static int fill_input_profile_add_arbitrary_profile_options(PyObject *obj, ifcopenshell_profile_add_arbitrary_profile_options_t *out, PyObject **refs) {
+static int fill_input_profile_add_arbitrary_profile_options(PyObject *obj, ifcopenshell_profile_add_arbitrary_profile_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -13966,22 +15498,22 @@ static int fill_input_profile_add_arbitrary_profile_options(PyObject *obj, ifcop
     if (!field_0) {
         return 0;
     }
-    refs[0] = field_0;
-    ifcopenshell_double_list_list_t *sequence_0 = (ifcopenshell_double_list_list_t *)PyMem_Calloc(1, sizeof(ifcopenshell_double_list_list_t));
-    if (!sequence_0) {
+    if (!retain_option_ref(refs, field_0)) return 0;
+    ifcopenshell_double_list_list_any_2_double_list_list_any_3_variant_t *variant_0 = (ifcopenshell_double_list_list_any_2_double_list_list_any_3_variant_t *)PyMem_Calloc(1, sizeof(ifcopenshell_double_list_list_any_2_double_list_list_any_3_variant_t));
+    if (!variant_0) {
         PyErr_NoMemory();
         return 0;
     }
-    if (!make_input_double_list_list(field_0, sequence_0)) {
-        PyMem_Free(sequence_0);
+    if (!make_input_double_list_list_any_2_double_list_list_any_3_variant(field_0, variant_0, refs)) {
+        PyMem_Free(variant_0);
         return 0;
     }
-    out->profile = sequence_0;
+    out->profile = variant_0;
     PyObject *field_1 = get_option_field(obj, "name", 0);
     if (!field_1) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[1] = field_1;
+        if (!retain_option_ref(refs, field_1)) return 0;
         if (field_1 != Py_None) {
             out->name = PyUnicode_AsUTF8(field_1);
             if (!out->name) return 0;
@@ -13994,18 +15526,18 @@ static int fill_input_profile_add_arbitrary_profile_options(PyObject *obj, ifcop
 
 static void free_input_profile_add_arbitrary_profile_with_voids_options(ifcopenshell_profile_add_arbitrary_profile_with_voids_options_t *value) {
     if (value->outer_profile) {
-        free_input_double_list_list((ifcopenshell_double_list_list_t *)value->outer_profile);
+        free_input_double_list_list_any_2_double_list_list_any_3_variant((ifcopenshell_double_list_list_any_2_double_list_list_any_3_variant_t *)value->outer_profile);
         PyMem_Free((void *)value->outer_profile);
         value->outer_profile = NULL;
     }
     if (value->inner_profiles) {
-        free_input_double_list_list_list((ifcopenshell_double_list_list_list_t *)value->inner_profiles);
+        free_input_double_list_list_any_2_double_list_list_any_3_variant_list((ifcopenshell_double_list_list_any_2_double_list_list_any_3_variant_list_t *)value->inner_profiles);
         PyMem_Free((void *)value->inner_profiles);
         value->inner_profiles = NULL;
     }
 }
 
-static int fill_input_profile_add_arbitrary_profile_with_voids_options(PyObject *obj, ifcopenshell_profile_add_arbitrary_profile_with_voids_options_t *out, PyObject **refs) {
+static int fill_input_profile_add_arbitrary_profile_with_voids_options(PyObject *obj, ifcopenshell_profile_add_arbitrary_profile_with_voids_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -14014,28 +15546,28 @@ static int fill_input_profile_add_arbitrary_profile_with_voids_options(PyObject 
     if (!field_0) {
         return 0;
     }
-    refs[0] = field_0;
-    ifcopenshell_double_list_list_t *sequence_0 = (ifcopenshell_double_list_list_t *)PyMem_Calloc(1, sizeof(ifcopenshell_double_list_list_t));
-    if (!sequence_0) {
+    if (!retain_option_ref(refs, field_0)) return 0;
+    ifcopenshell_double_list_list_any_2_double_list_list_any_3_variant_t *variant_0 = (ifcopenshell_double_list_list_any_2_double_list_list_any_3_variant_t *)PyMem_Calloc(1, sizeof(ifcopenshell_double_list_list_any_2_double_list_list_any_3_variant_t));
+    if (!variant_0) {
         PyErr_NoMemory();
         return 0;
     }
-    if (!make_input_double_list_list(field_0, sequence_0)) {
-        PyMem_Free(sequence_0);
+    if (!make_input_double_list_list_any_2_double_list_list_any_3_variant(field_0, variant_0, refs)) {
+        PyMem_Free(variant_0);
         return 0;
     }
-    out->outer_profile = sequence_0;
+    out->outer_profile = variant_0;
     PyObject *field_1 = get_option_field(obj, "inner_profiles", 1);
     if (!field_1) {
         return 0;
     }
-    refs[1] = field_1;
-    ifcopenshell_double_list_list_list_t *sequence_1 = (ifcopenshell_double_list_list_list_t *)PyMem_Calloc(1, sizeof(ifcopenshell_double_list_list_list_t));
+    if (!retain_option_ref(refs, field_1)) return 0;
+    ifcopenshell_double_list_list_any_2_double_list_list_any_3_variant_list_t *sequence_1 = (ifcopenshell_double_list_list_any_2_double_list_list_any_3_variant_list_t *)PyMem_Calloc(1, sizeof(ifcopenshell_double_list_list_any_2_double_list_list_any_3_variant_list_t));
     if (!sequence_1) {
         PyErr_NoMemory();
         return 0;
     }
-    if (!make_input_double_list_list_list(field_1, sequence_1)) {
+    if (!make_input_double_list_list_any_2_double_list_list_any_3_variant_list(field_1, sequence_1, refs)) {
         PyMem_Free(sequence_1);
         return 0;
     }
@@ -14044,7 +15576,7 @@ static int fill_input_profile_add_arbitrary_profile_with_voids_options(PyObject 
     if (!field_2) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[2] = field_2;
+        if (!retain_option_ref(refs, field_2)) return 0;
         if (field_2 != Py_None) {
             out->name = PyUnicode_AsUTF8(field_2);
             if (!out->name) return 0;
@@ -14059,7 +15591,7 @@ static void free_input_project_append_asset_options(ifcopenshell_project_append_
     (void)value;
 }
 
-static int fill_input_project_append_asset_options(PyObject *obj, ifcopenshell_project_append_asset_options_t *out, PyObject **refs) {
+static int fill_input_project_append_asset_options(PyObject *obj, ifcopenshell_project_append_asset_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -14068,7 +15600,7 @@ static int fill_input_project_append_asset_options(PyObject *obj, ifcopenshell_p
     if (!field_0) {
         return 0;
     }
-    refs[0] = field_0;
+    if (!retain_option_ref(refs, field_0)) return 0;
     if (!extract_handle(field_0, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&out->library, 0)) {
         return 0;
     }
@@ -14076,7 +15608,7 @@ static int fill_input_project_append_asset_options(PyObject *obj, ifcopenshell_p
     if (!field_1) {
         return 0;
     }
-    refs[1] = field_1;
+    if (!retain_option_ref(refs, field_1)) return 0;
     if (!extract_handle(field_1, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->element, 0)) {
         return 0;
     }
@@ -14084,7 +15616,7 @@ static int fill_input_project_append_asset_options(PyObject *obj, ifcopenshell_p
     if (!field_2) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[2] = field_2;
+        if (!retain_option_ref(refs, field_2)) return 0;
         if (field_2 != Py_None) {
             if (!extract_handle(field_2, &IfcOpenshellProjectAppendAssetCacheType, "IfcOpenshellProjectAppendAssetCache", (void **)&out->cache, 0)) {
                 return 0;
@@ -14096,7 +15628,7 @@ static int fill_input_project_append_asset_options(PyObject *obj, ifcopenshell_p
     if (!field_3) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[3] = field_3;
+        if (!retain_option_ref(refs, field_3)) return 0;
         if (field_3 != Py_None) {
             int value_3 = PyObject_IsTrue(field_3);
             if (value_3 < 0) return 0;
@@ -14115,7 +15647,7 @@ static void free_input_project_assign_declaration_options(ifcopenshell_project_a
     }
 }
 
-static int fill_input_project_assign_declaration_options(PyObject *obj, ifcopenshell_project_assign_declaration_options_t *out, PyObject **refs) {
+static int fill_input_project_assign_declaration_options(PyObject *obj, ifcopenshell_project_assign_declaration_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -14124,9 +15656,9 @@ static int fill_input_project_assign_declaration_options(PyObject *obj, ifcopens
     if (!field_0) {
         return 0;
     }
-    refs[0] = field_0;
+    if (!retain_option_ref(refs, field_0)) return 0;
     ifcopenshell_instance_list_t definitions_items_0 = {0};
-    if (!make_input_instance_list(field_0, &definitions_items_0)) {
+    if (!make_input_instance_list(field_0, &definitions_items_0, refs)) {
         return 0;
     }
     if (!ifcopenshell_parse_instance_list_create_from_handles(&definitions_items_0, &out->definitions)) {
@@ -14139,7 +15671,7 @@ static int fill_input_project_assign_declaration_options(PyObject *obj, ifcopens
     if (!field_1) {
         return 0;
     }
-    refs[1] = field_1;
+    if (!retain_option_ref(refs, field_1)) return 0;
     if (!extract_handle(field_1, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->relating_context, 0)) {
         return 0;
     }
@@ -14147,7 +15679,7 @@ static int fill_input_project_assign_declaration_options(PyObject *obj, ifcopens
     if (!field_2) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[2] = field_2;
+        if (!retain_option_ref(refs, field_2)) return 0;
         if (field_2 != Py_None) {
             if (!extract_handle(field_2, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->owner_history, 0)) {
                 return 0;
@@ -14159,7 +15691,7 @@ static int fill_input_project_assign_declaration_options(PyObject *obj, ifcopens
     if (!field_3) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[3] = field_3;
+        if (!retain_option_ref(refs, field_3)) return 0;
         if (field_3 != Py_None) {
             if (!extract_handle(field_3, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->user, 0)) {
                 return 0;
@@ -14171,7 +15703,7 @@ static int fill_input_project_assign_declaration_options(PyObject *obj, ifcopens
     if (!field_4) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[4] = field_4;
+        if (!retain_option_ref(refs, field_4)) return 0;
         if (field_4 != Py_None) {
             if (!extract_handle(field_4, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->application, 0)) {
                 return 0;
@@ -14190,7 +15722,7 @@ static void free_input_project_unassign_declaration_options(ifcopenshell_project
     }
 }
 
-static int fill_input_project_unassign_declaration_options(PyObject *obj, ifcopenshell_project_unassign_declaration_options_t *out, PyObject **refs) {
+static int fill_input_project_unassign_declaration_options(PyObject *obj, ifcopenshell_project_unassign_declaration_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -14199,9 +15731,9 @@ static int fill_input_project_unassign_declaration_options(PyObject *obj, ifcope
     if (!field_0) {
         return 0;
     }
-    refs[0] = field_0;
+    if (!retain_option_ref(refs, field_0)) return 0;
     ifcopenshell_instance_list_t definitions_items_0 = {0};
-    if (!make_input_instance_list(field_0, &definitions_items_0)) {
+    if (!make_input_instance_list(field_0, &definitions_items_0, refs)) {
         return 0;
     }
     if (!ifcopenshell_parse_instance_list_create_from_handles(&definitions_items_0, &out->definitions)) {
@@ -14214,7 +15746,7 @@ static int fill_input_project_unassign_declaration_options(PyObject *obj, ifcope
     if (!field_1) {
         return 0;
     }
-    refs[1] = field_1;
+    if (!retain_option_ref(refs, field_1)) return 0;
     if (!extract_handle(field_1, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->relating_context, 0)) {
         return 0;
     }
@@ -14222,7 +15754,7 @@ static int fill_input_project_unassign_declaration_options(PyObject *obj, ifcope
     if (!field_2) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[2] = field_2;
+        if (!retain_option_ref(refs, field_2)) return 0;
         if (field_2 != Py_None) {
             if (!extract_handle(field_2, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->user, 0)) {
                 return 0;
@@ -14234,7 +15766,7 @@ static int fill_input_project_unassign_declaration_options(PyObject *obj, ifcope
     if (!field_3) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[3] = field_3;
+        if (!retain_option_ref(refs, field_3)) return 0;
         if (field_3 != Py_None) {
             if (!extract_handle(field_3, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->application, 0)) {
                 return 0;
@@ -14250,7 +15782,7 @@ static void free_input_pset_add_pset_options(ifcopenshell_pset_add_pset_options_
     (void)value;
 }
 
-static int fill_input_pset_add_pset_options(PyObject *obj, ifcopenshell_pset_add_pset_options_t *out, PyObject **refs) {
+static int fill_input_pset_add_pset_options(PyObject *obj, ifcopenshell_pset_add_pset_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -14259,7 +15791,7 @@ static int fill_input_pset_add_pset_options(PyObject *obj, ifcopenshell_pset_add
     if (!field_0) {
         return 0;
     }
-    refs[0] = field_0;
+    if (!retain_option_ref(refs, field_0)) return 0;
     if (!extract_handle(field_0, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->product, 0)) {
         return 0;
     }
@@ -14267,14 +15799,14 @@ static int fill_input_pset_add_pset_options(PyObject *obj, ifcopenshell_pset_add
     if (!field_1) {
         return 0;
     }
-    refs[1] = field_1;
+    if (!retain_option_ref(refs, field_1)) return 0;
     out->name = PyUnicode_AsUTF8(field_1);
     if (!out->name) return 0;
     PyObject *field_2 = get_option_field(obj, "owner_history", 0);
     if (!field_2) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[2] = field_2;
+        if (!retain_option_ref(refs, field_2)) return 0;
         if (field_2 != Py_None) {
             if (!extract_handle(field_2, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->owner_history, 0)) {
                 return 0;
@@ -14286,7 +15818,7 @@ static int fill_input_pset_add_pset_options(PyObject *obj, ifcopenshell_pset_add
     if (!field_3) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[3] = field_3;
+        if (!retain_option_ref(refs, field_3)) return 0;
         if (field_3 != Py_None) {
             if (!extract_handle(field_3, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->user, 0)) {
                 return 0;
@@ -14298,7 +15830,7 @@ static int fill_input_pset_add_pset_options(PyObject *obj, ifcopenshell_pset_add
     if (!field_4) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[4] = field_4;
+        if (!retain_option_ref(refs, field_4)) return 0;
         if (field_4 != Py_None) {
             if (!extract_handle(field_4, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->application, 0)) {
                 return 0;
@@ -14310,7 +15842,7 @@ static int fill_input_pset_add_pset_options(PyObject *obj, ifcopenshell_pset_add
     if (!field_5) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[5] = field_5;
+        if (!retain_option_ref(refs, field_5)) return 0;
         if (field_5 != Py_None) {
             out->ifc2x3_subclass = PyUnicode_AsUTF8(field_5);
             if (!out->ifc2x3_subclass) return 0;
@@ -14325,7 +15857,7 @@ static void free_input_pset_add_qto_options(ifcopenshell_pset_add_qto_options_t 
     (void)value;
 }
 
-static int fill_input_pset_add_qto_options(PyObject *obj, ifcopenshell_pset_add_qto_options_t *out, PyObject **refs) {
+static int fill_input_pset_add_qto_options(PyObject *obj, ifcopenshell_pset_add_qto_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -14334,7 +15866,7 @@ static int fill_input_pset_add_qto_options(PyObject *obj, ifcopenshell_pset_add_
     if (!field_0) {
         return 0;
     }
-    refs[0] = field_0;
+    if (!retain_option_ref(refs, field_0)) return 0;
     if (!extract_handle(field_0, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->product, 0)) {
         return 0;
     }
@@ -14342,14 +15874,14 @@ static int fill_input_pset_add_qto_options(PyObject *obj, ifcopenshell_pset_add_
     if (!field_1) {
         return 0;
     }
-    refs[1] = field_1;
+    if (!retain_option_ref(refs, field_1)) return 0;
     out->name = PyUnicode_AsUTF8(field_1);
     if (!out->name) return 0;
     PyObject *field_2 = get_option_field(obj, "owner_history", 0);
     if (!field_2) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[2] = field_2;
+        if (!retain_option_ref(refs, field_2)) return 0;
         if (field_2 != Py_None) {
             if (!extract_handle(field_2, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->owner_history, 0)) {
                 return 0;
@@ -14361,7 +15893,7 @@ static int fill_input_pset_add_qto_options(PyObject *obj, ifcopenshell_pset_add_
     if (!field_3) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[3] = field_3;
+        if (!retain_option_ref(refs, field_3)) return 0;
         if (field_3 != Py_None) {
             if (!extract_handle(field_3, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->user, 0)) {
                 return 0;
@@ -14373,7 +15905,7 @@ static int fill_input_pset_add_qto_options(PyObject *obj, ifcopenshell_pset_add_
     if (!field_4) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[4] = field_4;
+        if (!retain_option_ref(refs, field_4)) return 0;
         if (field_4 != Py_None) {
             if (!extract_handle(field_4, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->application, 0)) {
                 return 0;
@@ -14392,7 +15924,7 @@ static void free_input_pset_assign_pset_options(ifcopenshell_pset_assign_pset_op
     }
 }
 
-static int fill_input_pset_assign_pset_options(PyObject *obj, ifcopenshell_pset_assign_pset_options_t *out, PyObject **refs) {
+static int fill_input_pset_assign_pset_options(PyObject *obj, ifcopenshell_pset_assign_pset_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -14401,9 +15933,9 @@ static int fill_input_pset_assign_pset_options(PyObject *obj, ifcopenshell_pset_
     if (!field_0) {
         return 0;
     }
-    refs[0] = field_0;
+    if (!retain_option_ref(refs, field_0)) return 0;
     ifcopenshell_instance_list_t products_items_0 = {0};
-    if (!make_input_instance_list(field_0, &products_items_0)) {
+    if (!make_input_instance_list(field_0, &products_items_0, refs)) {
         return 0;
     }
     if (!ifcopenshell_parse_instance_list_create_from_handles(&products_items_0, &out->products)) {
@@ -14416,7 +15948,7 @@ static int fill_input_pset_assign_pset_options(PyObject *obj, ifcopenshell_pset_
     if (!field_1) {
         return 0;
     }
-    refs[1] = field_1;
+    if (!retain_option_ref(refs, field_1)) return 0;
     if (!extract_handle(field_1, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->pset, 0)) {
         return 0;
     }
@@ -14424,7 +15956,7 @@ static int fill_input_pset_assign_pset_options(PyObject *obj, ifcopenshell_pset_
     if (!field_2) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[2] = field_2;
+        if (!retain_option_ref(refs, field_2)) return 0;
         if (field_2 != Py_None) {
             if (!extract_handle(field_2, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->owner_history, 0)) {
                 return 0;
@@ -14436,7 +15968,7 @@ static int fill_input_pset_assign_pset_options(PyObject *obj, ifcopenshell_pset_
     if (!field_3) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[3] = field_3;
+        if (!retain_option_ref(refs, field_3)) return 0;
         if (field_3 != Py_None) {
             if (!extract_handle(field_3, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->user, 0)) {
                 return 0;
@@ -14448,7 +15980,7 @@ static int fill_input_pset_assign_pset_options(PyObject *obj, ifcopenshell_pset_
     if (!field_4) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[4] = field_4;
+        if (!retain_option_ref(refs, field_4)) return 0;
         if (field_4 != Py_None) {
             if (!extract_handle(field_4, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->application, 0)) {
                 return 0;
@@ -14464,7 +15996,7 @@ static void free_input_pset_edit_pset_options(ifcopenshell_pset_edit_pset_option
     (void)value;
 }
 
-static int fill_input_pset_edit_pset_options(PyObject *obj, ifcopenshell_pset_edit_pset_options_t *out, PyObject **refs) {
+static int fill_input_pset_edit_pset_options(PyObject *obj, ifcopenshell_pset_edit_pset_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -14473,7 +16005,7 @@ static int fill_input_pset_edit_pset_options(PyObject *obj, ifcopenshell_pset_ed
     if (!field_0) {
         return 0;
     }
-    refs[0] = field_0;
+    if (!retain_option_ref(refs, field_0)) return 0;
     if (!extract_handle(field_0, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->pset, 0)) {
         return 0;
     }
@@ -14481,7 +16013,7 @@ static int fill_input_pset_edit_pset_options(PyObject *obj, ifcopenshell_pset_ed
     if (!field_1) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[1] = field_1;
+        if (!retain_option_ref(refs, field_1)) return 0;
         if (field_1 != Py_None) {
             out->name = PyUnicode_AsUTF8(field_1);
             if (!out->name) return 0;
@@ -14492,7 +16024,7 @@ static int fill_input_pset_edit_pset_options(PyObject *obj, ifcopenshell_pset_ed
     if (!field_2) {
         return 0;
     }
-    refs[2] = field_2;
+    if (!retain_option_ref(refs, field_2)) return 0;
     if (PyCapsule_IsValid(field_2, NULL)) {
         out->properties = PyCapsule_GetPointer(field_2, NULL);
     } else {
@@ -14503,7 +16035,7 @@ static int fill_input_pset_edit_pset_options(PyObject *obj, ifcopenshell_pset_ed
     if (!field_3) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[3] = field_3;
+        if (!retain_option_ref(refs, field_3)) return 0;
         if (field_3 != Py_None) {
             if (!extract_handle(field_3, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->pset_template, 0)) {
                 return 0;
@@ -14515,7 +16047,7 @@ static int fill_input_pset_edit_pset_options(PyObject *obj, ifcopenshell_pset_ed
     if (!field_4) {
         return 0;
     }
-    refs[4] = field_4;
+    if (!retain_option_ref(refs, field_4)) return 0;
     int value_4 = PyObject_IsTrue(field_4);
     if (value_4 < 0) return 0;
     out->should_purge = (bool)value_4;
@@ -14527,7 +16059,7 @@ static void free_input_pset_edit_qto_options(ifcopenshell_pset_edit_qto_options_
     (void)value;
 }
 
-static int fill_input_pset_edit_qto_options(PyObject *obj, ifcopenshell_pset_edit_qto_options_t *out, PyObject **refs) {
+static int fill_input_pset_edit_qto_options(PyObject *obj, ifcopenshell_pset_edit_qto_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -14536,7 +16068,7 @@ static int fill_input_pset_edit_qto_options(PyObject *obj, ifcopenshell_pset_edi
     if (!field_0) {
         return 0;
     }
-    refs[0] = field_0;
+    if (!retain_option_ref(refs, field_0)) return 0;
     if (!extract_handle(field_0, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->qto, 0)) {
         return 0;
     }
@@ -14544,7 +16076,7 @@ static int fill_input_pset_edit_qto_options(PyObject *obj, ifcopenshell_pset_edi
     if (!field_1) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[1] = field_1;
+        if (!retain_option_ref(refs, field_1)) return 0;
         if (field_1 != Py_None) {
             out->name = PyUnicode_AsUTF8(field_1);
             if (!out->name) return 0;
@@ -14555,7 +16087,7 @@ static int fill_input_pset_edit_qto_options(PyObject *obj, ifcopenshell_pset_edi
     if (!field_2) {
         return 0;
     }
-    refs[2] = field_2;
+    if (!retain_option_ref(refs, field_2)) return 0;
     if (PyCapsule_IsValid(field_2, NULL)) {
         out->properties = PyCapsule_GetPointer(field_2, NULL);
     } else {
@@ -14566,7 +16098,7 @@ static int fill_input_pset_edit_qto_options(PyObject *obj, ifcopenshell_pset_edi
     if (!field_3) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[3] = field_3;
+        if (!retain_option_ref(refs, field_3)) return 0;
         if (field_3 != Py_None) {
             if (!extract_handle(field_3, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->qto_template, 0)) {
                 return 0;
@@ -14582,7 +16114,7 @@ static void free_input_pset_template_edit_prop_template_options(ifcopenshell_pse
     (void)value;
 }
 
-static int fill_input_pset_template_edit_prop_template_options(PyObject *obj, ifcopenshell_pset_template_edit_prop_template_options_t *out, PyObject **refs) {
+static int fill_input_pset_template_edit_prop_template_options(PyObject *obj, ifcopenshell_pset_template_edit_prop_template_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -14591,7 +16123,7 @@ static int fill_input_pset_template_edit_prop_template_options(PyObject *obj, if
     if (!field_0) {
         return 0;
     }
-    refs[0] = field_0;
+    if (!retain_option_ref(refs, field_0)) return 0;
     if (!extract_handle(field_0, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->prop_template, 0)) {
         return 0;
     }
@@ -14599,7 +16131,7 @@ static int fill_input_pset_template_edit_prop_template_options(PyObject *obj, if
     if (!field_1) {
         return 0;
     }
-    refs[1] = field_1;
+    if (!retain_option_ref(refs, field_1)) return 0;
     if (PyCapsule_IsValid(field_1, NULL)) {
         out->attributes = PyCapsule_GetPointer(field_1, NULL);
     } else {
@@ -14617,7 +16149,7 @@ static void free_input_pset_unshare_pset_options(ifcopenshell_pset_unshare_pset_
     }
 }
 
-static int fill_input_pset_unshare_pset_options(PyObject *obj, ifcopenshell_pset_unshare_pset_options_t *out, PyObject **refs) {
+static int fill_input_pset_unshare_pset_options(PyObject *obj, ifcopenshell_pset_unshare_pset_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -14626,9 +16158,9 @@ static int fill_input_pset_unshare_pset_options(PyObject *obj, ifcopenshell_pset
     if (!field_0) {
         return 0;
     }
-    refs[0] = field_0;
+    if (!retain_option_ref(refs, field_0)) return 0;
     ifcopenshell_instance_list_t products_items_0 = {0};
-    if (!make_input_instance_list(field_0, &products_items_0)) {
+    if (!make_input_instance_list(field_0, &products_items_0, refs)) {
         return 0;
     }
     if (!ifcopenshell_parse_instance_list_create_from_handles(&products_items_0, &out->products)) {
@@ -14641,7 +16173,7 @@ static int fill_input_pset_unshare_pset_options(PyObject *obj, ifcopenshell_pset
     if (!field_1) {
         return 0;
     }
-    refs[1] = field_1;
+    if (!retain_option_ref(refs, field_1)) return 0;
     if (!extract_handle(field_1, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->pset, 0)) {
         return 0;
     }
@@ -14649,7 +16181,7 @@ static int fill_input_pset_unshare_pset_options(PyObject *obj, ifcopenshell_pset
     if (!field_2) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[2] = field_2;
+        if (!retain_option_ref(refs, field_2)) return 0;
         if (field_2 != Py_None) {
             if (!extract_handle(field_2, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->owner_history, 0)) {
                 return 0;
@@ -14661,7 +16193,7 @@ static int fill_input_pset_unshare_pset_options(PyObject *obj, ifcopenshell_pset
     if (!field_3) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[3] = field_3;
+        if (!retain_option_ref(refs, field_3)) return 0;
         if (field_3 != Py_None) {
             if (!extract_handle(field_3, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->user, 0)) {
                 return 0;
@@ -14673,7 +16205,7 @@ static int fill_input_pset_unshare_pset_options(PyObject *obj, ifcopenshell_pset
     if (!field_4) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[4] = field_4;
+        if (!retain_option_ref(refs, field_4)) return 0;
         if (field_4 != Py_None) {
             if (!extract_handle(field_4, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->application, 0)) {
                 return 0;
@@ -14689,7 +16221,7 @@ static void free_input_representation_get_product_representation_options(ifcopen
     (void)value;
 }
 
-static int fill_input_representation_get_product_representation_options(PyObject *obj, ifcopenshell_representation_get_product_representation_options_t *out, PyObject **refs) {
+static int fill_input_representation_get_product_representation_options(PyObject *obj, ifcopenshell_representation_get_product_representation_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -14698,7 +16230,7 @@ static int fill_input_representation_get_product_representation_options(PyObject
     if (!field_0) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[0] = field_0;
+        if (!retain_option_ref(refs, field_0)) return 0;
         if (field_0 != Py_None) {
             if (!extract_handle(field_0, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->context, 0)) {
                 return 0;
@@ -14710,7 +16242,7 @@ static int fill_input_representation_get_product_representation_options(PyObject
     if (!field_1) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[1] = field_1;
+        if (!retain_option_ref(refs, field_1)) return 0;
         if (field_1 != Py_None) {
             out->context_type = PyUnicode_AsUTF8(field_1);
             if (!out->context_type) return 0;
@@ -14721,7 +16253,7 @@ static int fill_input_representation_get_product_representation_options(PyObject
     if (!field_2) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[2] = field_2;
+        if (!retain_option_ref(refs, field_2)) return 0;
         if (field_2 != Py_None) {
             out->subcontext = PyUnicode_AsUTF8(field_2);
             if (!out->subcontext) return 0;
@@ -14732,7 +16264,7 @@ static int fill_input_representation_get_product_representation_options(PyObject
     if (!field_3) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[3] = field_3;
+        if (!retain_option_ref(refs, field_3)) return 0;
         if (field_3 != Py_None) {
             out->target_view = PyUnicode_AsUTF8(field_3);
             if (!out->target_view) return 0;
@@ -14747,7 +16279,7 @@ static void free_input_resource_add_resource_options(ifcopenshell_resource_add_r
     (void)value;
 }
 
-static int fill_input_resource_add_resource_options(PyObject *obj, ifcopenshell_resource_add_resource_options_t *out, PyObject **refs) {
+static int fill_input_resource_add_resource_options(PyObject *obj, ifcopenshell_resource_add_resource_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -14756,7 +16288,7 @@ static int fill_input_resource_add_resource_options(PyObject *obj, ifcopenshell_
     if (!field_0) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[0] = field_0;
+        if (!retain_option_ref(refs, field_0)) return 0;
         if (field_0 != Py_None) {
             if (!extract_handle(field_0, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->parent_resource, 0)) {
                 return 0;
@@ -14768,7 +16300,7 @@ static int fill_input_resource_add_resource_options(PyObject *obj, ifcopenshell_
     if (!field_1) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[1] = field_1;
+        if (!retain_option_ref(refs, field_1)) return 0;
         if (field_1 != Py_None) {
             out->ifc_class = PyUnicode_AsUTF8(field_1);
             if (!out->ifc_class) return 0;
@@ -14779,7 +16311,7 @@ static int fill_input_resource_add_resource_options(PyObject *obj, ifcopenshell_
     if (!field_2) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[2] = field_2;
+        if (!retain_option_ref(refs, field_2)) return 0;
         if (field_2 != Py_None) {
             out->name = PyUnicode_AsUTF8(field_2);
             if (!out->name) return 0;
@@ -14790,7 +16322,7 @@ static int fill_input_resource_add_resource_options(PyObject *obj, ifcopenshell_
     if (!field_3) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[3] = field_3;
+        if (!retain_option_ref(refs, field_3)) return 0;
         if (field_3 != Py_None) {
             out->predefined_type = PyUnicode_AsUTF8(field_3);
             if (!out->predefined_type) return 0;
@@ -14801,7 +16333,7 @@ static int fill_input_resource_add_resource_options(PyObject *obj, ifcopenshell_
     if (!field_4) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[4] = field_4;
+        if (!retain_option_ref(refs, field_4)) return 0;
         if (field_4 != Py_None) {
             if (!extract_handle(field_4, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->owner_history, 0)) {
                 return 0;
@@ -14813,7 +16345,7 @@ static int fill_input_resource_add_resource_options(PyObject *obj, ifcopenshell_
     if (!field_5) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[5] = field_5;
+        if (!retain_option_ref(refs, field_5)) return 0;
         if (field_5 != Py_None) {
             if (!extract_handle(field_5, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->user, 0)) {
                 return 0;
@@ -14825,7 +16357,7 @@ static int fill_input_resource_add_resource_options(PyObject *obj, ifcopenshell_
     if (!field_6) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[6] = field_6;
+        if (!retain_option_ref(refs, field_6)) return 0;
         if (field_6 != Py_None) {
             if (!extract_handle(field_6, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->application, 0)) {
                 return 0;
@@ -14841,7 +16373,7 @@ static void free_input_resource_assignment_options(ifcopenshell_resource_assignm
     (void)value;
 }
 
-static int fill_input_resource_assignment_options(PyObject *obj, ifcopenshell_resource_assignment_options_t *out, PyObject **refs) {
+static int fill_input_resource_assignment_options(PyObject *obj, ifcopenshell_resource_assignment_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -14850,7 +16382,7 @@ static int fill_input_resource_assignment_options(PyObject *obj, ifcopenshell_re
     if (!field_0) {
         return 0;
     }
-    refs[0] = field_0;
+    if (!retain_option_ref(refs, field_0)) return 0;
     if (!extract_handle(field_0, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->relating_resource, 0)) {
         return 0;
     }
@@ -14858,7 +16390,7 @@ static int fill_input_resource_assignment_options(PyObject *obj, ifcopenshell_re
     if (!field_1) {
         return 0;
     }
-    refs[1] = field_1;
+    if (!retain_option_ref(refs, field_1)) return 0;
     if (!extract_handle(field_1, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->related_object, 0)) {
         return 0;
     }
@@ -14866,7 +16398,7 @@ static int fill_input_resource_assignment_options(PyObject *obj, ifcopenshell_re
     if (!field_2) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[2] = field_2;
+        if (!retain_option_ref(refs, field_2)) return 0;
         if (field_2 != Py_None) {
             if (!extract_handle(field_2, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->owner_history, 0)) {
                 return 0;
@@ -14878,7 +16410,7 @@ static int fill_input_resource_assignment_options(PyObject *obj, ifcopenshell_re
     if (!field_3) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[3] = field_3;
+        if (!retain_option_ref(refs, field_3)) return 0;
         if (field_3 != Py_None) {
             if (!extract_handle(field_3, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->user, 0)) {
                 return 0;
@@ -14890,7 +16422,7 @@ static int fill_input_resource_assignment_options(PyObject *obj, ifcopenshell_re
     if (!field_4) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[4] = field_4;
+        if (!retain_option_ref(refs, field_4)) return 0;
         if (field_4 != Py_None) {
             if (!extract_handle(field_4, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->application, 0)) {
                 return 0;
@@ -14906,7 +16438,7 @@ static void free_input_resource_remove_resource_options(ifcopenshell_resource_re
     (void)value;
 }
 
-static int fill_input_resource_remove_resource_options(PyObject *obj, ifcopenshell_resource_remove_resource_options_t *out, PyObject **refs) {
+static int fill_input_resource_remove_resource_options(PyObject *obj, ifcopenshell_resource_remove_resource_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -14915,7 +16447,7 @@ static int fill_input_resource_remove_resource_options(PyObject *obj, ifcopenshe
     if (!field_0) {
         return 0;
     }
-    refs[0] = field_0;
+    if (!retain_option_ref(refs, field_0)) return 0;
     if (!extract_handle(field_0, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->resource, 0)) {
         return 0;
     }
@@ -14923,7 +16455,7 @@ static int fill_input_resource_remove_resource_options(PyObject *obj, ifcopenshe
     if (!field_1) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[1] = field_1;
+        if (!retain_option_ref(refs, field_1)) return 0;
         if (field_1 != Py_None) {
             if (!extract_handle(field_1, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->user, 0)) {
                 return 0;
@@ -14935,7 +16467,7 @@ static int fill_input_resource_remove_resource_options(PyObject *obj, ifcopenshe
     if (!field_2) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[2] = field_2;
+        if (!retain_option_ref(refs, field_2)) return 0;
         if (field_2 != Py_None) {
             if (!extract_handle(field_2, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->application, 0)) {
                 return 0;
@@ -14951,7 +16483,7 @@ static void free_input_root_create_entity_options(ifcopenshell_root_create_entit
     (void)value;
 }
 
-static int fill_input_root_create_entity_options(PyObject *obj, ifcopenshell_root_create_entity_options_t *out, PyObject **refs) {
+static int fill_input_root_create_entity_options(PyObject *obj, ifcopenshell_root_create_entity_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -14960,14 +16492,14 @@ static int fill_input_root_create_entity_options(PyObject *obj, ifcopenshell_roo
     if (!field_0) {
         return 0;
     }
-    refs[0] = field_0;
+    if (!retain_option_ref(refs, field_0)) return 0;
     out->ifc_class = PyUnicode_AsUTF8(field_0);
     if (!out->ifc_class) return 0;
     PyObject *field_1 = get_option_field(obj, "predefined_type", 0);
     if (!field_1) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[1] = field_1;
+        if (!retain_option_ref(refs, field_1)) return 0;
         if (field_1 != Py_None) {
             out->predefined_type = PyUnicode_AsUTF8(field_1);
             if (!out->predefined_type) return 0;
@@ -14978,7 +16510,7 @@ static int fill_input_root_create_entity_options(PyObject *obj, ifcopenshell_roo
     if (!field_2) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[2] = field_2;
+        if (!retain_option_ref(refs, field_2)) return 0;
         if (field_2 != Py_None) {
             out->name = PyUnicode_AsUTF8(field_2);
             if (!out->name) return 0;
@@ -14989,7 +16521,7 @@ static int fill_input_root_create_entity_options(PyObject *obj, ifcopenshell_roo
     if (!field_3) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[3] = field_3;
+        if (!retain_option_ref(refs, field_3)) return 0;
         if (field_3 != Py_None) {
             if (!extract_handle(field_3, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->owner_history, 0)) {
                 return 0;
@@ -15005,7 +16537,7 @@ static void free_input_root_reassign_class_options(ifcopenshell_root_reassign_cl
     (void)value;
 }
 
-static int fill_input_root_reassign_class_options(PyObject *obj, ifcopenshell_root_reassign_class_options_t *out, PyObject **refs) {
+static int fill_input_root_reassign_class_options(PyObject *obj, ifcopenshell_root_reassign_class_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -15014,7 +16546,7 @@ static int fill_input_root_reassign_class_options(PyObject *obj, ifcopenshell_ro
     if (!field_0) {
         return 0;
     }
-    refs[0] = field_0;
+    if (!retain_option_ref(refs, field_0)) return 0;
     if (!extract_handle(field_0, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->product, 0)) {
         return 0;
     }
@@ -15022,7 +16554,7 @@ static int fill_input_root_reassign_class_options(PyObject *obj, ifcopenshell_ro
     if (!field_1) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[1] = field_1;
+        if (!retain_option_ref(refs, field_1)) return 0;
         if (field_1 != Py_None) {
             out->ifc_class = PyUnicode_AsUTF8(field_1);
             if (!out->ifc_class) return 0;
@@ -15033,7 +16565,7 @@ static int fill_input_root_reassign_class_options(PyObject *obj, ifcopenshell_ro
     if (!field_2) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[2] = field_2;
+        if (!retain_option_ref(refs, field_2)) return 0;
         if (field_2 != Py_None) {
             out->predefined_type = PyUnicode_AsUTF8(field_2);
             if (!out->predefined_type) return 0;
@@ -15044,7 +16576,7 @@ static int fill_input_root_reassign_class_options(PyObject *obj, ifcopenshell_ro
     if (!field_3) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[3] = field_3;
+        if (!retain_option_ref(refs, field_3)) return 0;
         if (field_3 != Py_None) {
             out->occurrence_class = PyUnicode_AsUTF8(field_3);
             if (!out->occurrence_class) return 0;
@@ -15059,7 +16591,7 @@ static void free_input_root_remove_product_options(ifcopenshell_root_remove_prod
     (void)value;
 }
 
-static int fill_input_root_remove_product_options(PyObject *obj, ifcopenshell_root_remove_product_options_t *out, PyObject **refs) {
+static int fill_input_root_remove_product_options(PyObject *obj, ifcopenshell_root_remove_product_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -15068,7 +16600,7 @@ static int fill_input_root_remove_product_options(PyObject *obj, ifcopenshell_ro
     if (!field_0) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[0] = field_0;
+        if (!retain_option_ref(refs, field_0)) return 0;
         if (field_0 != Py_None) {
             if (!extract_handle(field_0, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->user, 0)) {
                 return 0;
@@ -15080,7 +16612,7 @@ static int fill_input_root_remove_product_options(PyObject *obj, ifcopenshell_ro
     if (!field_1) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[1] = field_1;
+        if (!retain_option_ref(refs, field_1)) return 0;
         if (field_1 != Py_None) {
             if (!extract_handle(field_1, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->application, 0)) {
                 return 0;
@@ -15096,7 +16628,7 @@ static void free_input_sequence_add_task_options(ifcopenshell_sequence_add_task_
     (void)value;
 }
 
-static int fill_input_sequence_add_task_options(PyObject *obj, ifcopenshell_sequence_add_task_options_t *out, PyObject **refs) {
+static int fill_input_sequence_add_task_options(PyObject *obj, ifcopenshell_sequence_add_task_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -15105,7 +16637,7 @@ static int fill_input_sequence_add_task_options(PyObject *obj, ifcopenshell_sequ
     if (!field_0) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[0] = field_0;
+        if (!retain_option_ref(refs, field_0)) return 0;
         if (field_0 != Py_None) {
             if (!extract_handle(field_0, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->work_schedule, 0)) {
                 return 0;
@@ -15117,7 +16649,7 @@ static int fill_input_sequence_add_task_options(PyObject *obj, ifcopenshell_sequ
     if (!field_1) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[1] = field_1;
+        if (!retain_option_ref(refs, field_1)) return 0;
         if (field_1 != Py_None) {
             if (!extract_handle(field_1, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->parent_task, 0)) {
                 return 0;
@@ -15129,7 +16661,7 @@ static int fill_input_sequence_add_task_options(PyObject *obj, ifcopenshell_sequ
     if (!field_2) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[2] = field_2;
+        if (!retain_option_ref(refs, field_2)) return 0;
         if (field_2 != Py_None) {
             out->name = PyUnicode_AsUTF8(field_2);
             if (!out->name) return 0;
@@ -15140,7 +16672,7 @@ static int fill_input_sequence_add_task_options(PyObject *obj, ifcopenshell_sequ
     if (!field_3) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[3] = field_3;
+        if (!retain_option_ref(refs, field_3)) return 0;
         if (field_3 != Py_None) {
             out->description = PyUnicode_AsUTF8(field_3);
             if (!out->description) return 0;
@@ -15151,7 +16683,7 @@ static int fill_input_sequence_add_task_options(PyObject *obj, ifcopenshell_sequ
     if (!field_4) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[4] = field_4;
+        if (!retain_option_ref(refs, field_4)) return 0;
         if (field_4 != Py_None) {
             out->identification = PyUnicode_AsUTF8(field_4);
             if (!out->identification) return 0;
@@ -15162,7 +16694,7 @@ static int fill_input_sequence_add_task_options(PyObject *obj, ifcopenshell_sequ
     if (!field_5) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[5] = field_5;
+        if (!retain_option_ref(refs, field_5)) return 0;
         if (field_5 != Py_None) {
             out->predefined_type = PyUnicode_AsUTF8(field_5);
             if (!out->predefined_type) return 0;
@@ -15173,7 +16705,7 @@ static int fill_input_sequence_add_task_options(PyObject *obj, ifcopenshell_sequ
     if (!field_6) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[6] = field_6;
+        if (!retain_option_ref(refs, field_6)) return 0;
         if (field_6 != Py_None) {
             if (!extract_handle(field_6, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->owner_history, 0)) {
                 return 0;
@@ -15185,7 +16717,7 @@ static int fill_input_sequence_add_task_options(PyObject *obj, ifcopenshell_sequ
     if (!field_7) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[7] = field_7;
+        if (!retain_option_ref(refs, field_7)) return 0;
         if (field_7 != Py_None) {
             if (!extract_handle(field_7, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->user, 0)) {
                 return 0;
@@ -15197,7 +16729,7 @@ static int fill_input_sequence_add_task_options(PyObject *obj, ifcopenshell_sequ
     if (!field_8) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[8] = field_8;
+        if (!retain_option_ref(refs, field_8)) return 0;
         if (field_8 != Py_None) {
             if (!extract_handle(field_8, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->application, 0)) {
                 return 0;
@@ -15213,7 +16745,7 @@ static void free_input_sequence_add_task_time_options(ifcopenshell_sequence_add_
     (void)value;
 }
 
-static int fill_input_sequence_add_task_time_options(PyObject *obj, ifcopenshell_sequence_add_task_time_options_t *out, PyObject **refs) {
+static int fill_input_sequence_add_task_time_options(PyObject *obj, ifcopenshell_sequence_add_task_time_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -15222,7 +16754,7 @@ static int fill_input_sequence_add_task_time_options(PyObject *obj, ifcopenshell
     if (!field_0) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[0] = field_0;
+        if (!retain_option_ref(refs, field_0)) return 0;
         if (field_0 != Py_None) {
             int value_0 = PyObject_IsTrue(field_0);
             if (value_0 < 0) return 0;
@@ -15238,7 +16770,7 @@ static void free_input_sequence_add_time_period_options(ifcopenshell_sequence_ad
     (void)value;
 }
 
-static int fill_input_sequence_add_time_period_options(PyObject *obj, ifcopenshell_sequence_add_time_period_options_t *out, PyObject **refs) {
+static int fill_input_sequence_add_time_period_options(PyObject *obj, ifcopenshell_sequence_add_time_period_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -15247,7 +16779,7 @@ static int fill_input_sequence_add_time_period_options(PyObject *obj, ifcopenshe
     if (!field_0) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[0] = field_0;
+        if (!retain_option_ref(refs, field_0)) return 0;
         if (field_0 != Py_None) {
             out->start_time = PyUnicode_AsUTF8(field_0);
             if (!out->start_time) return 0;
@@ -15258,7 +16790,7 @@ static int fill_input_sequence_add_time_period_options(PyObject *obj, ifcopenshe
     if (!field_1) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[1] = field_1;
+        if (!retain_option_ref(refs, field_1)) return 0;
         if (field_1 != Py_None) {
             out->end_time = PyUnicode_AsUTF8(field_1);
             if (!out->end_time) return 0;
@@ -15273,7 +16805,7 @@ static void free_input_sequence_add_work_calendar_options(ifcopenshell_sequence_
     (void)value;
 }
 
-static int fill_input_sequence_add_work_calendar_options(PyObject *obj, ifcopenshell_sequence_add_work_calendar_options_t *out, PyObject **refs) {
+static int fill_input_sequence_add_work_calendar_options(PyObject *obj, ifcopenshell_sequence_add_work_calendar_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -15282,7 +16814,7 @@ static int fill_input_sequence_add_work_calendar_options(PyObject *obj, ifcopens
     if (!field_0) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[0] = field_0;
+        if (!retain_option_ref(refs, field_0)) return 0;
         if (field_0 != Py_None) {
             out->name = PyUnicode_AsUTF8(field_0);
             if (!out->name) return 0;
@@ -15293,7 +16825,7 @@ static int fill_input_sequence_add_work_calendar_options(PyObject *obj, ifcopens
     if (!field_1) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[1] = field_1;
+        if (!retain_option_ref(refs, field_1)) return 0;
         if (field_1 != Py_None) {
             out->predefined_type = PyUnicode_AsUTF8(field_1);
             if (!out->predefined_type) return 0;
@@ -15304,7 +16836,7 @@ static int fill_input_sequence_add_work_calendar_options(PyObject *obj, ifcopens
     if (!field_2) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[2] = field_2;
+        if (!retain_option_ref(refs, field_2)) return 0;
         if (field_2 != Py_None) {
             if (!extract_handle(field_2, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->owner_history, 0)) {
                 return 0;
@@ -15316,7 +16848,7 @@ static int fill_input_sequence_add_work_calendar_options(PyObject *obj, ifcopens
     if (!field_3) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[3] = field_3;
+        if (!retain_option_ref(refs, field_3)) return 0;
         if (field_3 != Py_None) {
             if (!extract_handle(field_3, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->user, 0)) {
                 return 0;
@@ -15328,7 +16860,7 @@ static int fill_input_sequence_add_work_calendar_options(PyObject *obj, ifcopens
     if (!field_4) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[4] = field_4;
+        if (!retain_option_ref(refs, field_4)) return 0;
         if (field_4 != Py_None) {
             if (!extract_handle(field_4, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->application, 0)) {
                 return 0;
@@ -15344,7 +16876,7 @@ static void free_input_sequence_add_work_plan_options(ifcopenshell_sequence_add_
     (void)value;
 }
 
-static int fill_input_sequence_add_work_plan_options(PyObject *obj, ifcopenshell_sequence_add_work_plan_options_t *out, PyObject **refs) {
+static int fill_input_sequence_add_work_plan_options(PyObject *obj, ifcopenshell_sequence_add_work_plan_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -15353,7 +16885,7 @@ static int fill_input_sequence_add_work_plan_options(PyObject *obj, ifcopenshell
     if (!field_0) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[0] = field_0;
+        if (!retain_option_ref(refs, field_0)) return 0;
         if (field_0 != Py_None) {
             out->name = PyUnicode_AsUTF8(field_0);
             if (!out->name) return 0;
@@ -15364,7 +16896,7 @@ static int fill_input_sequence_add_work_plan_options(PyObject *obj, ifcopenshell
     if (!field_1) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[1] = field_1;
+        if (!retain_option_ref(refs, field_1)) return 0;
         if (field_1 != Py_None) {
             out->predefined_type = PyUnicode_AsUTF8(field_1);
             if (!out->predefined_type) return 0;
@@ -15375,7 +16907,7 @@ static int fill_input_sequence_add_work_plan_options(PyObject *obj, ifcopenshell
     if (!field_2) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[2] = field_2;
+        if (!retain_option_ref(refs, field_2)) return 0;
         if (field_2 != Py_None) {
             out->creation_date = PyUnicode_AsUTF8(field_2);
             if (!out->creation_date) return 0;
@@ -15386,7 +16918,7 @@ static int fill_input_sequence_add_work_plan_options(PyObject *obj, ifcopenshell
     if (!field_3) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[3] = field_3;
+        if (!retain_option_ref(refs, field_3)) return 0;
         if (field_3 != Py_None) {
             out->start_time = PyUnicode_AsUTF8(field_3);
             if (!out->start_time) return 0;
@@ -15397,7 +16929,7 @@ static int fill_input_sequence_add_work_plan_options(PyObject *obj, ifcopenshell
     if (!field_4) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[4] = field_4;
+        if (!retain_option_ref(refs, field_4)) return 0;
         if (field_4 != Py_None) {
             if (!extract_handle(field_4, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->creator_person, 0)) {
                 return 0;
@@ -15409,7 +16941,7 @@ static int fill_input_sequence_add_work_plan_options(PyObject *obj, ifcopenshell
     if (!field_5) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[5] = field_5;
+        if (!retain_option_ref(refs, field_5)) return 0;
         if (field_5 != Py_None) {
             if (!extract_handle(field_5, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->owner_history, 0)) {
                 return 0;
@@ -15421,7 +16953,7 @@ static int fill_input_sequence_add_work_plan_options(PyObject *obj, ifcopenshell
     if (!field_6) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[6] = field_6;
+        if (!retain_option_ref(refs, field_6)) return 0;
         if (field_6 != Py_None) {
             if (!extract_handle(field_6, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->user, 0)) {
                 return 0;
@@ -15433,7 +16965,7 @@ static int fill_input_sequence_add_work_plan_options(PyObject *obj, ifcopenshell
     if (!field_7) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[7] = field_7;
+        if (!retain_option_ref(refs, field_7)) return 0;
         if (field_7 != Py_None) {
             if (!extract_handle(field_7, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->application, 0)) {
                 return 0;
@@ -15449,7 +16981,7 @@ static void free_input_sequence_add_work_schedule_options(ifcopenshell_sequence_
     (void)value;
 }
 
-static int fill_input_sequence_add_work_schedule_options(PyObject *obj, ifcopenshell_sequence_add_work_schedule_options_t *out, PyObject **refs) {
+static int fill_input_sequence_add_work_schedule_options(PyObject *obj, ifcopenshell_sequence_add_work_schedule_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -15458,7 +16990,7 @@ static int fill_input_sequence_add_work_schedule_options(PyObject *obj, ifcopens
     if (!field_0) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[0] = field_0;
+        if (!retain_option_ref(refs, field_0)) return 0;
         if (field_0 != Py_None) {
             out->name = PyUnicode_AsUTF8(field_0);
             if (!out->name) return 0;
@@ -15469,7 +17001,7 @@ static int fill_input_sequence_add_work_schedule_options(PyObject *obj, ifcopens
     if (!field_1) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[1] = field_1;
+        if (!retain_option_ref(refs, field_1)) return 0;
         if (field_1 != Py_None) {
             out->predefined_type = PyUnicode_AsUTF8(field_1);
             if (!out->predefined_type) return 0;
@@ -15480,7 +17012,7 @@ static int fill_input_sequence_add_work_schedule_options(PyObject *obj, ifcopens
     if (!field_2) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[2] = field_2;
+        if (!retain_option_ref(refs, field_2)) return 0;
         if (field_2 != Py_None) {
             out->object_type = PyUnicode_AsUTF8(field_2);
             if (!out->object_type) return 0;
@@ -15491,7 +17023,7 @@ static int fill_input_sequence_add_work_schedule_options(PyObject *obj, ifcopens
     if (!field_3) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[3] = field_3;
+        if (!retain_option_ref(refs, field_3)) return 0;
         if (field_3 != Py_None) {
             out->creation_date = PyUnicode_AsUTF8(field_3);
             if (!out->creation_date) return 0;
@@ -15502,7 +17034,7 @@ static int fill_input_sequence_add_work_schedule_options(PyObject *obj, ifcopens
     if (!field_4) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[4] = field_4;
+        if (!retain_option_ref(refs, field_4)) return 0;
         if (field_4 != Py_None) {
             out->start_time = PyUnicode_AsUTF8(field_4);
             if (!out->start_time) return 0;
@@ -15513,7 +17045,7 @@ static int fill_input_sequence_add_work_schedule_options(PyObject *obj, ifcopens
     if (!field_5) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[5] = field_5;
+        if (!retain_option_ref(refs, field_5)) return 0;
         if (field_5 != Py_None) {
             if (!extract_handle(field_5, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->work_plan, 0)) {
                 return 0;
@@ -15525,7 +17057,7 @@ static int fill_input_sequence_add_work_schedule_options(PyObject *obj, ifcopens
     if (!field_6) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[6] = field_6;
+        if (!retain_option_ref(refs, field_6)) return 0;
         if (field_6 != Py_None) {
             if (!extract_handle(field_6, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->creator_person, 0)) {
                 return 0;
@@ -15537,7 +17069,7 @@ static int fill_input_sequence_add_work_schedule_options(PyObject *obj, ifcopens
     if (!field_7) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[7] = field_7;
+        if (!retain_option_ref(refs, field_7)) return 0;
         if (field_7 != Py_None) {
             if (!extract_handle(field_7, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->owner_history, 0)) {
                 return 0;
@@ -15549,7 +17081,7 @@ static int fill_input_sequence_add_work_schedule_options(PyObject *obj, ifcopens
     if (!field_8) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[8] = field_8;
+        if (!retain_option_ref(refs, field_8)) return 0;
         if (field_8 != Py_None) {
             if (!extract_handle(field_8, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->user, 0)) {
                 return 0;
@@ -15561,7 +17093,7 @@ static int fill_input_sequence_add_work_schedule_options(PyObject *obj, ifcopens
     if (!field_9) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[9] = field_9;
+        if (!retain_option_ref(refs, field_9)) return 0;
         if (field_9 != Py_None) {
             if (!extract_handle(field_9, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->application, 0)) {
                 return 0;
@@ -15577,7 +17109,7 @@ static void free_input_sequence_assign_lag_time_options(ifcopenshell_sequence_as
     (void)value;
 }
 
-static int fill_input_sequence_assign_lag_time_options(PyObject *obj, ifcopenshell_sequence_assign_lag_time_options_t *out, PyObject **refs) {
+static int fill_input_sequence_assign_lag_time_options(PyObject *obj, ifcopenshell_sequence_assign_lag_time_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -15586,7 +17118,7 @@ static int fill_input_sequence_assign_lag_time_options(PyObject *obj, ifcopenshe
     if (!field_0) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[0] = field_0;
+        if (!retain_option_ref(refs, field_0)) return 0;
         if (field_0 != Py_None) {
             out->duration_type = PyUnicode_AsUTF8(field_0);
             if (!out->duration_type) return 0;
@@ -15601,7 +17133,7 @@ static void free_input_sequence_assign_process_options(ifcopenshell_sequence_ass
     (void)value;
 }
 
-static int fill_input_sequence_assign_process_options(PyObject *obj, ifcopenshell_sequence_assign_process_options_t *out, PyObject **refs) {
+static int fill_input_sequence_assign_process_options(PyObject *obj, ifcopenshell_sequence_assign_process_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -15610,7 +17142,7 @@ static int fill_input_sequence_assign_process_options(PyObject *obj, ifcopenshel
     if (!field_0) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[0] = field_0;
+        if (!retain_option_ref(refs, field_0)) return 0;
         if (field_0 != Py_None) {
             if (!extract_handle(field_0, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->owner_history, 0)) {
                 return 0;
@@ -15622,7 +17154,7 @@ static int fill_input_sequence_assign_process_options(PyObject *obj, ifcopenshel
     if (!field_1) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[1] = field_1;
+        if (!retain_option_ref(refs, field_1)) return 0;
         if (field_1 != Py_None) {
             if (!extract_handle(field_1, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->user, 0)) {
                 return 0;
@@ -15634,7 +17166,7 @@ static int fill_input_sequence_assign_process_options(PyObject *obj, ifcopenshel
     if (!field_2) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[2] = field_2;
+        if (!retain_option_ref(refs, field_2)) return 0;
         if (field_2 != Py_None) {
             if (!extract_handle(field_2, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->application, 0)) {
                 return 0;
@@ -15650,7 +17182,7 @@ static void free_input_sequence_assign_product_options(ifcopenshell_sequence_ass
     (void)value;
 }
 
-static int fill_input_sequence_assign_product_options(PyObject *obj, ifcopenshell_sequence_assign_product_options_t *out, PyObject **refs) {
+static int fill_input_sequence_assign_product_options(PyObject *obj, ifcopenshell_sequence_assign_product_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -15659,7 +17191,7 @@ static int fill_input_sequence_assign_product_options(PyObject *obj, ifcopenshel
     if (!field_0) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[0] = field_0;
+        if (!retain_option_ref(refs, field_0)) return 0;
         if (field_0 != Py_None) {
             if (!extract_handle(field_0, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->owner_history, 0)) {
                 return 0;
@@ -15671,7 +17203,7 @@ static int fill_input_sequence_assign_product_options(PyObject *obj, ifcopenshel
     if (!field_1) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[1] = field_1;
+        if (!retain_option_ref(refs, field_1)) return 0;
         if (field_1 != Py_None) {
             if (!extract_handle(field_1, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->user, 0)) {
                 return 0;
@@ -15683,7 +17215,7 @@ static int fill_input_sequence_assign_product_options(PyObject *obj, ifcopenshel
     if (!field_2) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[2] = field_2;
+        if (!retain_option_ref(refs, field_2)) return 0;
         if (field_2 != Py_None) {
             if (!extract_handle(field_2, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->application, 0)) {
                 return 0;
@@ -15699,7 +17231,7 @@ static void free_input_sequence_assign_sequence_options(ifcopenshell_sequence_as
     (void)value;
 }
 
-static int fill_input_sequence_assign_sequence_options(PyObject *obj, ifcopenshell_sequence_assign_sequence_options_t *out, PyObject **refs) {
+static int fill_input_sequence_assign_sequence_options(PyObject *obj, ifcopenshell_sequence_assign_sequence_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -15708,7 +17240,7 @@ static int fill_input_sequence_assign_sequence_options(PyObject *obj, ifcopenshe
     if (!field_0) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[0] = field_0;
+        if (!retain_option_ref(refs, field_0)) return 0;
         if (field_0 != Py_None) {
             out->sequence_type = PyUnicode_AsUTF8(field_0);
             if (!out->sequence_type) return 0;
@@ -15719,7 +17251,7 @@ static int fill_input_sequence_assign_sequence_options(PyObject *obj, ifcopenshe
     if (!field_1) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[1] = field_1;
+        if (!retain_option_ref(refs, field_1)) return 0;
         if (field_1 != Py_None) {
             if (!extract_handle(field_1, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->owner_history, 0)) {
                 return 0;
@@ -15731,7 +17263,7 @@ static int fill_input_sequence_assign_sequence_options(PyObject *obj, ifcopenshe
     if (!field_2) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[2] = field_2;
+        if (!retain_option_ref(refs, field_2)) return 0;
         if (field_2 != Py_None) {
             if (!extract_handle(field_2, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->user, 0)) {
                 return 0;
@@ -15743,7 +17275,7 @@ static int fill_input_sequence_assign_sequence_options(PyObject *obj, ifcopenshe
     if (!field_3) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[3] = field_3;
+        if (!retain_option_ref(refs, field_3)) return 0;
         if (field_3 != Py_None) {
             if (!extract_handle(field_3, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->application, 0)) {
                 return 0;
@@ -15759,7 +17291,7 @@ static void free_input_sequence_assign_work_plan_options(ifcopenshell_sequence_a
     (void)value;
 }
 
-static int fill_input_sequence_assign_work_plan_options(PyObject *obj, ifcopenshell_sequence_assign_work_plan_options_t *out, PyObject **refs) {
+static int fill_input_sequence_assign_work_plan_options(PyObject *obj, ifcopenshell_sequence_assign_work_plan_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -15768,7 +17300,7 @@ static int fill_input_sequence_assign_work_plan_options(PyObject *obj, ifcopensh
     if (!field_0) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[0] = field_0;
+        if (!retain_option_ref(refs, field_0)) return 0;
         if (field_0 != Py_None) {
             if (!extract_handle(field_0, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->owner_history, 0)) {
                 return 0;
@@ -15780,7 +17312,7 @@ static int fill_input_sequence_assign_work_plan_options(PyObject *obj, ifcopensh
     if (!field_1) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[1] = field_1;
+        if (!retain_option_ref(refs, field_1)) return 0;
         if (field_1 != Py_None) {
             if (!extract_handle(field_1, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->user, 0)) {
                 return 0;
@@ -15792,7 +17324,7 @@ static int fill_input_sequence_assign_work_plan_options(PyObject *obj, ifcopensh
     if (!field_2) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[2] = field_2;
+        if (!retain_option_ref(refs, field_2)) return 0;
         if (field_2 != Py_None) {
             if (!extract_handle(field_2, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->application, 0)) {
                 return 0;
@@ -15808,7 +17340,7 @@ static void free_input_sequence_copy_work_schedule_options(ifcopenshell_sequence
     (void)value;
 }
 
-static int fill_input_sequence_copy_work_schedule_options(PyObject *obj, ifcopenshell_sequence_copy_work_schedule_options_t *out, PyObject **refs) {
+static int fill_input_sequence_copy_work_schedule_options(PyObject *obj, ifcopenshell_sequence_copy_work_schedule_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -15817,7 +17349,7 @@ static int fill_input_sequence_copy_work_schedule_options(PyObject *obj, ifcopen
     if (!field_0) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[0] = field_0;
+        if (!retain_option_ref(refs, field_0)) return 0;
         if (field_0 != Py_None) {
             if (!extract_handle(field_0, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->owner_history, 0)) {
                 return 0;
@@ -15829,7 +17361,7 @@ static int fill_input_sequence_copy_work_schedule_options(PyObject *obj, ifcopen
     if (!field_1) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[1] = field_1;
+        if (!retain_option_ref(refs, field_1)) return 0;
         if (field_1 != Py_None) {
             if (!extract_handle(field_1, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->user, 0)) {
                 return 0;
@@ -15841,7 +17373,7 @@ static int fill_input_sequence_copy_work_schedule_options(PyObject *obj, ifcopen
     if (!field_2) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[2] = field_2;
+        if (!retain_option_ref(refs, field_2)) return 0;
         if (field_2 != Py_None) {
             if (!extract_handle(field_2, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->application, 0)) {
                 return 0;
@@ -15857,7 +17389,7 @@ static void free_input_sequence_create_baseline_options(ifcopenshell_sequence_cr
     (void)value;
 }
 
-static int fill_input_sequence_create_baseline_options(PyObject *obj, ifcopenshell_sequence_create_baseline_options_t *out, PyObject **refs) {
+static int fill_input_sequence_create_baseline_options(PyObject *obj, ifcopenshell_sequence_create_baseline_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -15866,7 +17398,7 @@ static int fill_input_sequence_create_baseline_options(PyObject *obj, ifcopenshe
     if (!field_0) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[0] = field_0;
+        if (!retain_option_ref(refs, field_0)) return 0;
         if (field_0 != Py_None) {
             out->name = PyUnicode_AsUTF8(field_0);
             if (!out->name) return 0;
@@ -15877,7 +17409,7 @@ static int fill_input_sequence_create_baseline_options(PyObject *obj, ifcopenshe
     if (!field_1) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[1] = field_1;
+        if (!retain_option_ref(refs, field_1)) return 0;
         if (field_1 != Py_None) {
             if (!extract_handle(field_1, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->owner_history, 0)) {
                 return 0;
@@ -15889,7 +17421,7 @@ static int fill_input_sequence_create_baseline_options(PyObject *obj, ifcopenshe
     if (!field_2) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[2] = field_2;
+        if (!retain_option_ref(refs, field_2)) return 0;
         if (field_2 != Py_None) {
             if (!extract_handle(field_2, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->user, 0)) {
                 return 0;
@@ -15901,7 +17433,7 @@ static int fill_input_sequence_create_baseline_options(PyObject *obj, ifcopenshe
     if (!field_3) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[3] = field_3;
+        if (!retain_option_ref(refs, field_3)) return 0;
         if (field_3 != Py_None) {
             if (!extract_handle(field_3, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->application, 0)) {
                 return 0;
@@ -15917,7 +17449,7 @@ static void free_input_sequence_duplicate_task_options(ifcopenshell_sequence_dup
     (void)value;
 }
 
-static int fill_input_sequence_duplicate_task_options(PyObject *obj, ifcopenshell_sequence_duplicate_task_options_t *out, PyObject **refs) {
+static int fill_input_sequence_duplicate_task_options(PyObject *obj, ifcopenshell_sequence_duplicate_task_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -15926,7 +17458,7 @@ static int fill_input_sequence_duplicate_task_options(PyObject *obj, ifcopenshel
     if (!field_0) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[0] = field_0;
+        if (!retain_option_ref(refs, field_0)) return 0;
         if (field_0 != Py_None) {
             if (!extract_handle(field_0, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->owner_history, 0)) {
                 return 0;
@@ -15938,7 +17470,7 @@ static int fill_input_sequence_duplicate_task_options(PyObject *obj, ifcopenshel
     if (!field_1) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[1] = field_1;
+        if (!retain_option_ref(refs, field_1)) return 0;
         if (field_1 != Py_None) {
             if (!extract_handle(field_1, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->user, 0)) {
                 return 0;
@@ -15950,7 +17482,7 @@ static int fill_input_sequence_duplicate_task_options(PyObject *obj, ifcopenshel
     if (!field_2) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[2] = field_2;
+        if (!retain_option_ref(refs, field_2)) return 0;
         if (field_2 != Py_None) {
             if (!extract_handle(field_2, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->application, 0)) {
                 return 0;
@@ -15966,7 +17498,7 @@ static void free_input_sequence_remove_options(ifcopenshell_sequence_remove_opti
     (void)value;
 }
 
-static int fill_input_sequence_remove_options(PyObject *obj, ifcopenshell_sequence_remove_options_t *out, PyObject **refs) {
+static int fill_input_sequence_remove_options(PyObject *obj, ifcopenshell_sequence_remove_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -15975,7 +17507,7 @@ static int fill_input_sequence_remove_options(PyObject *obj, ifcopenshell_sequen
     if (!field_0) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[0] = field_0;
+        if (!retain_option_ref(refs, field_0)) return 0;
         if (field_0 != Py_None) {
             if (!extract_handle(field_0, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->user, 0)) {
                 return 0;
@@ -15987,7 +17519,7 @@ static int fill_input_sequence_remove_options(PyObject *obj, ifcopenshell_sequen
     if (!field_1) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[1] = field_1;
+        if (!retain_option_ref(refs, field_1)) return 0;
         if (field_1 != Py_None) {
             if (!extract_handle(field_1, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->application, 0)) {
                 return 0;
@@ -15995,6 +17527,38 @@ static int fill_input_sequence_remove_options(PyObject *obj, ifcopenshell_sequen
         out->has_application = true;
         }
     }
+    return 1;
+}
+
+
+static void free_input_shape_builder_arc_segment(ifcopenshell_shape_builder_arc_segment_t *value) {
+    if (value->arc_indices) {
+        free_input_uint32_list((ifcopenshell_uint32_list_t *)value->arc_indices);
+        PyMem_Free((void *)value->arc_indices);
+        value->arc_indices = NULL;
+    }
+}
+
+static int fill_input_shape_builder_arc_segment(PyObject *obj, ifcopenshell_shape_builder_arc_segment_t *out, option_ref_owner *refs) {
+    if (!PyMapping_Check(obj)) {
+        PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
+        return 0;
+    }
+    PyObject *field_0 = get_option_field(obj, "arc_indices", 1);
+    if (!field_0) {
+        return 0;
+    }
+    if (!retain_option_ref(refs, field_0)) return 0;
+    ifcopenshell_uint32_list_t *sequence_0 = (ifcopenshell_uint32_list_t *)PyMem_Calloc(1, sizeof(ifcopenshell_uint32_list_t));
+    if (!sequence_0) {
+        PyErr_NoMemory();
+        return 0;
+    }
+    if (!make_input_uint32_list(field_0, sequence_0, refs)) {
+        PyMem_Free(sequence_0);
+        return 0;
+    }
+    out->arc_indices = sequence_0;
     return 1;
 }
 
@@ -16012,38 +17576,42 @@ static void free_input_shape_builder_axis2_placement2d_options(ifcopenshell_shap
     }
 }
 
-static int fill_input_shape_builder_axis2_placement2d_options(PyObject *obj, ifcopenshell_shape_builder_axis2_placement2d_options_t *out, PyObject **refs) {
+static int fill_input_shape_builder_axis2_placement2d_options(PyObject *obj, ifcopenshell_shape_builder_axis2_placement2d_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
     }
-    PyObject *field_0 = get_option_field(obj, "position", 1);
+    PyObject *field_0 = get_option_field(obj, "position", 0);
     if (!field_0) {
-        return 0;
+        if (PyErr_Occurred()) return 0;
+    } else {
+        if (!retain_option_ref(refs, field_0)) return 0;
+        if (field_0 != Py_None) {
+            ifcopenshell_double_list_t *sequence_0 = (ifcopenshell_double_list_t *)PyMem_Calloc(1, sizeof(ifcopenshell_double_list_t));
+            if (!sequence_0) {
+                PyErr_NoMemory();
+                return 0;
+            }
+            if (!make_input_double_list(field_0, sequence_0, refs)) {
+                PyMem_Free(sequence_0);
+                return 0;
+            }
+            out->position = sequence_0;
+        out->has_position = true;
+        }
     }
-    refs[0] = field_0;
-    ifcopenshell_double_list_t *sequence_0 = (ifcopenshell_double_list_t *)PyMem_Calloc(1, sizeof(ifcopenshell_double_list_t));
-    if (!sequence_0) {
-        PyErr_NoMemory();
-        return 0;
-    }
-    if (!make_input_double_list(field_0, sequence_0)) {
-        PyMem_Free(sequence_0);
-        return 0;
-    }
-    out->position = sequence_0;
     PyObject *field_1 = get_option_field(obj, "x_direction", 0);
     if (!field_1) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[1] = field_1;
+        if (!retain_option_ref(refs, field_1)) return 0;
         if (field_1 != Py_None) {
             ifcopenshell_double_list_t *sequence_1 = (ifcopenshell_double_list_t *)PyMem_Calloc(1, sizeof(ifcopenshell_double_list_t));
             if (!sequence_1) {
                 PyErr_NoMemory();
                 return 0;
             }
-            if (!make_input_double_list(field_1, sequence_1)) {
+            if (!make_input_double_list(field_1, sequence_1, refs)) {
                 PyMem_Free(sequence_1);
                 return 0;
             }
@@ -16073,56 +17641,68 @@ static void free_input_shape_builder_axis2_placement3d_options(ifcopenshell_shap
     }
 }
 
-static int fill_input_shape_builder_axis2_placement3d_options(PyObject *obj, ifcopenshell_shape_builder_axis2_placement3d_options_t *out, PyObject **refs) {
+static int fill_input_shape_builder_axis2_placement3d_options(PyObject *obj, ifcopenshell_shape_builder_axis2_placement3d_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
     }
-    PyObject *field_0 = get_option_field(obj, "position", 1);
+    PyObject *field_0 = get_option_field(obj, "position", 0);
     if (!field_0) {
-        return 0;
+        if (PyErr_Occurred()) return 0;
+    } else {
+        if (!retain_option_ref(refs, field_0)) return 0;
+        if (field_0 != Py_None) {
+            ifcopenshell_double_list_t *sequence_0 = (ifcopenshell_double_list_t *)PyMem_Calloc(1, sizeof(ifcopenshell_double_list_t));
+            if (!sequence_0) {
+                PyErr_NoMemory();
+                return 0;
+            }
+            if (!make_input_double_list(field_0, sequence_0, refs)) {
+                PyMem_Free(sequence_0);
+                return 0;
+            }
+            out->position = sequence_0;
+        out->has_position = true;
+        }
     }
-    refs[0] = field_0;
-    ifcopenshell_double_list_t *sequence_0 = (ifcopenshell_double_list_t *)PyMem_Calloc(1, sizeof(ifcopenshell_double_list_t));
-    if (!sequence_0) {
-        PyErr_NoMemory();
-        return 0;
-    }
-    if (!make_input_double_list(field_0, sequence_0)) {
-        PyMem_Free(sequence_0);
-        return 0;
-    }
-    out->position = sequence_0;
-    PyObject *field_1 = get_option_field(obj, "z_axis", 1);
+    PyObject *field_1 = get_option_field(obj, "z_axis", 0);
     if (!field_1) {
-        return 0;
+        if (PyErr_Occurred()) return 0;
+    } else {
+        if (!retain_option_ref(refs, field_1)) return 0;
+        if (field_1 != Py_None) {
+            ifcopenshell_double_list_t *sequence_1 = (ifcopenshell_double_list_t *)PyMem_Calloc(1, sizeof(ifcopenshell_double_list_t));
+            if (!sequence_1) {
+                PyErr_NoMemory();
+                return 0;
+            }
+            if (!make_input_double_list(field_1, sequence_1, refs)) {
+                PyMem_Free(sequence_1);
+                return 0;
+            }
+            out->z_axis = sequence_1;
+        out->has_z_axis = true;
+        }
     }
-    refs[1] = field_1;
-    ifcopenshell_double_list_t *sequence_1 = (ifcopenshell_double_list_t *)PyMem_Calloc(1, sizeof(ifcopenshell_double_list_t));
-    if (!sequence_1) {
-        PyErr_NoMemory();
-        return 0;
-    }
-    if (!make_input_double_list(field_1, sequence_1)) {
-        PyMem_Free(sequence_1);
-        return 0;
-    }
-    out->z_axis = sequence_1;
-    PyObject *field_2 = get_option_field(obj, "x_axis", 1);
+    PyObject *field_2 = get_option_field(obj, "x_axis", 0);
     if (!field_2) {
-        return 0;
+        if (PyErr_Occurred()) return 0;
+    } else {
+        if (!retain_option_ref(refs, field_2)) return 0;
+        if (field_2 != Py_None) {
+            ifcopenshell_double_list_t *sequence_2 = (ifcopenshell_double_list_t *)PyMem_Calloc(1, sizeof(ifcopenshell_double_list_t));
+            if (!sequence_2) {
+                PyErr_NoMemory();
+                return 0;
+            }
+            if (!make_input_double_list(field_2, sequence_2, refs)) {
+                PyMem_Free(sequence_2);
+                return 0;
+            }
+            out->x_axis = sequence_2;
+        out->has_x_axis = true;
+        }
     }
-    refs[2] = field_2;
-    ifcopenshell_double_list_t *sequence_2 = (ifcopenshell_double_list_t *)PyMem_Calloc(1, sizeof(ifcopenshell_double_list_t));
-    if (!sequence_2) {
-        PyErr_NoMemory();
-        return 0;
-    }
-    if (!make_input_double_list(field_2, sequence_2)) {
-        PyMem_Free(sequence_2);
-        return 0;
-    }
-    out->x_axis = sequence_2;
     return 1;
 }
 
@@ -16135,47 +17715,95 @@ static void free_input_shape_builder_block_options(ifcopenshell_shape_builder_bl
     }
 }
 
-static int fill_input_shape_builder_block_options(PyObject *obj, ifcopenshell_shape_builder_block_options_t *out, PyObject **refs) {
+static int fill_input_shape_builder_block_options(PyObject *obj, ifcopenshell_shape_builder_block_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
     }
-    PyObject *field_0 = get_option_field(obj, "position", 1);
+    PyObject *field_0 = get_option_field(obj, "position", 0);
+    if (!field_0) {
+        if (PyErr_Occurred()) return 0;
+    } else {
+        if (!retain_option_ref(refs, field_0)) return 0;
+        if (field_0 != Py_None) {
+            ifcopenshell_double_list_t *sequence_0 = (ifcopenshell_double_list_t *)PyMem_Calloc(1, sizeof(ifcopenshell_double_list_t));
+            if (!sequence_0) {
+                PyErr_NoMemory();
+                return 0;
+            }
+            if (!make_input_double_list(field_0, sequence_0, refs)) {
+                PyMem_Free(sequence_0);
+                return 0;
+            }
+            out->position = sequence_0;
+        out->has_position = true;
+        }
+    }
+    PyObject *field_1 = get_option_field(obj, "x_length", 0);
+    if (!field_1) {
+        if (PyErr_Occurred()) return 0;
+    } else {
+        if (!retain_option_ref(refs, field_1)) return 0;
+        if (field_1 != Py_None) {
+            out->x_length = PyFloat_AsDouble(field_1);
+            if (PyErr_Occurred()) return 0;
+        out->has_x_length = true;
+        }
+    }
+    PyObject *field_2 = get_option_field(obj, "y_length", 0);
+    if (!field_2) {
+        if (PyErr_Occurred()) return 0;
+    } else {
+        if (!retain_option_ref(refs, field_2)) return 0;
+        if (field_2 != Py_None) {
+            out->y_length = PyFloat_AsDouble(field_2);
+            if (PyErr_Occurred()) return 0;
+        out->has_y_length = true;
+        }
+    }
+    PyObject *field_3 = get_option_field(obj, "z_length", 0);
+    if (!field_3) {
+        if (PyErr_Occurred()) return 0;
+    } else {
+        if (!retain_option_ref(refs, field_3)) return 0;
+        if (field_3 != Py_None) {
+            out->z_length = PyFloat_AsDouble(field_3);
+            if (PyErr_Occurred()) return 0;
+        out->has_z_length = true;
+        }
+    }
+    return 1;
+}
+
+
+static void free_input_shape_builder_ellipse_cardinal_trim(ifcopenshell_shape_builder_ellipse_cardinal_trim_t *value) {
+    if (value->cardinal_points) {
+        free_input_uint32_list((ifcopenshell_uint32_list_t *)value->cardinal_points);
+        PyMem_Free((void *)value->cardinal_points);
+        value->cardinal_points = NULL;
+    }
+}
+
+static int fill_input_shape_builder_ellipse_cardinal_trim(PyObject *obj, ifcopenshell_shape_builder_ellipse_cardinal_trim_t *out, option_ref_owner *refs) {
+    if (!PyMapping_Check(obj)) {
+        PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
+        return 0;
+    }
+    PyObject *field_0 = get_option_field(obj, "cardinal_points", 1);
     if (!field_0) {
         return 0;
     }
-    refs[0] = field_0;
-    ifcopenshell_double_list_t *sequence_0 = (ifcopenshell_double_list_t *)PyMem_Calloc(1, sizeof(ifcopenshell_double_list_t));
+    if (!retain_option_ref(refs, field_0)) return 0;
+    ifcopenshell_uint32_list_t *sequence_0 = (ifcopenshell_uint32_list_t *)PyMem_Calloc(1, sizeof(ifcopenshell_uint32_list_t));
     if (!sequence_0) {
         PyErr_NoMemory();
         return 0;
     }
-    if (!make_input_double_list(field_0, sequence_0)) {
+    if (!make_input_uint32_list(field_0, sequence_0, refs)) {
         PyMem_Free(sequence_0);
         return 0;
     }
-    out->position = sequence_0;
-    PyObject *field_1 = get_option_field(obj, "x_length", 1);
-    if (!field_1) {
-        return 0;
-    }
-    refs[1] = field_1;
-    out->x_length = PyFloat_AsDouble(field_1);
-    if (PyErr_Occurred()) return 0;
-    PyObject *field_2 = get_option_field(obj, "y_length", 1);
-    if (!field_2) {
-        return 0;
-    }
-    refs[2] = field_2;
-    out->y_length = PyFloat_AsDouble(field_2);
-    if (PyErr_Occurred()) return 0;
-    PyObject *field_3 = get_option_field(obj, "z_length", 1);
-    if (!field_3) {
-        return 0;
-    }
-    refs[3] = field_3;
-    out->z_length = PyFloat_AsDouble(field_3);
-    if (PyErr_Occurred()) return 0;
+    out->cardinal_points = sequence_0;
     return 1;
 }
 
@@ -16186,24 +17814,19 @@ static void free_input_shape_builder_ellipse_curve_options(ifcopenshell_shape_bu
         PyMem_Free((void *)value->position);
         value->position = NULL;
     }
-    if (value->trim_points) {
-        free_input_double_list_list((ifcopenshell_double_list_list_t *)value->trim_points);
-        PyMem_Free((void *)value->trim_points);
-        value->trim_points = NULL;
-    }
     if (value->ref_x_direction) {
         free_input_double_list((ifcopenshell_double_list_t *)value->ref_x_direction);
         PyMem_Free((void *)value->ref_x_direction);
         value->ref_x_direction = NULL;
     }
-    if (value->trim_points_mask) {
-        free_input_int32_list((ifcopenshell_int32_list_t *)value->trim_points_mask);
-        PyMem_Free((void *)value->trim_points_mask);
-        value->trim_points_mask = NULL;
+    if (value->trim) {
+        free_input_shape_builder_ellipse_trim((ifcopenshell_shape_builder_ellipse_trim_t *)value->trim);
+        PyMem_Free((void *)value->trim);
+        value->trim = NULL;
     }
 }
 
-static int fill_input_shape_builder_ellipse_curve_options(PyObject *obj, ifcopenshell_shape_builder_ellipse_curve_options_t *out, PyObject **refs) {
+static int fill_input_shape_builder_ellipse_curve_options(PyObject *obj, ifcopenshell_shape_builder_ellipse_curve_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -16212,80 +17835,138 @@ static int fill_input_shape_builder_ellipse_curve_options(PyObject *obj, ifcopen
     if (!field_0) {
         return 0;
     }
-    refs[0] = field_0;
+    if (!retain_option_ref(refs, field_0)) return 0;
     out->x_axis_radius = PyFloat_AsDouble(field_0);
     if (PyErr_Occurred()) return 0;
     PyObject *field_1 = get_option_field(obj, "y_axis_radius", 1);
     if (!field_1) {
         return 0;
     }
-    refs[1] = field_1;
+    if (!retain_option_ref(refs, field_1)) return 0;
     out->y_axis_radius = PyFloat_AsDouble(field_1);
     if (PyErr_Occurred()) return 0;
-    PyObject *field_2 = get_option_field(obj, "position", 1);
+    PyObject *field_2 = get_option_field(obj, "position", 0);
     if (!field_2) {
-        return 0;
-    }
-    refs[2] = field_2;
-    ifcopenshell_double_list_t *sequence_2 = (ifcopenshell_double_list_t *)PyMem_Calloc(1, sizeof(ifcopenshell_double_list_t));
-    if (!sequence_2) {
-        PyErr_NoMemory();
-        return 0;
-    }
-    if (!make_input_double_list(field_2, sequence_2)) {
-        PyMem_Free(sequence_2);
-        return 0;
-    }
-    out->position = sequence_2;
-    PyObject *field_3 = get_option_field(obj, "trim_points", 1);
-    if (!field_3) {
-        return 0;
-    }
-    refs[3] = field_3;
-    ifcopenshell_double_list_list_t *sequence_3 = (ifcopenshell_double_list_list_t *)PyMem_Calloc(1, sizeof(ifcopenshell_double_list_list_t));
-    if (!sequence_3) {
-        PyErr_NoMemory();
-        return 0;
-    }
-    if (!make_input_double_list_list(field_3, sequence_3)) {
-        PyMem_Free(sequence_3);
-        return 0;
-    }
-    out->trim_points = sequence_3;
-    PyObject *field_4 = get_option_field(obj, "ref_x_direction", 0);
-    if (!field_4) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[4] = field_4;
-        if (field_4 != Py_None) {
-            ifcopenshell_double_list_t *sequence_4 = (ifcopenshell_double_list_t *)PyMem_Calloc(1, sizeof(ifcopenshell_double_list_t));
-            if (!sequence_4) {
+        if (!retain_option_ref(refs, field_2)) return 0;
+        if (field_2 != Py_None) {
+            ifcopenshell_double_list_t *sequence_2 = (ifcopenshell_double_list_t *)PyMem_Calloc(1, sizeof(ifcopenshell_double_list_t));
+            if (!sequence_2) {
                 PyErr_NoMemory();
                 return 0;
             }
-            if (!make_input_double_list(field_4, sequence_4)) {
-                PyMem_Free(sequence_4);
+            if (!make_input_double_list(field_2, sequence_2, refs)) {
+                PyMem_Free(sequence_2);
                 return 0;
             }
-            out->ref_x_direction = sequence_4;
+            out->position = sequence_2;
+        out->has_position = true;
+        }
+    }
+    PyObject *field_3 = get_option_field(obj, "ref_x_direction", 0);
+    if (!field_3) {
+        if (PyErr_Occurred()) return 0;
+    } else {
+        if (!retain_option_ref(refs, field_3)) return 0;
+        if (field_3 != Py_None) {
+            ifcopenshell_double_list_t *sequence_3 = (ifcopenshell_double_list_t *)PyMem_Calloc(1, sizeof(ifcopenshell_double_list_t));
+            if (!sequence_3) {
+                PyErr_NoMemory();
+                return 0;
+            }
+            if (!make_input_double_list(field_3, sequence_3, refs)) {
+                PyMem_Free(sequence_3);
+                return 0;
+            }
+            out->ref_x_direction = sequence_3;
         out->has_ref_x_direction = true;
         }
     }
-    PyObject *field_5 = get_option_field(obj, "trim_points_mask", 1);
-    if (!field_5) {
+    PyObject *field_4 = get_option_field(obj, "trim", 0);
+    if (!field_4) {
+        if (PyErr_Occurred()) return 0;
+    } else {
+        if (!retain_option_ref(refs, field_4)) return 0;
+        if (field_4 != Py_None) {
+            ifcopenshell_shape_builder_ellipse_trim_t *nested_4 = (ifcopenshell_shape_builder_ellipse_trim_t *)PyMem_Calloc(1, sizeof(ifcopenshell_shape_builder_ellipse_trim_t));
+            if (!nested_4) {
+                PyErr_NoMemory();
+                return 0;
+            }
+            if (!fill_input_shape_builder_ellipse_trim(field_4, nested_4, refs)) {
+                free_input_shape_builder_ellipse_trim(nested_4);
+                PyMem_Free(nested_4);
+                return 0;
+            }
+            out->trim = nested_4;
+        out->has_trim = true;
+        }
+    }
+    return 1;
+}
+
+
+static void free_input_shape_builder_ellipse_point_trim(ifcopenshell_shape_builder_ellipse_point_trim_t *value) {
+    if (value->points) {
+        free_input_double_list_list((ifcopenshell_double_list_list_t *)value->points);
+        PyMem_Free((void *)value->points);
+        value->points = NULL;
+    }
+}
+
+static int fill_input_shape_builder_ellipse_point_trim(PyObject *obj, ifcopenshell_shape_builder_ellipse_point_trim_t *out, option_ref_owner *refs) {
+    if (!PyMapping_Check(obj)) {
+        PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
     }
-    refs[5] = field_5;
-    ifcopenshell_int32_list_t *sequence_5 = (ifcopenshell_int32_list_t *)PyMem_Calloc(1, sizeof(ifcopenshell_int32_list_t));
-    if (!sequence_5) {
+    PyObject *field_0 = get_option_field(obj, "points", 1);
+    if (!field_0) {
+        return 0;
+    }
+    if (!retain_option_ref(refs, field_0)) return 0;
+    ifcopenshell_double_list_list_t *sequence_0 = (ifcopenshell_double_list_list_t *)PyMem_Calloc(1, sizeof(ifcopenshell_double_list_list_t));
+    if (!sequence_0) {
         PyErr_NoMemory();
         return 0;
     }
-    if (!make_input_int32_list(field_5, sequence_5)) {
-        PyMem_Free(sequence_5);
+    if (!make_input_double_list_list(field_0, sequence_0, refs)) {
+        PyMem_Free(sequence_0);
         return 0;
     }
-    out->trim_points_mask = sequence_5;
+    out->points = sequence_0;
+    return 1;
+}
+
+
+static void free_input_shape_builder_ellipse_trim(ifcopenshell_shape_builder_ellipse_trim_t *value) {
+    if (value->value) {
+        free_input_ShapeBuilderEllipsePointTrim_ShapeBuilderEllipseCardinalTrim_variant((ifcopenshell_ShapeBuilderEllipsePointTrim_ShapeBuilderEllipseCardinalTrim_variant_t *)value->value);
+        PyMem_Free((void *)value->value);
+        value->value = NULL;
+    }
+}
+
+static int fill_input_shape_builder_ellipse_trim(PyObject *obj, ifcopenshell_shape_builder_ellipse_trim_t *out, option_ref_owner *refs) {
+    if (!PyMapping_Check(obj)) {
+        PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
+        return 0;
+    }
+    PyObject *field_0 = get_option_field(obj, "value", 1);
+    if (!field_0) {
+        return 0;
+    }
+    if (!retain_option_ref(refs, field_0)) return 0;
+    ifcopenshell_ShapeBuilderEllipsePointTrim_ShapeBuilderEllipseCardinalTrim_variant_t *variant_0 = (ifcopenshell_ShapeBuilderEllipsePointTrim_ShapeBuilderEllipseCardinalTrim_variant_t *)PyMem_Calloc(1, sizeof(ifcopenshell_ShapeBuilderEllipsePointTrim_ShapeBuilderEllipseCardinalTrim_variant_t));
+    if (!variant_0) {
+        PyErr_NoMemory();
+        return 0;
+    }
+    if (!make_input_ShapeBuilderEllipsePointTrim_ShapeBuilderEllipseCardinalTrim_variant(field_0, variant_0, refs)) {
+        PyMem_Free(variant_0);
+        return 0;
+    }
+    out->value = variant_0;
     return 1;
 }
 
@@ -16318,7 +17999,7 @@ static void free_input_shape_builder_extrude_options(ifcopenshell_shape_builder_
     }
 }
 
-static int fill_input_shape_builder_extrude_options(PyObject *obj, ifcopenshell_shape_builder_extrude_options_t *out, PyObject **refs) {
+static int fill_input_shape_builder_extrude_options(PyObject *obj, ifcopenshell_shape_builder_extrude_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -16327,89 +18008,109 @@ static int fill_input_shape_builder_extrude_options(PyObject *obj, ifcopenshell_
     if (!field_0) {
         return 0;
     }
-    refs[0] = field_0;
+    if (!retain_option_ref(refs, field_0)) return 0;
     if (!extract_handle(field_0, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->profile_or_curve, 0)) {
         return 0;
     }
-    PyObject *field_1 = get_option_field(obj, "magnitude", 1);
+    PyObject *field_1 = get_option_field(obj, "magnitude", 0);
     if (!field_1) {
-        return 0;
+        if (PyErr_Occurred()) return 0;
+    } else {
+        if (!retain_option_ref(refs, field_1)) return 0;
+        if (field_1 != Py_None) {
+            out->magnitude = PyFloat_AsDouble(field_1);
+            if (PyErr_Occurred()) return 0;
+        out->has_magnitude = true;
+        }
     }
-    refs[1] = field_1;
-    out->magnitude = PyFloat_AsDouble(field_1);
-    if (PyErr_Occurred()) return 0;
-    PyObject *field_2 = get_option_field(obj, "position", 1);
+    PyObject *field_2 = get_option_field(obj, "position", 0);
     if (!field_2) {
-        return 0;
+        if (PyErr_Occurred()) return 0;
+    } else {
+        if (!retain_option_ref(refs, field_2)) return 0;
+        if (field_2 != Py_None) {
+            ifcopenshell_double_list_t *sequence_2 = (ifcopenshell_double_list_t *)PyMem_Calloc(1, sizeof(ifcopenshell_double_list_t));
+            if (!sequence_2) {
+                PyErr_NoMemory();
+                return 0;
+            }
+            if (!make_input_double_list(field_2, sequence_2, refs)) {
+                PyMem_Free(sequence_2);
+                return 0;
+            }
+            out->position = sequence_2;
+        out->has_position = true;
+        }
     }
-    refs[2] = field_2;
-    ifcopenshell_double_list_t *sequence_2 = (ifcopenshell_double_list_t *)PyMem_Calloc(1, sizeof(ifcopenshell_double_list_t));
-    if (!sequence_2) {
-        PyErr_NoMemory();
-        return 0;
-    }
-    if (!make_input_double_list(field_2, sequence_2)) {
-        PyMem_Free(sequence_2);
-        return 0;
-    }
-    out->position = sequence_2;
-    PyObject *field_3 = get_option_field(obj, "extrusion_vector", 1);
+    PyObject *field_3 = get_option_field(obj, "extrusion_vector", 0);
     if (!field_3) {
-        return 0;
+        if (PyErr_Occurred()) return 0;
+    } else {
+        if (!retain_option_ref(refs, field_3)) return 0;
+        if (field_3 != Py_None) {
+            ifcopenshell_double_list_t *sequence_3 = (ifcopenshell_double_list_t *)PyMem_Calloc(1, sizeof(ifcopenshell_double_list_t));
+            if (!sequence_3) {
+                PyErr_NoMemory();
+                return 0;
+            }
+            if (!make_input_double_list(field_3, sequence_3, refs)) {
+                PyMem_Free(sequence_3);
+                return 0;
+            }
+            out->extrusion_vector = sequence_3;
+        out->has_extrusion_vector = true;
+        }
     }
-    refs[3] = field_3;
-    ifcopenshell_double_list_t *sequence_3 = (ifcopenshell_double_list_t *)PyMem_Calloc(1, sizeof(ifcopenshell_double_list_t));
-    if (!sequence_3) {
-        PyErr_NoMemory();
-        return 0;
-    }
-    if (!make_input_double_list(field_3, sequence_3)) {
-        PyMem_Free(sequence_3);
-        return 0;
-    }
-    out->extrusion_vector = sequence_3;
-    PyObject *field_4 = get_option_field(obj, "position_z_axis", 1);
+    PyObject *field_4 = get_option_field(obj, "position_z_axis", 0);
     if (!field_4) {
-        return 0;
+        if (PyErr_Occurred()) return 0;
+    } else {
+        if (!retain_option_ref(refs, field_4)) return 0;
+        if (field_4 != Py_None) {
+            ifcopenshell_double_list_t *sequence_4 = (ifcopenshell_double_list_t *)PyMem_Calloc(1, sizeof(ifcopenshell_double_list_t));
+            if (!sequence_4) {
+                PyErr_NoMemory();
+                return 0;
+            }
+            if (!make_input_double_list(field_4, sequence_4, refs)) {
+                PyMem_Free(sequence_4);
+                return 0;
+            }
+            out->position_z_axis = sequence_4;
+        out->has_position_z_axis = true;
+        }
     }
-    refs[4] = field_4;
-    ifcopenshell_double_list_t *sequence_4 = (ifcopenshell_double_list_t *)PyMem_Calloc(1, sizeof(ifcopenshell_double_list_t));
-    if (!sequence_4) {
-        PyErr_NoMemory();
-        return 0;
-    }
-    if (!make_input_double_list(field_4, sequence_4)) {
-        PyMem_Free(sequence_4);
-        return 0;
-    }
-    out->position_z_axis = sequence_4;
-    PyObject *field_5 = get_option_field(obj, "position_x_axis", 1);
+    PyObject *field_5 = get_option_field(obj, "position_x_axis", 0);
     if (!field_5) {
-        return 0;
+        if (PyErr_Occurred()) return 0;
+    } else {
+        if (!retain_option_ref(refs, field_5)) return 0;
+        if (field_5 != Py_None) {
+            ifcopenshell_double_list_t *sequence_5 = (ifcopenshell_double_list_t *)PyMem_Calloc(1, sizeof(ifcopenshell_double_list_t));
+            if (!sequence_5) {
+                PyErr_NoMemory();
+                return 0;
+            }
+            if (!make_input_double_list(field_5, sequence_5, refs)) {
+                PyMem_Free(sequence_5);
+                return 0;
+            }
+            out->position_x_axis = sequence_5;
+        out->has_position_x_axis = true;
+        }
     }
-    refs[5] = field_5;
-    ifcopenshell_double_list_t *sequence_5 = (ifcopenshell_double_list_t *)PyMem_Calloc(1, sizeof(ifcopenshell_double_list_t));
-    if (!sequence_5) {
-        PyErr_NoMemory();
-        return 0;
-    }
-    if (!make_input_double_list(field_5, sequence_5)) {
-        PyMem_Free(sequence_5);
-        return 0;
-    }
-    out->position_x_axis = sequence_5;
     PyObject *field_6 = get_option_field(obj, "position_y_axis", 0);
     if (!field_6) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[6] = field_6;
+        if (!retain_option_ref(refs, field_6)) return 0;
         if (field_6 != Py_None) {
             ifcopenshell_double_list_t *sequence_6 = (ifcopenshell_double_list_t *)PyMem_Calloc(1, sizeof(ifcopenshell_double_list_t));
             if (!sequence_6) {
                 PyErr_NoMemory();
                 return 0;
             }
-            if (!make_input_double_list(field_6, sequence_6)) {
+            if (!make_input_double_list(field_6, sequence_6, refs)) {
                 PyMem_Free(sequence_6);
                 return 0;
             }
@@ -16425,7 +18126,7 @@ static void free_input_shape_builder_half_space_solid_options(ifcopenshell_shape
     (void)value;
 }
 
-static int fill_input_shape_builder_half_space_solid_options(PyObject *obj, ifcopenshell_shape_builder_half_space_solid_options_t *out, PyObject **refs) {
+static int fill_input_shape_builder_half_space_solid_options(PyObject *obj, ifcopenshell_shape_builder_half_space_solid_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -16434,31 +18135,146 @@ static int fill_input_shape_builder_half_space_solid_options(PyObject *obj, ifco
     if (!field_0) {
         return 0;
     }
-    refs[0] = field_0;
+    if (!retain_option_ref(refs, field_0)) return 0;
     if (!extract_handle(field_0, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->plane, 0)) {
         return 0;
     }
-    PyObject *field_1 = get_option_field(obj, "agreement_flag", 1);
+    PyObject *field_1 = get_option_field(obj, "agreement_flag", 0);
+    if (!field_1) {
+        if (PyErr_Occurred()) return 0;
+    } else {
+        if (!retain_option_ref(refs, field_1)) return 0;
+        if (field_1 != Py_None) {
+            int value_1 = PyObject_IsTrue(field_1);
+            if (value_1 < 0) return 0;
+            out->agreement_flag = (bool)value_1;
+        out->has_agreement_flag = true;
+        }
+    }
+    return 1;
+}
+
+
+static void free_input_shape_builder_indexed_polycurve2d_options(ifcopenshell_shape_builder_indexed_polycurve2d_options_t *value) {
+    if (value->points) {
+        free_input_double_list_list((ifcopenshell_double_list_list_t *)value->points);
+        PyMem_Free((void *)value->points);
+        value->points = NULL;
+    }
+    if (value->segments) {
+        free_input_ShapeBuilderLineSegment_ShapeBuilderArcSegment_variant_list((ifcopenshell_ShapeBuilderLineSegment_ShapeBuilderArcSegment_variant_list_t *)value->segments);
+        PyMem_Free((void *)value->segments);
+        value->segments = NULL;
+    }
+}
+
+static int fill_input_shape_builder_indexed_polycurve2d_options(PyObject *obj, ifcopenshell_shape_builder_indexed_polycurve2d_options_t *out, option_ref_owner *refs) {
+    if (!PyMapping_Check(obj)) {
+        PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
+        return 0;
+    }
+    PyObject *field_0 = get_option_field(obj, "points", 1);
+    if (!field_0) {
+        return 0;
+    }
+    if (!retain_option_ref(refs, field_0)) return 0;
+    ifcopenshell_double_list_list_t *sequence_0 = (ifcopenshell_double_list_list_t *)PyMem_Calloc(1, sizeof(ifcopenshell_double_list_list_t));
+    if (!sequence_0) {
+        PyErr_NoMemory();
+        return 0;
+    }
+    if (!make_input_double_list_list(field_0, sequence_0, refs)) {
+        PyMem_Free(sequence_0);
+        return 0;
+    }
+    out->points = sequence_0;
+    PyObject *field_1 = get_option_field(obj, "segments", 1);
     if (!field_1) {
         return 0;
     }
-    refs[1] = field_1;
-    int value_1 = PyObject_IsTrue(field_1);
-    if (value_1 < 0) return 0;
-    out->agreement_flag = (bool)value_1;
+    if (!retain_option_ref(refs, field_1)) return 0;
+    ifcopenshell_ShapeBuilderLineSegment_ShapeBuilderArcSegment_variant_list_t *sequence_1 = (ifcopenshell_ShapeBuilderLineSegment_ShapeBuilderArcSegment_variant_list_t *)PyMem_Calloc(1, sizeof(ifcopenshell_ShapeBuilderLineSegment_ShapeBuilderArcSegment_variant_list_t));
+    if (!sequence_1) {
+        PyErr_NoMemory();
+        return 0;
+    }
+    if (!make_input_ShapeBuilderLineSegment_ShapeBuilderArcSegment_variant_list(field_1, sequence_1, refs)) {
+        PyMem_Free(sequence_1);
+        return 0;
+    }
+    out->segments = sequence_1;
+    return 1;
+}
+
+
+static void free_input_shape_builder_line_segment(ifcopenshell_shape_builder_line_segment_t *value) {
+    if (value->line_indices) {
+        free_input_uint32_list((ifcopenshell_uint32_list_t *)value->line_indices);
+        PyMem_Free((void *)value->line_indices);
+        value->line_indices = NULL;
+    }
+}
+
+static int fill_input_shape_builder_line_segment(PyObject *obj, ifcopenshell_shape_builder_line_segment_t *out, option_ref_owner *refs) {
+    if (!PyMapping_Check(obj)) {
+        PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
+        return 0;
+    }
+    PyObject *field_0 = get_option_field(obj, "line_indices", 1);
+    if (!field_0) {
+        return 0;
+    }
+    if (!retain_option_ref(refs, field_0)) return 0;
+    ifcopenshell_uint32_list_t *sequence_0 = (ifcopenshell_uint32_list_t *)PyMem_Calloc(1, sizeof(ifcopenshell_uint32_list_t));
+    if (!sequence_0) {
+        PyErr_NoMemory();
+        return 0;
+    }
+    if (!make_input_uint32_list(field_0, sequence_0, refs)) {
+        PyMem_Free(sequence_0);
+        return 0;
+    }
+    out->line_indices = sequence_0;
+    return 1;
+}
+
+
+static void free_input_shape_builder_mep_bend_direction(ifcopenshell_shape_builder_mep_bend_direction_t *value) {
+    (void)value;
+}
+
+static int fill_input_shape_builder_mep_bend_direction(PyObject *obj, ifcopenshell_shape_builder_mep_bend_direction_t *out, option_ref_owner *refs) {
+    if (!PyMapping_Check(obj)) {
+        PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
+        return 0;
+    }
+    PyObject *field_0 = get_option_field(obj, "x", 1);
+    if (!field_0) {
+        return 0;
+    }
+    if (!retain_option_ref(refs, field_0)) return 0;
+    out->x = PyFloat_AsDouble(field_0);
+    if (PyErr_Occurred()) return 0;
+    PyObject *field_1 = get_option_field(obj, "y", 1);
+    if (!field_1) {
+        return 0;
+    }
+    if (!retain_option_ref(refs, field_1)) return 0;
+    out->y = PyFloat_AsDouble(field_1);
+    if (PyErr_Occurred()) return 0;
     return 1;
 }
 
 
 static void free_input_shape_builder_mep_bend_shape_options(ifcopenshell_shape_builder_mep_bend_shape_options_t *value) {
     if (value->bend_vector) {
-        free_input_double_list((ifcopenshell_double_list_t *)value->bend_vector);
+        free_input_shape_builder_mep_bend_direction((ifcopenshell_shape_builder_mep_bend_direction_t *)value->bend_vector);
         PyMem_Free((void *)value->bend_vector);
         value->bend_vector = NULL;
     }
 }
 
-static int fill_input_shape_builder_mep_bend_shape_options(PyObject *obj, ifcopenshell_shape_builder_mep_bend_shape_options_t *out, PyObject **refs) {
+static int fill_input_shape_builder_mep_bend_shape_options(PyObject *obj, ifcopenshell_shape_builder_mep_bend_shape_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -16467,7 +18283,7 @@ static int fill_input_shape_builder_mep_bend_shape_options(PyObject *obj, ifcope
     if (!field_0) {
         return 0;
     }
-    refs[0] = field_0;
+    if (!retain_option_ref(refs, field_0)) return 0;
     if (!extract_handle(field_0, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->segment, 0)) {
         return 0;
     }
@@ -16475,50 +18291,51 @@ static int fill_input_shape_builder_mep_bend_shape_options(PyObject *obj, ifcope
     if (!field_1) {
         return 0;
     }
-    refs[1] = field_1;
+    if (!retain_option_ref(refs, field_1)) return 0;
     out->start_length = PyFloat_AsDouble(field_1);
     if (PyErr_Occurred()) return 0;
     PyObject *field_2 = get_option_field(obj, "end_length", 1);
     if (!field_2) {
         return 0;
     }
-    refs[2] = field_2;
+    if (!retain_option_ref(refs, field_2)) return 0;
     out->end_length = PyFloat_AsDouble(field_2);
     if (PyErr_Occurred()) return 0;
     PyObject *field_3 = get_option_field(obj, "angle", 1);
     if (!field_3) {
         return 0;
     }
-    refs[3] = field_3;
+    if (!retain_option_ref(refs, field_3)) return 0;
     out->angle = PyFloat_AsDouble(field_3);
     if (PyErr_Occurred()) return 0;
     PyObject *field_4 = get_option_field(obj, "radius", 1);
     if (!field_4) {
         return 0;
     }
-    refs[4] = field_4;
+    if (!retain_option_ref(refs, field_4)) return 0;
     out->radius = PyFloat_AsDouble(field_4);
     if (PyErr_Occurred()) return 0;
     PyObject *field_5 = get_option_field(obj, "bend_vector", 1);
     if (!field_5) {
         return 0;
     }
-    refs[5] = field_5;
-    ifcopenshell_double_list_t *sequence_5 = (ifcopenshell_double_list_t *)PyMem_Calloc(1, sizeof(ifcopenshell_double_list_t));
-    if (!sequence_5) {
+    if (!retain_option_ref(refs, field_5)) return 0;
+    ifcopenshell_shape_builder_mep_bend_direction_t *nested_5 = (ifcopenshell_shape_builder_mep_bend_direction_t *)PyMem_Calloc(1, sizeof(ifcopenshell_shape_builder_mep_bend_direction_t));
+    if (!nested_5) {
         PyErr_NoMemory();
         return 0;
     }
-    if (!make_input_double_list(field_5, sequence_5)) {
-        PyMem_Free(sequence_5);
+    if (!fill_input_shape_builder_mep_bend_direction(field_5, nested_5, refs)) {
+        free_input_shape_builder_mep_bend_direction(nested_5);
+        PyMem_Free(nested_5);
         return 0;
     }
-    out->bend_vector = sequence_5;
+    out->bend_vector = nested_5;
     PyObject *field_6 = get_option_field(obj, "flip_z_axis", 1);
     if (!field_6) {
         return 0;
     }
-    refs[6] = field_6;
+    if (!retain_option_ref(refs, field_6)) return 0;
     int value_6 = PyObject_IsTrue(field_6);
     if (value_6 < 0) return 0;
     out->flip_z_axis = (bool)value_6;
@@ -16526,30 +18343,96 @@ static int fill_input_shape_builder_mep_bend_shape_options(PyObject *obj, ifcope
 }
 
 
+static void free_input_shape_builder_mep_offset(ifcopenshell_shape_builder_mep_offset_t *value) {
+    (void)value;
+}
+
+static int fill_input_shape_builder_mep_offset(PyObject *obj, ifcopenshell_shape_builder_mep_offset_t *out, option_ref_owner *refs) {
+    if (!PyMapping_Check(obj)) {
+        PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
+        return 0;
+    }
+    PyObject *field_0 = get_option_field(obj, "x", 1);
+    if (!field_0) {
+        return 0;
+    }
+    if (!retain_option_ref(refs, field_0)) return 0;
+    out->x = PyFloat_AsDouble(field_0);
+    if (PyErr_Occurred()) return 0;
+    PyObject *field_1 = get_option_field(obj, "y", 1);
+    if (!field_1) {
+        return 0;
+    }
+    if (!retain_option_ref(refs, field_1)) return 0;
+    out->y = PyFloat_AsDouble(field_1);
+    if (PyErr_Occurred()) return 0;
+    return 1;
+}
+
+
+static void free_input_shape_builder_mep_profile_half_dimensions(ifcopenshell_shape_builder_mep_profile_half_dimensions_t *value) {
+    (void)value;
+}
+
+static int fill_input_shape_builder_mep_profile_half_dimensions(PyObject *obj, ifcopenshell_shape_builder_mep_profile_half_dimensions_t *out, option_ref_owner *refs) {
+    if (!PyMapping_Check(obj)) {
+        PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
+        return 0;
+    }
+    PyObject *field_0 = get_option_field(obj, "half_x", 1);
+    if (!field_0) {
+        return 0;
+    }
+    if (!retain_option_ref(refs, field_0)) return 0;
+    out->half_x = PyFloat_AsDouble(field_0);
+    if (PyErr_Occurred()) return 0;
+    PyObject *field_1 = get_option_field(obj, "half_y", 1);
+    if (!field_1) {
+        return 0;
+    }
+    if (!retain_option_ref(refs, field_1)) return 0;
+    out->half_y = PyFloat_AsDouble(field_1);
+    if (PyErr_Occurred()) return 0;
+    PyObject *field_2 = get_option_field(obj, "depth", 1);
+    if (!field_2) {
+        return 0;
+    }
+    if (!retain_option_ref(refs, field_2)) return 0;
+    out->depth = PyFloat_AsDouble(field_2);
+    if (PyErr_Occurred()) return 0;
+    return 1;
+}
+
+
 static void free_input_shape_builder_mep_transition_calculate_options(ifcopenshell_shape_builder_mep_transition_calculate_options_t *value) {
     if (value->start_half_dim) {
-        free_input_double_list((ifcopenshell_double_list_t *)value->start_half_dim);
+        free_input_shape_builder_mep_profile_half_dimensions((ifcopenshell_shape_builder_mep_profile_half_dimensions_t *)value->start_half_dim);
         PyMem_Free((void *)value->start_half_dim);
         value->start_half_dim = NULL;
     }
     if (value->end_half_dim) {
-        free_input_double_list((ifcopenshell_double_list_t *)value->end_half_dim);
+        free_input_shape_builder_mep_profile_half_dimensions((ifcopenshell_shape_builder_mep_profile_half_dimensions_t *)value->end_half_dim);
         PyMem_Free((void *)value->end_half_dim);
         value->end_half_dim = NULL;
     }
     if (value->offset) {
-        free_input_double_list((ifcopenshell_double_list_t *)value->offset);
+        free_input_shape_builder_mep_offset((ifcopenshell_shape_builder_mep_offset_t *)value->offset);
         PyMem_Free((void *)value->offset);
         value->offset = NULL;
     }
     if (value->diff) {
-        free_input_double_list((ifcopenshell_double_list_t *)value->diff);
+        free_input_shape_builder_mep_offset((ifcopenshell_shape_builder_mep_offset_t *)value->diff);
         PyMem_Free((void *)value->diff);
         value->diff = NULL;
     }
+    if (value->calculation) {
+        free_input_ShapeBuilderMepTransitionFromLength_ShapeBuilderMepTransitionFromAngle_variant((ifcopenshell_ShapeBuilderMepTransitionFromLength_ShapeBuilderMepTransitionFromAngle_variant_t *)value->calculation);
+        PyMem_Free((void *)value->calculation);
+        value->calculation = NULL;
+    }
 }
 
-static int fill_input_shape_builder_mep_transition_calculate_options(PyObject *obj, ifcopenshell_shape_builder_mep_transition_calculate_options_t *out, PyObject **refs) {
+static int fill_input_shape_builder_mep_transition_calculate_options(PyObject *obj, ifcopenshell_shape_builder_mep_transition_calculate_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -16558,119 +18441,160 @@ static int fill_input_shape_builder_mep_transition_calculate_options(PyObject *o
     if (!field_0) {
         return 0;
     }
-    refs[0] = field_0;
-    ifcopenshell_double_list_t *sequence_0 = (ifcopenshell_double_list_t *)PyMem_Calloc(1, sizeof(ifcopenshell_double_list_t));
-    if (!sequence_0) {
+    if (!retain_option_ref(refs, field_0)) return 0;
+    ifcopenshell_shape_builder_mep_profile_half_dimensions_t *nested_0 = (ifcopenshell_shape_builder_mep_profile_half_dimensions_t *)PyMem_Calloc(1, sizeof(ifcopenshell_shape_builder_mep_profile_half_dimensions_t));
+    if (!nested_0) {
         PyErr_NoMemory();
         return 0;
     }
-    if (!make_input_double_list(field_0, sequence_0)) {
-        PyMem_Free(sequence_0);
+    if (!fill_input_shape_builder_mep_profile_half_dimensions(field_0, nested_0, refs)) {
+        free_input_shape_builder_mep_profile_half_dimensions(nested_0);
+        PyMem_Free(nested_0);
         return 0;
     }
-    out->start_half_dim = sequence_0;
+    out->start_half_dim = nested_0;
     PyObject *field_1 = get_option_field(obj, "end_half_dim", 1);
     if (!field_1) {
         return 0;
     }
-    refs[1] = field_1;
-    ifcopenshell_double_list_t *sequence_1 = (ifcopenshell_double_list_t *)PyMem_Calloc(1, sizeof(ifcopenshell_double_list_t));
-    if (!sequence_1) {
+    if (!retain_option_ref(refs, field_1)) return 0;
+    ifcopenshell_shape_builder_mep_profile_half_dimensions_t *nested_1 = (ifcopenshell_shape_builder_mep_profile_half_dimensions_t *)PyMem_Calloc(1, sizeof(ifcopenshell_shape_builder_mep_profile_half_dimensions_t));
+    if (!nested_1) {
         PyErr_NoMemory();
         return 0;
     }
-    if (!make_input_double_list(field_1, sequence_1)) {
-        PyMem_Free(sequence_1);
+    if (!fill_input_shape_builder_mep_profile_half_dimensions(field_1, nested_1, refs)) {
+        free_input_shape_builder_mep_profile_half_dimensions(nested_1);
+        PyMem_Free(nested_1);
         return 0;
     }
-    out->end_half_dim = sequence_1;
+    out->end_half_dim = nested_1;
     PyObject *field_2 = get_option_field(obj, "offset", 1);
     if (!field_2) {
         return 0;
     }
-    refs[2] = field_2;
-    ifcopenshell_double_list_t *sequence_2 = (ifcopenshell_double_list_t *)PyMem_Calloc(1, sizeof(ifcopenshell_double_list_t));
-    if (!sequence_2) {
+    if (!retain_option_ref(refs, field_2)) return 0;
+    ifcopenshell_shape_builder_mep_offset_t *nested_2 = (ifcopenshell_shape_builder_mep_offset_t *)PyMem_Calloc(1, sizeof(ifcopenshell_shape_builder_mep_offset_t));
+    if (!nested_2) {
         PyErr_NoMemory();
         return 0;
     }
-    if (!make_input_double_list(field_2, sequence_2)) {
-        PyMem_Free(sequence_2);
+    if (!fill_input_shape_builder_mep_offset(field_2, nested_2, refs)) {
+        free_input_shape_builder_mep_offset(nested_2);
+        PyMem_Free(nested_2);
         return 0;
     }
-    out->offset = sequence_2;
+    out->offset = nested_2;
     PyObject *field_3 = get_option_field(obj, "diff", 0);
     if (!field_3) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[3] = field_3;
+        if (!retain_option_ref(refs, field_3)) return 0;
         if (field_3 != Py_None) {
-            ifcopenshell_double_list_t *sequence_3 = (ifcopenshell_double_list_t *)PyMem_Calloc(1, sizeof(ifcopenshell_double_list_t));
-            if (!sequence_3) {
+            ifcopenshell_shape_builder_mep_offset_t *nested_3 = (ifcopenshell_shape_builder_mep_offset_t *)PyMem_Calloc(1, sizeof(ifcopenshell_shape_builder_mep_offset_t));
+            if (!nested_3) {
                 PyErr_NoMemory();
                 return 0;
             }
-            if (!make_input_double_list(field_3, sequence_3)) {
-                PyMem_Free(sequence_3);
+            if (!fill_input_shape_builder_mep_offset(field_3, nested_3, refs)) {
+                free_input_shape_builder_mep_offset(nested_3);
+                PyMem_Free(nested_3);
                 return 0;
             }
-            out->diff = sequence_3;
+            out->diff = nested_3;
         out->has_diff = true;
         }
     }
-    PyObject *field_4 = get_option_field(obj, "end_profile", 1);
+    PyObject *field_4 = get_option_field(obj, "end_profile", 0);
     if (!field_4) {
+        if (PyErr_Occurred()) return 0;
+    } else {
+        if (!retain_option_ref(refs, field_4)) return 0;
+        if (field_4 != Py_None) {
+            int value_4 = PyObject_IsTrue(field_4);
+            if (value_4 < 0) return 0;
+            out->end_profile = (bool)value_4;
+        out->has_end_profile = true;
+        }
+    }
+    PyObject *field_5 = get_option_field(obj, "calculation", 1);
+    if (!field_5) {
         return 0;
     }
-    refs[4] = field_4;
-    int value_4 = PyObject_IsTrue(field_4);
-    if (value_4 < 0) return 0;
-    out->end_profile = (bool)value_4;
-    PyObject *field_5 = get_option_field(obj, "length", 0);
-    if (!field_5) {
-        if (PyErr_Occurred()) return 0;
-    } else {
-        refs[5] = field_5;
-        if (field_5 != Py_None) {
-            out->length = PyFloat_AsDouble(field_5);
-            if (PyErr_Occurred()) return 0;
-        out->has_length = true;
-        }
+    if (!retain_option_ref(refs, field_5)) return 0;
+    ifcopenshell_ShapeBuilderMepTransitionFromLength_ShapeBuilderMepTransitionFromAngle_variant_t *variant_5 = (ifcopenshell_ShapeBuilderMepTransitionFromLength_ShapeBuilderMepTransitionFromAngle_variant_t *)PyMem_Calloc(1, sizeof(ifcopenshell_ShapeBuilderMepTransitionFromLength_ShapeBuilderMepTransitionFromAngle_variant_t));
+    if (!variant_5) {
+        PyErr_NoMemory();
+        return 0;
     }
-    PyObject *field_6 = get_option_field(obj, "angle", 0);
-    if (!field_6) {
-        if (PyErr_Occurred()) return 0;
-    } else {
-        refs[6] = field_6;
-        if (field_6 != Py_None) {
-            out->angle = PyFloat_AsDouble(field_6);
-            if (PyErr_Occurred()) return 0;
-        out->has_angle = true;
-        }
+    if (!make_input_ShapeBuilderMepTransitionFromLength_ShapeBuilderMepTransitionFromAngle_variant(field_5, variant_5, refs)) {
+        PyMem_Free(variant_5);
+        return 0;
     }
+    out->calculation = variant_5;
+    return 1;
+}
+
+
+static void free_input_shape_builder_mep_transition_from_angle(ifcopenshell_shape_builder_mep_transition_from_angle_t *value) {
+    (void)value;
+}
+
+static int fill_input_shape_builder_mep_transition_from_angle(PyObject *obj, ifcopenshell_shape_builder_mep_transition_from_angle_t *out, option_ref_owner *refs) {
+    if (!PyMapping_Check(obj)) {
+        PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
+        return 0;
+    }
+    PyObject *field_0 = get_option_field(obj, "angle", 1);
+    if (!field_0) {
+        return 0;
+    }
+    if (!retain_option_ref(refs, field_0)) return 0;
+    out->angle = PyFloat_AsDouble(field_0);
+    if (PyErr_Occurred()) return 0;
+    return 1;
+}
+
+
+static void free_input_shape_builder_mep_transition_from_length(ifcopenshell_shape_builder_mep_transition_from_length_t *value) {
+    (void)value;
+}
+
+static int fill_input_shape_builder_mep_transition_from_length(PyObject *obj, ifcopenshell_shape_builder_mep_transition_from_length_t *out, option_ref_owner *refs) {
+    if (!PyMapping_Check(obj)) {
+        PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
+        return 0;
+    }
+    PyObject *field_0 = get_option_field(obj, "length", 1);
+    if (!field_0) {
+        return 0;
+    }
+    if (!retain_option_ref(refs, field_0)) return 0;
+    out->length = PyFloat_AsDouble(field_0);
+    if (PyErr_Occurred()) return 0;
     return 1;
 }
 
 
 static void free_input_shape_builder_mep_transition_length_options(ifcopenshell_shape_builder_mep_transition_length_options_t *value) {
     if (value->start_half_dim) {
-        free_input_double_list((ifcopenshell_double_list_t *)value->start_half_dim);
+        free_input_shape_builder_mep_profile_half_dimensions((ifcopenshell_shape_builder_mep_profile_half_dimensions_t *)value->start_half_dim);
         PyMem_Free((void *)value->start_half_dim);
         value->start_half_dim = NULL;
     }
     if (value->end_half_dim) {
-        free_input_double_list((ifcopenshell_double_list_t *)value->end_half_dim);
+        free_input_shape_builder_mep_profile_half_dimensions((ifcopenshell_shape_builder_mep_profile_half_dimensions_t *)value->end_half_dim);
         PyMem_Free((void *)value->end_half_dim);
         value->end_half_dim = NULL;
     }
     if (value->profile_offset) {
-        free_input_double_list((ifcopenshell_double_list_t *)value->profile_offset);
+        free_input_shape_builder_mep_offset((ifcopenshell_shape_builder_mep_offset_t *)value->profile_offset);
         PyMem_Free((void *)value->profile_offset);
         value->profile_offset = NULL;
     }
 }
 
-static int fill_input_shape_builder_mep_transition_length_options(PyObject *obj, ifcopenshell_shape_builder_mep_transition_length_options_t *out, PyObject **refs) {
+static int fill_input_shape_builder_mep_transition_length_options(PyObject *obj, ifcopenshell_shape_builder_mep_transition_length_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -16679,67 +18603,74 @@ static int fill_input_shape_builder_mep_transition_length_options(PyObject *obj,
     if (!field_0) {
         return 0;
     }
-    refs[0] = field_0;
-    ifcopenshell_double_list_t *sequence_0 = (ifcopenshell_double_list_t *)PyMem_Calloc(1, sizeof(ifcopenshell_double_list_t));
-    if (!sequence_0) {
+    if (!retain_option_ref(refs, field_0)) return 0;
+    ifcopenshell_shape_builder_mep_profile_half_dimensions_t *nested_0 = (ifcopenshell_shape_builder_mep_profile_half_dimensions_t *)PyMem_Calloc(1, sizeof(ifcopenshell_shape_builder_mep_profile_half_dimensions_t));
+    if (!nested_0) {
         PyErr_NoMemory();
         return 0;
     }
-    if (!make_input_double_list(field_0, sequence_0)) {
-        PyMem_Free(sequence_0);
+    if (!fill_input_shape_builder_mep_profile_half_dimensions(field_0, nested_0, refs)) {
+        free_input_shape_builder_mep_profile_half_dimensions(nested_0);
+        PyMem_Free(nested_0);
         return 0;
     }
-    out->start_half_dim = sequence_0;
+    out->start_half_dim = nested_0;
     PyObject *field_1 = get_option_field(obj, "end_half_dim", 1);
     if (!field_1) {
         return 0;
     }
-    refs[1] = field_1;
-    ifcopenshell_double_list_t *sequence_1 = (ifcopenshell_double_list_t *)PyMem_Calloc(1, sizeof(ifcopenshell_double_list_t));
-    if (!sequence_1) {
+    if (!retain_option_ref(refs, field_1)) return 0;
+    ifcopenshell_shape_builder_mep_profile_half_dimensions_t *nested_1 = (ifcopenshell_shape_builder_mep_profile_half_dimensions_t *)PyMem_Calloc(1, sizeof(ifcopenshell_shape_builder_mep_profile_half_dimensions_t));
+    if (!nested_1) {
         PyErr_NoMemory();
         return 0;
     }
-    if (!make_input_double_list(field_1, sequence_1)) {
-        PyMem_Free(sequence_1);
+    if (!fill_input_shape_builder_mep_profile_half_dimensions(field_1, nested_1, refs)) {
+        free_input_shape_builder_mep_profile_half_dimensions(nested_1);
+        PyMem_Free(nested_1);
         return 0;
     }
-    out->end_half_dim = sequence_1;
+    out->end_half_dim = nested_1;
     PyObject *field_2 = get_option_field(obj, "angle", 1);
     if (!field_2) {
         return 0;
     }
-    refs[2] = field_2;
+    if (!retain_option_ref(refs, field_2)) return 0;
     out->angle = PyFloat_AsDouble(field_2);
     if (PyErr_Occurred()) return 0;
-    PyObject *field_3 = get_option_field(obj, "profile_offset", 1);
+    PyObject *field_3 = get_option_field(obj, "profile_offset", 0);
     if (!field_3) {
-        return 0;
+        if (PyErr_Occurred()) return 0;
+    } else {
+        if (!retain_option_ref(refs, field_3)) return 0;
+        if (field_3 != Py_None) {
+            ifcopenshell_shape_builder_mep_offset_t *nested_3 = (ifcopenshell_shape_builder_mep_offset_t *)PyMem_Calloc(1, sizeof(ifcopenshell_shape_builder_mep_offset_t));
+            if (!nested_3) {
+                PyErr_NoMemory();
+                return 0;
+            }
+            if (!fill_input_shape_builder_mep_offset(field_3, nested_3, refs)) {
+                free_input_shape_builder_mep_offset(nested_3);
+                PyMem_Free(nested_3);
+                return 0;
+            }
+            out->profile_offset = nested_3;
+        out->has_profile_offset = true;
+        }
     }
-    refs[3] = field_3;
-    ifcopenshell_double_list_t *sequence_3 = (ifcopenshell_double_list_t *)PyMem_Calloc(1, sizeof(ifcopenshell_double_list_t));
-    if (!sequence_3) {
-        PyErr_NoMemory();
-        return 0;
-    }
-    if (!make_input_double_list(field_3, sequence_3)) {
-        PyMem_Free(sequence_3);
-        return 0;
-    }
-    out->profile_offset = sequence_3;
     return 1;
 }
 
 
 static void free_input_shape_builder_mep_transition_shape_options(ifcopenshell_shape_builder_mep_transition_shape_options_t *value) {
     if (value->profile_offset) {
-        free_input_double_list((ifcopenshell_double_list_t *)value->profile_offset);
+        free_input_shape_builder_mep_offset((ifcopenshell_shape_builder_mep_offset_t *)value->profile_offset);
         PyMem_Free((void *)value->profile_offset);
         value->profile_offset = NULL;
     }
 }
 
-static int fill_input_shape_builder_mep_transition_shape_options(PyObject *obj, ifcopenshell_shape_builder_mep_transition_shape_options_t *out, PyObject **refs) {
+static int fill_input_shape_builder_mep_transition_shape_options(PyObject *obj, ifcopenshell_shape_builder_mep_transition_shape_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -16748,7 +18679,7 @@ static int fill_input_shape_builder_mep_transition_shape_options(PyObject *obj, 
     if (!field_0) {
         return 0;
     }
-    refs[0] = field_0;
+    if (!retain_option_ref(refs, field_0)) return 0;
     if (!extract_handle(field_0, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->start_segment, 0)) {
         return 0;
     }
@@ -16756,7 +18687,7 @@ static int fill_input_shape_builder_mep_transition_shape_options(PyObject *obj, 
     if (!field_1) {
         return 0;
     }
-    refs[1] = field_1;
+    if (!retain_option_ref(refs, field_1)) return 0;
     if (!extract_handle(field_1, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->end_segment, 0)) {
         return 0;
     }
@@ -16764,38 +18695,47 @@ static int fill_input_shape_builder_mep_transition_shape_options(PyObject *obj, 
     if (!field_2) {
         return 0;
     }
-    refs[2] = field_2;
+    if (!retain_option_ref(refs, field_2)) return 0;
     out->start_length = PyFloat_AsDouble(field_2);
     if (PyErr_Occurred()) return 0;
     PyObject *field_3 = get_option_field(obj, "end_length", 1);
     if (!field_3) {
         return 0;
     }
-    refs[3] = field_3;
+    if (!retain_option_ref(refs, field_3)) return 0;
     out->end_length = PyFloat_AsDouble(field_3);
     if (PyErr_Occurred()) return 0;
-    PyObject *field_4 = get_option_field(obj, "angle", 1);
+    PyObject *field_4 = get_option_field(obj, "angle", 0);
     if (!field_4) {
-        return 0;
+        if (PyErr_Occurred()) return 0;
+    } else {
+        if (!retain_option_ref(refs, field_4)) return 0;
+        if (field_4 != Py_None) {
+            out->angle = PyFloat_AsDouble(field_4);
+            if (PyErr_Occurred()) return 0;
+        out->has_angle = true;
+        }
     }
-    refs[4] = field_4;
-    out->angle = PyFloat_AsDouble(field_4);
-    if (PyErr_Occurred()) return 0;
-    PyObject *field_5 = get_option_field(obj, "profile_offset", 1);
+    PyObject *field_5 = get_option_field(obj, "profile_offset", 0);
     if (!field_5) {
-        return 0;
+        if (PyErr_Occurred()) return 0;
+    } else {
+        if (!retain_option_ref(refs, field_5)) return 0;
+        if (field_5 != Py_None) {
+            ifcopenshell_shape_builder_mep_offset_t *nested_5 = (ifcopenshell_shape_builder_mep_offset_t *)PyMem_Calloc(1, sizeof(ifcopenshell_shape_builder_mep_offset_t));
+            if (!nested_5) {
+                PyErr_NoMemory();
+                return 0;
+            }
+            if (!fill_input_shape_builder_mep_offset(field_5, nested_5, refs)) {
+                free_input_shape_builder_mep_offset(nested_5);
+                PyMem_Free(nested_5);
+                return 0;
+            }
+            out->profile_offset = nested_5;
+        out->has_profile_offset = true;
+        }
     }
-    refs[5] = field_5;
-    ifcopenshell_double_list_t *sequence_5 = (ifcopenshell_double_list_t *)PyMem_Calloc(1, sizeof(ifcopenshell_double_list_t));
-    if (!sequence_5) {
-        PyErr_NoMemory();
-        return 0;
-    }
-    if (!make_input_double_list(field_5, sequence_5)) {
-        PyMem_Free(sequence_5);
-        return 0;
-    }
-    out->profile_offset = sequence_5;
     return 1;
 }
 
@@ -16812,13 +18752,13 @@ static void free_input_shape_builder_mirror_options(ifcopenshell_shape_builder_m
         value->mirror_point = NULL;
     }
     if (value->placement_matrix) {
-        free_input_double_list((ifcopenshell_double_list_t *)value->placement_matrix);
+        free_input_double_list_9_double_list_16_variant((ifcopenshell_double_list_9_double_list_16_variant_t *)value->placement_matrix);
         PyMem_Free((void *)value->placement_matrix);
         value->placement_matrix = NULL;
     }
 }
 
-static int fill_input_shape_builder_mirror_options(PyObject *obj, ifcopenshell_shape_builder_mirror_options_t *out, PyObject **refs) {
+static int fill_input_shape_builder_mirror_options(PyObject *obj, ifcopenshell_shape_builder_mirror_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -16827,86 +18767,102 @@ static int fill_input_shape_builder_mirror_options(PyObject *obj, ifcopenshell_s
     if (!field_0) {
         return 0;
     }
-    refs[0] = field_0;
+    if (!retain_option_ref(refs, field_0)) return 0;
     if (!extract_handle(field_0, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->item, 0)) {
         return 0;
     }
-    PyObject *field_1 = get_option_field(obj, "mirror_axes", 1);
+    PyObject *field_1 = get_option_field(obj, "mirror_axes", 0);
     if (!field_1) {
-        return 0;
+        if (PyErr_Occurred()) return 0;
+    } else {
+        if (!retain_option_ref(refs, field_1)) return 0;
+        if (field_1 != Py_None) {
+            ifcopenshell_double_list_t *sequence_1 = (ifcopenshell_double_list_t *)PyMem_Calloc(1, sizeof(ifcopenshell_double_list_t));
+            if (!sequence_1) {
+                PyErr_NoMemory();
+                return 0;
+            }
+            if (!make_input_double_list(field_1, sequence_1, refs)) {
+                PyMem_Free(sequence_1);
+                return 0;
+            }
+            out->mirror_axes = sequence_1;
+        out->has_mirror_axes = true;
+        }
     }
-    refs[1] = field_1;
-    ifcopenshell_double_list_t *sequence_1 = (ifcopenshell_double_list_t *)PyMem_Calloc(1, sizeof(ifcopenshell_double_list_t));
-    if (!sequence_1) {
-        PyErr_NoMemory();
-        return 0;
-    }
-    if (!make_input_double_list(field_1, sequence_1)) {
-        PyMem_Free(sequence_1);
-        return 0;
-    }
-    out->mirror_axes = sequence_1;
-    PyObject *field_2 = get_option_field(obj, "mirror_point", 1);
+    PyObject *field_2 = get_option_field(obj, "mirror_point", 0);
     if (!field_2) {
-        return 0;
+        if (PyErr_Occurred()) return 0;
+    } else {
+        if (!retain_option_ref(refs, field_2)) return 0;
+        if (field_2 != Py_None) {
+            ifcopenshell_double_list_t *sequence_2 = (ifcopenshell_double_list_t *)PyMem_Calloc(1, sizeof(ifcopenshell_double_list_t));
+            if (!sequence_2) {
+                PyErr_NoMemory();
+                return 0;
+            }
+            if (!make_input_double_list(field_2, sequence_2, refs)) {
+                PyMem_Free(sequence_2);
+                return 0;
+            }
+            out->mirror_point = sequence_2;
+        out->has_mirror_point = true;
+        }
     }
-    refs[2] = field_2;
-    ifcopenshell_double_list_t *sequence_2 = (ifcopenshell_double_list_t *)PyMem_Calloc(1, sizeof(ifcopenshell_double_list_t));
-    if (!sequence_2) {
-        PyErr_NoMemory();
-        return 0;
-    }
-    if (!make_input_double_list(field_2, sequence_2)) {
-        PyMem_Free(sequence_2);
-        return 0;
-    }
-    out->mirror_point = sequence_2;
-    PyObject *field_3 = get_option_field(obj, "create_copy", 1);
+    PyObject *field_3 = get_option_field(obj, "create_copy", 0);
     if (!field_3) {
-        return 0;
+        if (PyErr_Occurred()) return 0;
+    } else {
+        if (!retain_option_ref(refs, field_3)) return 0;
+        if (field_3 != Py_None) {
+            int value_3 = PyObject_IsTrue(field_3);
+            if (value_3 < 0) return 0;
+            out->create_copy = (bool)value_3;
+        out->has_create_copy = true;
+        }
     }
-    refs[3] = field_3;
-    int value_3 = PyObject_IsTrue(field_3);
-    if (value_3 < 0) return 0;
-    out->create_copy = (bool)value_3;
-    PyObject *field_4 = get_option_field(obj, "placement_matrix", 1);
+    PyObject *field_4 = get_option_field(obj, "placement_matrix", 0);
     if (!field_4) {
-        return 0;
+        if (PyErr_Occurred()) return 0;
+    } else {
+        if (!retain_option_ref(refs, field_4)) return 0;
+        if (field_4 != Py_None) {
+            ifcopenshell_double_list_9_double_list_16_variant_t *variant_4 = (ifcopenshell_double_list_9_double_list_16_variant_t *)PyMem_Calloc(1, sizeof(ifcopenshell_double_list_9_double_list_16_variant_t));
+            if (!variant_4) {
+                PyErr_NoMemory();
+                return 0;
+            }
+            if (!make_input_double_list_9_double_list_16_variant(field_4, variant_4, refs)) {
+                PyMem_Free(variant_4);
+                return 0;
+            }
+            out->placement_matrix = variant_4;
+        out->has_placement_matrix = true;
+        }
     }
-    refs[4] = field_4;
-    ifcopenshell_double_list_t *sequence_4 = (ifcopenshell_double_list_t *)PyMem_Calloc(1, sizeof(ifcopenshell_double_list_t));
-    if (!sequence_4) {
-        PyErr_NoMemory();
-        return 0;
-    }
-    if (!make_input_double_list(field_4, sequence_4)) {
-        PyMem_Free(sequence_4);
-        return 0;
-    }
-    out->placement_matrix = sequence_4;
     return 1;
 }
 
 
 static void free_input_shape_builder_polyline_options(ifcopenshell_shape_builder_polyline_options_t *value) {
     if (value->points) {
-        free_input_double_list_list((ifcopenshell_double_list_list_t *)value->points);
+        free_input_double_list_list_any_2_double_list_list_any_3_variant((ifcopenshell_double_list_list_any_2_double_list_list_any_3_variant_t *)value->points);
         PyMem_Free((void *)value->points);
         value->points = NULL;
     }
     if (value->position_offset) {
-        free_input_double_list((ifcopenshell_double_list_t *)value->position_offset);
+        free_input_double_list_2_double_list_3_variant((ifcopenshell_double_list_2_double_list_3_variant_t *)value->position_offset);
         PyMem_Free((void *)value->position_offset);
         value->position_offset = NULL;
     }
-    if (value->arc_points) {
-        free_input_int32_list((ifcopenshell_int32_list_t *)value->arc_points);
-        PyMem_Free((void *)value->arc_points);
-        value->arc_points = NULL;
+    if (value->segments) {
+        free_input_ShapeBuilderLineSegment_ShapeBuilderArcSegment_variant_list((ifcopenshell_ShapeBuilderLineSegment_ShapeBuilderArcSegment_variant_list_t *)value->segments);
+        PyMem_Free((void *)value->segments);
+        value->segments = NULL;
     }
 }
 
-static int fill_input_shape_builder_polyline_options(PyObject *obj, ifcopenshell_shape_builder_polyline_options_t *out, PyObject **refs) {
+static int fill_input_shape_builder_polyline_options(PyObject *obj, ifcopenshell_shape_builder_polyline_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -16915,63 +18871,55 @@ static int fill_input_shape_builder_polyline_options(PyObject *obj, ifcopenshell
     if (!field_0) {
         return 0;
     }
-    refs[0] = field_0;
-    ifcopenshell_double_list_list_t *sequence_0 = (ifcopenshell_double_list_list_t *)PyMem_Calloc(1, sizeof(ifcopenshell_double_list_list_t));
-    if (!sequence_0) {
+    if (!retain_option_ref(refs, field_0)) return 0;
+    ifcopenshell_double_list_list_any_2_double_list_list_any_3_variant_t *variant_0 = (ifcopenshell_double_list_list_any_2_double_list_list_any_3_variant_t *)PyMem_Calloc(1, sizeof(ifcopenshell_double_list_list_any_2_double_list_list_any_3_variant_t));
+    if (!variant_0) {
         PyErr_NoMemory();
         return 0;
     }
-    if (!make_input_double_list_list(field_0, sequence_0)) {
-        PyMem_Free(sequence_0);
+    if (!make_input_double_list_list_any_2_double_list_list_any_3_variant(field_0, variant_0, refs)) {
+        PyMem_Free(variant_0);
         return 0;
     }
-    out->points = sequence_0;
-    PyObject *field_1 = get_option_field(obj, "closed", 0);
+    out->points = variant_0;
+    PyObject *field_1 = get_option_field(obj, "position_offset", 0);
     if (!field_1) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[1] = field_1;
+        if (!retain_option_ref(refs, field_1)) return 0;
         if (field_1 != Py_None) {
-            int value_1 = PyObject_IsTrue(field_1);
-            if (value_1 < 0) return 0;
-            out->closed = (bool)value_1;
-        out->has_closed = true;
+            ifcopenshell_double_list_2_double_list_3_variant_t *variant_1 = (ifcopenshell_double_list_2_double_list_3_variant_t *)PyMem_Calloc(1, sizeof(ifcopenshell_double_list_2_double_list_3_variant_t));
+            if (!variant_1) {
+                PyErr_NoMemory();
+                return 0;
+            }
+            if (!make_input_double_list_2_double_list_3_variant(field_1, variant_1, refs)) {
+                PyMem_Free(variant_1);
+                return 0;
+            }
+            out->position_offset = variant_1;
+        out->has_position_offset = true;
         }
     }
-    PyObject *field_2 = get_option_field(obj, "position_offset", 0);
+    PyObject *field_2 = get_option_field(obj, "segments", 0);
     if (!field_2) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[2] = field_2;
+        if (!retain_option_ref(refs, field_2)) return 0;
         if (field_2 != Py_None) {
-            ifcopenshell_double_list_t *sequence_2 = (ifcopenshell_double_list_t *)PyMem_Calloc(1, sizeof(ifcopenshell_double_list_t));
+            ifcopenshell_ShapeBuilderLineSegment_ShapeBuilderArcSegment_variant_list_t *sequence_2 = (ifcopenshell_ShapeBuilderLineSegment_ShapeBuilderArcSegment_variant_list_t *)PyMem_Calloc(1, sizeof(ifcopenshell_ShapeBuilderLineSegment_ShapeBuilderArcSegment_variant_list_t));
             if (!sequence_2) {
                 PyErr_NoMemory();
                 return 0;
             }
-            if (!make_input_double_list(field_2, sequence_2)) {
+            if (!make_input_ShapeBuilderLineSegment_ShapeBuilderArcSegment_variant_list(field_2, sequence_2, refs)) {
                 PyMem_Free(sequence_2);
                 return 0;
             }
-            out->position_offset = sequence_2;
-        out->has_position_offset = true;
+            out->segments = sequence_2;
+        out->has_segments = true;
         }
     }
-    PyObject *field_3 = get_option_field(obj, "arc_points", 1);
-    if (!field_3) {
-        return 0;
-    }
-    refs[3] = field_3;
-    ifcopenshell_int32_list_t *sequence_3 = (ifcopenshell_int32_list_t *)PyMem_Calloc(1, sizeof(ifcopenshell_int32_list_t));
-    if (!sequence_3) {
-        PyErr_NoMemory();
-        return 0;
-    }
-    if (!make_input_int32_list(field_3, sequence_3)) {
-        PyMem_Free(sequence_3);
-        return 0;
-    }
-    out->arc_points = sequence_3;
     return 1;
 }
 
@@ -16983,7 +18931,7 @@ static void free_input_shape_builder_profile_options(ifcopenshell_shape_builder_
     }
 }
 
-static int fill_input_shape_builder_profile_options(PyObject *obj, ifcopenshell_shape_builder_profile_options_t *out, PyObject **refs) {
+static int fill_input_shape_builder_profile_options(PyObject *obj, ifcopenshell_shape_builder_profile_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -16992,7 +18940,7 @@ static int fill_input_shape_builder_profile_options(PyObject *obj, ifcopenshell_
     if (!field_0) {
         return 0;
     }
-    refs[0] = field_0;
+    if (!retain_option_ref(refs, field_0)) return 0;
     if (!extract_handle(field_0, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->outer_curve, 0)) {
         return 0;
     }
@@ -17000,33 +18948,37 @@ static int fill_input_shape_builder_profile_options(PyObject *obj, ifcopenshell_
     if (!field_1) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[1] = field_1;
+        if (!retain_option_ref(refs, field_1)) return 0;
         if (field_1 != Py_None) {
             out->name = PyUnicode_AsUTF8(field_1);
             if (!out->name) return 0;
         out->has_name = true;
         }
     }
-    PyObject *field_2 = get_option_field(obj, "inner_curves", 1);
+    PyObject *field_2 = get_option_field(obj, "inner_curves", 0);
     if (!field_2) {
-        return 0;
+        if (PyErr_Occurred()) return 0;
+    } else {
+        if (!retain_option_ref(refs, field_2)) return 0;
+        if (field_2 != Py_None) {
+            ifcopenshell_instance_list_t inner_curves_items_2 = {0};
+            if (!make_input_instance_list(field_2, &inner_curves_items_2, refs)) {
+                return 0;
+            }
+            if (!ifcopenshell_parse_instance_list_create_from_handles(&inner_curves_items_2, &out->inner_curves)) {
+                free_input_instance_list(&inner_curves_items_2);
+                raise_last_error("ifcopenshell_parse_instance_list_create_from_handles failed");
+                return 0;
+            }
+            free_input_instance_list(&inner_curves_items_2);
+        out->has_inner_curves = true;
+        }
     }
-    refs[2] = field_2;
-    ifcopenshell_instance_list_t inner_curves_items_2 = {0};
-    if (!make_input_instance_list(field_2, &inner_curves_items_2)) {
-        return 0;
-    }
-    if (!ifcopenshell_parse_instance_list_create_from_handles(&inner_curves_items_2, &out->inner_curves)) {
-        free_input_instance_list(&inner_curves_items_2);
-        raise_last_error("ifcopenshell_parse_instance_list_create_from_handles failed");
-        return 0;
-    }
-    free_input_instance_list(&inner_curves_items_2);
     PyObject *field_3 = get_option_field(obj, "profile_type", 0);
     if (!field_3) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[3] = field_3;
+        if (!retain_option_ref(refs, field_3)) return 0;
         if (field_3 != Py_None) {
             out->profile_type = PyUnicode_AsUTF8(field_3);
             if (!out->profile_type) return 0;
@@ -17044,7 +18996,7 @@ static void free_input_shape_builder_representation_options(ifcopenshell_shape_b
     }
 }
 
-static int fill_input_shape_builder_representation_options(PyObject *obj, ifcopenshell_shape_builder_representation_options_t *out, PyObject **refs) {
+static int fill_input_shape_builder_representation_options(PyObject *obj, ifcopenshell_shape_builder_representation_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -17053,7 +19005,7 @@ static int fill_input_shape_builder_representation_options(PyObject *obj, ifcope
     if (!field_0) {
         return 0;
     }
-    refs[0] = field_0;
+    if (!retain_option_ref(refs, field_0)) return 0;
     if (!extract_handle(field_0, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->context, 0)) {
         return 0;
     }
@@ -17061,9 +19013,9 @@ static int fill_input_shape_builder_representation_options(PyObject *obj, ifcope
     if (!field_1) {
         return 0;
     }
-    refs[1] = field_1;
+    if (!retain_option_ref(refs, field_1)) return 0;
     ifcopenshell_instance_list_t items_items_1 = {0};
-    if (!make_input_instance_list(field_1, &items_items_1)) {
+    if (!make_input_instance_list(field_1, &items_items_1, refs)) {
         return 0;
     }
     if (!ifcopenshell_parse_instance_list_create_from_handles(&items_items_1, &out->items)) {
@@ -17076,7 +19028,7 @@ static int fill_input_shape_builder_representation_options(PyObject *obj, ifcope
     if (!field_2) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[2] = field_2;
+        if (!retain_option_ref(refs, field_2)) return 0;
         if (field_2 != Py_None) {
             out->representation_type = PyUnicode_AsUTF8(field_2);
             if (!out->representation_type) return 0;
@@ -17095,7 +19047,7 @@ static void free_input_shape_builder_rotate_options(ifcopenshell_shape_builder_r
     }
 }
 
-static int fill_input_shape_builder_rotate_options(PyObject *obj, ifcopenshell_shape_builder_rotate_options_t *out, PyObject **refs) {
+static int fill_input_shape_builder_rotate_options(PyObject *obj, ifcopenshell_shape_builder_rotate_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -17104,48 +19056,64 @@ static int fill_input_shape_builder_rotate_options(PyObject *obj, ifcopenshell_s
     if (!field_0) {
         return 0;
     }
-    refs[0] = field_0;
+    if (!retain_option_ref(refs, field_0)) return 0;
     if (!extract_handle(field_0, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->item, 0)) {
         return 0;
     }
-    PyObject *field_1 = get_option_field(obj, "angle", 1);
+    PyObject *field_1 = get_option_field(obj, "angle", 0);
     if (!field_1) {
-        return 0;
+        if (PyErr_Occurred()) return 0;
+    } else {
+        if (!retain_option_ref(refs, field_1)) return 0;
+        if (field_1 != Py_None) {
+            out->angle = PyFloat_AsDouble(field_1);
+            if (PyErr_Occurred()) return 0;
+        out->has_angle = true;
+        }
     }
-    refs[1] = field_1;
-    out->angle = PyFloat_AsDouble(field_1);
-    if (PyErr_Occurred()) return 0;
-    PyObject *field_2 = get_option_field(obj, "pivot_point", 1);
+    PyObject *field_2 = get_option_field(obj, "pivot_point", 0);
     if (!field_2) {
-        return 0;
+        if (PyErr_Occurred()) return 0;
+    } else {
+        if (!retain_option_ref(refs, field_2)) return 0;
+        if (field_2 != Py_None) {
+            ifcopenshell_double_list_t *sequence_2 = (ifcopenshell_double_list_t *)PyMem_Calloc(1, sizeof(ifcopenshell_double_list_t));
+            if (!sequence_2) {
+                PyErr_NoMemory();
+                return 0;
+            }
+            if (!make_input_double_list(field_2, sequence_2, refs)) {
+                PyMem_Free(sequence_2);
+                return 0;
+            }
+            out->pivot_point = sequence_2;
+        out->has_pivot_point = true;
+        }
     }
-    refs[2] = field_2;
-    ifcopenshell_double_list_t *sequence_2 = (ifcopenshell_double_list_t *)PyMem_Calloc(1, sizeof(ifcopenshell_double_list_t));
-    if (!sequence_2) {
-        PyErr_NoMemory();
-        return 0;
-    }
-    if (!make_input_double_list(field_2, sequence_2)) {
-        PyMem_Free(sequence_2);
-        return 0;
-    }
-    out->pivot_point = sequence_2;
-    PyObject *field_3 = get_option_field(obj, "counter_clockwise", 1);
+    PyObject *field_3 = get_option_field(obj, "counter_clockwise", 0);
     if (!field_3) {
-        return 0;
+        if (PyErr_Occurred()) return 0;
+    } else {
+        if (!retain_option_ref(refs, field_3)) return 0;
+        if (field_3 != Py_None) {
+            int value_3 = PyObject_IsTrue(field_3);
+            if (value_3 < 0) return 0;
+            out->counter_clockwise = (bool)value_3;
+        out->has_counter_clockwise = true;
+        }
     }
-    refs[3] = field_3;
-    int value_3 = PyObject_IsTrue(field_3);
-    if (value_3 < 0) return 0;
-    out->counter_clockwise = (bool)value_3;
-    PyObject *field_4 = get_option_field(obj, "create_copy", 1);
+    PyObject *field_4 = get_option_field(obj, "create_copy", 0);
     if (!field_4) {
-        return 0;
+        if (PyErr_Occurred()) return 0;
+    } else {
+        if (!retain_option_ref(refs, field_4)) return 0;
+        if (field_4 != Py_None) {
+            int value_4 = PyObject_IsTrue(field_4);
+            if (value_4 < 0) return 0;
+            out->create_copy = (bool)value_4;
+        out->has_create_copy = true;
+        }
     }
-    refs[4] = field_4;
-    int value_4 = PyObject_IsTrue(field_4);
-    if (value_4 < 0) return 0;
-    out->create_copy = (bool)value_4;
     return 1;
 }
 
@@ -17158,46 +19126,54 @@ static void free_input_shape_builder_sphere_options(ifcopenshell_shape_builder_s
     }
 }
 
-static int fill_input_shape_builder_sphere_options(PyObject *obj, ifcopenshell_shape_builder_sphere_options_t *out, PyObject **refs) {
+static int fill_input_shape_builder_sphere_options(PyObject *obj, ifcopenshell_shape_builder_sphere_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
     }
-    PyObject *field_0 = get_option_field(obj, "radius", 1);
+    PyObject *field_0 = get_option_field(obj, "radius", 0);
     if (!field_0) {
-        return 0;
+        if (PyErr_Occurred()) return 0;
+    } else {
+        if (!retain_option_ref(refs, field_0)) return 0;
+        if (field_0 != Py_None) {
+            out->radius = PyFloat_AsDouble(field_0);
+            if (PyErr_Occurred()) return 0;
+        out->has_radius = true;
+        }
     }
-    refs[0] = field_0;
-    out->radius = PyFloat_AsDouble(field_0);
-    if (PyErr_Occurred()) return 0;
-    PyObject *field_1 = get_option_field(obj, "center", 1);
+    PyObject *field_1 = get_option_field(obj, "center", 0);
     if (!field_1) {
-        return 0;
+        if (PyErr_Occurred()) return 0;
+    } else {
+        if (!retain_option_ref(refs, field_1)) return 0;
+        if (field_1 != Py_None) {
+            ifcopenshell_double_list_t *sequence_1 = (ifcopenshell_double_list_t *)PyMem_Calloc(1, sizeof(ifcopenshell_double_list_t));
+            if (!sequence_1) {
+                PyErr_NoMemory();
+                return 0;
+            }
+            if (!make_input_double_list(field_1, sequence_1, refs)) {
+                PyMem_Free(sequence_1);
+                return 0;
+            }
+            out->center = sequence_1;
+        out->has_center = true;
+        }
     }
-    refs[1] = field_1;
-    ifcopenshell_double_list_t *sequence_1 = (ifcopenshell_double_list_t *)PyMem_Calloc(1, sizeof(ifcopenshell_double_list_t));
-    if (!sequence_1) {
-        PyErr_NoMemory();
-        return 0;
-    }
-    if (!make_input_double_list(field_1, sequence_1)) {
-        PyMem_Free(sequence_1);
-        return 0;
-    }
-    out->center = sequence_1;
     return 1;
 }
 
 
 static void free_input_shape_builder_translate_options(ifcopenshell_shape_builder_translate_options_t *value) {
     if (value->translation) {
-        free_input_double_list((ifcopenshell_double_list_t *)value->translation);
+        free_input_double_list_2_double_list_3_variant((ifcopenshell_double_list_2_double_list_3_variant_t *)value->translation);
         PyMem_Free((void *)value->translation);
         value->translation = NULL;
     }
 }
 
-static int fill_input_shape_builder_translate_options(PyObject *obj, ifcopenshell_shape_builder_translate_options_t *out, PyObject **refs) {
+static int fill_input_shape_builder_translate_options(PyObject *obj, ifcopenshell_shape_builder_translate_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -17206,7 +19182,7 @@ static int fill_input_shape_builder_translate_options(PyObject *obj, ifcopenshel
     if (!field_0) {
         return 0;
     }
-    refs[0] = field_0;
+    if (!retain_option_ref(refs, field_0)) return 0;
     if (!extract_handle(field_0, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->item, 0)) {
         return 0;
     }
@@ -17214,25 +19190,29 @@ static int fill_input_shape_builder_translate_options(PyObject *obj, ifcopenshel
     if (!field_1) {
         return 0;
     }
-    refs[1] = field_1;
-    ifcopenshell_double_list_t *sequence_1 = (ifcopenshell_double_list_t *)PyMem_Calloc(1, sizeof(ifcopenshell_double_list_t));
-    if (!sequence_1) {
+    if (!retain_option_ref(refs, field_1)) return 0;
+    ifcopenshell_double_list_2_double_list_3_variant_t *variant_1 = (ifcopenshell_double_list_2_double_list_3_variant_t *)PyMem_Calloc(1, sizeof(ifcopenshell_double_list_2_double_list_3_variant_t));
+    if (!variant_1) {
         PyErr_NoMemory();
         return 0;
     }
-    if (!make_input_double_list(field_1, sequence_1)) {
-        PyMem_Free(sequence_1);
+    if (!make_input_double_list_2_double_list_3_variant(field_1, variant_1, refs)) {
+        PyMem_Free(variant_1);
         return 0;
     }
-    out->translation = sequence_1;
-    PyObject *field_2 = get_option_field(obj, "create_copy", 1);
+    out->translation = variant_1;
+    PyObject *field_2 = get_option_field(obj, "create_copy", 0);
     if (!field_2) {
-        return 0;
+        if (PyErr_Occurred()) return 0;
+    } else {
+        if (!retain_option_ref(refs, field_2)) return 0;
+        if (field_2 != Py_None) {
+            int value_2 = PyObject_IsTrue(field_2);
+            if (value_2 < 0) return 0;
+            out->create_copy = (bool)value_2;
+        out->has_create_copy = true;
+        }
     }
-    refs[2] = field_2;
-    int value_2 = PyObject_IsTrue(field_2);
-    if (value_2 < 0) return 0;
-    out->create_copy = (bool)value_2;
     return 1;
 }
 
@@ -17244,7 +19224,7 @@ static void free_input_spatial_assign_container_options(ifcopenshell_spatial_ass
     }
 }
 
-static int fill_input_spatial_assign_container_options(PyObject *obj, ifcopenshell_spatial_assign_container_options_t *out, PyObject **refs) {
+static int fill_input_spatial_assign_container_options(PyObject *obj, ifcopenshell_spatial_assign_container_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -17253,9 +19233,9 @@ static int fill_input_spatial_assign_container_options(PyObject *obj, ifcopenshe
     if (!field_0) {
         return 0;
     }
-    refs[0] = field_0;
+    if (!retain_option_ref(refs, field_0)) return 0;
     ifcopenshell_instance_list_t products_items_0 = {0};
-    if (!make_input_instance_list(field_0, &products_items_0)) {
+    if (!make_input_instance_list(field_0, &products_items_0, refs)) {
         return 0;
     }
     if (!ifcopenshell_parse_instance_list_create_from_handles(&products_items_0, &out->products)) {
@@ -17268,7 +19248,7 @@ static int fill_input_spatial_assign_container_options(PyObject *obj, ifcopenshe
     if (!field_1) {
         return 0;
     }
-    refs[1] = field_1;
+    if (!retain_option_ref(refs, field_1)) return 0;
     if (!extract_handle(field_1, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->relating_structure, 0)) {
         return 0;
     }
@@ -17276,7 +19256,7 @@ static int fill_input_spatial_assign_container_options(PyObject *obj, ifcopenshe
     if (!field_2) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[2] = field_2;
+        if (!retain_option_ref(refs, field_2)) return 0;
         if (field_2 != Py_None) {
             if (!extract_handle(field_2, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->owner_history, 0)) {
                 return 0;
@@ -17288,7 +19268,7 @@ static int fill_input_spatial_assign_container_options(PyObject *obj, ifcopenshe
     if (!field_3) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[3] = field_3;
+        if (!retain_option_ref(refs, field_3)) return 0;
         if (field_3 != Py_None) {
             if (!extract_handle(field_3, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->user, 0)) {
                 return 0;
@@ -17300,7 +19280,7 @@ static int fill_input_spatial_assign_container_options(PyObject *obj, ifcopenshe
     if (!field_4) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[4] = field_4;
+        if (!retain_option_ref(refs, field_4)) return 0;
         if (field_4 != Py_None) {
             if (!extract_handle(field_4, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->application, 0)) {
                 return 0;
@@ -17319,7 +19299,7 @@ static void free_input_spatial_dereference_structure_options(ifcopenshell_spatia
     }
 }
 
-static int fill_input_spatial_dereference_structure_options(PyObject *obj, ifcopenshell_spatial_dereference_structure_options_t *out, PyObject **refs) {
+static int fill_input_spatial_dereference_structure_options(PyObject *obj, ifcopenshell_spatial_dereference_structure_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -17328,9 +19308,9 @@ static int fill_input_spatial_dereference_structure_options(PyObject *obj, ifcop
     if (!field_0) {
         return 0;
     }
-    refs[0] = field_0;
+    if (!retain_option_ref(refs, field_0)) return 0;
     ifcopenshell_instance_list_t products_items_0 = {0};
-    if (!make_input_instance_list(field_0, &products_items_0)) {
+    if (!make_input_instance_list(field_0, &products_items_0, refs)) {
         return 0;
     }
     if (!ifcopenshell_parse_instance_list_create_from_handles(&products_items_0, &out->products)) {
@@ -17343,7 +19323,7 @@ static int fill_input_spatial_dereference_structure_options(PyObject *obj, ifcop
     if (!field_1) {
         return 0;
     }
-    refs[1] = field_1;
+    if (!retain_option_ref(refs, field_1)) return 0;
     if (!extract_handle(field_1, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->relating_structure, 0)) {
         return 0;
     }
@@ -17351,7 +19331,7 @@ static int fill_input_spatial_dereference_structure_options(PyObject *obj, ifcop
     if (!field_2) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[2] = field_2;
+        if (!retain_option_ref(refs, field_2)) return 0;
         if (field_2 != Py_None) {
             if (!extract_handle(field_2, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->user, 0)) {
                 return 0;
@@ -17363,7 +19343,7 @@ static int fill_input_spatial_dereference_structure_options(PyObject *obj, ifcop
     if (!field_3) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[3] = field_3;
+        if (!retain_option_ref(refs, field_3)) return 0;
         if (field_3 != Py_None) {
             if (!extract_handle(field_3, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->application, 0)) {
                 return 0;
@@ -17382,7 +19362,7 @@ static void free_input_spatial_reference_structure_options(ifcopenshell_spatial_
     }
 }
 
-static int fill_input_spatial_reference_structure_options(PyObject *obj, ifcopenshell_spatial_reference_structure_options_t *out, PyObject **refs) {
+static int fill_input_spatial_reference_structure_options(PyObject *obj, ifcopenshell_spatial_reference_structure_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -17391,9 +19371,9 @@ static int fill_input_spatial_reference_structure_options(PyObject *obj, ifcopen
     if (!field_0) {
         return 0;
     }
-    refs[0] = field_0;
+    if (!retain_option_ref(refs, field_0)) return 0;
     ifcopenshell_instance_list_t products_items_0 = {0};
-    if (!make_input_instance_list(field_0, &products_items_0)) {
+    if (!make_input_instance_list(field_0, &products_items_0, refs)) {
         return 0;
     }
     if (!ifcopenshell_parse_instance_list_create_from_handles(&products_items_0, &out->products)) {
@@ -17406,7 +19386,7 @@ static int fill_input_spatial_reference_structure_options(PyObject *obj, ifcopen
     if (!field_1) {
         return 0;
     }
-    refs[1] = field_1;
+    if (!retain_option_ref(refs, field_1)) return 0;
     if (!extract_handle(field_1, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->relating_structure, 0)) {
         return 0;
     }
@@ -17414,7 +19394,7 @@ static int fill_input_spatial_reference_structure_options(PyObject *obj, ifcopen
     if (!field_2) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[2] = field_2;
+        if (!retain_option_ref(refs, field_2)) return 0;
         if (field_2 != Py_None) {
             if (!extract_handle(field_2, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->owner_history, 0)) {
                 return 0;
@@ -17426,7 +19406,7 @@ static int fill_input_spatial_reference_structure_options(PyObject *obj, ifcopen
     if (!field_3) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[3] = field_3;
+        if (!retain_option_ref(refs, field_3)) return 0;
         if (field_3 != Py_None) {
             if (!extract_handle(field_3, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->user, 0)) {
                 return 0;
@@ -17438,7 +19418,7 @@ static int fill_input_spatial_reference_structure_options(PyObject *obj, ifcopen
     if (!field_4) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[4] = field_4;
+        if (!retain_option_ref(refs, field_4)) return 0;
         if (field_4 != Py_None) {
             if (!extract_handle(field_4, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->application, 0)) {
                 return 0;
@@ -17457,7 +19437,7 @@ static void free_input_spatial_unassign_container_options(ifcopenshell_spatial_u
     }
 }
 
-static int fill_input_spatial_unassign_container_options(PyObject *obj, ifcopenshell_spatial_unassign_container_options_t *out, PyObject **refs) {
+static int fill_input_spatial_unassign_container_options(PyObject *obj, ifcopenshell_spatial_unassign_container_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -17466,9 +19446,9 @@ static int fill_input_spatial_unassign_container_options(PyObject *obj, ifcopens
     if (!field_0) {
         return 0;
     }
-    refs[0] = field_0;
+    if (!retain_option_ref(refs, field_0)) return 0;
     ifcopenshell_instance_list_t products_items_0 = {0};
-    if (!make_input_instance_list(field_0, &products_items_0)) {
+    if (!make_input_instance_list(field_0, &products_items_0, refs)) {
         return 0;
     }
     if (!ifcopenshell_parse_instance_list_create_from_handles(&products_items_0, &out->products)) {
@@ -17481,7 +19461,7 @@ static int fill_input_spatial_unassign_container_options(PyObject *obj, ifcopens
     if (!field_1) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[1] = field_1;
+        if (!retain_option_ref(refs, field_1)) return 0;
         if (field_1 != Py_None) {
             if (!extract_handle(field_1, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->user, 0)) {
                 return 0;
@@ -17493,7 +19473,7 @@ static int fill_input_spatial_unassign_container_options(PyObject *obj, ifcopens
     if (!field_2) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[2] = field_2;
+        if (!retain_option_ref(refs, field_2)) return 0;
         if (field_2 != Py_None) {
             if (!extract_handle(field_2, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->application, 0)) {
                 return 0;
@@ -17509,7 +19489,7 @@ static void free_input_structural_add_structural_activity_options(ifcopenshell_s
     (void)value;
 }
 
-static int fill_input_structural_add_structural_activity_options(PyObject *obj, ifcopenshell_structural_add_structural_activity_options_t *out, PyObject **refs) {
+static int fill_input_structural_add_structural_activity_options(PyObject *obj, ifcopenshell_structural_add_structural_activity_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -17518,7 +19498,7 @@ static int fill_input_structural_add_structural_activity_options(PyObject *obj, 
     if (!field_0) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[0] = field_0;
+        if (!retain_option_ref(refs, field_0)) return 0;
         if (field_0 != Py_None) {
             if (!extract_handle(field_0, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->activity_owner_history, 0)) {
                 return 0;
@@ -17530,7 +19510,7 @@ static int fill_input_structural_add_structural_activity_options(PyObject *obj, 
     if (!field_1) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[1] = field_1;
+        if (!retain_option_ref(refs, field_1)) return 0;
         if (field_1 != Py_None) {
             if (!extract_handle(field_1, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->relationship_owner_history, 0)) {
                 return 0;
@@ -17546,7 +19526,7 @@ static void free_input_structural_add_structural_boundary_condition_options(ifco
     (void)value;
 }
 
-static int fill_input_structural_add_structural_boundary_condition_options(PyObject *obj, ifcopenshell_structural_add_structural_boundary_condition_options_t *out, PyObject **refs) {
+static int fill_input_structural_add_structural_boundary_condition_options(PyObject *obj, ifcopenshell_structural_add_structural_boundary_condition_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -17555,7 +19535,7 @@ static int fill_input_structural_add_structural_boundary_condition_options(PyObj
     if (!field_0) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[0] = field_0;
+        if (!retain_option_ref(refs, field_0)) return 0;
         if (field_0 != Py_None) {
             out->name = PyUnicode_AsUTF8(field_0);
             if (!out->name) return 0;
@@ -17566,7 +19546,7 @@ static int fill_input_structural_add_structural_boundary_condition_options(PyObj
     if (!field_1) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[1] = field_1;
+        if (!retain_option_ref(refs, field_1)) return 0;
         if (field_1 != Py_None) {
             if (!extract_handle(field_1, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->connection, 0)) {
                 return 0;
@@ -17582,7 +19562,7 @@ static void free_input_structural_assign_structural_analysis_model_options(ifcop
     (void)value;
 }
 
-static int fill_input_structural_assign_structural_analysis_model_options(PyObject *obj, ifcopenshell_structural_assign_structural_analysis_model_options_t *out, PyObject **refs) {
+static int fill_input_structural_assign_structural_analysis_model_options(PyObject *obj, ifcopenshell_structural_assign_structural_analysis_model_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -17591,7 +19571,7 @@ static int fill_input_structural_assign_structural_analysis_model_options(PyObje
     if (!field_0) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[0] = field_0;
+        if (!retain_option_ref(refs, field_0)) return 0;
         if (field_0 != Py_None) {
             if (!extract_handle(field_0, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->owner_history, 0)) {
                 return 0;
@@ -17603,7 +19583,7 @@ static int fill_input_structural_assign_structural_analysis_model_options(PyObje
     if (!field_1) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[1] = field_1;
+        if (!retain_option_ref(refs, field_1)) return 0;
         if (field_1 != Py_None) {
             if (!extract_handle(field_1, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->user, 0)) {
                 return 0;
@@ -17615,7 +19595,7 @@ static int fill_input_structural_assign_structural_analysis_model_options(PyObje
     if (!field_2) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[2] = field_2;
+        if (!retain_option_ref(refs, field_2)) return 0;
         if (field_2 != Py_None) {
             if (!extract_handle(field_2, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->application, 0)) {
                 return 0;
@@ -17631,7 +19611,7 @@ static void free_input_structural_remove_structural_boundary_condition_options(i
     (void)value;
 }
 
-static int fill_input_structural_remove_structural_boundary_condition_options(PyObject *obj, ifcopenshell_structural_remove_structural_boundary_condition_options_t *out, PyObject **refs) {
+static int fill_input_structural_remove_structural_boundary_condition_options(PyObject *obj, ifcopenshell_structural_remove_structural_boundary_condition_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -17640,7 +19620,7 @@ static int fill_input_structural_remove_structural_boundary_condition_options(Py
     if (!field_0) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[0] = field_0;
+        if (!retain_option_ref(refs, field_0)) return 0;
         if (field_0 != Py_None) {
             if (!extract_handle(field_0, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->connection, 0)) {
                 return 0;
@@ -17652,7 +19632,7 @@ static int fill_input_structural_remove_structural_boundary_condition_options(Py
     if (!field_1) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[1] = field_1;
+        if (!retain_option_ref(refs, field_1)) return 0;
         if (field_1 != Py_None) {
             if (!extract_handle(field_1, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->boundary_condition, 0)) {
                 return 0;
@@ -17668,7 +19648,7 @@ static void free_input_structural_unassign_structural_analysis_model_options(ifc
     (void)value;
 }
 
-static int fill_input_structural_unassign_structural_analysis_model_options(PyObject *obj, ifcopenshell_structural_unassign_structural_analysis_model_options_t *out, PyObject **refs) {
+static int fill_input_structural_unassign_structural_analysis_model_options(PyObject *obj, ifcopenshell_structural_unassign_structural_analysis_model_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -17677,7 +19657,7 @@ static int fill_input_structural_unassign_structural_analysis_model_options(PyOb
     if (!field_0) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[0] = field_0;
+        if (!retain_option_ref(refs, field_0)) return 0;
         if (field_0 != Py_None) {
             if (!extract_handle(field_0, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->user, 0)) {
                 return 0;
@@ -17689,7 +19669,7 @@ static int fill_input_structural_unassign_structural_analysis_model_options(PyOb
     if (!field_1) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[1] = field_1;
+        if (!retain_option_ref(refs, field_1)) return 0;
         if (field_1 != Py_None) {
             if (!extract_handle(field_1, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->application, 0)) {
                 return 0;
@@ -17705,7 +19685,7 @@ static void free_input_style_assign_item_style_options(ifcopenshell_style_assign
     (void)value;
 }
 
-static int fill_input_style_assign_item_style_options(PyObject *obj, ifcopenshell_style_assign_item_style_options_t *out, PyObject **refs) {
+static int fill_input_style_assign_item_style_options(PyObject *obj, ifcopenshell_style_assign_item_style_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -17714,7 +19694,7 @@ static int fill_input_style_assign_item_style_options(PyObject *obj, ifcopenshel
     if (!field_0) {
         return 0;
     }
-    refs[0] = field_0;
+    if (!retain_option_ref(refs, field_0)) return 0;
     if (!extract_handle(field_0, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->item, 0)) {
         return 0;
     }
@@ -17722,7 +19702,7 @@ static int fill_input_style_assign_item_style_options(PyObject *obj, ifcopenshel
     if (!field_1) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[1] = field_1;
+        if (!retain_option_ref(refs, field_1)) return 0;
         if (field_1 != Py_None) {
             if (!extract_handle(field_1, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->style, 0)) {
                 return 0;
@@ -17734,7 +19714,7 @@ static int fill_input_style_assign_item_style_options(PyObject *obj, ifcopenshel
     if (!field_2) {
         return 0;
     }
-    refs[2] = field_2;
+    if (!retain_option_ref(refs, field_2)) return 0;
     int value_2 = PyObject_IsTrue(field_2);
     if (value_2 < 0) return 0;
     out->should_use_presentation_style_assignment = (bool)value_2;
@@ -17750,7 +19730,7 @@ static void free_input_style_surface_texture_options(ifcopenshell_style_surface_
     }
 }
 
-static int fill_input_style_surface_texture_options(PyObject *obj, ifcopenshell_style_surface_texture_options_t *out, PyObject **refs) {
+static int fill_input_style_surface_texture_options(PyObject *obj, ifcopenshell_style_surface_texture_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -17759,7 +19739,7 @@ static int fill_input_style_surface_texture_options(PyObject *obj, ifcopenshell_
     if (!field_0) {
         return 0;
     }
-    refs[0] = field_0;
+    if (!retain_option_ref(refs, field_0)) return 0;
     int value_0 = PyObject_IsTrue(field_0);
     if (value_0 < 0) return 0;
     out->repeat_s = (bool)value_0;
@@ -17767,7 +19747,7 @@ static int fill_input_style_surface_texture_options(PyObject *obj, ifcopenshell_
     if (!field_1) {
         return 0;
     }
-    refs[1] = field_1;
+    if (!retain_option_ref(refs, field_1)) return 0;
     int value_1 = PyObject_IsTrue(field_1);
     if (value_1 < 0) return 0;
     out->repeat_t = (bool)value_1;
@@ -17775,7 +19755,7 @@ static int fill_input_style_surface_texture_options(PyObject *obj, ifcopenshell_
     if (!field_2) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[2] = field_2;
+        if (!retain_option_ref(refs, field_2)) return 0;
         if (field_2 != Py_None) {
             out->mode = PyUnicode_AsUTF8(field_2);
             if (!out->mode) return 0;
@@ -17786,14 +19766,14 @@ static int fill_input_style_surface_texture_options(PyObject *obj, ifcopenshell_
     if (!field_3) {
         return 0;
     }
-    refs[3] = field_3;
+    if (!retain_option_ref(refs, field_3)) return 0;
     out->url_reference = PyUnicode_AsUTF8(field_3);
     if (!out->url_reference) return 0;
     PyObject *field_4 = get_option_field(obj, "texture_transform", 0);
     if (!field_4) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[4] = field_4;
+        if (!retain_option_ref(refs, field_4)) return 0;
         if (field_4 != Py_None) {
             if (!extract_handle(field_4, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->texture_transform, 0)) {
                 return 0;
@@ -17805,14 +19785,14 @@ static int fill_input_style_surface_texture_options(PyObject *obj, ifcopenshell_
     if (!field_5) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[5] = field_5;
+        if (!retain_option_ref(refs, field_5)) return 0;
         if (field_5 != Py_None) {
             ifcopenshell_string_list_t *sequence_5 = (ifcopenshell_string_list_t *)PyMem_Calloc(1, sizeof(ifcopenshell_string_list_t));
             if (!sequence_5) {
                 PyErr_NoMemory();
                 return 0;
             }
-            if (!make_input_string_list(field_5, sequence_5)) {
+            if (!make_input_string_list(field_5, sequence_5, refs)) {
                 PyMem_Free(sequence_5);
                 return 0;
             }
@@ -17824,7 +19804,7 @@ static int fill_input_style_surface_texture_options(PyObject *obj, ifcopenshell_
     if (!field_6) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[6] = field_6;
+        if (!retain_option_ref(refs, field_6)) return 0;
         if (field_6 != Py_None) {
             out->uv_mode = PyUnicode_AsUTF8(field_6);
             if (!out->uv_mode) return 0;
@@ -17839,7 +19819,7 @@ static void free_input_system_add_port_options(ifcopenshell_system_add_port_opti
     (void)value;
 }
 
-static int fill_input_system_add_port_options(PyObject *obj, ifcopenshell_system_add_port_options_t *out, PyObject **refs) {
+static int fill_input_system_add_port_options(PyObject *obj, ifcopenshell_system_add_port_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -17848,7 +19828,7 @@ static int fill_input_system_add_port_options(PyObject *obj, ifcopenshell_system
     if (!field_0) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[0] = field_0;
+        if (!retain_option_ref(refs, field_0)) return 0;
         if (field_0 != Py_None) {
             if (!extract_handle(field_0, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->element, 0)) {
                 return 0;
@@ -17860,7 +19840,7 @@ static int fill_input_system_add_port_options(PyObject *obj, ifcopenshell_system
     if (!field_1) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[1] = field_1;
+        if (!retain_option_ref(refs, field_1)) return 0;
         if (field_1 != Py_None) {
             if (!extract_handle(field_1, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->owner_history, 0)) {
                 return 0;
@@ -17872,7 +19852,7 @@ static int fill_input_system_add_port_options(PyObject *obj, ifcopenshell_system
     if (!field_2) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[2] = field_2;
+        if (!retain_option_ref(refs, field_2)) return 0;
         if (field_2 != Py_None) {
             if (!extract_handle(field_2, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->user, 0)) {
                 return 0;
@@ -17884,7 +19864,7 @@ static int fill_input_system_add_port_options(PyObject *obj, ifcopenshell_system
     if (!field_3) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[3] = field_3;
+        if (!retain_option_ref(refs, field_3)) return 0;
         if (field_3 != Py_None) {
             if (!extract_handle(field_3, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->application, 0)) {
                 return 0;
@@ -17900,7 +19880,7 @@ static void free_input_system_add_system_options(ifcopenshell_system_add_system_
     (void)value;
 }
 
-static int fill_input_system_add_system_options(PyObject *obj, ifcopenshell_system_add_system_options_t *out, PyObject **refs) {
+static int fill_input_system_add_system_options(PyObject *obj, ifcopenshell_system_add_system_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -17909,14 +19889,14 @@ static int fill_input_system_add_system_options(PyObject *obj, ifcopenshell_syst
     if (!field_0) {
         return 0;
     }
-    refs[0] = field_0;
+    if (!retain_option_ref(refs, field_0)) return 0;
     out->ifc_class = PyUnicode_AsUTF8(field_0);
     if (!out->ifc_class) return 0;
     PyObject *field_1 = get_option_field(obj, "owner_history", 0);
     if (!field_1) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[1] = field_1;
+        if (!retain_option_ref(refs, field_1)) return 0;
         if (field_1 != Py_None) {
             if (!extract_handle(field_1, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->owner_history, 0)) {
                 return 0;
@@ -17932,7 +19912,7 @@ static void free_input_system_assign_flow_control_options(ifcopenshell_system_as
     (void)value;
 }
 
-static int fill_input_system_assign_flow_control_options(PyObject *obj, ifcopenshell_system_assign_flow_control_options_t *out, PyObject **refs) {
+static int fill_input_system_assign_flow_control_options(PyObject *obj, ifcopenshell_system_assign_flow_control_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -17941,7 +19921,7 @@ static int fill_input_system_assign_flow_control_options(PyObject *obj, ifcopens
     if (!field_0) {
         return 0;
     }
-    refs[0] = field_0;
+    if (!retain_option_ref(refs, field_0)) return 0;
     if (!extract_handle(field_0, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->relating_flow_element, 0)) {
         return 0;
     }
@@ -17949,7 +19929,7 @@ static int fill_input_system_assign_flow_control_options(PyObject *obj, ifcopens
     if (!field_1) {
         return 0;
     }
-    refs[1] = field_1;
+    if (!retain_option_ref(refs, field_1)) return 0;
     if (!extract_handle(field_1, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->related_flow_control, 0)) {
         return 0;
     }
@@ -17957,7 +19937,7 @@ static int fill_input_system_assign_flow_control_options(PyObject *obj, ifcopens
     if (!field_2) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[2] = field_2;
+        if (!retain_option_ref(refs, field_2)) return 0;
         if (field_2 != Py_None) {
             if (!extract_handle(field_2, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->owner_history, 0)) {
                 return 0;
@@ -17969,7 +19949,7 @@ static int fill_input_system_assign_flow_control_options(PyObject *obj, ifcopens
     if (!field_3) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[3] = field_3;
+        if (!retain_option_ref(refs, field_3)) return 0;
         if (field_3 != Py_None) {
             if (!extract_handle(field_3, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->user, 0)) {
                 return 0;
@@ -17981,7 +19961,7 @@ static int fill_input_system_assign_flow_control_options(PyObject *obj, ifcopens
     if (!field_4) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[4] = field_4;
+        if (!retain_option_ref(refs, field_4)) return 0;
         if (field_4 != Py_None) {
             if (!extract_handle(field_4, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->application, 0)) {
                 return 0;
@@ -17997,7 +19977,7 @@ static void free_input_system_assign_port_options(ifcopenshell_system_assign_por
     (void)value;
 }
 
-static int fill_input_system_assign_port_options(PyObject *obj, ifcopenshell_system_assign_port_options_t *out, PyObject **refs) {
+static int fill_input_system_assign_port_options(PyObject *obj, ifcopenshell_system_assign_port_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -18006,7 +19986,7 @@ static int fill_input_system_assign_port_options(PyObject *obj, ifcopenshell_sys
     if (!field_0) {
         return 0;
     }
-    refs[0] = field_0;
+    if (!retain_option_ref(refs, field_0)) return 0;
     if (!extract_handle(field_0, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->element, 0)) {
         return 0;
     }
@@ -18014,7 +19994,7 @@ static int fill_input_system_assign_port_options(PyObject *obj, ifcopenshell_sys
     if (!field_1) {
         return 0;
     }
-    refs[1] = field_1;
+    if (!retain_option_ref(refs, field_1)) return 0;
     if (!extract_handle(field_1, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->port, 0)) {
         return 0;
     }
@@ -18022,7 +20002,7 @@ static int fill_input_system_assign_port_options(PyObject *obj, ifcopenshell_sys
     if (!field_2) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[2] = field_2;
+        if (!retain_option_ref(refs, field_2)) return 0;
         if (field_2 != Py_None) {
             if (!extract_handle(field_2, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->owner_history, 0)) {
                 return 0;
@@ -18034,7 +20014,7 @@ static int fill_input_system_assign_port_options(PyObject *obj, ifcopenshell_sys
     if (!field_3) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[3] = field_3;
+        if (!retain_option_ref(refs, field_3)) return 0;
         if (field_3 != Py_None) {
             if (!extract_handle(field_3, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->user, 0)) {
                 return 0;
@@ -18046,7 +20026,7 @@ static int fill_input_system_assign_port_options(PyObject *obj, ifcopenshell_sys
     if (!field_4) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[4] = field_4;
+        if (!retain_option_ref(refs, field_4)) return 0;
         if (field_4 != Py_None) {
             if (!extract_handle(field_4, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->application, 0)) {
                 return 0;
@@ -18065,7 +20045,7 @@ static void free_input_system_assign_system_options(ifcopenshell_system_assign_s
     }
 }
 
-static int fill_input_system_assign_system_options(PyObject *obj, ifcopenshell_system_assign_system_options_t *out, PyObject **refs) {
+static int fill_input_system_assign_system_options(PyObject *obj, ifcopenshell_system_assign_system_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -18074,9 +20054,9 @@ static int fill_input_system_assign_system_options(PyObject *obj, ifcopenshell_s
     if (!field_0) {
         return 0;
     }
-    refs[0] = field_0;
+    if (!retain_option_ref(refs, field_0)) return 0;
     ifcopenshell_instance_list_t products_items_0 = {0};
-    if (!make_input_instance_list(field_0, &products_items_0)) {
+    if (!make_input_instance_list(field_0, &products_items_0, refs)) {
         return 0;
     }
     if (!ifcopenshell_parse_instance_list_create_from_handles(&products_items_0, &out->products)) {
@@ -18089,7 +20069,7 @@ static int fill_input_system_assign_system_options(PyObject *obj, ifcopenshell_s
     if (!field_1) {
         return 0;
     }
-    refs[1] = field_1;
+    if (!retain_option_ref(refs, field_1)) return 0;
     if (!extract_handle(field_1, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->system, 0)) {
         return 0;
     }
@@ -18097,7 +20077,7 @@ static int fill_input_system_assign_system_options(PyObject *obj, ifcopenshell_s
     if (!field_2) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[2] = field_2;
+        if (!retain_option_ref(refs, field_2)) return 0;
         if (field_2 != Py_None) {
             if (!extract_handle(field_2, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->owner_history, 0)) {
                 return 0;
@@ -18109,7 +20089,7 @@ static int fill_input_system_assign_system_options(PyObject *obj, ifcopenshell_s
     if (!field_3) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[3] = field_3;
+        if (!retain_option_ref(refs, field_3)) return 0;
         if (field_3 != Py_None) {
             if (!extract_handle(field_3, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->user, 0)) {
                 return 0;
@@ -18121,7 +20101,7 @@ static int fill_input_system_assign_system_options(PyObject *obj, ifcopenshell_s
     if (!field_4) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[4] = field_4;
+        if (!retain_option_ref(refs, field_4)) return 0;
         if (field_4 != Py_None) {
             if (!extract_handle(field_4, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->application, 0)) {
                 return 0;
@@ -18137,7 +20117,7 @@ static void free_input_system_connect_port_options(ifcopenshell_system_connect_p
     (void)value;
 }
 
-static int fill_input_system_connect_port_options(PyObject *obj, ifcopenshell_system_connect_port_options_t *out, PyObject **refs) {
+static int fill_input_system_connect_port_options(PyObject *obj, ifcopenshell_system_connect_port_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -18146,7 +20126,7 @@ static int fill_input_system_connect_port_options(PyObject *obj, ifcopenshell_sy
     if (!field_0) {
         return 0;
     }
-    refs[0] = field_0;
+    if (!retain_option_ref(refs, field_0)) return 0;
     if (!extract_handle(field_0, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->port1, 0)) {
         return 0;
     }
@@ -18154,7 +20134,7 @@ static int fill_input_system_connect_port_options(PyObject *obj, ifcopenshell_sy
     if (!field_1) {
         return 0;
     }
-    refs[1] = field_1;
+    if (!retain_option_ref(refs, field_1)) return 0;
     if (!extract_handle(field_1, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->port2, 0)) {
         return 0;
     }
@@ -18162,14 +20142,14 @@ static int fill_input_system_connect_port_options(PyObject *obj, ifcopenshell_sy
     if (!field_2) {
         return 0;
     }
-    refs[2] = field_2;
+    if (!retain_option_ref(refs, field_2)) return 0;
     out->direction = PyUnicode_AsUTF8(field_2);
     if (!out->direction) return 0;
     PyObject *field_3 = get_option_field(obj, "element", 0);
     if (!field_3) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[3] = field_3;
+        if (!retain_option_ref(refs, field_3)) return 0;
         if (field_3 != Py_None) {
             if (!extract_handle(field_3, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->element, 0)) {
                 return 0;
@@ -18181,7 +20161,7 @@ static int fill_input_system_connect_port_options(PyObject *obj, ifcopenshell_sy
     if (!field_4) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[4] = field_4;
+        if (!retain_option_ref(refs, field_4)) return 0;
         if (field_4 != Py_None) {
             if (!extract_handle(field_4, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->owner_history, 0)) {
                 return 0;
@@ -18193,7 +20173,7 @@ static int fill_input_system_connect_port_options(PyObject *obj, ifcopenshell_sy
     if (!field_5) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[5] = field_5;
+        if (!retain_option_ref(refs, field_5)) return 0;
         if (field_5 != Py_None) {
             if (!extract_handle(field_5, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->user, 0)) {
                 return 0;
@@ -18205,7 +20185,7 @@ static int fill_input_system_connect_port_options(PyObject *obj, ifcopenshell_sy
     if (!field_6) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[6] = field_6;
+        if (!retain_option_ref(refs, field_6)) return 0;
         if (field_6 != Py_None) {
             if (!extract_handle(field_6, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->application, 0)) {
                 return 0;
@@ -18221,7 +20201,7 @@ static void free_input_system_unassign_flow_control_options(ifcopenshell_system_
     (void)value;
 }
 
-static int fill_input_system_unassign_flow_control_options(PyObject *obj, ifcopenshell_system_unassign_flow_control_options_t *out, PyObject **refs) {
+static int fill_input_system_unassign_flow_control_options(PyObject *obj, ifcopenshell_system_unassign_flow_control_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -18230,7 +20210,7 @@ static int fill_input_system_unassign_flow_control_options(PyObject *obj, ifcope
     if (!field_0) {
         return 0;
     }
-    refs[0] = field_0;
+    if (!retain_option_ref(refs, field_0)) return 0;
     if (!extract_handle(field_0, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->relating_flow_element, 0)) {
         return 0;
     }
@@ -18238,7 +20218,7 @@ static int fill_input_system_unassign_flow_control_options(PyObject *obj, ifcope
     if (!field_1) {
         return 0;
     }
-    refs[1] = field_1;
+    if (!retain_option_ref(refs, field_1)) return 0;
     if (!extract_handle(field_1, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->related_flow_control, 0)) {
         return 0;
     }
@@ -18246,7 +20226,7 @@ static int fill_input_system_unassign_flow_control_options(PyObject *obj, ifcope
     if (!field_2) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[2] = field_2;
+        if (!retain_option_ref(refs, field_2)) return 0;
         if (field_2 != Py_None) {
             if (!extract_handle(field_2, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->user, 0)) {
                 return 0;
@@ -18258,7 +20238,7 @@ static int fill_input_system_unassign_flow_control_options(PyObject *obj, ifcope
     if (!field_3) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[3] = field_3;
+        if (!retain_option_ref(refs, field_3)) return 0;
         if (field_3 != Py_None) {
             if (!extract_handle(field_3, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->application, 0)) {
                 return 0;
@@ -18274,7 +20254,7 @@ static void free_input_system_unassign_port_options(ifcopenshell_system_unassign
     (void)value;
 }
 
-static int fill_input_system_unassign_port_options(PyObject *obj, ifcopenshell_system_unassign_port_options_t *out, PyObject **refs) {
+static int fill_input_system_unassign_port_options(PyObject *obj, ifcopenshell_system_unassign_port_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -18283,7 +20263,7 @@ static int fill_input_system_unassign_port_options(PyObject *obj, ifcopenshell_s
     if (!field_0) {
         return 0;
     }
-    refs[0] = field_0;
+    if (!retain_option_ref(refs, field_0)) return 0;
     if (!extract_handle(field_0, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->element, 0)) {
         return 0;
     }
@@ -18291,7 +20271,7 @@ static int fill_input_system_unassign_port_options(PyObject *obj, ifcopenshell_s
     if (!field_1) {
         return 0;
     }
-    refs[1] = field_1;
+    if (!retain_option_ref(refs, field_1)) return 0;
     if (!extract_handle(field_1, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->port, 0)) {
         return 0;
     }
@@ -18299,7 +20279,7 @@ static int fill_input_system_unassign_port_options(PyObject *obj, ifcopenshell_s
     if (!field_2) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[2] = field_2;
+        if (!retain_option_ref(refs, field_2)) return 0;
         if (field_2 != Py_None) {
             if (!extract_handle(field_2, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->user, 0)) {
                 return 0;
@@ -18311,7 +20291,7 @@ static int fill_input_system_unassign_port_options(PyObject *obj, ifcopenshell_s
     if (!field_3) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[3] = field_3;
+        if (!retain_option_ref(refs, field_3)) return 0;
         if (field_3 != Py_None) {
             if (!extract_handle(field_3, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->application, 0)) {
                 return 0;
@@ -18330,7 +20310,7 @@ static void free_input_system_unassign_system_options(ifcopenshell_system_unassi
     }
 }
 
-static int fill_input_system_unassign_system_options(PyObject *obj, ifcopenshell_system_unassign_system_options_t *out, PyObject **refs) {
+static int fill_input_system_unassign_system_options(PyObject *obj, ifcopenshell_system_unassign_system_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -18339,9 +20319,9 @@ static int fill_input_system_unassign_system_options(PyObject *obj, ifcopenshell
     if (!field_0) {
         return 0;
     }
-    refs[0] = field_0;
+    if (!retain_option_ref(refs, field_0)) return 0;
     ifcopenshell_instance_list_t products_items_0 = {0};
-    if (!make_input_instance_list(field_0, &products_items_0)) {
+    if (!make_input_instance_list(field_0, &products_items_0, refs)) {
         return 0;
     }
     if (!ifcopenshell_parse_instance_list_create_from_handles(&products_items_0, &out->products)) {
@@ -18354,7 +20334,7 @@ static int fill_input_system_unassign_system_options(PyObject *obj, ifcopenshell
     if (!field_1) {
         return 0;
     }
-    refs[1] = field_1;
+    if (!retain_option_ref(refs, field_1)) return 0;
     if (!extract_handle(field_1, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->system, 0)) {
         return 0;
     }
@@ -18362,7 +20342,7 @@ static int fill_input_system_unassign_system_options(PyObject *obj, ifcopenshell
     if (!field_2) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[2] = field_2;
+        if (!retain_option_ref(refs, field_2)) return 0;
         if (field_2 != Py_None) {
             if (!extract_handle(field_2, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->user, 0)) {
                 return 0;
@@ -18374,7 +20354,7 @@ static int fill_input_system_unassign_system_options(PyObject *obj, ifcopenshell
     if (!field_3) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[3] = field_3;
+        if (!retain_option_ref(refs, field_3)) return 0;
         if (field_3 != Py_None) {
             if (!extract_handle(field_3, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->application, 0)) {
                 return 0;
@@ -18393,7 +20373,7 @@ static void free_input_type_assign_type_options(ifcopenshell_type_assign_type_op
     }
 }
 
-static int fill_input_type_assign_type_options(PyObject *obj, ifcopenshell_type_assign_type_options_t *out, PyObject **refs) {
+static int fill_input_type_assign_type_options(PyObject *obj, ifcopenshell_type_assign_type_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -18402,9 +20382,9 @@ static int fill_input_type_assign_type_options(PyObject *obj, ifcopenshell_type_
     if (!field_0) {
         return 0;
     }
-    refs[0] = field_0;
+    if (!retain_option_ref(refs, field_0)) return 0;
     ifcopenshell_instance_list_t objects_items_0 = {0};
-    if (!make_input_instance_list(field_0, &objects_items_0)) {
+    if (!make_input_instance_list(field_0, &objects_items_0, refs)) {
         return 0;
     }
     if (!ifcopenshell_parse_instance_list_create_from_handles(&objects_items_0, &out->objects)) {
@@ -18417,7 +20397,7 @@ static int fill_input_type_assign_type_options(PyObject *obj, ifcopenshell_type_
     if (!field_1) {
         return 0;
     }
-    refs[1] = field_1;
+    if (!retain_option_ref(refs, field_1)) return 0;
     if (!extract_handle(field_1, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->relating_type, 0)) {
         return 0;
     }
@@ -18425,7 +20405,7 @@ static int fill_input_type_assign_type_options(PyObject *obj, ifcopenshell_type_
     if (!field_2) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[2] = field_2;
+        if (!retain_option_ref(refs, field_2)) return 0;
         if (field_2 != Py_None) {
             int value_2 = PyObject_IsTrue(field_2);
             if (value_2 < 0) return 0;
@@ -18437,7 +20417,7 @@ static int fill_input_type_assign_type_options(PyObject *obj, ifcopenshell_type_
     if (!field_3) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[3] = field_3;
+        if (!retain_option_ref(refs, field_3)) return 0;
         if (field_3 != Py_None) {
             if (!extract_handle(field_3, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->owner_history, 0)) {
                 return 0;
@@ -18449,7 +20429,7 @@ static int fill_input_type_assign_type_options(PyObject *obj, ifcopenshell_type_
     if (!field_4) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[4] = field_4;
+        if (!retain_option_ref(refs, field_4)) return 0;
         if (field_4 != Py_None) {
             if (!extract_handle(field_4, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->user, 0)) {
                 return 0;
@@ -18461,7 +20441,7 @@ static int fill_input_type_assign_type_options(PyObject *obj, ifcopenshell_type_
     if (!field_5) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[5] = field_5;
+        if (!retain_option_ref(refs, field_5)) return 0;
         if (field_5 != Py_None) {
             if (!extract_handle(field_5, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->application, 0)) {
                 return 0;
@@ -18480,7 +20460,7 @@ static void free_input_type_unassign_type_options(ifcopenshell_type_unassign_typ
     }
 }
 
-static int fill_input_type_unassign_type_options(PyObject *obj, ifcopenshell_type_unassign_type_options_t *out, PyObject **refs) {
+static int fill_input_type_unassign_type_options(PyObject *obj, ifcopenshell_type_unassign_type_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -18489,9 +20469,9 @@ static int fill_input_type_unassign_type_options(PyObject *obj, ifcopenshell_typ
     if (!field_0) {
         return 0;
     }
-    refs[0] = field_0;
+    if (!retain_option_ref(refs, field_0)) return 0;
     ifcopenshell_instance_list_t objects_items_0 = {0};
-    if (!make_input_instance_list(field_0, &objects_items_0)) {
+    if (!make_input_instance_list(field_0, &objects_items_0, refs)) {
         return 0;
     }
     if (!ifcopenshell_parse_instance_list_create_from_handles(&objects_items_0, &out->objects)) {
@@ -18504,7 +20484,7 @@ static int fill_input_type_unassign_type_options(PyObject *obj, ifcopenshell_typ
     if (!field_1) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[1] = field_1;
+        if (!retain_option_ref(refs, field_1)) return 0;
         if (field_1 != Py_None) {
             if (!extract_handle(field_1, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->user, 0)) {
                 return 0;
@@ -18516,7 +20496,7 @@ static int fill_input_type_unassign_type_options(PyObject *obj, ifcopenshell_typ
     if (!field_2) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[2] = field_2;
+        if (!retain_option_ref(refs, field_2)) return 0;
         if (field_2 != Py_None) {
             if (!extract_handle(field_2, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->application, 0)) {
                 return 0;
@@ -18532,7 +20512,7 @@ static void free_input_unit_add_conversion_based_unit_options(ifcopenshell_unit_
     (void)value;
 }
 
-static int fill_input_unit_add_conversion_based_unit_options(PyObject *obj, ifcopenshell_unit_add_conversion_based_unit_options_t *out, PyObject **refs) {
+static int fill_input_unit_add_conversion_based_unit_options(PyObject *obj, ifcopenshell_unit_add_conversion_based_unit_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -18541,7 +20521,7 @@ static int fill_input_unit_add_conversion_based_unit_options(PyObject *obj, ifco
     if (!field_0) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[0] = field_0;
+        if (!retain_option_ref(refs, field_0)) return 0;
         if (field_0 != Py_None) {
             out->name = PyUnicode_AsUTF8(field_0);
             if (!out->name) return 0;
@@ -18552,7 +20532,7 @@ static int fill_input_unit_add_conversion_based_unit_options(PyObject *obj, ifco
     if (!field_1) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[1] = field_1;
+        if (!retain_option_ref(refs, field_1)) return 0;
         if (field_1 != Py_None) {
             out->conversion_offset = PyFloat_AsDouble(field_1);
             if (PyErr_Occurred()) return 0;
@@ -18570,7 +20550,7 @@ static void free_input_unit_assign_unit_options(ifcopenshell_unit_assign_unit_op
     }
 }
 
-static int fill_input_unit_assign_unit_options(PyObject *obj, ifcopenshell_unit_assign_unit_options_t *out, PyObject **refs) {
+static int fill_input_unit_assign_unit_options(PyObject *obj, ifcopenshell_unit_assign_unit_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -18579,10 +20559,10 @@ static int fill_input_unit_assign_unit_options(PyObject *obj, ifcopenshell_unit_
     if (!field_0) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[0] = field_0;
+        if (!retain_option_ref(refs, field_0)) return 0;
         if (field_0 != Py_None) {
             ifcopenshell_instance_list_t units_items_0 = {0};
-            if (!make_input_instance_list(field_0, &units_items_0)) {
+            if (!make_input_instance_list(field_0, &units_items_0, refs)) {
                 return 0;
             }
             if (!ifcopenshell_parse_instance_list_create_from_handles(&units_items_0, &out->units)) {
@@ -18598,7 +20578,7 @@ static int fill_input_unit_assign_unit_options(PyObject *obj, ifcopenshell_unit_
     if (!field_1) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[1] = field_1;
+        if (!retain_option_ref(refs, field_1)) return 0;
         if (field_1 != Py_None) {
             int value_1 = PyObject_IsTrue(field_1);
             if (value_1 < 0) return 0;
@@ -18610,7 +20590,7 @@ static int fill_input_unit_assign_unit_options(PyObject *obj, ifcopenshell_unit_
     if (!field_2) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[2] = field_2;
+        if (!retain_option_ref(refs, field_2)) return 0;
         if (field_2 != Py_None) {
             out->length_raw = PyUnicode_AsUTF8(field_2);
             if (!out->length_raw) return 0;
@@ -18621,7 +20601,7 @@ static int fill_input_unit_assign_unit_options(PyObject *obj, ifcopenshell_unit_
     if (!field_3) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[3] = field_3;
+        if (!retain_option_ref(refs, field_3)) return 0;
         if (field_3 != Py_None) {
             int value_3 = PyObject_IsTrue(field_3);
             if (value_3 < 0) return 0;
@@ -18633,7 +20613,7 @@ static int fill_input_unit_assign_unit_options(PyObject *obj, ifcopenshell_unit_
     if (!field_4) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[4] = field_4;
+        if (!retain_option_ref(refs, field_4)) return 0;
         if (field_4 != Py_None) {
             out->area_raw = PyUnicode_AsUTF8(field_4);
             if (!out->area_raw) return 0;
@@ -18644,7 +20624,7 @@ static int fill_input_unit_assign_unit_options(PyObject *obj, ifcopenshell_unit_
     if (!field_5) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[5] = field_5;
+        if (!retain_option_ref(refs, field_5)) return 0;
         if (field_5 != Py_None) {
             int value_5 = PyObject_IsTrue(field_5);
             if (value_5 < 0) return 0;
@@ -18656,7 +20636,7 @@ static int fill_input_unit_assign_unit_options(PyObject *obj, ifcopenshell_unit_
     if (!field_6) {
         if (PyErr_Occurred()) return 0;
     } else {
-        refs[6] = field_6;
+        if (!retain_option_ref(refs, field_6)) return 0;
         if (field_6 != Py_None) {
             out->volume_raw = PyUnicode_AsUTF8(field_6);
             if (!out->volume_raw) return 0;
@@ -18671,7 +20651,7 @@ static void free_input_unit_edit_named_unit_options(ifcopenshell_unit_edit_named
     (void)value;
 }
 
-static int fill_input_unit_edit_named_unit_options(PyObject *obj, ifcopenshell_unit_edit_named_unit_options_t *out, PyObject **refs) {
+static int fill_input_unit_edit_named_unit_options(PyObject *obj, ifcopenshell_unit_edit_named_unit_options_t *out, option_ref_owner *refs) {
     if (!PyMapping_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "Expected an option mapping");
         return 0;
@@ -18680,7 +20660,7 @@ static int fill_input_unit_edit_named_unit_options(PyObject *obj, ifcopenshell_u
     if (!field_0) {
         return 0;
     }
-    refs[0] = field_0;
+    if (!retain_option_ref(refs, field_0)) return 0;
     if (!extract_handle(field_0, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&out->unit, 0)) {
         return 0;
     }
@@ -18688,7 +20668,7 @@ static int fill_input_unit_edit_named_unit_options(PyObject *obj, ifcopenshell_u
     if (!field_1) {
         return 0;
     }
-    refs[1] = field_1;
+    if (!retain_option_ref(refs, field_1)) return 0;
     if (PyCapsule_IsValid(field_1, NULL)) {
         out->attributes = PyCapsule_GetPointer(field_1, NULL);
     } else {
@@ -18736,6 +20716,7 @@ static PyObject *convert_geom_element_list(ifcopenshell_geom_element_list_t *val
 static PyObject *convert_geometry_railing_support_list(ifcopenshell_geometry_railing_support_list_t *value, int owned);
 static PyObject *convert_double_list_list(ifcopenshell_double_list_list_t *value, int owned);
 static PyObject *convert_int32_list_list(ifcopenshell_int32_list_list_t *value, int owned);
+static PyObject *convert_uint32_list_list(ifcopenshell_uint32_list_list_t *value, int owned);
 static PyObject *convert_instance_list_list(ifcopenshell_instance_list_list_t *value, int owned);
 static PyObject *convert_file_list_list(ifcopenshell_file_list_list_t *value, int owned);
 static PyObject *convert_geom_svgfill_polygon_list_list(ifcopenshell_geom_svgfill_polygon_list_list_t *value, int owned);
@@ -18752,7 +20733,6 @@ static PyObject *convert_geom_taxonomy_item_list_list(ifcopenshell_geom_taxonomy
 static PyObject *convert_geom_element_list_list(ifcopenshell_geom_element_list_list_t *value, int owned);
 static PyObject *convert_int32_list_list_list(ifcopenshell_int32_list_list_list_t *value, int owned);
 static PyObject *convert_double_list_list_list(ifcopenshell_double_list_list_list_t *value, int owned);
-static PyObject *convert_int32_list_list_list_list(ifcopenshell_int32_list_list_list_list_t *value, int owned);
 static PyObject *convert_alignment_create_layout_segment_result(ifcopenshell_alignment_create_layout_segment_result_t *value, int owned);
 static PyObject *convert_geometry_railing_support(ifcopenshell_geometry_railing_support_t *value, int owned);
 static PyObject *convert_geometry_wall_mounted_handrail_result(ifcopenshell_geometry_wall_mounted_handrail_result_t *value, int owned);
@@ -18761,7 +20741,10 @@ static PyObject *convert_shape_builder_mep_bend_shape_result(ifcopenshell_shape_
 static PyObject *convert_sequence_duplicate_task_result(ifcopenshell_sequence_duplicate_task_result_t *value, int owned);
 static PyObject *convert_project_append_asset_cache_entry(ifcopenshell_project_append_asset_cache_entry_t *value, int owned);
 static PyObject *convert_optional_shape_builder_mep_transition_shape_result(ifcopenshell_optional_shape_builder_mep_transition_shape_result_t *value, int owned);
+static PyObject *convert_double_list_list_any_2_double_list_list_any_3_variant(ifcopenshell_double_list_list_any_2_double_list_list_any_3_variant_t *value, int owned);
 static PyObject *convert_instance_string_variant(ifcopenshell_instance_string_variant_t *value, int owned);
+static PyObject *convert_double_list_9_double_list_16_variant(ifcopenshell_double_list_9_double_list_16_variant_t *value, int owned);
+static PyObject *convert_double_list_2_double_list_3_variant(ifcopenshell_double_list_2_double_list_3_variant_t *value, int owned);
 static PyObject *convert_double_list(ifcopenshell_double_list_t *value, int owned) {
     (void)owned;
     PyObject *result = make_owned_buffer(
@@ -19175,6 +21158,25 @@ static PyObject *convert_int32_list_list(ifcopenshell_int32_list_list_t *value, 
     return result;
 }
 
+static PyObject *convert_uint32_list_list(ifcopenshell_uint32_list_list_t *value, int owned) {
+    PyObject *result = PyTuple_New((Py_ssize_t)value->size);
+    if (!result) {
+        ifcopenshell_uint32_list_list_destroy(value);
+        return NULL;
+    }
+    for (size_t i = 0; i < value->size; ++i) {
+        PyObject *item = convert_uint32_list(&value->items[i], owned);
+        if (!item) {
+            Py_DECREF(result);
+            ifcopenshell_uint32_list_list_destroy(value);
+            return NULL;
+        }
+        PyTuple_SET_ITEM(result, (Py_ssize_t)i, item);
+    }
+    ifcopenshell_uint32_list_list_destroy(value);
+    return result;
+}
+
 static PyObject *convert_instance_list_list(ifcopenshell_instance_list_list_t *value, int owned) {
     PyObject *result = PyTuple_New((Py_ssize_t)value->size);
     if (!result) {
@@ -19479,25 +21481,6 @@ static PyObject *convert_double_list_list_list(ifcopenshell_double_list_list_lis
     return result;
 }
 
-static PyObject *convert_int32_list_list_list_list(ifcopenshell_int32_list_list_list_list_t *value, int owned) {
-    PyObject *result = PyTuple_New((Py_ssize_t)value->size);
-    if (!result) {
-        ifcopenshell_int32_list_list_list_list_destroy(value);
-        return NULL;
-    }
-    for (size_t i = 0; i < value->size; ++i) {
-        PyObject *item = convert_int32_list_list_list(&value->items[i], owned);
-        if (!item) {
-            Py_DECREF(result);
-            ifcopenshell_int32_list_list_list_list_destroy(value);
-            return NULL;
-        }
-        PyTuple_SET_ITEM(result, (Py_ssize_t)i, item);
-    }
-    ifcopenshell_int32_list_list_list_list_destroy(value);
-    return result;
-}
-
 static PyObject *convert_alignment_create_layout_segment_result(ifcopenshell_alignment_create_layout_segment_result_t *value, int owned) {
     if (!SimpleNamespaceType) {
         ifcopenshell_alignment_create_layout_segment_result_destroy(value);
@@ -19745,6 +21728,26 @@ static PyObject *convert_optional_shape_builder_mep_transition_shape_result(ifco
     return result;
 }
 
+static PyObject *convert_double_list_list_any_2_double_list_list_any_3_variant(ifcopenshell_double_list_list_any_2_double_list_list_any_3_variant_t *value, int owned) {
+    (void)owned;
+    PyObject *result = NULL;
+    if (value->kind == 0) {
+        result = convert_double_list_list(&value->value_0, 1);
+
+    }
+    if (value->kind == 1) {
+        result = convert_double_list_list(&value->value_1, 1);
+
+    }
+    if (!result) {
+        if (!PyErr_Occurred()) PyErr_SetString(PyExc_RuntimeError, "Unsupported variant alternative");
+        ifcopenshell_double_list_list_any_2_double_list_list_any_3_variant_destroy(value);
+        return NULL;
+    }
+    ifcopenshell_double_list_list_any_2_double_list_list_any_3_variant_destroy(value);
+    return result;
+}
+
 static PyObject *convert_instance_string_variant(ifcopenshell_instance_string_variant_t *value, int owned) {
     (void)owned;
     PyObject *result = NULL;
@@ -19765,6 +21768,46 @@ static PyObject *convert_instance_string_variant(ifcopenshell_instance_string_va
     return result;
 }
 
+static PyObject *convert_double_list_9_double_list_16_variant(ifcopenshell_double_list_9_double_list_16_variant_t *value, int owned) {
+    (void)owned;
+    PyObject *result = NULL;
+    if (value->kind == 0) {
+        result = convert_double_list(&value->value_0, 1);
+
+    }
+    if (value->kind == 1) {
+        result = convert_double_list(&value->value_1, 1);
+
+    }
+    if (!result) {
+        if (!PyErr_Occurred()) PyErr_SetString(PyExc_RuntimeError, "Unsupported variant alternative");
+        ifcopenshell_double_list_9_double_list_16_variant_destroy(value);
+        return NULL;
+    }
+    ifcopenshell_double_list_9_double_list_16_variant_destroy(value);
+    return result;
+}
+
+static PyObject *convert_double_list_2_double_list_3_variant(ifcopenshell_double_list_2_double_list_3_variant_t *value, int owned) {
+    (void)owned;
+    PyObject *result = NULL;
+    if (value->kind == 0) {
+        result = convert_double_list(&value->value_0, 1);
+
+    }
+    if (value->kind == 1) {
+        result = convert_double_list(&value->value_1, 1);
+
+    }
+    if (!result) {
+        if (!PyErr_Occurred()) PyErr_SetString(PyExc_RuntimeError, "Unsupported variant alternative");
+        ifcopenshell_double_list_2_double_list_3_variant_destroy(value);
+        return NULL;
+    }
+    ifcopenshell_double_list_2_double_list_3_variant_destroy(value);
+    return result;
+}
+
 static PyObject *py_ifcopenshell_aggregate_assign_object(PyObject *self, PyObject *args) {
     PyObject *__py_result = NULL;
     bool ok = false;
@@ -19772,14 +21815,14 @@ static PyObject *py_ifcopenshell_aggregate_assign_object(PyObject *self, PyObjec
     ifcopenshell_file_t *arg_file = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_aggregate_assign_object_options_t arg_options = {0};
-    PyObject *arg_options_refs[5] = {0};
+    option_ref_owner arg_options_refs = {0};
     ifcopenshell_instance_t *result = NULL;
     if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_options_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_aggregate_assign_object_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_aggregate_assign_object_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -19795,7 +21838,7 @@ static PyObject *py_ifcopenshell_aggregate_assign_object(PyObject *self, PyObjec
     }
     __py_result = wrap_instance(result, 1);
 __cleanup:
-        release_option_refs(arg_options_refs, 5);
+        release_option_refs(&arg_options_refs);
         free_input_aggregate_assign_object_options(&arg_options);
     return __py_result;
 }
@@ -19807,14 +21850,14 @@ static PyObject *py_ifcopenshell_aggregate_unassign_object(PyObject *self, PyObj
     ifcopenshell_file_t *arg_file = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_aggregate_unassign_object_options_t arg_options = {0};
-    PyObject *arg_options_refs[3] = {0};
+    option_ref_owner arg_options_refs = {0};
 
     if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_options_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_aggregate_unassign_object_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_aggregate_unassign_object_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -19831,7 +21874,7 @@ static PyObject *py_ifcopenshell_aggregate_unassign_object(PyObject *self, PyObj
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
-        release_option_refs(arg_options_refs, 3);
+        release_option_refs(&arg_options_refs);
         free_input_aggregate_unassign_object_options(&arg_options);
     return __py_result;
 }
@@ -20045,14 +22088,14 @@ static PyObject *py_ifcopenshell_alignment_add_stationing_referent(PyObject *sel
     ifcopenshell_file_t *arg_file = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_alignment_add_stationing_referent_options_t arg_options = {0};
-    PyObject *arg_options_refs[8] = {0};
+    option_ref_owner arg_options_refs = {0};
     ifcopenshell_instance_t *result = NULL;
     if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_options_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_alignment_add_stationing_referent_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_alignment_add_stationing_referent_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -20068,7 +22111,7 @@ static PyObject *py_ifcopenshell_alignment_add_stationing_referent(PyObject *sel
     }
     __py_result = wrap_instance(result, 1);
 __cleanup:
-        release_option_refs(arg_options_refs, 8);
+        release_option_refs(&arg_options_refs);
         free_input_alignment_add_stationing_referent_options(&arg_options);
     return __py_result;
 }
@@ -20140,14 +22183,14 @@ static PyObject *py_ifcopenshell_alignment_create(PyObject *self, PyObject *args
     ifcopenshell_file_t *arg_file = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_alignment_create_options_t arg_options = {0};
-    PyObject *arg_options_refs[8] = {0};
+    option_ref_owner arg_options_refs = {0};
     ifcopenshell_instance_t *result = NULL;
     if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_options_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_alignment_create_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_alignment_create_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -20163,7 +22206,7 @@ static PyObject *py_ifcopenshell_alignment_create(PyObject *self, PyObject *args
     }
     __py_result = wrap_instance(result, 1);
 __cleanup:
-        release_option_refs(arg_options_refs, 8);
+        release_option_refs(&arg_options_refs);
         free_input_alignment_create_options(&arg_options);
     return __py_result;
 }
@@ -20175,14 +22218,14 @@ static PyObject *py_ifcopenshell_alignment_create_as_offset_curve(PyObject *self
     ifcopenshell_file_t *arg_file = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_alignment_create_offset_curve_options_t arg_options = {0};
-    PyObject *arg_options_refs[6] = {0};
+    option_ref_owner arg_options_refs = {0};
     ifcopenshell_instance_t *result = NULL;
     if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_options_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_alignment_create_offset_curve_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_alignment_create_offset_curve_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -20198,7 +22241,7 @@ static PyObject *py_ifcopenshell_alignment_create_as_offset_curve(PyObject *self
     }
     __py_result = wrap_instance(result, 1);
 __cleanup:
-        release_option_refs(arg_options_refs, 6);
+        release_option_refs(&arg_options_refs);
         free_input_alignment_create_offset_curve_options(&arg_options);
     return __py_result;
 }
@@ -20210,14 +22253,14 @@ static PyObject *py_ifcopenshell_alignment_create_as_polyline(PyObject *self, Py
     ifcopenshell_file_t *arg_file = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_alignment_create_polyline_options_t arg_options = {0};
-    PyObject *arg_options_refs[6] = {0};
+    option_ref_owner arg_options_refs = {0};
     ifcopenshell_instance_t *result = NULL;
     if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_options_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_alignment_create_polyline_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_alignment_create_polyline_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -20233,7 +22276,7 @@ static PyObject *py_ifcopenshell_alignment_create_as_polyline(PyObject *self, Py
     }
     __py_result = wrap_instance(result, 1);
 __cleanup:
-        release_option_refs(arg_options_refs, 6);
+        release_option_refs(&arg_options_refs);
         free_input_alignment_create_polyline_options(&arg_options);
     return __py_result;
 }
@@ -20245,14 +22288,14 @@ static PyObject *py_ifcopenshell_alignment_create_by_pi_method(PyObject *self, P
     ifcopenshell_file_t *arg_file = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_alignment_create_by_pi_method_options_t arg_options = {0};
-    PyObject *arg_options_refs[9] = {0};
+    option_ref_owner arg_options_refs = {0};
     ifcopenshell_instance_t *result = NULL;
     if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_options_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_alignment_create_by_pi_method_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_alignment_create_by_pi_method_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -20268,7 +22311,7 @@ static PyObject *py_ifcopenshell_alignment_create_by_pi_method(PyObject *self, P
     }
     __py_result = wrap_instance(result, 1);
 __cleanup:
-        release_option_refs(arg_options_refs, 9);
+        release_option_refs(&arg_options_refs);
         free_input_alignment_create_by_pi_method_options(&arg_options);
     return __py_result;
 }
@@ -20280,14 +22323,14 @@ static PyObject *py_ifcopenshell_alignment_create_from_csv_text(PyObject *self, 
     ifcopenshell_file_t *arg_file = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_alignment_create_from_csv_text_options_t arg_options = {0};
-    PyObject *arg_options_refs[4] = {0};
+    option_ref_owner arg_options_refs = {0};
     ifcopenshell_instance_t *result = NULL;
     if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_options_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_alignment_create_from_csv_text_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_alignment_create_from_csv_text_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -20303,7 +22346,7 @@ static PyObject *py_ifcopenshell_alignment_create_from_csv_text(PyObject *self, 
     }
     __py_result = wrap_instance(result, 1);
 __cleanup:
-        release_option_refs(arg_options_refs, 4);
+        release_option_refs(&arg_options_refs);
         free_input_alignment_create_from_csv_text_options(&arg_options);
     return __py_result;
 }
@@ -20774,15 +22817,22 @@ static PyObject *py_ifcopenshell_alignment_get_curve_segment_transition_code(PyO
     ifcopenshell_instance_t *arg_segment = NULL;
     PyObject *arg_next_segment_obj = NULL;
     ifcopenshell_instance_t *arg_next_segment = NULL;
-    double arg_position_tolerance = 0;
+    PyObject *arg_position_tolerance_obj = NULL;
+    double arg_position_tolerance_value = 0;
+    const double *arg_position_tolerance = NULL;
     ifcopenshell_string_t result = {0};
-    if (!PyArg_ParseTuple(args, "OOd", &arg_segment_obj, &arg_next_segment_obj, &arg_position_tolerance)) return NULL;
+    if (!PyArg_ParseTuple(args, "OO|O", &arg_segment_obj, &arg_next_segment_obj, &arg_position_tolerance_obj)) return NULL;
 
     if (!extract_handle(arg_segment_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_segment, 0)) {
         goto __cleanup;
     }
     if (!extract_handle(arg_next_segment_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_next_segment, 0)) {
         goto __cleanup;
+    }
+    if (arg_position_tolerance_obj != NULL && arg_position_tolerance_obj != Py_None) {
+        arg_position_tolerance_value = PyFloat_AsDouble(arg_position_tolerance_obj);
+        if (PyErr_Occurred()) goto __cleanup;
+        arg_position_tolerance = (const double *)&arg_position_tolerance_value;
     }
 
     ifcopenshell_clear_error();
@@ -21042,12 +23092,11 @@ static PyObject *py_ifcopenshell_alignment_layout_horizontal_by_pi_method(PyObje
     ifcopenshell_file_t *arg_file = NULL;
     PyObject *arg_layout_obj = NULL;
     ifcopenshell_instance_t *arg_layout = NULL;
-    PyObject *arg_points_obj = NULL;
-    ifcopenshell_double_list_list_t arg_points = {0};
-    PyObject *arg_radii_obj = NULL;
-    ifcopenshell_double_list_t arg_radii = {0};
+    PyObject *arg_options_obj = NULL;
+    ifcopenshell_alignment_layout_horizontal_by_pi_method_options_t arg_options = {0};
+    option_ref_owner arg_options_refs = {0};
 
-    if (!PyArg_ParseTuple(args, "OOOO", &arg_file_obj, &arg_layout_obj, &arg_points_obj, &arg_radii_obj)) return NULL;
+    if (!PyArg_ParseTuple(args, "OOO", &arg_file_obj, &arg_layout_obj, &arg_options_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
@@ -21055,14 +23104,12 @@ static PyObject *py_ifcopenshell_alignment_layout_horizontal_by_pi_method(PyObje
     if (!extract_handle(arg_layout_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_layout, 0)) {
         goto __cleanup;
     }
-    if (!make_input_double_list_list(arg_points_obj, &arg_points)) {
+    if (!fill_input_alignment_layout_horizontal_by_pi_method_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
-    if (!make_input_double_list(arg_radii_obj, &arg_radii)) {
-        goto __cleanup;
-    }
+
     ifcopenshell_clear_error();
-    ok = ifcopenshell_alignment_layout_horizontal_by_pi_method(arg_file, arg_layout, &arg_points, &arg_radii);
+    ok = ifcopenshell_alignment_layout_horizontal_by_pi_method(arg_file, arg_layout, &arg_options);
     if (!ok) {
         raise_last_error("ifcopenshell_alignment_layout_horizontal_by_pi_method failed");
         goto __cleanup;
@@ -21074,8 +23121,8 @@ static PyObject *py_ifcopenshell_alignment_layout_horizontal_by_pi_method(PyObje
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
-        free_input_double_list(&arg_radii);
-        free_input_double_list_list(&arg_points);
+        release_option_refs(&arg_options_refs);
+        free_input_alignment_layout_horizontal_by_pi_method_options(&arg_options);
     return __py_result;
 }
 
@@ -21086,12 +23133,11 @@ static PyObject *py_ifcopenshell_alignment_layout_vertical_by_pi_method(PyObject
     ifcopenshell_file_t *arg_file = NULL;
     PyObject *arg_layout_obj = NULL;
     ifcopenshell_instance_t *arg_layout = NULL;
-    PyObject *arg_points_obj = NULL;
-    ifcopenshell_double_list_list_t arg_points = {0};
-    PyObject *arg_lengths_obj = NULL;
-    ifcopenshell_double_list_t arg_lengths = {0};
+    PyObject *arg_options_obj = NULL;
+    ifcopenshell_alignment_layout_vertical_by_pi_method_options_t arg_options = {0};
+    option_ref_owner arg_options_refs = {0};
 
-    if (!PyArg_ParseTuple(args, "OOOO", &arg_file_obj, &arg_layout_obj, &arg_points_obj, &arg_lengths_obj)) return NULL;
+    if (!PyArg_ParseTuple(args, "OOO", &arg_file_obj, &arg_layout_obj, &arg_options_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
@@ -21099,14 +23145,12 @@ static PyObject *py_ifcopenshell_alignment_layout_vertical_by_pi_method(PyObject
     if (!extract_handle(arg_layout_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_layout, 0)) {
         goto __cleanup;
     }
-    if (!make_input_double_list_list(arg_points_obj, &arg_points)) {
+    if (!fill_input_alignment_layout_vertical_by_pi_method_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
-    if (!make_input_double_list(arg_lengths_obj, &arg_lengths)) {
-        goto __cleanup;
-    }
+
     ifcopenshell_clear_error();
-    ok = ifcopenshell_alignment_layout_vertical_by_pi_method(arg_file, arg_layout, &arg_points, &arg_lengths);
+    ok = ifcopenshell_alignment_layout_vertical_by_pi_method(arg_file, arg_layout, &arg_options);
     if (!ok) {
         raise_last_error("ifcopenshell_alignment_layout_vertical_by_pi_method failed");
         goto __cleanup;
@@ -21118,8 +23162,8 @@ static PyObject *py_ifcopenshell_alignment_layout_vertical_by_pi_method(PyObject
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
-        free_input_double_list(&arg_lengths);
-        free_input_double_list_list(&arg_points);
+        release_option_refs(&arg_options_refs);
+        free_input_alignment_layout_vertical_by_pi_method_options(&arg_options);
     return __py_result;
 }
 
@@ -21130,14 +23174,14 @@ static PyObject *py_ifcopenshell_alignment_map_segment(PyObject *self, PyObject 
     ifcopenshell_file_t *arg_file = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_alignment_map_segment_options_t arg_options = {0};
-    PyObject *arg_options_refs[2] = {0};
+    option_ref_owner arg_options_refs = {0};
     ifcopenshell_parse_instance_list_t *result = NULL;
     if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_options_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_alignment_map_segment_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_alignment_map_segment_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -21153,7 +23197,7 @@ static PyObject *py_ifcopenshell_alignment_map_segment(PyObject *self, PyObject 
     }
     __py_result = wrap_parse_instance_list(result, 1);
 __cleanup:
-        release_option_refs(arg_options_refs, 2);
+        release_option_refs(&arg_options_refs);
         free_input_alignment_map_segment_options(&arg_options);
     return __py_result;
 }
@@ -21218,15 +23262,22 @@ static PyObject *py_ifcopenshell_alignment_update_curve_segment_transition_code(
     ifcopenshell_instance_t *arg_segment = NULL;
     PyObject *arg_next_segment_obj = NULL;
     ifcopenshell_instance_t *arg_next_segment = NULL;
-    double arg_position_tolerance = 0;
+    PyObject *arg_position_tolerance_obj = NULL;
+    double arg_position_tolerance_value = 0;
+    const double *arg_position_tolerance = NULL;
 
-    if (!PyArg_ParseTuple(args, "OOd", &arg_segment_obj, &arg_next_segment_obj, &arg_position_tolerance)) return NULL;
+    if (!PyArg_ParseTuple(args, "OO|O", &arg_segment_obj, &arg_next_segment_obj, &arg_position_tolerance_obj)) return NULL;
 
     if (!extract_handle(arg_segment_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_segment, 0)) {
         goto __cleanup;
     }
     if (!extract_handle(arg_next_segment_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_next_segment, 0)) {
         goto __cleanup;
+    }
+    if (arg_position_tolerance_obj != NULL && arg_position_tolerance_obj != Py_None) {
+        arg_position_tolerance_value = PyFloat_AsDouble(arg_position_tolerance_obj);
+        if (PyErr_Occurred()) goto __cleanup;
+        arg_position_tolerance = (const double *)&arg_position_tolerance_value;
     }
 
     ifcopenshell_clear_error();
@@ -21318,14 +23369,14 @@ static PyObject *py_ifcopenshell_attribute_edit_attributes(PyObject *self, PyObj
     ifcopenshell_file_t *arg_file = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_attribute_edit_attributes_options_t arg_options = {0};
-    PyObject *arg_options_refs[6] = {0};
+    option_ref_owner arg_options_refs = {0};
 
     if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_options_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_attribute_edit_attributes_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_attribute_edit_attributes_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -21342,7 +23393,7 @@ static PyObject *py_ifcopenshell_attribute_edit_attributes(PyObject *self, PyObj
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
-        release_option_refs(arg_options_refs, 6);
+        release_option_refs(&arg_options_refs);
         free_input_attribute_edit_attributes_options(&arg_options);
     return __py_result;
 }
@@ -21429,7 +23480,7 @@ static PyObject *py_ifcopenshell_boundary_assign_connection_geometry(PyObject *s
     ifcopenshell_instance_t *arg_rel_space_boundary = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_boundary_assign_connection_geometry_options_t arg_options = {0};
-    PyObject *arg_options_refs[6] = {0};
+    option_ref_owner arg_options_refs = {0};
 
     if (!PyArg_ParseTuple(args, "OOO", &arg_file_obj, &arg_rel_space_boundary_obj, &arg_options_obj)) return NULL;
 
@@ -21439,7 +23490,7 @@ static PyObject *py_ifcopenshell_boundary_assign_connection_geometry(PyObject *s
     if (!extract_handle(arg_rel_space_boundary_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_rel_space_boundary, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_boundary_assign_connection_geometry_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_boundary_assign_connection_geometry_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -21456,7 +23507,7 @@ static PyObject *py_ifcopenshell_boundary_assign_connection_geometry(PyObject *s
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
-        release_option_refs(arg_options_refs, 6);
+        release_option_refs(&arg_options_refs);
         free_input_boundary_assign_connection_geometry_options(&arg_options);
     return __py_result;
 }
@@ -21500,14 +23551,14 @@ static PyObject *py_ifcopenshell_boundary_edit_attributes(PyObject *self, PyObje
     ifcopenshell_instance_t *arg_entity = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_boundary_edit_attributes_options_t arg_options = {0};
-    PyObject *arg_options_refs[6] = {0};
+    option_ref_owner arg_options_refs = {0};
 
     if (!PyArg_ParseTuple(args, "OO", &arg_entity_obj, &arg_options_obj)) return NULL;
 
     if (!extract_handle(arg_entity_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_entity, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_boundary_edit_attributes_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_boundary_edit_attributes_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -21524,7 +23575,7 @@ static PyObject *py_ifcopenshell_boundary_edit_attributes(PyObject *self, PyObje
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
-        release_option_refs(arg_options_refs, 6);
+        release_option_refs(&arg_options_refs);
         free_input_boundary_edit_attributes_options(&arg_options);
     return __py_result;
 }
@@ -21597,14 +23648,14 @@ static PyObject *py_ifcopenshell_classification_add_reference(PyObject *self, Py
     ifcopenshell_file_t *arg_file = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_classification_add_reference_options_t arg_options = {0};
-    PyObject *arg_options_refs[8] = {0};
+    option_ref_owner arg_options_refs = {0};
     ifcopenshell_instance_t *result = NULL;
     if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_options_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_classification_add_reference_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_classification_add_reference_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -21620,7 +23671,7 @@ static PyObject *py_ifcopenshell_classification_add_reference(PyObject *self, Py
     }
     __py_result = wrap_instance(result, 1);
 __cleanup:
-        release_option_refs(arg_options_refs, 8);
+        release_option_refs(&arg_options_refs);
         free_input_classification_add_reference_options(&arg_options);
     return __py_result;
 }
@@ -21787,14 +23838,14 @@ static PyObject *py_ifcopenshell_classification_remove_reference(PyObject *self,
     ifcopenshell_file_t *arg_file = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_classification_remove_reference_options_t arg_options = {0};
-    PyObject *arg_options_refs[4] = {0};
+    option_ref_owner arg_options_refs = {0};
 
     if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_options_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_classification_remove_reference_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_classification_remove_reference_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -21811,7 +23862,7 @@ static PyObject *py_ifcopenshell_classification_remove_reference(PyObject *self,
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
-        release_option_refs(arg_options_refs, 4);
+        release_option_refs(&arg_options_refs);
         free_input_classification_remove_reference_options(&arg_options);
     return __py_result;
 }
@@ -21823,14 +23874,14 @@ static PyObject *py_ifcopenshell_cogo_add_survey_point(PyObject *self, PyObject 
     ifcopenshell_file_t *arg_file = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_cogo_add_survey_point_options_t arg_options = {0};
-    PyObject *arg_options_refs[5] = {0};
+    option_ref_owner arg_options_refs = {0};
     ifcopenshell_instance_t *result = NULL;
     if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_options_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_cogo_add_survey_point_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_cogo_add_survey_point_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -21846,7 +23897,7 @@ static PyObject *py_ifcopenshell_cogo_add_survey_point(PyObject *self, PyObject 
     }
     __py_result = wrap_instance(result, 1);
 __cleanup:
-        release_option_refs(arg_options_refs, 5);
+        release_option_refs(&arg_options_refs);
         free_input_cogo_add_survey_point_options(&arg_options);
     return __py_result;
 }
@@ -22062,14 +24113,14 @@ static PyObject *py_ifcopenshell_constraint_assign_constraint(PyObject *self, Py
     ifcopenshell_file_t *arg_file = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_constraint_assign_constraint_options_t arg_options = {0};
-    PyObject *arg_options_refs[5] = {0};
+    option_ref_owner arg_options_refs = {0};
     ifcopenshell_instance_t *result = NULL;
     if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_options_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_constraint_assign_constraint_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_constraint_assign_constraint_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -22085,7 +24136,7 @@ static PyObject *py_ifcopenshell_constraint_assign_constraint(PyObject *self, Py
     }
     __py_result = wrap_instance(result, 1);
 __cleanup:
-        release_option_refs(arg_options_refs, 5);
+        release_option_refs(&arg_options_refs);
         free_input_constraint_assign_constraint_options(&arg_options);
     return __py_result;
 }
@@ -22257,14 +24308,14 @@ static PyObject *py_ifcopenshell_constraint_unassign_constraint(PyObject *self, 
     ifcopenshell_file_t *arg_file = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_constraint_unassign_constraint_options_t arg_options = {0};
-    PyObject *arg_options_refs[4] = {0};
+    option_ref_owner arg_options_refs = {0};
 
     if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_options_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_constraint_unassign_constraint_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_constraint_unassign_constraint_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -22281,7 +24332,7 @@ static PyObject *py_ifcopenshell_constraint_unassign_constraint(PyObject *self, 
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
-        release_option_refs(arg_options_refs, 4);
+        release_option_refs(&arg_options_refs);
         free_input_constraint_unassign_constraint_options(&arg_options);
     return __py_result;
 }
@@ -22293,14 +24344,14 @@ static PyObject *py_ifcopenshell_context_add_context(PyObject *self, PyObject *a
     ifcopenshell_file_t *arg_file = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_context_add_context_options_t arg_options = {0};
-    PyObject *arg_options_refs[5] = {0};
+    option_ref_owner arg_options_refs = {0};
     ifcopenshell_instance_t *result = NULL;
     if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_options_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_context_add_context_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_context_add_context_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -22316,7 +24367,7 @@ static PyObject *py_ifcopenshell_context_add_context(PyObject *self, PyObject *a
     }
     __py_result = wrap_instance(result, 1);
 __cleanup:
-        release_option_refs(arg_options_refs, 5);
+        release_option_refs(&arg_options_refs);
         free_input_context_add_context_options(&arg_options);
     return __py_result;
 }
@@ -22408,14 +24459,14 @@ static PyObject *py_ifcopenshell_control_assign_control(PyObject *self, PyObject
     ifcopenshell_file_t *arg_file = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_control_assign_control_options_t arg_options = {0};
-    PyObject *arg_options_refs[5] = {0};
+    option_ref_owner arg_options_refs = {0};
     ifcopenshell_instance_t *result = NULL;
     if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_options_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_control_assign_control_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_control_assign_control_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -22431,7 +24482,7 @@ static PyObject *py_ifcopenshell_control_assign_control(PyObject *self, PyObject
     }
     __py_result = wrap_instance(result, 1);
 __cleanup:
-        release_option_refs(arg_options_refs, 5);
+        release_option_refs(&arg_options_refs);
         free_input_control_assign_control_options(&arg_options);
     return __py_result;
 }
@@ -22443,14 +24494,14 @@ static PyObject *py_ifcopenshell_control_unassign_control(PyObject *self, PyObje
     ifcopenshell_file_t *arg_file = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_control_unassign_control_options_t arg_options = {0};
-    PyObject *arg_options_refs[4] = {0};
+    option_ref_owner arg_options_refs = {0};
 
     if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_options_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_control_unassign_control_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_control_unassign_control_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -22467,7 +24518,7 @@ static PyObject *py_ifcopenshell_control_unassign_control(PyObject *self, PyObje
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
-        release_option_refs(arg_options_refs, 4);
+        release_option_refs(&arg_options_refs);
         free_input_control_unassign_control_options(&arg_options);
     return __py_result;
 }
@@ -22479,14 +24530,14 @@ static PyObject *py_ifcopenshell_cost_add_cost_item(PyObject *self, PyObject *ar
     ifcopenshell_file_t *arg_file = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_cost_add_cost_item_options_t arg_options = {0};
-    PyObject *arg_options_refs[5] = {0};
+    option_ref_owner arg_options_refs = {0};
     ifcopenshell_instance_t *result = NULL;
     if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_options_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_cost_add_cost_item_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_cost_add_cost_item_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -22502,7 +24553,7 @@ static PyObject *py_ifcopenshell_cost_add_cost_item(PyObject *self, PyObject *ar
     }
     __py_result = wrap_instance(result, 1);
 __cleanup:
-        release_option_refs(arg_options_refs, 5);
+        release_option_refs(&arg_options_refs);
         free_input_cost_add_cost_item_options(&arg_options);
     return __py_result;
 }
@@ -22616,10 +24667,11 @@ static PyObject *py_ifcopenshell_cost_assign_cost_item_quantity(PyObject *self, 
     ifcopenshell_instance_t *arg_cost_item = NULL;
     PyObject *arg_products_obj = NULL;
     ifcopenshell_instance_list_t arg_products = {0};
+    option_ref_owner arg_products_refs = {0};
     const char *arg_prop_name = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_cost_assign_cost_item_quantity_options_t arg_options = {0};
-    PyObject *arg_options_refs[3] = {0};
+    option_ref_owner arg_options_refs = {0};
 
     if (!PyArg_ParseTuple(args, "OOO|zO", &arg_file_obj, &arg_cost_item_obj, &arg_products_obj, &arg_prop_name, &arg_options_obj)) return NULL;
 
@@ -22629,10 +24681,10 @@ static PyObject *py_ifcopenshell_cost_assign_cost_item_quantity(PyObject *self, 
     if (!extract_handle(arg_cost_item_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_cost_item, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_cost_assign_cost_item_quantity_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_cost_assign_cost_item_quantity_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
-    if (!make_input_instance_list(arg_products_obj, &arg_products)) {
+    if (!make_input_instance_list(arg_products_obj, &arg_products, &arg_products_refs)) {
         goto __cleanup;
     }
     ifcopenshell_clear_error();
@@ -22648,8 +24700,9 @@ static PyObject *py_ifcopenshell_cost_assign_cost_item_quantity(PyObject *self, 
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
-        release_option_refs(arg_options_refs, 3);
+        release_option_refs(&arg_options_refs);
         free_input_cost_assign_cost_item_quantity_options(&arg_options);
+        release_option_refs(&arg_products_refs);
         free_input_instance_list(&arg_products);
     return __py_result;
 }
@@ -22804,7 +24857,7 @@ static PyObject *py_ifcopenshell_cost_copy_cost_schedule(PyObject *self, PyObjec
     ifcopenshell_instance_t *arg_cost_schedule = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_cost_copy_cost_schedule_options_t arg_options = {0};
-    PyObject *arg_options_refs[3] = {0};
+    option_ref_owner arg_options_refs = {0};
     ifcopenshell_instance_t *result = NULL;
     if (!PyArg_ParseTuple(args, "OOO", &arg_file_obj, &arg_cost_schedule_obj, &arg_options_obj)) return NULL;
 
@@ -22814,7 +24867,7 @@ static PyObject *py_ifcopenshell_cost_copy_cost_schedule(PyObject *self, PyObjec
     if (!extract_handle(arg_cost_schedule_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_cost_schedule, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_cost_copy_cost_schedule_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_cost_copy_cost_schedule_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -22830,7 +24883,7 @@ static PyObject *py_ifcopenshell_cost_copy_cost_schedule(PyObject *self, PyObjec
     }
     __py_result = wrap_instance(result, 1);
 __cleanup:
-        release_option_refs(arg_options_refs, 3);
+        release_option_refs(&arg_options_refs);
         free_input_cost_copy_cost_schedule_options(&arg_options);
     return __py_result;
 }
@@ -22989,7 +25042,7 @@ static PyObject *py_ifcopenshell_cost_edit_cost_value(PyObject *self, PyObject *
     int arg_attributes_has_view = 0;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_cost_edit_cost_value_options_t arg_options = {0};
-    PyObject *arg_options_refs[4] = {0};
+    option_ref_owner arg_options_refs = {0};
 
     if (!PyArg_ParseTuple(args, "OOOO", &arg_file_obj, &arg_cost_value_obj, &arg_attributes_obj, &arg_options_obj)) return NULL;
 
@@ -23008,7 +25061,7 @@ static PyObject *py_ifcopenshell_cost_edit_cost_value(PyObject *self, PyObject *
         PyErr_SetString(PyExc_TypeError, "Expected a capsule or buffer-compatible object");
         goto __cleanup;
     }
-    if (!fill_input_cost_edit_cost_value_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_cost_edit_cost_value_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -23025,7 +25078,7 @@ static PyObject *py_ifcopenshell_cost_edit_cost_value(PyObject *self, PyObject *
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
-        release_option_refs(arg_options_refs, 4);
+        release_option_refs(&arg_options_refs);
         free_input_cost_edit_cost_value_options(&arg_options);
         if (arg_attributes_has_view) PyBuffer_Release(&arg_attributes_view);
     return __py_result;
@@ -23216,9 +25269,10 @@ static PyObject *py_ifcopenshell_cost_unassign_cost_item_quantity(PyObject *self
     ifcopenshell_instance_t *arg_cost_item = NULL;
     PyObject *arg_products_obj = NULL;
     ifcopenshell_instance_list_t arg_products = {0};
+    option_ref_owner arg_products_refs = {0};
     PyObject *arg_options_obj = NULL;
     ifcopenshell_cost_unassign_cost_item_quantity_options_t arg_options = {0};
-    PyObject *arg_options_refs[2] = {0};
+    option_ref_owner arg_options_refs = {0};
 
     if (!PyArg_ParseTuple(args, "OOOO", &arg_file_obj, &arg_cost_item_obj, &arg_products_obj, &arg_options_obj)) return NULL;
 
@@ -23228,10 +25282,10 @@ static PyObject *py_ifcopenshell_cost_unassign_cost_item_quantity(PyObject *self
     if (!extract_handle(arg_cost_item_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_cost_item, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_cost_unassign_cost_item_quantity_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_cost_unassign_cost_item_quantity_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
-    if (!make_input_instance_list(arg_products_obj, &arg_products)) {
+    if (!make_input_instance_list(arg_products_obj, &arg_products, &arg_products_refs)) {
         goto __cleanup;
     }
     ifcopenshell_clear_error();
@@ -23247,8 +25301,9 @@ static PyObject *py_ifcopenshell_cost_unassign_cost_item_quantity(PyObject *self
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
-        release_option_refs(arg_options_refs, 2);
+        release_option_refs(&arg_options_refs);
         free_input_cost_unassign_cost_item_quantity_options(&arg_options);
+        release_option_refs(&arg_products_refs);
         free_input_instance_list(&arg_products);
     return __py_result;
 }
@@ -23511,14 +25566,14 @@ static PyObject *py_ifcopenshell_document_add_information(PyObject *self, PyObje
     ifcopenshell_file_t *arg_file = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_document_add_information_options_t arg_options = {0};
-    PyObject *arg_options_refs[4] = {0};
+    option_ref_owner arg_options_refs = {0};
     ifcopenshell_instance_t *result = NULL;
     if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_options_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_document_add_information_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_document_add_information_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -23534,7 +25589,7 @@ static PyObject *py_ifcopenshell_document_add_information(PyObject *self, PyObje
     }
     __py_result = wrap_instance(result, 1);
 __cleanup:
-        release_option_refs(arg_options_refs, 4);
+        release_option_refs(&arg_options_refs);
         free_input_document_add_information_options(&arg_options);
     return __py_result;
 }
@@ -23578,14 +25633,14 @@ static PyObject *py_ifcopenshell_document_assign_document(PyObject *self, PyObje
     ifcopenshell_file_t *arg_file = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_document_assign_document_options_t arg_options = {0};
-    PyObject *arg_options_refs[5] = {0};
+    option_ref_owner arg_options_refs = {0};
     ifcopenshell_instance_t *result = NULL;
     if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_options_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_document_assign_document_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_document_assign_document_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -23601,7 +25656,7 @@ static PyObject *py_ifcopenshell_document_assign_document(PyObject *self, PyObje
     }
     __py_result = wrap_instance(result, 1);
 __cleanup:
-        release_option_refs(arg_options_refs, 5);
+        release_option_refs(&arg_options_refs);
         free_input_document_assign_document_options(&arg_options);
     return __py_result;
 }
@@ -23773,14 +25828,14 @@ static PyObject *py_ifcopenshell_document_unassign_document(PyObject *self, PyOb
     ifcopenshell_file_t *arg_file = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_document_unassign_document_options_t arg_options = {0};
-    PyObject *arg_options_refs[4] = {0};
+    option_ref_owner arg_options_refs = {0};
 
     if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_options_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_document_unassign_document_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_document_unassign_document_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -23797,7 +25852,7 @@ static PyObject *py_ifcopenshell_document_unassign_document(PyObject *self, PyOb
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
-        release_option_refs(arg_options_refs, 4);
+        release_option_refs(&arg_options_refs);
         free_input_document_unassign_document_options(&arg_options);
     return __py_result;
 }
@@ -23809,14 +25864,14 @@ static PyObject *py_ifcopenshell_drawing_assign_product(PyObject *self, PyObject
     ifcopenshell_file_t *arg_file = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_drawing_assign_product_options_t arg_options = {0};
-    PyObject *arg_options_refs[5] = {0};
+    option_ref_owner arg_options_refs = {0};
     ifcopenshell_instance_t *result = NULL;
     if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_options_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_drawing_assign_product_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_drawing_assign_product_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -23832,7 +25887,7 @@ static PyObject *py_ifcopenshell_drawing_assign_product(PyObject *self, PyObject
     }
     __py_result = wrap_instance(result, 1);
 __cleanup:
-        release_option_refs(arg_options_refs, 5);
+        release_option_refs(&arg_options_refs);
         free_input_drawing_assign_product_options(&arg_options);
     return __py_result;
 }
@@ -23891,14 +25946,14 @@ static PyObject *py_ifcopenshell_drawing_unassign_product(PyObject *self, PyObje
     ifcopenshell_file_t *arg_file = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_drawing_unassign_product_options_t arg_options = {0};
-    PyObject *arg_options_refs[4] = {0};
+    option_ref_owner arg_options_refs = {0};
 
     if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_options_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_drawing_unassign_product_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_drawing_unassign_product_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -23915,7 +25970,7 @@ static PyObject *py_ifcopenshell_drawing_unassign_product(PyObject *self, PyObje
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
-        release_option_refs(arg_options_refs, 4);
+        release_option_refs(&arg_options_refs);
         free_input_drawing_unassign_product_options(&arg_options);
     return __py_result;
 }
@@ -23981,14 +26036,14 @@ static PyObject *py_ifcopenshell_element_get_container(PyObject *self, PyObject 
     ifcopenshell_instance_t *arg_instance = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_element_get_container_options_t arg_options = {0};
-    PyObject *arg_options_refs[2] = {0};
+    option_ref_owner arg_options_refs = {0};
     ifcopenshell_instance_t *result = NULL;
     if (!PyArg_ParseTuple(args, "OO", &arg_instance_obj, &arg_options_obj)) return NULL;
 
     if (!extract_handle(arg_instance_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_instance, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_element_get_container_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_element_get_container_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -24004,7 +26059,7 @@ static PyObject *py_ifcopenshell_element_get_container(PyObject *self, PyObject 
     }
     __py_result = wrap_instance(result, 1);
 __cleanup:
-        release_option_refs(arg_options_refs, 2);
+        release_option_refs(&arg_options_refs);
         free_input_element_get_container_options(&arg_options);
     return __py_result;
 }
@@ -24043,14 +26098,14 @@ static PyObject *py_ifcopenshell_element_get_decomposition(PyObject *self, PyObj
     ifcopenshell_instance_t *arg_element = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_element_get_decomposition_options_t arg_options = {0};
-    PyObject *arg_options_refs[1] = {0};
+    option_ref_owner arg_options_refs = {0};
     ifcopenshell_parse_instance_list_t *result = NULL;
     if (!PyArg_ParseTuple(args, "OO", &arg_element_obj, &arg_options_obj)) return NULL;
 
     if (!extract_handle(arg_element_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_element, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_element_get_decomposition_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_element_get_decomposition_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -24066,7 +26121,7 @@ static PyObject *py_ifcopenshell_element_get_decomposition(PyObject *self, PyObj
     }
     __py_result = wrap_parse_instance_list(result, 1);
 __cleanup:
-        release_option_refs(arg_options_refs, 1);
+        release_option_refs(&arg_options_refs);
         free_input_element_get_decomposition_options(&arg_options);
     return __py_result;
 }
@@ -24294,14 +26349,14 @@ static PyObject *py_ifcopenshell_element_get_material(PyObject *self, PyObject *
     ifcopenshell_instance_t *arg_instance = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_element_get_material_options_t arg_options = {0};
-    PyObject *arg_options_refs[2] = {0};
+    option_ref_owner arg_options_refs = {0};
     ifcopenshell_instance_t *result = NULL;
     if (!PyArg_ParseTuple(args, "OO", &arg_instance_obj, &arg_options_obj)) return NULL;
 
     if (!extract_handle(arg_instance_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_instance, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_element_get_material_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_element_get_material_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -24317,7 +26372,7 @@ static PyObject *py_ifcopenshell_element_get_material(PyObject *self, PyObject *
     }
     __py_result = wrap_instance(result, 1);
 __cleanup:
-        release_option_refs(arg_options_refs, 2);
+        release_option_refs(&arg_options_refs);
         free_input_element_get_material_options(&arg_options);
     return __py_result;
 }
@@ -24437,14 +26492,14 @@ static PyObject *py_ifcopenshell_element_get_pset_ids(PyObject *self, PyObject *
     ifcopenshell_instance_t *arg_element = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_element_get_pset_ids_options_t arg_options = {0};
-    PyObject *arg_options_refs[3] = {0};
+    option_ref_owner arg_options_refs = {0};
     ifcopenshell_parse_instance_list_t *result = NULL;
     if (!PyArg_ParseTuple(args, "OO", &arg_element_obj, &arg_options_obj)) return NULL;
 
     if (!extract_handle(arg_element_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_element, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_element_get_pset_ids_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_element_get_pset_ids_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -24460,7 +26515,7 @@ static PyObject *py_ifcopenshell_element_get_pset_ids(PyObject *self, PyObject *
     }
     __py_result = wrap_parse_instance_list(result, 1);
 __cleanup:
-        release_option_refs(arg_options_refs, 3);
+        release_option_refs(&arg_options_refs);
         free_input_element_get_pset_ids_options(&arg_options);
     return __py_result;
 }
@@ -24526,14 +26581,14 @@ static PyObject *py_ifcopenshell_element_get_shape_aspects(PyObject *self, PyObj
     ifcopenshell_instance_t *arg_element = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_element_get_shape_aspects_options_t arg_options = {0};
-    PyObject *arg_options_refs[1] = {0};
+    option_ref_owner arg_options_refs = {0};
     ifcopenshell_parse_instance_list_t *result = NULL;
     if (!PyArg_ParseTuple(args, "OO", &arg_element_obj, &arg_options_obj)) return NULL;
 
     if (!extract_handle(arg_element_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_element, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_element_get_shape_aspects_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_element_get_shape_aspects_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -24549,7 +26604,7 @@ static PyObject *py_ifcopenshell_element_get_shape_aspects(PyObject *self, PyObj
     }
     __py_result = wrap_parse_instance_list(result, 1);
 __cleanup:
-        release_option_refs(arg_options_refs, 1);
+        release_option_refs(&arg_options_refs);
         free_input_element_get_shape_aspects_options(&arg_options);
     return __py_result;
 }
@@ -25071,14 +27126,14 @@ static PyObject *py_ifcopenshell_entity_remove_deep_with_options(PyObject *self,
     ifcopenshell_instance_t *arg_instance = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_entity_remove_deep_options_t arg_options = {0};
-    PyObject *arg_options_refs[2] = {0};
+    option_ref_owner arg_options_refs = {0};
 
     if (!PyArg_ParseTuple(args, "OO", &arg_instance_obj, &arg_options_obj)) return NULL;
 
     if (!extract_handle(arg_instance_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_instance, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_entity_remove_deep_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_entity_remove_deep_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -25095,7 +27150,7 @@ static PyObject *py_ifcopenshell_entity_remove_deep_with_options(PyObject *self,
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
-        release_option_refs(arg_options_refs, 2);
+        release_option_refs(&arg_options_refs);
         free_input_entity_remove_deep_options(&arg_options);
     return __py_result;
 }
@@ -25107,18 +27162,20 @@ static PyObject *py_ifcopenshell_entity_set_attributes(PyObject *self, PyObject 
     ifcopenshell_entity_t *arg_self = NULL;
     PyObject *arg_attributes_obj = NULL;
     ifcopenshell_attribute_list_t arg_attributes = {0};
+    option_ref_owner arg_attributes_refs = {0};
     PyObject *arg_derived_obj = NULL;
     ifcopenshell_bool_list_t arg_derived = {0};
+    option_ref_owner arg_derived_refs = {0};
 
     if (!PyArg_ParseTuple(args, "OOO", &arg_self_obj, &arg_attributes_obj, &arg_derived_obj)) return NULL;
 
     if (!extract_handle(arg_self_obj, &IfcOpenshellEntityType, "IfcOpenshellEntity", (void **)&arg_self, 0)) {
         goto __cleanup;
     }
-    if (!make_input_attribute_list(arg_attributes_obj, &arg_attributes)) {
+    if (!make_input_attribute_list(arg_attributes_obj, &arg_attributes, &arg_attributes_refs)) {
         goto __cleanup;
     }
-    if (!make_input_bool_list(arg_derived_obj, &arg_derived)) {
+    if (!make_input_bool_list(arg_derived_obj, &arg_derived, &arg_derived_refs)) {
         goto __cleanup;
     }
     ifcopenshell_clear_error();
@@ -25134,7 +27191,9 @@ static PyObject *py_ifcopenshell_entity_set_attributes(PyObject *self, PyObject 
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
+        release_option_refs(&arg_derived_refs);
         free_input_bool_list(&arg_derived);
+        release_option_refs(&arg_attributes_refs);
         free_input_attribute_list(&arg_attributes);
     return __py_result;
 }
@@ -25146,13 +27205,14 @@ static PyObject *py_ifcopenshell_entity_set_inverse_attributes(PyObject *self, P
     ifcopenshell_entity_t *arg_self = NULL;
     PyObject *arg_inverse_attributes_obj = NULL;
     ifcopenshell_inverse_attribute_list_t arg_inverse_attributes = {0};
+    option_ref_owner arg_inverse_attributes_refs = {0};
 
     if (!PyArg_ParseTuple(args, "OO", &arg_self_obj, &arg_inverse_attributes_obj)) return NULL;
 
     if (!extract_handle(arg_self_obj, &IfcOpenshellEntityType, "IfcOpenshellEntity", (void **)&arg_self, 0)) {
         goto __cleanup;
     }
-    if (!make_input_inverse_attribute_list(arg_inverse_attributes_obj, &arg_inverse_attributes)) {
+    if (!make_input_inverse_attribute_list(arg_inverse_attributes_obj, &arg_inverse_attributes, &arg_inverse_attributes_refs)) {
         goto __cleanup;
     }
     ifcopenshell_clear_error();
@@ -25168,6 +27228,7 @@ static PyObject *py_ifcopenshell_entity_set_inverse_attributes(PyObject *self, P
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
+        release_option_refs(&arg_inverse_attributes_refs);
         free_input_inverse_attribute_list(&arg_inverse_attributes);
     return __py_result;
 }
@@ -25179,13 +27240,14 @@ static PyObject *py_ifcopenshell_entity_set_subtypes(PyObject *self, PyObject *a
     ifcopenshell_entity_t *arg_self = NULL;
     PyObject *arg_subtypes_obj = NULL;
     ifcopenshell_entity_list_t arg_subtypes = {0};
+    option_ref_owner arg_subtypes_refs = {0};
 
     if (!PyArg_ParseTuple(args, "OO", &arg_self_obj, &arg_subtypes_obj)) return NULL;
 
     if (!extract_handle(arg_self_obj, &IfcOpenshellEntityType, "IfcOpenshellEntity", (void **)&arg_self, 0)) {
         goto __cleanup;
     }
-    if (!make_input_entity_list(arg_subtypes_obj, &arg_subtypes)) {
+    if (!make_input_entity_list(arg_subtypes_obj, &arg_subtypes, &arg_subtypes_refs)) {
         goto __cleanup;
     }
     ifcopenshell_clear_error();
@@ -25201,6 +27263,7 @@ static PyObject *py_ifcopenshell_entity_set_subtypes(PyObject *self, PyObject *a
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
+        release_option_refs(&arg_subtypes_refs);
         free_input_entity_list(&arg_subtypes);
     return __py_result;
 }
@@ -25383,14 +27446,14 @@ static PyObject *py_ifcopenshell_feature_add_feature(PyObject *self, PyObject *a
     ifcopenshell_file_t *arg_file = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_feature_add_feature_options_t arg_options = {0};
-    PyObject *arg_options_refs[4] = {0};
+    option_ref_owner arg_options_refs = {0};
     ifcopenshell_instance_t *result = NULL;
     if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_options_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_feature_add_feature_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_feature_add_feature_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -25406,7 +27469,7 @@ static PyObject *py_ifcopenshell_feature_add_feature(PyObject *self, PyObject *a
     }
     __py_result = wrap_instance(result, 1);
 __cleanup:
-        release_option_refs(arg_options_refs, 4);
+        release_option_refs(&arg_options_refs);
         free_input_feature_add_feature_options(&arg_options);
     return __py_result;
 }
@@ -25455,14 +27518,14 @@ static PyObject *py_ifcopenshell_feature_remove_feature(PyObject *self, PyObject
     ifcopenshell_file_t *arg_file = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_feature_remove_feature_options_t arg_options = {0};
-    PyObject *arg_options_refs[3] = {0};
+    option_ref_owner arg_options_refs = {0};
 
     if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_options_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_feature_remove_feature_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_feature_remove_feature_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -25479,7 +27542,7 @@ static PyObject *py_ifcopenshell_feature_remove_feature(PyObject *self, PyObject
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
-        release_option_refs(arg_options_refs, 3);
+        release_option_refs(&arg_options_refs);
         free_input_feature_remove_feature_options(&arg_options);
     return __py_result;
 }
@@ -26039,6 +28102,7 @@ static PyObject *py_ifcopenshell_file_description_initialize(PyObject *self, PyO
     ifcopenshell_file_description_t *arg_self = NULL;
     PyObject *arg_v1_description_obj = NULL;
     ifcopenshell_string_list_t arg_v1_description = {0};
+    option_ref_owner arg_v1_description_refs = {0};
     const char *arg_v2_implementation_level = NULL;
     ifcopenshell_file_description_t *result = NULL;
     if (!PyArg_ParseTuple(args, "OOs", &arg_self_obj, &arg_v1_description_obj, &arg_v2_implementation_level)) return NULL;
@@ -26046,7 +28110,7 @@ static PyObject *py_ifcopenshell_file_description_initialize(PyObject *self, PyO
     if (!extract_handle(arg_self_obj, &IfcOpenshellFileDescriptionType, "IfcOpenshellFileDescription", (void **)&arg_self, 0)) {
         goto __cleanup;
     }
-    if (!make_input_string_list(arg_v1_description_obj, &arg_v1_description)) {
+    if (!make_input_string_list(arg_v1_description_obj, &arg_v1_description, &arg_v1_description_refs)) {
         goto __cleanup;
     }
     ifcopenshell_clear_error();
@@ -26061,6 +28125,7 @@ static PyObject *py_ifcopenshell_file_description_initialize(PyObject *self, PyO
     }
     __py_result = wrap_file_description(result, 1);
 __cleanup:
+        release_option_refs(&arg_v1_description_refs);
         free_input_string_list(&arg_v1_description);
     return __py_result;
 }
@@ -26072,13 +28137,14 @@ static PyObject *py_ifcopenshell_file_description_setdescription(PyObject *self,
     ifcopenshell_file_description_t *arg_self = NULL;
     PyObject *arg_v_obj = NULL;
     ifcopenshell_string_list_t arg_v = {0};
+    option_ref_owner arg_v_refs = {0};
 
     if (!PyArg_ParseTuple(args, "OO", &arg_self_obj, &arg_v_obj)) return NULL;
 
     if (!extract_handle(arg_self_obj, &IfcOpenshellFileDescriptionType, "IfcOpenshellFileDescription", (void **)&arg_self, 0)) {
         goto __cleanup;
     }
-    if (!make_input_string_list(arg_v_obj, &arg_v)) {
+    if (!make_input_string_list(arg_v_obj, &arg_v, &arg_v_refs)) {
         goto __cleanup;
     }
     ifcopenshell_clear_error();
@@ -26094,6 +28160,7 @@ static PyObject *py_ifcopenshell_file_description_setdescription(PyObject *self,
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
+        release_option_refs(&arg_v_refs);
         free_input_string_list(&arg_v);
     return __py_result;
 }
@@ -26751,8 +28818,10 @@ static PyObject *py_ifcopenshell_file_name_initialize(PyObject *self, PyObject *
     const char *arg_v2_time_stamp = NULL;
     PyObject *arg_v3_author_obj = NULL;
     ifcopenshell_string_list_t arg_v3_author = {0};
+    option_ref_owner arg_v3_author_refs = {0};
     PyObject *arg_v4_organization_obj = NULL;
     ifcopenshell_string_list_t arg_v4_organization = {0};
+    option_ref_owner arg_v4_organization_refs = {0};
     const char *arg_v5_preprocessor_version = NULL;
     const char *arg_v6_originating_system = NULL;
     const char *arg_v7_authorization = NULL;
@@ -26762,10 +28831,10 @@ static PyObject *py_ifcopenshell_file_name_initialize(PyObject *self, PyObject *
     if (!extract_handle(arg_self_obj, &IfcOpenshellFileNameType, "IfcOpenshellFileName", (void **)&arg_self, 0)) {
         goto __cleanup;
     }
-    if (!make_input_string_list(arg_v3_author_obj, &arg_v3_author)) {
+    if (!make_input_string_list(arg_v3_author_obj, &arg_v3_author, &arg_v3_author_refs)) {
         goto __cleanup;
     }
-    if (!make_input_string_list(arg_v4_organization_obj, &arg_v4_organization)) {
+    if (!make_input_string_list(arg_v4_organization_obj, &arg_v4_organization, &arg_v4_organization_refs)) {
         goto __cleanup;
     }
     ifcopenshell_clear_error();
@@ -26780,7 +28849,9 @@ static PyObject *py_ifcopenshell_file_name_initialize(PyObject *self, PyObject *
     }
     __py_result = wrap_file_name(result, 1);
 __cleanup:
+        release_option_refs(&arg_v4_organization_refs);
         free_input_string_list(&arg_v4_organization);
+        release_option_refs(&arg_v3_author_refs);
         free_input_string_list(&arg_v3_author);
     return __py_result;
 }
@@ -26884,13 +28955,14 @@ static PyObject *py_ifcopenshell_file_name_setauthor(PyObject *self, PyObject *a
     ifcopenshell_file_name_t *arg_self = NULL;
     PyObject *arg_v_obj = NULL;
     ifcopenshell_string_list_t arg_v = {0};
+    option_ref_owner arg_v_refs = {0};
 
     if (!PyArg_ParseTuple(args, "OO", &arg_self_obj, &arg_v_obj)) return NULL;
 
     if (!extract_handle(arg_self_obj, &IfcOpenshellFileNameType, "IfcOpenshellFileName", (void **)&arg_self, 0)) {
         goto __cleanup;
     }
-    if (!make_input_string_list(arg_v_obj, &arg_v)) {
+    if (!make_input_string_list(arg_v_obj, &arg_v, &arg_v_refs)) {
         goto __cleanup;
     }
     ifcopenshell_clear_error();
@@ -26906,6 +28978,7 @@ static PyObject *py_ifcopenshell_file_name_setauthor(PyObject *self, PyObject *a
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
+        release_option_refs(&arg_v_refs);
         free_input_string_list(&arg_v);
     return __py_result;
 }
@@ -26975,13 +29048,14 @@ static PyObject *py_ifcopenshell_file_name_setorganization(PyObject *self, PyObj
     ifcopenshell_file_name_t *arg_self = NULL;
     PyObject *arg_v_obj = NULL;
     ifcopenshell_string_list_t arg_v = {0};
+    option_ref_owner arg_v_refs = {0};
 
     if (!PyArg_ParseTuple(args, "OO", &arg_self_obj, &arg_v_obj)) return NULL;
 
     if (!extract_handle(arg_self_obj, &IfcOpenshellFileNameType, "IfcOpenshellFileName", (void **)&arg_self, 0)) {
         goto __cleanup;
     }
-    if (!make_input_string_list(arg_v_obj, &arg_v)) {
+    if (!make_input_string_list(arg_v_obj, &arg_v, &arg_v_refs)) {
         goto __cleanup;
     }
     ifcopenshell_clear_error();
@@ -26997,6 +29071,7 @@ static PyObject *py_ifcopenshell_file_name_setorganization(PyObject *self, PyObj
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
+        release_option_refs(&arg_v_refs);
         free_input_string_list(&arg_v);
     return __py_result;
 }
@@ -27327,13 +29402,14 @@ static PyObject *py_ifcopenshell_file_schema_initialize(PyObject *self, PyObject
     ifcopenshell_file_schema_t *arg_self = NULL;
     PyObject *arg_v1_schema_identifiers_obj = NULL;
     ifcopenshell_string_list_t arg_v1_schema_identifiers = {0};
+    option_ref_owner arg_v1_schema_identifiers_refs = {0};
     ifcopenshell_file_schema_t *result = NULL;
     if (!PyArg_ParseTuple(args, "OO", &arg_self_obj, &arg_v1_schema_identifiers_obj)) return NULL;
 
     if (!extract_handle(arg_self_obj, &IfcOpenshellFileSchemaType, "IfcOpenshellFileSchema", (void **)&arg_self, 0)) {
         goto __cleanup;
     }
-    if (!make_input_string_list(arg_v1_schema_identifiers_obj, &arg_v1_schema_identifiers)) {
+    if (!make_input_string_list(arg_v1_schema_identifiers_obj, &arg_v1_schema_identifiers, &arg_v1_schema_identifiers_refs)) {
         goto __cleanup;
     }
     ifcopenshell_clear_error();
@@ -27348,6 +29424,7 @@ static PyObject *py_ifcopenshell_file_schema_initialize(PyObject *self, PyObject
     }
     __py_result = wrap_file_schema(result, 1);
 __cleanup:
+        release_option_refs(&arg_v1_schema_identifiers_refs);
         free_input_string_list(&arg_v1_schema_identifiers);
     return __py_result;
 }
@@ -27405,13 +29482,14 @@ static PyObject *py_ifcopenshell_file_schema_setschema_identifiers(PyObject *sel
     ifcopenshell_file_schema_t *arg_self = NULL;
     PyObject *arg_v_obj = NULL;
     ifcopenshell_string_list_t arg_v = {0};
+    option_ref_owner arg_v_refs = {0};
 
     if (!PyArg_ParseTuple(args, "OO", &arg_self_obj, &arg_v_obj)) return NULL;
 
     if (!extract_handle(arg_self_obj, &IfcOpenshellFileSchemaType, "IfcOpenshellFileSchema", (void **)&arg_self, 0)) {
         goto __cleanup;
     }
-    if (!make_input_string_list(arg_v_obj, &arg_v)) {
+    if (!make_input_string_list(arg_v_obj, &arg_v, &arg_v_refs)) {
         goto __cleanup;
     }
     ifcopenshell_clear_error();
@@ -27427,6 +29505,7 @@ static PyObject *py_ifcopenshell_file_schema_setschema_identifiers(PyObject *sel
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
+        release_option_refs(&arg_v_refs);
         free_input_string_list(&arg_v);
     return __py_result;
 }
@@ -27628,11 +29707,12 @@ static PyObject *py_ifcopenshell_geom_arrange_polygons(PyObject *self, PyObject 
     bool ok = false;
     PyObject *arg_polygons_cpp_obj = NULL;
     ifcopenshell_geom_svgfill_polygon_list_t arg_polygons_cpp = {0};
+    option_ref_owner arg_polygons_cpp_refs = {0};
     ifcopenshell_geom_svgfill_polygon_list_t result = {0};
     if (!PyArg_ParseTuple(args, "O", &arg_polygons_cpp_obj)) return NULL;
 
 
-    if (!make_input_geom_svgfill_polygon_list(arg_polygons_cpp_obj, &arg_polygons_cpp)) {
+    if (!make_input_geom_svgfill_polygon_list(arg_polygons_cpp_obj, &arg_polygons_cpp, &arg_polygons_cpp_refs)) {
         goto __cleanup;
     }
     ifcopenshell_clear_error();
@@ -27643,6 +29723,7 @@ static PyObject *py_ifcopenshell_geom_arrange_polygons(PyObject *self, PyObject 
     }
     __py_result = convert_geom_svgfill_polygon_list(&result, 1);
 __cleanup:
+        release_option_refs(&arg_polygons_cpp_refs);
         free_input_geom_svgfill_polygon_list(&arg_polygons_cpp);
     return __py_result;
 }
@@ -29001,6 +31082,7 @@ static PyObject *py_ifcopenshell_geom_create_iterator_with_include_exclude(PyObj
     ifcopenshell_file_t *arg_file_cpp = NULL;
     PyObject *arg_elems_cpp_obj = NULL;
     ifcopenshell_string_list_t arg_elems_cpp = {0};
+    option_ref_owner arg_elems_cpp_refs = {0};
     int arg_include = 0;
     int32_t arg_num_threads = 0;
     ifcopenshell_geom_iterator_t *result = NULL;
@@ -29012,7 +31094,7 @@ static PyObject *py_ifcopenshell_geom_create_iterator_with_include_exclude(PyObj
     if (!extract_handle(arg_file_cpp_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file_cpp, 0)) {
         goto __cleanup;
     }
-    if (!make_input_string_list(arg_elems_cpp_obj, &arg_elems_cpp)) {
+    if (!make_input_string_list(arg_elems_cpp_obj, &arg_elems_cpp, &arg_elems_cpp_refs)) {
         goto __cleanup;
     }
     ifcopenshell_clear_error();
@@ -29027,6 +31109,7 @@ static PyObject *py_ifcopenshell_geom_create_iterator_with_include_exclude(PyObj
     }
     __py_result = wrap_geom_iterator(result, 1);
 __cleanup:
+        release_option_refs(&arg_elems_cpp_refs);
         free_input_string_list(&arg_elems_cpp);
     return __py_result;
 }
@@ -29041,6 +31124,7 @@ static PyObject *py_ifcopenshell_geom_create_iterator_with_include_exclude_globa
     ifcopenshell_file_t *arg_file_cpp = NULL;
     PyObject *arg_elems_cpp_obj = NULL;
     ifcopenshell_string_list_t arg_elems_cpp = {0};
+    option_ref_owner arg_elems_cpp_refs = {0};
     int arg_include = 0;
     int32_t arg_num_threads = 0;
     ifcopenshell_geom_iterator_t *result = NULL;
@@ -29052,7 +31136,7 @@ static PyObject *py_ifcopenshell_geom_create_iterator_with_include_exclude_globa
     if (!extract_handle(arg_file_cpp_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file_cpp, 0)) {
         goto __cleanup;
     }
-    if (!make_input_string_list(arg_elems_cpp_obj, &arg_elems_cpp)) {
+    if (!make_input_string_list(arg_elems_cpp_obj, &arg_elems_cpp, &arg_elems_cpp_refs)) {
         goto __cleanup;
     }
     ifcopenshell_clear_error();
@@ -29067,6 +31151,7 @@ static PyObject *py_ifcopenshell_geom_create_iterator_with_include_exclude_globa
     }
     __py_result = wrap_geom_iterator(result, 1);
 __cleanup:
+        release_option_refs(&arg_elems_cpp_refs);
         free_input_string_list(&arg_elems_cpp);
     return __py_result;
 }
@@ -29081,6 +31166,7 @@ static PyObject *py_ifcopenshell_geom_create_iterator_with_include_exclude_id(Py
     ifcopenshell_file_t *arg_file_cpp = NULL;
     PyObject *arg_elems_cpp_obj = NULL;
     ifcopenshell_int32_list_t arg_elems_cpp = {0};
+    option_ref_owner arg_elems_cpp_refs = {0};
     int arg_include = 0;
     int32_t arg_num_threads = 0;
     ifcopenshell_geom_iterator_t *result = NULL;
@@ -29092,7 +31178,7 @@ static PyObject *py_ifcopenshell_geom_create_iterator_with_include_exclude_id(Py
     if (!extract_handle(arg_file_cpp_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file_cpp, 0)) {
         goto __cleanup;
     }
-    if (!make_input_int32_list(arg_elems_cpp_obj, &arg_elems_cpp)) {
+    if (!make_input_int32_list(arg_elems_cpp_obj, &arg_elems_cpp, &arg_elems_cpp_refs)) {
         goto __cleanup;
     }
     ifcopenshell_clear_error();
@@ -29107,6 +31193,7 @@ static PyObject *py_ifcopenshell_geom_create_iterator_with_include_exclude_id(Py
     }
     __py_result = wrap_geom_iterator(result, 1);
 __cleanup:
+        release_option_refs(&arg_elems_cpp_refs);
         free_input_int32_list(&arg_elems_cpp);
     return __py_result;
 }
@@ -30744,11 +32831,12 @@ static PyObject *py_ifcopenshell_geom_nary_union(PyObject *self, PyObject *args)
     bool ok = false;
     PyObject *arg_shapes_cpp_obj = NULL;
     ifcopenshell_geom_conversion_result_shape_list_t arg_shapes_cpp = {0};
+    option_ref_owner arg_shapes_cpp_refs = {0};
     ifcopenshell_geom_conversion_result_shape_t *result = NULL;
     if (!PyArg_ParseTuple(args, "O", &arg_shapes_cpp_obj)) return NULL;
 
 
-    if (!make_input_geom_conversion_result_shape_list(arg_shapes_cpp_obj, &arg_shapes_cpp)) {
+    if (!make_input_geom_conversion_result_shape_list(arg_shapes_cpp_obj, &arg_shapes_cpp, &arg_shapes_cpp_refs)) {
         goto __cleanup;
     }
     ifcopenshell_clear_error();
@@ -30763,6 +32851,7 @@ static PyObject *py_ifcopenshell_geom_nary_union(PyObject *self, PyObject *args)
     }
     __py_result = wrap_geom_conversion_result_shape(result, 1);
 __cleanup:
+        release_option_refs(&arg_shapes_cpp_refs);
         free_input_geom_conversion_result_shape_list(&arg_shapes_cpp);
     return __py_result;
 }
@@ -31538,13 +33627,14 @@ static PyObject *py_ifcopenshell_geom_serializer_settings_set_int_set(PyObject *
     const char *arg_name = NULL;
     PyObject *arg_value_obj = NULL;
     ifcopenshell_int32_list_t arg_value = {0};
+    option_ref_owner arg_value_refs = {0};
 
     if (!PyArg_ParseTuple(args, "OsO", &arg_self_obj, &arg_name, &arg_value_obj)) return NULL;
 
     if (!extract_handle(arg_self_obj, &IfcOpenshellGeomSerializerSettingsType, "IfcOpenshellGeomSerializerSettings", (void **)&arg_self, 0)) {
         goto __cleanup;
     }
-    if (!make_input_int32_list(arg_value_obj, &arg_value)) {
+    if (!make_input_int32_list(arg_value_obj, &arg_value, &arg_value_refs)) {
         goto __cleanup;
     }
     ifcopenshell_clear_error();
@@ -31560,6 +33650,7 @@ static PyObject *py_ifcopenshell_geom_serializer_settings_set_int_set(PyObject *
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
+        release_option_refs(&arg_value_refs);
         free_input_int32_list(&arg_value);
     return __py_result;
 }
@@ -31905,13 +33996,14 @@ static PyObject *py_ifcopenshell_geom_settings_set_double_list(PyObject *self, P
     const char *arg_name = NULL;
     PyObject *arg_value_obj = NULL;
     ifcopenshell_double_list_t arg_value = {0};
+    option_ref_owner arg_value_refs = {0};
 
     if (!PyArg_ParseTuple(args, "OsO", &arg_self_obj, &arg_name, &arg_value_obj)) return NULL;
 
     if (!extract_handle(arg_self_obj, &IfcOpenshellGeomSettingsType, "IfcOpenshellGeomSettings", (void **)&arg_self, 0)) {
         goto __cleanup;
     }
-    if (!make_input_double_list(arg_value_obj, &arg_value)) {
+    if (!make_input_double_list(arg_value_obj, &arg_value, &arg_value_refs)) {
         goto __cleanup;
     }
     ifcopenshell_clear_error();
@@ -31927,6 +34019,7 @@ static PyObject *py_ifcopenshell_geom_settings_set_double_list(PyObject *self, P
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
+        release_option_refs(&arg_value_refs);
         free_input_double_list(&arg_value);
     return __py_result;
 }
@@ -31969,13 +34062,14 @@ static PyObject *py_ifcopenshell_geom_settings_set_int_set(PyObject *self, PyObj
     const char *arg_name = NULL;
     PyObject *arg_value_obj = NULL;
     ifcopenshell_int32_list_t arg_value = {0};
+    option_ref_owner arg_value_refs = {0};
 
     if (!PyArg_ParseTuple(args, "OsO", &arg_self_obj, &arg_name, &arg_value_obj)) return NULL;
 
     if (!extract_handle(arg_self_obj, &IfcOpenshellGeomSettingsType, "IfcOpenshellGeomSettings", (void **)&arg_self, 0)) {
         goto __cleanup;
     }
-    if (!make_input_int32_list(arg_value_obj, &arg_value)) {
+    if (!make_input_int32_list(arg_value_obj, &arg_value, &arg_value_refs)) {
         goto __cleanup;
     }
     ifcopenshell_clear_error();
@@ -31991,6 +34085,7 @@ static PyObject *py_ifcopenshell_geom_settings_set_int_set(PyObject *self, PyObj
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
+        release_option_refs(&arg_value_refs);
         free_input_int32_list(&arg_value);
     return __py_result;
 }
@@ -32033,13 +34128,14 @@ static PyObject *py_ifcopenshell_geom_settings_set_string_set(PyObject *self, Py
     const char *arg_name = NULL;
     PyObject *arg_value_obj = NULL;
     ifcopenshell_string_list_t arg_value = {0};
+    option_ref_owner arg_value_refs = {0};
 
     if (!PyArg_ParseTuple(args, "OsO", &arg_self_obj, &arg_name, &arg_value_obj)) return NULL;
 
     if (!extract_handle(arg_self_obj, &IfcOpenshellGeomSettingsType, "IfcOpenshellGeomSettings", (void **)&arg_self, 0)) {
         goto __cleanup;
     }
-    if (!make_input_string_list(arg_value_obj, &arg_value)) {
+    if (!make_input_string_list(arg_value_obj, &arg_value, &arg_value_refs)) {
         goto __cleanup;
     }
     ifcopenshell_clear_error();
@@ -32055,6 +34151,7 @@ static PyObject *py_ifcopenshell_geom_settings_set_string_set(PyObject *self, Py
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
+        release_option_refs(&arg_value_refs);
         free_input_string_list(&arg_value);
     return __py_result;
 }
@@ -35665,8 +37762,10 @@ static PyObject *py_ifcopenshell_geom_tree_clash_clearance_many(PyObject *self, 
     ifcopenshell_geom_tree_t *arg_self = NULL;
     PyObject *arg_set_a_obj = NULL;
     ifcopenshell_instance_list_t arg_set_a = {0};
+    option_ref_owner arg_set_a_refs = {0};
     PyObject *arg_set_b_obj = NULL;
     ifcopenshell_instance_list_t arg_set_b = {0};
+    option_ref_owner arg_set_b_refs = {0};
     double arg_clearance = 0;
     int arg_check_all = 0;
     ifcopenshell_geom_tree_clash_list_t *result = NULL;
@@ -35675,10 +37774,10 @@ static PyObject *py_ifcopenshell_geom_tree_clash_clearance_many(PyObject *self, 
     if (!extract_handle(arg_self_obj, &IfcOpenshellGeomTreeType, "IfcOpenshellGeomTree", (void **)&arg_self, 0)) {
         goto __cleanup;
     }
-    if (!make_input_instance_list(arg_set_a_obj, &arg_set_a)) {
+    if (!make_input_instance_list(arg_set_a_obj, &arg_set_a, &arg_set_a_refs)) {
         goto __cleanup;
     }
-    if (!make_input_instance_list(arg_set_b_obj, &arg_set_b)) {
+    if (!make_input_instance_list(arg_set_b_obj, &arg_set_b, &arg_set_b_refs)) {
         goto __cleanup;
     }
     ifcopenshell_clear_error();
@@ -35693,7 +37792,9 @@ static PyObject *py_ifcopenshell_geom_tree_clash_clearance_many(PyObject *self, 
     }
     __py_result = wrap_geom_tree_clash_list(result, 1);
 __cleanup:
+        release_option_refs(&arg_set_b_refs);
         free_input_instance_list(&arg_set_b);
+        release_option_refs(&arg_set_a_refs);
         free_input_instance_list(&arg_set_a);
     return __py_result;
 }
@@ -35705,8 +37806,10 @@ static PyObject *py_ifcopenshell_geom_tree_clash_collision_many(PyObject *self, 
     ifcopenshell_geom_tree_t *arg_self = NULL;
     PyObject *arg_set_a_obj = NULL;
     ifcopenshell_instance_list_t arg_set_a = {0};
+    option_ref_owner arg_set_a_refs = {0};
     PyObject *arg_set_b_obj = NULL;
     ifcopenshell_instance_list_t arg_set_b = {0};
+    option_ref_owner arg_set_b_refs = {0};
     int arg_allow_touching = 0;
     ifcopenshell_geom_tree_clash_list_t *result = NULL;
     if (!PyArg_ParseTuple(args, "OOOp", &arg_self_obj, &arg_set_a_obj, &arg_set_b_obj, &arg_allow_touching)) return NULL;
@@ -35714,10 +37817,10 @@ static PyObject *py_ifcopenshell_geom_tree_clash_collision_many(PyObject *self, 
     if (!extract_handle(arg_self_obj, &IfcOpenshellGeomTreeType, "IfcOpenshellGeomTree", (void **)&arg_self, 0)) {
         goto __cleanup;
     }
-    if (!make_input_instance_list(arg_set_a_obj, &arg_set_a)) {
+    if (!make_input_instance_list(arg_set_a_obj, &arg_set_a, &arg_set_a_refs)) {
         goto __cleanup;
     }
-    if (!make_input_instance_list(arg_set_b_obj, &arg_set_b)) {
+    if (!make_input_instance_list(arg_set_b_obj, &arg_set_b, &arg_set_b_refs)) {
         goto __cleanup;
     }
     ifcopenshell_clear_error();
@@ -35732,7 +37835,9 @@ static PyObject *py_ifcopenshell_geom_tree_clash_collision_many(PyObject *self, 
     }
     __py_result = wrap_geom_tree_clash_list(result, 1);
 __cleanup:
+        release_option_refs(&arg_set_b_refs);
         free_input_instance_list(&arg_set_b);
+        release_option_refs(&arg_set_a_refs);
         free_input_instance_list(&arg_set_a);
     return __py_result;
 }
@@ -35795,8 +37900,10 @@ static PyObject *py_ifcopenshell_geom_tree_clash_intersection_many(PyObject *sel
     ifcopenshell_geom_tree_t *arg_self = NULL;
     PyObject *arg_set_a_obj = NULL;
     ifcopenshell_instance_list_t arg_set_a = {0};
+    option_ref_owner arg_set_a_refs = {0};
     PyObject *arg_set_b_obj = NULL;
     ifcopenshell_instance_list_t arg_set_b = {0};
+    option_ref_owner arg_set_b_refs = {0};
     double arg_tolerance = 0;
     int arg_check_all = 0;
     ifcopenshell_geom_tree_clash_list_t *result = NULL;
@@ -35805,10 +37912,10 @@ static PyObject *py_ifcopenshell_geom_tree_clash_intersection_many(PyObject *sel
     if (!extract_handle(arg_self_obj, &IfcOpenshellGeomTreeType, "IfcOpenshellGeomTree", (void **)&arg_self, 0)) {
         goto __cleanup;
     }
-    if (!make_input_instance_list(arg_set_a_obj, &arg_set_a)) {
+    if (!make_input_instance_list(arg_set_a_obj, &arg_set_a, &arg_set_a_refs)) {
         goto __cleanup;
     }
-    if (!make_input_instance_list(arg_set_b_obj, &arg_set_b)) {
+    if (!make_input_instance_list(arg_set_b_obj, &arg_set_b, &arg_set_b_refs)) {
         goto __cleanup;
     }
     ifcopenshell_clear_error();
@@ -35823,7 +37930,9 @@ static PyObject *py_ifcopenshell_geom_tree_clash_intersection_many(PyObject *sel
     }
     __py_result = wrap_geom_tree_clash_list(result, 1);
 __cleanup:
+        release_option_refs(&arg_set_b_refs);
         free_input_instance_list(&arg_set_b);
+        release_option_refs(&arg_set_a_refs);
         free_input_instance_list(&arg_set_a);
     return __py_result;
 }
@@ -35950,13 +38059,14 @@ static PyObject *py_ifcopenshell_geom_tree_is_manifold(PyObject *self, PyObject 
     ifcopenshell_geom_tree_t *arg_self = NULL;
     PyObject *arg_faces_obj = NULL;
     ifcopenshell_int32_list_t arg_faces = {0};
+    option_ref_owner arg_faces_refs = {0};
     bool result = {0};
     if (!PyArg_ParseTuple(args, "OO", &arg_self_obj, &arg_faces_obj)) return NULL;
 
     if (!extract_handle(arg_self_obj, &IfcOpenshellGeomTreeType, "IfcOpenshellGeomTree", (void **)&arg_self, 0)) {
         goto __cleanup;
     }
-    if (!make_input_int32_list(arg_faces_obj, &arg_faces)) {
+    if (!make_input_int32_list(arg_faces_obj, &arg_faces, &arg_faces_refs)) {
         goto __cleanup;
     }
     ifcopenshell_clear_error();
@@ -35967,6 +38077,7 @@ static PyObject *py_ifcopenshell_geom_tree_is_manifold(PyObject *self, PyObject 
     }
     __py_result = PyBool_FromLong(result);
 __cleanup:
+        release_option_refs(&arg_faces_refs);
         free_input_int32_list(&arg_faces);
     return __py_result;
 }
@@ -36562,13 +38673,14 @@ static PyObject *py_ifcopenshell_geom_tree_uint8_to_b64(PyObject *self, PyObject
     ifcopenshell_geom_tree_t *arg_self = NULL;
     PyObject *arg_uuids_array_obj = NULL;
     ifcopenshell_uint8_list_t arg_uuids_array = {0};
+    option_ref_owner arg_uuids_array_refs = {0};
     ifcopenshell_string_t result = {0};
     if (!PyArg_ParseTuple(args, "OO", &arg_self_obj, &arg_uuids_array_obj)) return NULL;
 
     if (!extract_handle(arg_self_obj, &IfcOpenshellGeomTreeType, "IfcOpenshellGeomTree", (void **)&arg_self, 0)) {
         goto __cleanup;
     }
-    if (!make_input_uint8_list(arg_uuids_array_obj, &arg_uuids_array)) {
+    if (!make_input_uint8_list(arg_uuids_array_obj, &arg_uuids_array, &arg_uuids_array_refs)) {
         goto __cleanup;
     }
     ifcopenshell_clear_error();
@@ -36579,6 +38691,7 @@ static PyObject *py_ifcopenshell_geom_tree_uint8_to_b64(PyObject *self, PyObject
     }
     __py_result = convert_string(&result);
 __cleanup:
+        release_option_refs(&arg_uuids_array_refs);
         free_input_uint8_list(&arg_uuids_array);
     return __py_result;
 }
@@ -37416,7 +39529,8 @@ static PyObject *py_ifcopenshell_geometry_add_axis_representation(PyObject *self
     PyObject *arg_context_obj = NULL;
     ifcopenshell_instance_t *arg_context = NULL;
     PyObject *arg_axis_obj = NULL;
-    ifcopenshell_double_list_list_t arg_axis = {0};
+    ifcopenshell_double_list_list_any_2_double_list_list_any_3_variant_t arg_axis = {0};
+    option_ref_owner arg_axis_refs = {0};
     ifcopenshell_instance_t *result = NULL;
     if (!PyArg_ParseTuple(args, "OOO", &arg_file_obj, &arg_context_obj, &arg_axis_obj)) return NULL;
 
@@ -37426,9 +39540,8 @@ static PyObject *py_ifcopenshell_geometry_add_axis_representation(PyObject *self
     if (!extract_handle(arg_context_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_context, 0)) {
         goto __cleanup;
     }
-    if (!make_input_double_list_list(arg_axis_obj, &arg_axis)) {
-        goto __cleanup;
-    }
+    if (!make_input_double_list_list_any_2_double_list_list_any_3_variant(arg_axis_obj, &arg_axis, &arg_axis_refs)) goto __cleanup;
+
     ifcopenshell_clear_error();
     ok = ifcopenshell_geometry_add_axis_representation(arg_file, arg_context, &arg_axis, &result);
     if (!ok) {
@@ -37441,7 +39554,8 @@ static PyObject *py_ifcopenshell_geometry_add_axis_representation(PyObject *self
     }
     __py_result = wrap_instance(result, 1);
 __cleanup:
-        free_input_double_list_list(&arg_axis);
+        release_option_refs(&arg_axis_refs);
+        free_input_double_list_list_any_2_double_list_list_any_3_variant(&arg_axis);
     return __py_result;
 }
 
@@ -37454,6 +39568,7 @@ static PyObject *py_ifcopenshell_geometry_add_boolean(PyObject *self, PyObject *
     ifcopenshell_instance_t *arg_first_item = NULL;
     PyObject *arg_second_items_obj = NULL;
     ifcopenshell_instance_list_t arg_second_items = {0};
+    option_ref_owner arg_second_items_refs = {0};
     const char *arg_operator_type = NULL;
     ifcopenshell_parse_instance_list_t *result = NULL;
     if (!PyArg_ParseTuple(args, "OOOs", &arg_file_obj, &arg_first_item_obj, &arg_second_items_obj, &arg_operator_type)) return NULL;
@@ -37464,7 +39579,7 @@ static PyObject *py_ifcopenshell_geometry_add_boolean(PyObject *self, PyObject *
     if (!extract_handle(arg_first_item_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_first_item, 0)) {
         goto __cleanup;
     }
-    if (!make_input_instance_list(arg_second_items_obj, &arg_second_items)) {
+    if (!make_input_instance_list(arg_second_items_obj, &arg_second_items, &arg_second_items_refs)) {
         goto __cleanup;
     }
     ifcopenshell_clear_error();
@@ -37479,6 +39594,7 @@ static PyObject *py_ifcopenshell_geometry_add_boolean(PyObject *self, PyObject *
     }
     __py_result = wrap_parse_instance_list(result, 1);
 __cleanup:
+        release_option_refs(&arg_second_items_refs);
         free_input_instance_list(&arg_second_items);
     return __py_result;
 }
@@ -37490,14 +39606,14 @@ static PyObject *py_ifcopenshell_geometry_add_door_representation(PyObject *self
     ifcopenshell_file_t *arg_file = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_geometry_add_door_representation_options_t arg_options = {0};
-    PyObject *arg_options_refs[8] = {0};
+    option_ref_owner arg_options_refs = {0};
     ifcopenshell_instance_t *result = NULL;
     if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_options_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_geometry_add_door_representation_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_geometry_add_door_representation_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -37513,7 +39629,7 @@ static PyObject *py_ifcopenshell_geometry_add_door_representation(PyObject *self
     }
     __py_result = wrap_instance(result, 1);
 __cleanup:
-        release_option_refs(arg_options_refs, 8);
+        release_option_refs(&arg_options_refs);
         free_input_geometry_add_door_representation_options(&arg_options);
     return __py_result;
 }
@@ -37527,6 +39643,7 @@ static PyObject *py_ifcopenshell_geometry_add_footprint_representation(PyObject 
     ifcopenshell_instance_t *arg_context = NULL;
     PyObject *arg_curves_obj = NULL;
     ifcopenshell_instance_list_t arg_curves = {0};
+    option_ref_owner arg_curves_refs = {0};
     ifcopenshell_instance_t *result = NULL;
     if (!PyArg_ParseTuple(args, "OOO", &arg_file_obj, &arg_context_obj, &arg_curves_obj)) return NULL;
 
@@ -37536,7 +39653,7 @@ static PyObject *py_ifcopenshell_geometry_add_footprint_representation(PyObject 
     if (!extract_handle(arg_context_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_context, 0)) {
         goto __cleanup;
     }
-    if (!make_input_instance_list(arg_curves_obj, &arg_curves)) {
+    if (!make_input_instance_list(arg_curves_obj, &arg_curves, &arg_curves_refs)) {
         goto __cleanup;
     }
     ifcopenshell_clear_error();
@@ -37551,6 +39668,7 @@ static PyObject *py_ifcopenshell_geometry_add_footprint_representation(PyObject 
     }
     __py_result = wrap_instance(result, 1);
 __cleanup:
+        release_option_refs(&arg_curves_refs);
         free_input_instance_list(&arg_curves);
     return __py_result;
 }
@@ -37564,7 +39682,7 @@ static PyObject *py_ifcopenshell_geometry_add_mesh_representation(PyObject *self
     ifcopenshell_instance_t *arg_context = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_geometry_add_mesh_representation_options_t arg_options = {0};
-    PyObject *arg_options_refs[3] = {0};
+    option_ref_owner arg_options_refs = {0};
     ifcopenshell_instance_t *result = NULL;
     if (!PyArg_ParseTuple(args, "OOO", &arg_file_obj, &arg_context_obj, &arg_options_obj)) return NULL;
 
@@ -37574,7 +39692,7 @@ static PyObject *py_ifcopenshell_geometry_add_mesh_representation(PyObject *self
     if (!extract_handle(arg_context_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_context, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_geometry_add_mesh_representation_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_geometry_add_mesh_representation_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -37590,7 +39708,7 @@ static PyObject *py_ifcopenshell_geometry_add_mesh_representation(PyObject *self
     }
     __py_result = wrap_instance(result, 1);
 __cleanup:
-        release_option_refs(arg_options_refs, 3);
+        release_option_refs(&arg_options_refs);
         free_input_geometry_add_mesh_representation_options(&arg_options);
     return __py_result;
 }
@@ -37602,14 +39720,14 @@ static PyObject *py_ifcopenshell_geometry_add_profile_representation(PyObject *s
     ifcopenshell_file_t *arg_file = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_geometry_add_profile_representation_options_t arg_options = {0};
-    PyObject *arg_options_refs[10] = {0};
+    option_ref_owner arg_options_refs = {0};
     ifcopenshell_instance_t *result = NULL;
     if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_options_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_geometry_add_profile_representation_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_geometry_add_profile_representation_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -37625,7 +39743,7 @@ static PyObject *py_ifcopenshell_geometry_add_profile_representation(PyObject *s
     }
     __py_result = wrap_instance(result, 1);
 __cleanup:
-        release_option_refs(arg_options_refs, 10);
+        release_option_refs(&arg_options_refs);
         free_input_geometry_add_profile_representation_options(&arg_options);
     return __py_result;
 }
@@ -37637,14 +39755,14 @@ static PyObject *py_ifcopenshell_geometry_add_railing_representation(PyObject *s
     ifcopenshell_file_t *arg_file = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_geometry_add_railing_representation_options_t arg_options = {0};
-    PyObject *arg_options_refs[10] = {0};
+    option_ref_owner arg_options_refs = {0};
     ifcopenshell_instance_t *result = NULL;
     if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_options_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_geometry_add_railing_representation_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_geometry_add_railing_representation_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -37660,7 +39778,7 @@ static PyObject *py_ifcopenshell_geometry_add_railing_representation(PyObject *s
     }
     __py_result = wrap_instance(result, 1);
 __cleanup:
-        release_option_refs(arg_options_refs, 10);
+        release_option_refs(&arg_options_refs);
         free_input_geometry_add_railing_representation_options(&arg_options);
     return __py_result;
 }
@@ -37672,14 +39790,14 @@ static PyObject *py_ifcopenshell_geometry_add_shape_aspect(PyObject *self, PyObj
     ifcopenshell_file_t *arg_file = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_geometry_add_shape_aspect_options_t arg_options = {0};
-    PyObject *arg_options_refs[5] = {0};
+    option_ref_owner arg_options_refs = {0};
     ifcopenshell_instance_t *result = NULL;
     if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_options_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_geometry_add_shape_aspect_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_geometry_add_shape_aspect_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -37695,7 +39813,7 @@ static PyObject *py_ifcopenshell_geometry_add_shape_aspect(PyObject *self, PyObj
     }
     __py_result = wrap_instance(result, 1);
 __cleanup:
-        release_option_refs(arg_options_refs, 5);
+        release_option_refs(&arg_options_refs);
         free_input_geometry_add_shape_aspect_options(&arg_options);
     return __py_result;
 }
@@ -37707,14 +39825,14 @@ static PyObject *py_ifcopenshell_geometry_add_slab_representation(PyObject *self
     ifcopenshell_file_t *arg_file = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_geometry_add_slab_representation_options_t arg_options = {0};
-    PyObject *arg_options_refs[10] = {0};
+    option_ref_owner arg_options_refs = {0};
     ifcopenshell_instance_t *result = NULL;
     if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_options_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_geometry_add_slab_representation_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_geometry_add_slab_representation_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -37730,7 +39848,7 @@ static PyObject *py_ifcopenshell_geometry_add_slab_representation(PyObject *self
     }
     __py_result = wrap_instance(result, 1);
 __cleanup:
-        release_option_refs(arg_options_refs, 10);
+        release_option_refs(&arg_options_refs);
         free_input_geometry_add_slab_representation_options(&arg_options);
     return __py_result;
 }
@@ -37742,14 +39860,14 @@ static PyObject *py_ifcopenshell_geometry_add_topology_representation(PyObject *
     ifcopenshell_file_t *arg_file = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_geometry_add_topology_representation_options_t arg_options = {0};
-    PyObject *arg_options_refs[4] = {0};
+    option_ref_owner arg_options_refs = {0};
     ifcopenshell_instance_t *result = NULL;
     if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_options_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_geometry_add_topology_representation_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_geometry_add_topology_representation_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -37765,7 +39883,7 @@ static PyObject *py_ifcopenshell_geometry_add_topology_representation(PyObject *
     }
     __py_result = wrap_instance(result, 1);
 __cleanup:
-        release_option_refs(arg_options_refs, 4);
+        release_option_refs(&arg_options_refs);
         free_input_geometry_add_topology_representation_options(&arg_options);
     return __py_result;
 }
@@ -37777,14 +39895,14 @@ static PyObject *py_ifcopenshell_geometry_add_wall_representation(PyObject *self
     ifcopenshell_file_t *arg_file = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_geometry_add_wall_representation_options_t arg_options = {0};
-    PyObject *arg_options_refs[12] = {0};
+    option_ref_owner arg_options_refs = {0};
     ifcopenshell_instance_t *result = NULL;
     if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_options_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_geometry_add_wall_representation_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_geometry_add_wall_representation_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -37800,7 +39918,7 @@ static PyObject *py_ifcopenshell_geometry_add_wall_representation(PyObject *self
     }
     __py_result = wrap_instance(result, 1);
 __cleanup:
-        release_option_refs(arg_options_refs, 12);
+        release_option_refs(&arg_options_refs);
         free_input_geometry_add_wall_representation_options(&arg_options);
     return __py_result;
 }
@@ -37812,14 +39930,14 @@ static PyObject *py_ifcopenshell_geometry_add_window_representation(PyObject *se
     ifcopenshell_file_t *arg_file = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_geometry_add_window_representation_options_t arg_options = {0};
-    PyObject *arg_options_refs[8] = {0};
+    option_ref_owner arg_options_refs = {0};
     ifcopenshell_instance_t *result = NULL;
     if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_options_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_geometry_add_window_representation_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_geometry_add_window_representation_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -37835,7 +39953,7 @@ static PyObject *py_ifcopenshell_geometry_add_window_representation(PyObject *se
     }
     __py_result = wrap_instance(result, 1);
 __cleanup:
-        release_option_refs(arg_options_refs, 8);
+        release_option_refs(&arg_options_refs);
         free_input_geometry_add_window_representation_options(&arg_options);
     return __py_result;
 }
@@ -37884,14 +40002,14 @@ static PyObject *py_ifcopenshell_geometry_clip_solid(PyObject *self, PyObject *a
     ifcopenshell_file_t *arg_file = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_geometry_clip_solid_options_t arg_options = {0};
-    PyObject *arg_options_refs[7] = {0};
+    option_ref_owner arg_options_refs = {0};
     ifcopenshell_instance_t *result = NULL;
     if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_options_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_geometry_clip_solid_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_geometry_clip_solid_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -37907,7 +40025,7 @@ static PyObject *py_ifcopenshell_geometry_clip_solid(PyObject *self, PyObject *a
     }
     __py_result = wrap_instance(result, 1);
 __cleanup:
-        release_option_refs(arg_options_refs, 7);
+        release_option_refs(&arg_options_refs);
         free_input_geometry_clip_solid_options(&arg_options);
     return __py_result;
 }
@@ -37919,14 +40037,14 @@ static PyObject *py_ifcopenshell_geometry_clip_solid_bounded(PyObject *self, PyO
     ifcopenshell_file_t *arg_file = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_geometry_clip_solid_bounded_options_t arg_options = {0};
-    PyObject *arg_options_refs[9] = {0};
+    option_ref_owner arg_options_refs = {0};
     ifcopenshell_instance_t *result = NULL;
     if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_options_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_geometry_clip_solid_bounded_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_geometry_clip_solid_bounded_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -37942,7 +40060,7 @@ static PyObject *py_ifcopenshell_geometry_clip_solid_bounded(PyObject *self, PyO
     }
     __py_result = wrap_instance(result, 1);
 __cleanup:
-        release_option_refs(arg_options_refs, 9);
+        release_option_refs(&arg_options_refs);
         free_input_geometry_clip_solid_bounded_options(&arg_options);
     return __py_result;
 }
@@ -37952,11 +40070,11 @@ static PyObject *py_ifcopenshell_geometry_compute_wall_mounted_handrail_geometry
     bool ok = false;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_geometry_compute_wall_mounted_handrail_options_t arg_options = {0};
-    PyObject *arg_options_refs[9] = {0};
+    option_ref_owner arg_options_refs = {0};
     ifcopenshell_geometry_wall_mounted_handrail_result_t result = {0};
     if (!PyArg_ParseTuple(args, "O", &arg_options_obj)) return NULL;
 
-    if (!fill_input_geometry_compute_wall_mounted_handrail_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_geometry_compute_wall_mounted_handrail_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -37968,7 +40086,7 @@ static PyObject *py_ifcopenshell_geometry_compute_wall_mounted_handrail_geometry
     }
     __py_result = convert_geometry_wall_mounted_handrail_result(&result, 1);
 __cleanup:
-        release_option_refs(arg_options_refs, 9);
+        release_option_refs(&arg_options_refs);
         free_input_geometry_compute_wall_mounted_handrail_options(&arg_options);
     return __py_result;
 }
@@ -37980,14 +40098,14 @@ static PyObject *py_ifcopenshell_geometry_connect_element(PyObject *self, PyObje
     ifcopenshell_file_t *arg_file = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_geometry_connect_element_options_t arg_options = {0};
-    PyObject *arg_options_refs[6] = {0};
+    option_ref_owner arg_options_refs = {0};
     ifcopenshell_instance_t *result = NULL;
     if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_options_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_geometry_connect_element_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_geometry_connect_element_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -38003,7 +40121,7 @@ static PyObject *py_ifcopenshell_geometry_connect_element(PyObject *self, PyObje
     }
     __py_result = wrap_instance(result, 1);
 __cleanup:
-        release_option_refs(arg_options_refs, 6);
+        release_option_refs(&arg_options_refs);
         free_input_geometry_connect_element_options(&arg_options);
     return __py_result;
 }
@@ -38015,14 +40133,14 @@ static PyObject *py_ifcopenshell_geometry_connect_path(PyObject *self, PyObject 
     ifcopenshell_file_t *arg_file = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_geometry_connect_path_options_t arg_options = {0};
-    PyObject *arg_options_refs[9] = {0};
+    option_ref_owner arg_options_refs = {0};
     ifcopenshell_instance_t *result = NULL;
     if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_options_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_geometry_connect_path_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_geometry_connect_path_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -38038,7 +40156,7 @@ static PyObject *py_ifcopenshell_geometry_connect_path(PyObject *self, PyObject 
     }
     __py_result = wrap_instance(result, 1);
 __cleanup:
-        release_option_refs(arg_options_refs, 9);
+        release_option_refs(&arg_options_refs);
         free_input_geometry_connect_path_options(&arg_options);
     return __py_result;
 }
@@ -38050,14 +40168,14 @@ static PyObject *py_ifcopenshell_geometry_connect_wall(PyObject *self, PyObject 
     ifcopenshell_file_t *arg_file = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_geometry_connect_wall_options_t arg_options = {0};
-    PyObject *arg_options_refs[6] = {0};
+    option_ref_owner arg_options_refs = {0};
     ifcopenshell_instance_t *result = NULL;
     if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_options_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_geometry_connect_wall_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_geometry_connect_wall_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -38073,7 +40191,7 @@ static PyObject *py_ifcopenshell_geometry_connect_wall(PyObject *self, PyObject 
     }
     __py_result = wrap_instance(result, 1);
 __cleanup:
-        release_option_refs(arg_options_refs, 6);
+        release_option_refs(&arg_options_refs);
         free_input_geometry_connect_wall_options(&arg_options);
     return __py_result;
 }
@@ -38085,14 +40203,14 @@ static PyObject *py_ifcopenshell_geometry_copy_representation(PyObject *self, Py
     ifcopenshell_file_t *arg_file = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_geometry_copy_representation_options_t arg_options = {0};
-    PyObject *arg_options_refs[3] = {0};
+    option_ref_owner arg_options_refs = {0};
     ifcopenshell_instance_t *result = NULL;
     if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_options_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_geometry_copy_representation_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_geometry_copy_representation_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -38108,7 +40226,7 @@ static PyObject *py_ifcopenshell_geometry_copy_representation(PyObject *self, Py
     }
     __py_result = wrap_instance(result, 1);
 __cleanup:
-        release_option_refs(arg_options_refs, 3);
+        release_option_refs(&arg_options_refs);
         free_input_geometry_copy_representation_options(&arg_options);
     return __py_result;
 }
@@ -38120,14 +40238,14 @@ static PyObject *py_ifcopenshell_geometry_create_2pt_wall(PyObject *self, PyObje
     ifcopenshell_file_t *arg_file = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_geometry_create2_pt_wall_options_t arg_options = {0};
-    PyObject *arg_options_refs[8] = {0};
+    option_ref_owner arg_options_refs = {0};
     ifcopenshell_instance_t *result = NULL;
     if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_options_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_geometry_create2_pt_wall_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_geometry_create2_pt_wall_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -38143,7 +40261,7 @@ static PyObject *py_ifcopenshell_geometry_create_2pt_wall(PyObject *self, PyObje
     }
     __py_result = wrap_instance(result, 1);
 __cleanup:
-        release_option_refs(arg_options_refs, 8);
+        release_option_refs(&arg_options_refs);
         free_input_geometry_create2_pt_wall_options(&arg_options);
     return __py_result;
 }
@@ -38193,14 +40311,14 @@ static PyObject *py_ifcopenshell_geometry_disconnect_path(PyObject *self, PyObje
     ifcopenshell_file_t *arg_file = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_geometry_disconnect_path_options_t arg_options = {0};
-    PyObject *arg_options_refs[4] = {0};
+    option_ref_owner arg_options_refs = {0};
 
     if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_options_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_geometry_disconnect_path_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_geometry_disconnect_path_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -38217,7 +40335,7 @@ static PyObject *py_ifcopenshell_geometry_disconnect_path(PyObject *self, PyObje
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
-        release_option_refs(arg_options_refs, 4);
+        release_option_refs(&arg_options_refs);
         free_input_geometry_disconnect_path_options(&arg_options);
     return __py_result;
 }
@@ -38229,14 +40347,14 @@ static PyObject *py_ifcopenshell_geometry_edit_object_placement(PyObject *self, 
     ifcopenshell_file_t *arg_file = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_geometry_edit_object_placement_options_t arg_options = {0};
-    PyObject *arg_options_refs[4] = {0};
+    option_ref_owner arg_options_refs = {0};
     ifcopenshell_instance_t *result = NULL;
     if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_options_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_geometry_edit_object_placement_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_geometry_edit_object_placement_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -38252,7 +40370,7 @@ static PyObject *py_ifcopenshell_geometry_edit_object_placement(PyObject *self, 
     }
     __py_result = wrap_instance(result, 1);
 __cleanup:
-        release_option_refs(arg_options_refs, 4);
+        release_option_refs(&arg_options_refs);
         free_input_geometry_edit_object_placement_options(&arg_options);
     return __py_result;
 }
@@ -38324,14 +40442,14 @@ static PyObject *py_ifcopenshell_geometry_regenerate_wall_representation(PyObjec
     ifcopenshell_file_t *arg_file = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_geometry_regenerate_wall_representation_options_t arg_options = {0};
-    PyObject *arg_options_refs[4] = {0};
+    option_ref_owner arg_options_refs = {0};
     ifcopenshell_instance_t *result = NULL;
     if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_options_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_geometry_regenerate_wall_representation_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_geometry_regenerate_wall_representation_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -38347,7 +40465,7 @@ static PyObject *py_ifcopenshell_geometry_regenerate_wall_representation(PyObjec
     }
     __py_result = wrap_instance(result, 1);
 __cleanup:
-        release_option_refs(arg_options_refs, 4);
+        release_option_refs(&arg_options_refs);
         free_input_geometry_regenerate_wall_representation_options(&arg_options);
     return __py_result;
 }
@@ -38394,7 +40512,7 @@ static PyObject *py_ifcopenshell_geometry_remove_representation(PyObject *self, 
     ifcopenshell_instance_t *arg_representation = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_geometry_remove_representation_options_t arg_options = {0};
-    PyObject *arg_options_refs[1] = {0};
+    option_ref_owner arg_options_refs = {0};
 
     if (!PyArg_ParseTuple(args, "OOO", &arg_file_obj, &arg_representation_obj, &arg_options_obj)) return NULL;
 
@@ -38404,7 +40522,7 @@ static PyObject *py_ifcopenshell_geometry_remove_representation(PyObject *self, 
     if (!extract_handle(arg_representation_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_representation, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_geometry_remove_representation_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_geometry_remove_representation_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -38421,7 +40539,7 @@ static PyObject *py_ifcopenshell_geometry_remove_representation(PyObject *self, 
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
-        release_option_refs(arg_options_refs, 1);
+        release_option_refs(&arg_options_refs);
         free_input_geometry_remove_representation_options(&arg_options);
     return __py_result;
 }
@@ -38473,7 +40591,7 @@ static PyObject *py_ifcopenshell_geometry_validate_type(PyObject *self, PyObject
     ifcopenshell_instance_t *arg_representation = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_geometry_validate_type_options_t arg_options = {0};
-    PyObject *arg_options_refs[1] = {0};
+    option_ref_owner arg_options_refs = {0};
     bool result = {0};
     if (!PyArg_ParseTuple(args, "OOO", &arg_file_obj, &arg_representation_obj, &arg_options_obj)) return NULL;
 
@@ -38483,7 +40601,7 @@ static PyObject *py_ifcopenshell_geometry_validate_type(PyObject *self, PyObject
     if (!extract_handle(arg_representation_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_representation, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_geometry_validate_type_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_geometry_validate_type_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -38495,7 +40613,7 @@ static PyObject *py_ifcopenshell_geometry_validate_type(PyObject *self, PyObject
     }
     __py_result = PyBool_FromLong(result);
 __cleanup:
-        release_option_refs(arg_options_refs, 1);
+        release_option_refs(&arg_options_refs);
         free_input_geometry_validate_type_options(&arg_options);
     return __py_result;
 }
@@ -38507,14 +40625,14 @@ static PyObject *py_ifcopenshell_georeference_add_georeferencing(PyObject *self,
     ifcopenshell_file_t *arg_file = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_georeference_add_georeferencing_options_t arg_options = {0};
-    PyObject *arg_options_refs[5] = {0};
+    option_ref_owner arg_options_refs = {0};
 
     if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_options_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_georeference_add_georeferencing_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_georeference_add_georeferencing_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -38531,7 +40649,7 @@ static PyObject *py_ifcopenshell_georeference_add_georeferencing(PyObject *self,
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
-        release_option_refs(arg_options_refs, 5);
+        release_option_refs(&arg_options_refs);
         free_input_georeference_add_georeferencing_options(&arg_options);
     return __py_result;
 }
@@ -38543,14 +40661,14 @@ static PyObject *py_ifcopenshell_georeference_edit_georeferencing(PyObject *self
     ifcopenshell_file_t *arg_file = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_georeference_edit_georeferencing_options_t arg_options = {0};
-    PyObject *arg_options_refs[2] = {0};
+    option_ref_owner arg_options_refs = {0};
 
     if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_options_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_georeference_edit_georeferencing_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_georeference_edit_georeferencing_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -38567,7 +40685,7 @@ static PyObject *py_ifcopenshell_georeference_edit_georeferencing(PyObject *self
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
-        release_option_refs(arg_options_refs, 2);
+        release_option_refs(&arg_options_refs);
         free_input_georeference_edit_georeferencing_options(&arg_options);
     return __py_result;
 }
@@ -38579,14 +40697,14 @@ static PyObject *py_ifcopenshell_georeference_edit_true_north(PyObject *self, Py
     ifcopenshell_file_t *arg_file = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_georeference_edit_true_north_options_t arg_options = {0};
-    PyObject *arg_options_refs[1] = {0};
+    option_ref_owner arg_options_refs = {0};
 
     if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_options_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_georeference_edit_true_north_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_georeference_edit_true_north_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -38603,7 +40721,7 @@ static PyObject *py_ifcopenshell_georeference_edit_true_north(PyObject *self, Py
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
-        release_option_refs(arg_options_refs, 1);
+        release_option_refs(&arg_options_refs);
         free_input_georeference_edit_true_north_options(&arg_options);
     return __py_result;
 }
@@ -38615,14 +40733,14 @@ static PyObject *py_ifcopenshell_georeference_edit_wcs(PyObject *self, PyObject 
     ifcopenshell_file_t *arg_file = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_georeference_edit_wcs_options_t arg_options = {0};
-    PyObject *arg_options_refs[5] = {0};
+    option_ref_owner arg_options_refs = {0};
 
     if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_options_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_georeference_edit_wcs_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_georeference_edit_wcs_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -38639,7 +40757,7 @@ static PyObject *py_ifcopenshell_georeference_edit_wcs(PyObject *self, PyObject 
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
-        release_option_refs(arg_options_refs, 5);
+        release_option_refs(&arg_options_refs);
         free_input_georeference_edit_wcs_options(&arg_options);
     return __py_result;
 }
@@ -38679,8 +40797,10 @@ static PyObject *py_ifcopenshell_grid_create_axis_curve(PyObject *self, PyObject
     ifcopenshell_file_t *arg_file = NULL;
     PyObject *arg_p1_obj = NULL;
     ifcopenshell_double_list_t arg_p1 = {0};
+    option_ref_owner arg_p1_refs = {0};
     PyObject *arg_p2_obj = NULL;
     ifcopenshell_double_list_t arg_p2 = {0};
+    option_ref_owner arg_p2_refs = {0};
     PyObject *arg_grid_axis_obj = NULL;
     ifcopenshell_instance_t *arg_grid_axis = NULL;
     int arg_is_si = 0;
@@ -38693,10 +40813,10 @@ static PyObject *py_ifcopenshell_grid_create_axis_curve(PyObject *self, PyObject
     if (!extract_handle(arg_grid_axis_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_grid_axis, 0)) {
         goto __cleanup;
     }
-    if (!make_input_double_list(arg_p1_obj, &arg_p1)) {
+    if (!make_input_double_list(arg_p1_obj, &arg_p1, &arg_p1_refs)) {
         goto __cleanup;
     }
-    if (!make_input_double_list(arg_p2_obj, &arg_p2)) {
+    if (!make_input_double_list(arg_p2_obj, &arg_p2, &arg_p2_refs)) {
         goto __cleanup;
     }
     ifcopenshell_clear_error();
@@ -38712,7 +40832,9 @@ static PyObject *py_ifcopenshell_grid_create_axis_curve(PyObject *self, PyObject
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
+        release_option_refs(&arg_p2_refs);
         free_input_double_list(&arg_p2);
+        release_option_refs(&arg_p1_refs);
         free_input_double_list(&arg_p1);
     return __py_result;
 }
@@ -38792,14 +40914,14 @@ static PyObject *py_ifcopenshell_group_add_group(PyObject *self, PyObject *args)
     ifcopenshell_file_t *arg_file = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_group_add_group_options_t arg_options = {0};
-    PyObject *arg_options_refs[5] = {0};
+    option_ref_owner arg_options_refs = {0};
     ifcopenshell_instance_t *result = NULL;
     if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_options_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_group_add_group_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_group_add_group_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -38815,7 +40937,7 @@ static PyObject *py_ifcopenshell_group_add_group(PyObject *self, PyObject *args)
     }
     __py_result = wrap_instance(result, 1);
 __cleanup:
-        release_option_refs(arg_options_refs, 5);
+        release_option_refs(&arg_options_refs);
         free_input_group_add_group_options(&arg_options);
     return __py_result;
 }
@@ -38827,14 +40949,14 @@ static PyObject *py_ifcopenshell_group_assign_group(PyObject *self, PyObject *ar
     ifcopenshell_file_t *arg_file = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_group_assign_group_options_t arg_options = {0};
-    PyObject *arg_options_refs[5] = {0};
+    option_ref_owner arg_options_refs = {0};
     ifcopenshell_instance_t *result = NULL;
     if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_options_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_group_assign_group_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_group_assign_group_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -38850,7 +40972,7 @@ static PyObject *py_ifcopenshell_group_assign_group(PyObject *self, PyObject *ar
     }
     __py_result = wrap_instance(result, 1);
 __cleanup:
-        release_option_refs(arg_options_refs, 5);
+        release_option_refs(&arg_options_refs);
         free_input_group_assign_group_options(&arg_options);
     return __py_result;
 }
@@ -38942,14 +41064,14 @@ static PyObject *py_ifcopenshell_group_unassign_group(PyObject *self, PyObject *
     ifcopenshell_file_t *arg_file = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_group_unassign_group_options_t arg_options = {0};
-    PyObject *arg_options_refs[4] = {0};
+    option_ref_owner arg_options_refs = {0};
 
     if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_options_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_group_unassign_group_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_group_unassign_group_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -38966,7 +41088,7 @@ static PyObject *py_ifcopenshell_group_unassign_group(PyObject *self, PyObject *
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
-        release_option_refs(arg_options_refs, 4);
+        release_option_refs(&arg_options_refs);
         free_input_group_unassign_group_options(&arg_options);
     return __py_result;
 }
@@ -38978,14 +41100,14 @@ static PyObject *py_ifcopenshell_group_update_group_products(PyObject *self, PyO
     ifcopenshell_file_t *arg_file = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_group_update_group_products_options_t arg_options = {0};
-    PyObject *arg_options_refs[5] = {0};
+    option_ref_owner arg_options_refs = {0};
     ifcopenshell_instance_t *result = NULL;
     if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_options_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_group_update_group_products_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_group_update_group_products_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -39001,7 +41123,7 @@ static PyObject *py_ifcopenshell_group_update_group_products(PyObject *self, PyO
     }
     __py_result = wrap_instance(result, 1);
 __cleanup:
-        release_option_refs(arg_options_refs, 5);
+        release_option_refs(&arg_options_refs);
         free_input_group_update_group_products_options(&arg_options);
     return __py_result;
 }
@@ -39658,13 +41780,14 @@ static PyObject *py_ifcopenshell_instance_set_argument_as_aggregate_of_aggregate
     Py_ssize_t arg_index = 0;
     PyObject *arg_value_obj = NULL;
     ifcopenshell_int32_list_list_t arg_value = {0};
+    option_ref_owner arg_value_refs = {0};
 
     if (!PyArg_ParseTuple(args, "OnO", &arg_self_obj, &arg_index, &arg_value_obj)) return NULL;
 
     if (!extract_handle(arg_self_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_self, 0)) {
         goto __cleanup;
     }
-    if (!make_input_int32_list_list(arg_value_obj, &arg_value)) {
+    if (!make_input_int32_list_list(arg_value_obj, &arg_value, &arg_value_refs)) {
         goto __cleanup;
     }
     ifcopenshell_clear_error();
@@ -39680,6 +41803,7 @@ static PyObject *py_ifcopenshell_instance_set_argument_as_aggregate_of_aggregate
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
+        release_option_refs(&arg_value_refs);
         free_input_int32_list_list(&arg_value);
     return __py_result;
 }
@@ -39752,13 +41876,14 @@ static PyObject *py_ifcopenshell_instance_set_argument_double_list(PyObject *sel
     Py_ssize_t arg_index = 0;
     PyObject *arg_value_obj = NULL;
     ifcopenshell_double_list_t arg_value = {0};
+    option_ref_owner arg_value_refs = {0};
 
     if (!PyArg_ParseTuple(args, "OnO", &arg_self_obj, &arg_index, &arg_value_obj)) return NULL;
 
     if (!extract_handle(arg_self_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_self, 0)) {
         goto __cleanup;
     }
-    if (!make_input_double_list(arg_value_obj, &arg_value)) {
+    if (!make_input_double_list(arg_value_obj, &arg_value, &arg_value_refs)) {
         goto __cleanup;
     }
     ifcopenshell_clear_error();
@@ -39774,6 +41899,7 @@ static PyObject *py_ifcopenshell_instance_set_argument_double_list(PyObject *sel
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
+        release_option_refs(&arg_value_refs);
         free_input_double_list(&arg_value);
     return __py_result;
 }
@@ -39786,13 +41912,14 @@ static PyObject *py_ifcopenshell_instance_set_argument_double_list_list(PyObject
     Py_ssize_t arg_index = 0;
     PyObject *arg_value_obj = NULL;
     ifcopenshell_double_list_list_t arg_value = {0};
+    option_ref_owner arg_value_refs = {0};
 
     if (!PyArg_ParseTuple(args, "OnO", &arg_self_obj, &arg_index, &arg_value_obj)) return NULL;
 
     if (!extract_handle(arg_self_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_self, 0)) {
         goto __cleanup;
     }
-    if (!make_input_double_list_list(arg_value_obj, &arg_value)) {
+    if (!make_input_double_list_list(arg_value_obj, &arg_value, &arg_value_refs)) {
         goto __cleanup;
     }
     ifcopenshell_clear_error();
@@ -39808,6 +41935,7 @@ static PyObject *py_ifcopenshell_instance_set_argument_double_list_list(PyObject
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
+        release_option_refs(&arg_value_refs);
         free_input_double_list_list(&arg_value);
     return __py_result;
 }
@@ -39914,6 +42042,7 @@ static PyObject *py_ifcopenshell_instance_set_argument_instance_list(PyObject *s
     Py_ssize_t arg_index = 0;
     PyObject *arg_value_obj = NULL;
     ifcopenshell_instance_list_t arg_value_items = {0};
+    option_ref_owner arg_value_refs = {0};
     ifcopenshell_parse_instance_list_t *arg_value = NULL;
 
     if (!PyArg_ParseTuple(args, "OnO", &arg_self_obj, &arg_index, &arg_value_obj)) return NULL;
@@ -39921,7 +42050,7 @@ static PyObject *py_ifcopenshell_instance_set_argument_instance_list(PyObject *s
     if (!extract_handle(arg_self_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_self, 0)) {
         goto __cleanup;
     }
-    if (!make_input_instance_list(arg_value_obj, &arg_value_items)) {
+    if (!make_input_instance_list(arg_value_obj, &arg_value_items, &arg_value_refs)) {
         goto __cleanup;
     }
     if (!ifcopenshell_parse_instance_list_create_from_handles(&arg_value_items, &arg_value)) {
@@ -39941,6 +42070,7 @@ static PyObject *py_ifcopenshell_instance_set_argument_instance_list(PyObject *s
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
+        release_option_refs(&arg_value_refs);
         free_input_instance_list(&arg_value_items);
         ifcopenshell_parse_instance_list_destroy(arg_value);
     return __py_result;
@@ -39984,13 +42114,14 @@ static PyObject *py_ifcopenshell_instance_set_argument_int32_list(PyObject *self
     Py_ssize_t arg_index = 0;
     PyObject *arg_value_obj = NULL;
     ifcopenshell_int32_list_t arg_value = {0};
+    option_ref_owner arg_value_refs = {0};
 
     if (!PyArg_ParseTuple(args, "OnO", &arg_self_obj, &arg_index, &arg_value_obj)) return NULL;
 
     if (!extract_handle(arg_self_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_self, 0)) {
         goto __cleanup;
     }
-    if (!make_input_int32_list(arg_value_obj, &arg_value)) {
+    if (!make_input_int32_list(arg_value_obj, &arg_value, &arg_value_refs)) {
         goto __cleanup;
     }
     ifcopenshell_clear_error();
@@ -40006,6 +42137,7 @@ static PyObject *py_ifcopenshell_instance_set_argument_int32_list(PyObject *self
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
+        release_option_refs(&arg_value_refs);
         free_input_int32_list(&arg_value);
     return __py_result;
 }
@@ -40018,13 +42150,14 @@ static PyObject *py_ifcopenshell_instance_set_argument_int32_list_list(PyObject 
     Py_ssize_t arg_index = 0;
     PyObject *arg_value_obj = NULL;
     ifcopenshell_int32_list_list_t arg_value = {0};
+    option_ref_owner arg_value_refs = {0};
 
     if (!PyArg_ParseTuple(args, "OnO", &arg_self_obj, &arg_index, &arg_value_obj)) return NULL;
 
     if (!extract_handle(arg_self_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_self, 0)) {
         goto __cleanup;
     }
-    if (!make_input_int32_list_list(arg_value_obj, &arg_value)) {
+    if (!make_input_int32_list_list(arg_value_obj, &arg_value, &arg_value_refs)) {
         goto __cleanup;
     }
     ifcopenshell_clear_error();
@@ -40040,6 +42173,7 @@ static PyObject *py_ifcopenshell_instance_set_argument_int32_list_list(PyObject 
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
+        release_option_refs(&arg_value_refs);
         free_input_int32_list_list(&arg_value);
     return __py_result;
 }
@@ -40112,13 +42246,14 @@ static PyObject *py_ifcopenshell_instance_set_argument_string_list(PyObject *sel
     Py_ssize_t arg_index = 0;
     PyObject *arg_value_obj = NULL;
     ifcopenshell_string_list_t arg_value = {0};
+    option_ref_owner arg_value_refs = {0};
 
     if (!PyArg_ParseTuple(args, "OnO", &arg_self_obj, &arg_index, &arg_value_obj)) return NULL;
 
     if (!extract_handle(arg_self_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_self, 0)) {
         goto __cleanup;
     }
-    if (!make_input_string_list(arg_value_obj, &arg_value)) {
+    if (!make_input_string_list(arg_value_obj, &arg_value, &arg_value_refs)) {
         goto __cleanup;
     }
     ifcopenshell_clear_error();
@@ -40134,6 +42269,7 @@ static PyObject *py_ifcopenshell_instance_set_argument_string_list(PyObject *sel
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
+        release_option_refs(&arg_value_refs);
         free_input_string_list(&arg_value);
     return __py_result;
 }
@@ -40650,14 +42786,14 @@ static PyObject *py_ifcopenshell_layer_add_layer_with_style(PyObject *self, PyOb
     const char *arg_name = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_layer_add_layer_with_style_options_t arg_options = {0};
-    PyObject *arg_options_refs[4] = {0};
+    option_ref_owner arg_options_refs = {0};
     ifcopenshell_instance_t *result = NULL;
     if (!PyArg_ParseTuple(args, "OsO", &arg_file_obj, &arg_name, &arg_options_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_layer_add_layer_with_style_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_layer_add_layer_with_style_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -40673,7 +42809,7 @@ static PyObject *py_ifcopenshell_layer_add_layer_with_style(PyObject *self, PyOb
     }
     __py_result = wrap_instance(result, 1);
 __cleanup:
-        release_option_refs(arg_options_refs, 4);
+        release_option_refs(&arg_options_refs);
         free_input_layer_add_layer_with_style_options(&arg_options);
     return __py_result;
 }
@@ -40685,6 +42821,7 @@ static PyObject *py_ifcopenshell_layer_assign_layer(PyObject *self, PyObject *ar
     ifcopenshell_file_t *arg_file = NULL;
     PyObject *arg_items_obj = NULL;
     ifcopenshell_instance_list_t arg_items = {0};
+    option_ref_owner arg_items_refs = {0};
     PyObject *arg_layer_obj = NULL;
     ifcopenshell_instance_t *arg_layer = NULL;
 
@@ -40696,7 +42833,7 @@ static PyObject *py_ifcopenshell_layer_assign_layer(PyObject *self, PyObject *ar
     if (!extract_handle(arg_layer_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_layer, 0)) {
         goto __cleanup;
     }
-    if (!make_input_instance_list(arg_items_obj, &arg_items)) {
+    if (!make_input_instance_list(arg_items_obj, &arg_items, &arg_items_refs)) {
         goto __cleanup;
     }
     ifcopenshell_clear_error();
@@ -40712,6 +42849,7 @@ static PyObject *py_ifcopenshell_layer_assign_layer(PyObject *self, PyObject *ar
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
+        release_option_refs(&arg_items_refs);
         free_input_instance_list(&arg_items);
     return __py_result;
 }
@@ -40803,6 +42941,7 @@ static PyObject *py_ifcopenshell_layer_unassign_layer(PyObject *self, PyObject *
     ifcopenshell_file_t *arg_file = NULL;
     PyObject *arg_items_obj = NULL;
     ifcopenshell_instance_list_t arg_items = {0};
+    option_ref_owner arg_items_refs = {0};
     PyObject *arg_layer_obj = NULL;
     ifcopenshell_instance_t *arg_layer = NULL;
 
@@ -40814,7 +42953,7 @@ static PyObject *py_ifcopenshell_layer_unassign_layer(PyObject *self, PyObject *
     if (!extract_handle(arg_layer_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_layer, 0)) {
         goto __cleanup;
     }
-    if (!make_input_instance_list(arg_items_obj, &arg_items)) {
+    if (!make_input_instance_list(arg_items_obj, &arg_items, &arg_items_refs)) {
         goto __cleanup;
     }
     ifcopenshell_clear_error();
@@ -40830,6 +42969,7 @@ static PyObject *py_ifcopenshell_layer_unassign_layer(PyObject *self, PyObject *
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
+        release_option_refs(&arg_items_refs);
         free_input_instance_list(&arg_items);
     return __py_result;
 }
@@ -40901,14 +43041,14 @@ static PyObject *py_ifcopenshell_library_assign_reference(PyObject *self, PyObje
     ifcopenshell_file_t *arg_file = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_library_assign_reference_options_t arg_options = {0};
-    PyObject *arg_options_refs[5] = {0};
+    option_ref_owner arg_options_refs = {0};
     ifcopenshell_instance_t *result = NULL;
     if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_options_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_library_assign_reference_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_library_assign_reference_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -40924,7 +43064,7 @@ static PyObject *py_ifcopenshell_library_assign_reference(PyObject *self, PyObje
     }
     __py_result = wrap_instance(result, 1);
 __cleanup:
-        release_option_refs(arg_options_refs, 5);
+        release_option_refs(&arg_options_refs);
         free_input_library_assign_reference_options(&arg_options);
     return __py_result;
 }
@@ -41130,14 +43270,14 @@ static PyObject *py_ifcopenshell_library_unassign_reference(PyObject *self, PyOb
     ifcopenshell_file_t *arg_file = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_library_unassign_reference_options_t arg_options = {0};
-    PyObject *arg_options_refs[4] = {0};
+    option_ref_owner arg_options_refs = {0};
 
     if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_options_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_library_unassign_reference_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_library_unassign_reference_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -41154,7 +43294,7 @@ static PyObject *py_ifcopenshell_library_unassign_reference(PyObject *self, PyOb
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
-        release_option_refs(arg_options_refs, 4);
+        release_option_refs(&arg_options_refs);
         free_input_library_unassign_reference_options(&arg_options);
     return __py_result;
 }
@@ -41168,7 +43308,7 @@ static PyObject *py_ifcopenshell_material_add_constituent(PyObject *self, PyObje
     ifcopenshell_instance_t *arg_constituent_set = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_material_add_constituent_options_t arg_options = {0};
-    PyObject *arg_options_refs[2] = {0};
+    option_ref_owner arg_options_refs = {0};
     ifcopenshell_instance_t *result = NULL;
     if (!PyArg_ParseTuple(args, "OOO", &arg_file_obj, &arg_constituent_set_obj, &arg_options_obj)) return NULL;
 
@@ -41178,7 +43318,7 @@ static PyObject *py_ifcopenshell_material_add_constituent(PyObject *self, PyObje
     if (!extract_handle(arg_constituent_set_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_constituent_set, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_material_add_constituent_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_material_add_constituent_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -41194,7 +43334,7 @@ static PyObject *py_ifcopenshell_material_add_constituent(PyObject *self, PyObje
     }
     __py_result = wrap_instance(result, 1);
 __cleanup:
-        release_option_refs(arg_options_refs, 2);
+        release_option_refs(&arg_options_refs);
         free_input_material_add_constituent_options(&arg_options);
     return __py_result;
 }
@@ -41208,7 +43348,7 @@ static PyObject *py_ifcopenshell_material_add_layer(PyObject *self, PyObject *ar
     ifcopenshell_instance_t *arg_layer_set = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_material_add_layer_options_t arg_options = {0};
-    PyObject *arg_options_refs[2] = {0};
+    option_ref_owner arg_options_refs = {0};
     ifcopenshell_instance_t *result = NULL;
     if (!PyArg_ParseTuple(args, "OOO", &arg_file_obj, &arg_layer_set_obj, &arg_options_obj)) return NULL;
 
@@ -41218,7 +43358,7 @@ static PyObject *py_ifcopenshell_material_add_layer(PyObject *self, PyObject *ar
     if (!extract_handle(arg_layer_set_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_layer_set, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_material_add_layer_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_material_add_layer_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -41234,7 +43374,7 @@ static PyObject *py_ifcopenshell_material_add_layer(PyObject *self, PyObject *ar
     }
     __py_result = wrap_instance(result, 1);
 __cleanup:
-        release_option_refs(arg_options_refs, 2);
+        release_option_refs(&arg_options_refs);
         free_input_material_add_layer_options(&arg_options);
     return __py_result;
 }
@@ -41284,14 +43424,14 @@ static PyObject *py_ifcopenshell_material_add_material(PyObject *self, PyObject 
     ifcopenshell_file_t *arg_file = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_material_add_material_options_t arg_options = {0};
-    PyObject *arg_options_refs[3] = {0};
+    option_ref_owner arg_options_refs = {0};
     ifcopenshell_instance_t *result = NULL;
     if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_options_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_material_add_material_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_material_add_material_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -41307,7 +43447,7 @@ static PyObject *py_ifcopenshell_material_add_material(PyObject *self, PyObject 
     }
     __py_result = wrap_instance(result, 1);
 __cleanup:
-        release_option_refs(arg_options_refs, 3);
+        release_option_refs(&arg_options_refs);
         free_input_material_add_material_options(&arg_options);
     return __py_result;
 }
@@ -41319,14 +43459,14 @@ static PyObject *py_ifcopenshell_material_add_material_set(PyObject *self, PyObj
     ifcopenshell_file_t *arg_file = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_material_add_material_set_options_t arg_options = {0};
-    PyObject *arg_options_refs[2] = {0};
+    option_ref_owner arg_options_refs = {0};
     ifcopenshell_instance_t *result = NULL;
     if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_options_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_material_add_material_set_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_material_add_material_set_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -41342,7 +43482,7 @@ static PyObject *py_ifcopenshell_material_add_material_set(PyObject *self, PyObj
     }
     __py_result = wrap_instance(result, 1);
 __cleanup:
-        release_option_refs(arg_options_refs, 2);
+        release_option_refs(&arg_options_refs);
         free_input_material_add_material_set_options(&arg_options);
     return __py_result;
 }
@@ -41356,7 +43496,7 @@ static PyObject *py_ifcopenshell_material_add_profile(PyObject *self, PyObject *
     ifcopenshell_instance_t *arg_profile_set = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_material_add_profile_options_t arg_options = {0};
-    PyObject *arg_options_refs[3] = {0};
+    option_ref_owner arg_options_refs = {0};
     ifcopenshell_instance_t *result = NULL;
     if (!PyArg_ParseTuple(args, "OOO", &arg_file_obj, &arg_profile_set_obj, &arg_options_obj)) return NULL;
 
@@ -41366,7 +43506,7 @@ static PyObject *py_ifcopenshell_material_add_profile(PyObject *self, PyObject *
     if (!extract_handle(arg_profile_set_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_profile_set, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_material_add_profile_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_material_add_profile_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -41382,7 +43522,7 @@ static PyObject *py_ifcopenshell_material_add_profile(PyObject *self, PyObject *
     }
     __py_result = wrap_instance(result, 1);
 __cleanup:
-        release_option_refs(arg_options_refs, 3);
+        release_option_refs(&arg_options_refs);
         free_input_material_add_profile_options(&arg_options);
     return __py_result;
 }
@@ -41394,19 +43534,20 @@ static PyObject *py_ifcopenshell_material_assign_material(PyObject *self, PyObje
     ifcopenshell_file_t *arg_file = NULL;
     PyObject *arg_products_obj = NULL;
     ifcopenshell_instance_list_t arg_products = {0};
+    option_ref_owner arg_products_refs = {0};
     PyObject *arg_options_obj = NULL;
     ifcopenshell_material_assign_material_options_t arg_options = {0};
-    PyObject *arg_options_refs[5] = {0};
+    option_ref_owner arg_options_refs = {0};
     ifcopenshell_parse_instance_list_t *result = NULL;
     if (!PyArg_ParseTuple(args, "OOO", &arg_file_obj, &arg_products_obj, &arg_options_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_material_assign_material_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_material_assign_material_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
-    if (!make_input_instance_list(arg_products_obj, &arg_products)) {
+    if (!make_input_instance_list(arg_products_obj, &arg_products, &arg_products_refs)) {
         goto __cleanup;
     }
     ifcopenshell_clear_error();
@@ -41421,8 +43562,9 @@ static PyObject *py_ifcopenshell_material_assign_material(PyObject *self, PyObje
     }
     __py_result = wrap_parse_instance_list(result, 1);
 __cleanup:
-        release_option_refs(arg_options_refs, 5);
+        release_option_refs(&arg_options_refs);
         free_input_material_assign_material_options(&arg_options);
+        release_option_refs(&arg_products_refs);
         free_input_instance_list(&arg_products);
     return __py_result;
 }
@@ -41808,7 +43950,7 @@ static PyObject *py_ifcopenshell_material_edit_profile_usage(PyObject *self, PyO
     ifcopenshell_instance_t *arg_usage = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_material_edit_profile_usage_options_t arg_options = {0};
-    PyObject *arg_options_refs[3] = {0};
+    option_ref_owner arg_options_refs = {0};
 
     if (!PyArg_ParseTuple(args, "OOO", &arg_file_obj, &arg_usage_obj, &arg_options_obj)) return NULL;
 
@@ -41818,7 +43960,7 @@ static PyObject *py_ifcopenshell_material_edit_profile_usage(PyObject *self, PyO
     if (!extract_handle(arg_usage_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_usage, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_material_edit_profile_usage_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_material_edit_profile_usage_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -41835,7 +43977,7 @@ static PyObject *py_ifcopenshell_material_edit_profile_usage(PyObject *self, PyO
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
-        release_option_refs(arg_options_refs, 3);
+        release_option_refs(&arg_options_refs);
         free_input_material_edit_profile_usage_options(&arg_options);
     return __py_result;
 }
@@ -41849,7 +43991,7 @@ static PyObject *py_ifcopenshell_material_remove_constituent(PyObject *self, PyO
     ifcopenshell_instance_t *arg_constituent = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_material_remove_item_options_t arg_options = {0};
-    PyObject *arg_options_refs[1] = {0};
+    option_ref_owner arg_options_refs = {0};
 
     if (!PyArg_ParseTuple(args, "OOO", &arg_file_obj, &arg_constituent_obj, &arg_options_obj)) return NULL;
 
@@ -41859,7 +44001,7 @@ static PyObject *py_ifcopenshell_material_remove_constituent(PyObject *self, PyO
     if (!extract_handle(arg_constituent_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_constituent, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_material_remove_item_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_material_remove_item_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -41876,7 +44018,7 @@ static PyObject *py_ifcopenshell_material_remove_constituent(PyObject *self, PyO
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
-        release_option_refs(arg_options_refs, 1);
+        release_option_refs(&arg_options_refs);
         free_input_material_remove_item_options(&arg_options);
     return __py_result;
 }
@@ -41890,7 +44032,7 @@ static PyObject *py_ifcopenshell_material_remove_layer(PyObject *self, PyObject 
     ifcopenshell_instance_t *arg_layer = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_material_remove_item_options_t arg_options = {0};
-    PyObject *arg_options_refs[1] = {0};
+    option_ref_owner arg_options_refs = {0};
 
     if (!PyArg_ParseTuple(args, "OOO", &arg_file_obj, &arg_layer_obj, &arg_options_obj)) return NULL;
 
@@ -41900,7 +44042,7 @@ static PyObject *py_ifcopenshell_material_remove_layer(PyObject *self, PyObject 
     if (!extract_handle(arg_layer_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_layer, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_material_remove_item_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_material_remove_item_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -41917,7 +44059,7 @@ static PyObject *py_ifcopenshell_material_remove_layer(PyObject *self, PyObject 
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
-        release_option_refs(arg_options_refs, 1);
+        release_option_refs(&arg_options_refs);
         free_input_material_remove_item_options(&arg_options);
     return __py_result;
 }
@@ -41931,7 +44073,7 @@ static PyObject *py_ifcopenshell_material_remove_list_item(PyObject *self, PyObj
     ifcopenshell_instance_t *arg_material_list = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_material_remove_list_item_options_t arg_options = {0};
-    PyObject *arg_options_refs[1] = {0};
+    option_ref_owner arg_options_refs = {0};
 
     if (!PyArg_ParseTuple(args, "OOO", &arg_file_obj, &arg_material_list_obj, &arg_options_obj)) return NULL;
 
@@ -41941,7 +44083,7 @@ static PyObject *py_ifcopenshell_material_remove_list_item(PyObject *self, PyObj
     if (!extract_handle(arg_material_list_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_material_list, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_material_remove_list_item_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_material_remove_list_item_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -41958,7 +44100,7 @@ static PyObject *py_ifcopenshell_material_remove_list_item(PyObject *self, PyObj
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
-        release_option_refs(arg_options_refs, 1);
+        release_option_refs(&arg_options_refs);
         free_input_material_remove_list_item_options(&arg_options);
     return __py_result;
 }
@@ -42038,7 +44180,7 @@ static PyObject *py_ifcopenshell_material_remove_profile(PyObject *self, PyObjec
     ifcopenshell_instance_t *arg_profile = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_material_remove_profile_options_t arg_options = {0};
-    PyObject *arg_options_refs[2] = {0};
+    option_ref_owner arg_options_refs = {0};
 
     if (!PyArg_ParseTuple(args, "OOO", &arg_file_obj, &arg_profile_obj, &arg_options_obj)) return NULL;
 
@@ -42048,7 +44190,7 @@ static PyObject *py_ifcopenshell_material_remove_profile(PyObject *self, PyObjec
     if (!extract_handle(arg_profile_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_profile, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_material_remove_profile_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_material_remove_profile_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -42065,7 +44207,7 @@ static PyObject *py_ifcopenshell_material_remove_profile(PyObject *self, PyObjec
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
-        release_option_refs(arg_options_refs, 2);
+        release_option_refs(&arg_options_refs);
         free_input_material_remove_profile_options(&arg_options);
     return __py_result;
 }
@@ -42079,7 +44221,7 @@ static PyObject *py_ifcopenshell_material_reorder_set_item(PyObject *self, PyObj
     ifcopenshell_instance_t *arg_material_set = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_material_reorder_set_item_options_t arg_options = {0};
-    PyObject *arg_options_refs[2] = {0};
+    option_ref_owner arg_options_refs = {0};
 
     if (!PyArg_ParseTuple(args, "OOO", &arg_file_obj, &arg_material_set_obj, &arg_options_obj)) return NULL;
 
@@ -42089,7 +44231,7 @@ static PyObject *py_ifcopenshell_material_reorder_set_item(PyObject *self, PyObj
     if (!extract_handle(arg_material_set_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_material_set, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_material_reorder_set_item_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_material_reorder_set_item_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -42106,7 +44248,7 @@ static PyObject *py_ifcopenshell_material_reorder_set_item(PyObject *self, PyObj
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
-        release_option_refs(arg_options_refs, 2);
+        release_option_refs(&arg_options_refs);
         free_input_material_reorder_set_item_options(&arg_options);
     return __py_result;
 }
@@ -42122,9 +44264,10 @@ static PyObject *py_ifcopenshell_material_set_shape_aspect_constituents(PyObject
     ifcopenshell_instance_t *arg_context = NULL;
     PyObject *arg_materials_obj = NULL;
     ifcopenshell_material_constituent_entry_options_list_t arg_materials = {0};
+    option_ref_owner arg_materials_refs = {0};
     PyObject *arg_options_obj = NULL;
     ifcopenshell_material_set_shape_aspect_constituents_options_t arg_options = {0};
-    PyObject *arg_options_refs[3] = {0};
+    option_ref_owner arg_options_refs = {0};
 
     if (!PyArg_ParseTuple(args, "OOOOO", &arg_file_obj, &arg_element_obj, &arg_context_obj, &arg_materials_obj, &arg_options_obj)) return NULL;
 
@@ -42137,10 +44280,10 @@ static PyObject *py_ifcopenshell_material_set_shape_aspect_constituents(PyObject
     if (!extract_handle(arg_context_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_context, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_material_set_shape_aspect_constituents_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_material_set_shape_aspect_constituents_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
-    if (!make_input_material_constituent_entry_options_list(arg_materials_obj, &arg_materials)) {
+    if (!make_input_material_constituent_entry_options_list(arg_materials_obj, &arg_materials, &arg_materials_refs)) {
         goto __cleanup;
     }
     ifcopenshell_clear_error();
@@ -42156,8 +44299,9 @@ static PyObject *py_ifcopenshell_material_set_shape_aspect_constituents(PyObject
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
-        release_option_refs(arg_options_refs, 3);
+        release_option_refs(&arg_options_refs);
         free_input_material_set_shape_aspect_constituents_options(&arg_options);
+        release_option_refs(&arg_materials_refs);
         free_input_material_constituent_entry_options_list(&arg_materials);
     return __py_result;
 }
@@ -42169,19 +44313,20 @@ static PyObject *py_ifcopenshell_material_unassign_material(PyObject *self, PyOb
     ifcopenshell_file_t *arg_file = NULL;
     PyObject *arg_products_obj = NULL;
     ifcopenshell_instance_list_t arg_products = {0};
+    option_ref_owner arg_products_refs = {0};
     PyObject *arg_options_obj = NULL;
     ifcopenshell_material_unassign_material_options_t arg_options = {0};
-    PyObject *arg_options_refs[2] = {0};
+    option_ref_owner arg_options_refs = {0};
 
     if (!PyArg_ParseTuple(args, "OOO", &arg_file_obj, &arg_products_obj, &arg_options_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_material_unassign_material_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_material_unassign_material_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
-    if (!make_input_instance_list(arg_products_obj, &arg_products)) {
+    if (!make_input_instance_list(arg_products_obj, &arg_products, &arg_products_refs)) {
         goto __cleanup;
     }
     ifcopenshell_clear_error();
@@ -42197,8 +44342,9 @@ static PyObject *py_ifcopenshell_material_unassign_material(PyObject *self, PyOb
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
-        release_option_refs(arg_options_refs, 2);
+        release_option_refs(&arg_options_refs);
         free_input_material_unassign_material_options(&arg_options);
+        release_option_refs(&arg_products_refs);
         free_input_instance_list(&arg_products);
     return __py_result;
 }
@@ -42288,14 +44434,14 @@ static PyObject *py_ifcopenshell_nest_assign_object(PyObject *self, PyObject *ar
     ifcopenshell_file_t *arg_file = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_nest_assign_object_options_t arg_options = {0};
-    PyObject *arg_options_refs[5] = {0};
+    option_ref_owner arg_options_refs = {0};
     ifcopenshell_instance_t *result = NULL;
     if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_options_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_nest_assign_object_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_nest_assign_object_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -42311,7 +44457,7 @@ static PyObject *py_ifcopenshell_nest_assign_object(PyObject *self, PyObject *ar
     }
     __py_result = wrap_instance(result, 1);
 __cleanup:
-        release_option_refs(arg_options_refs, 5);
+        release_option_refs(&arg_options_refs);
         free_input_nest_assign_object_options(&arg_options);
     return __py_result;
 }
@@ -42323,14 +44469,14 @@ static PyObject *py_ifcopenshell_nest_change_nest(PyObject *self, PyObject *args
     ifcopenshell_file_t *arg_file = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_nest_change_nest_options_t arg_options = {0};
-    PyObject *arg_options_refs[5] = {0};
+    option_ref_owner arg_options_refs = {0};
 
     if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_options_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_nest_change_nest_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_nest_change_nest_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -42347,7 +44493,7 @@ static PyObject *py_ifcopenshell_nest_change_nest(PyObject *self, PyObject *args
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
-        release_option_refs(arg_options_refs, 5);
+        release_option_refs(&arg_options_refs);
         free_input_nest_change_nest_options(&arg_options);
     return __py_result;
 }
@@ -42359,14 +44505,14 @@ static PyObject *py_ifcopenshell_nest_reorder_nesting(PyObject *self, PyObject *
     ifcopenshell_file_t *arg_file = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_nest_reorder_nesting_options_t arg_options = {0};
-    PyObject *arg_options_refs[5] = {0};
+    option_ref_owner arg_options_refs = {0};
 
     if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_options_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_nest_reorder_nesting_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_nest_reorder_nesting_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -42383,7 +44529,7 @@ static PyObject *py_ifcopenshell_nest_reorder_nesting(PyObject *self, PyObject *
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
-        release_option_refs(arg_options_refs, 5);
+        release_option_refs(&arg_options_refs);
         free_input_nest_reorder_nesting_options(&arg_options);
     return __py_result;
 }
@@ -42395,14 +44541,14 @@ static PyObject *py_ifcopenshell_nest_unassign_object(PyObject *self, PyObject *
     ifcopenshell_file_t *arg_file = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_nest_unassign_object_options_t arg_options = {0};
-    PyObject *arg_options_refs[3] = {0};
+    option_ref_owner arg_options_refs = {0};
 
     if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_options_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_nest_unassign_object_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_nest_unassign_object_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -42419,7 +44565,7 @@ static PyObject *py_ifcopenshell_nest_unassign_object(PyObject *self, PyObject *
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
-        release_option_refs(arg_options_refs, 3);
+        release_option_refs(&arg_options_refs);
         free_input_nest_unassign_object_options(&arg_options);
     return __py_result;
 }
@@ -42431,14 +44577,14 @@ static PyObject *py_ifcopenshell_owner_add_actor(PyObject *self, PyObject *args)
     ifcopenshell_file_t *arg_file = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_owner_add_actor_options_t arg_options = {0};
-    PyObject *arg_options_refs[5] = {0};
+    option_ref_owner arg_options_refs = {0};
     ifcopenshell_instance_t *result = NULL;
     if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_options_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_owner_add_actor_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_owner_add_actor_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -42454,7 +44600,7 @@ static PyObject *py_ifcopenshell_owner_add_actor(PyObject *self, PyObject *args)
     }
     __py_result = wrap_instance(result, 1);
 __cleanup:
-        release_option_refs(arg_options_refs, 5);
+        release_option_refs(&arg_options_refs);
         free_input_owner_add_actor_options(&arg_options);
     return __py_result;
 }
@@ -42499,14 +44645,14 @@ static PyObject *py_ifcopenshell_owner_add_application(PyObject *self, PyObject 
     ifcopenshell_file_t *arg_file = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_owner_add_application_options_t arg_options = {0};
-    PyObject *arg_options_refs[7] = {0};
+    option_ref_owner arg_options_refs = {0};
     ifcopenshell_instance_t *result = NULL;
     if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_options_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_owner_add_application_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_owner_add_application_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -42522,7 +44668,7 @@ static PyObject *py_ifcopenshell_owner_add_application(PyObject *self, PyObject 
     }
     __py_result = wrap_instance(result, 1);
 __cleanup:
-        release_option_refs(arg_options_refs, 7);
+        release_option_refs(&arg_options_refs);
         free_input_owner_add_application_options(&arg_options);
     return __py_result;
 }
@@ -42663,14 +44809,14 @@ static PyObject *py_ifcopenshell_owner_assign_actor(PyObject *self, PyObject *ar
     ifcopenshell_file_t *arg_file = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_owner_assign_actor_options_t arg_options = {0};
-    PyObject *arg_options_refs[5] = {0};
+    option_ref_owner arg_options_refs = {0};
     ifcopenshell_instance_t *result = NULL;
     if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_options_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_owner_assign_actor_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_owner_assign_actor_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -42686,7 +44832,7 @@ static PyObject *py_ifcopenshell_owner_assign_actor(PyObject *self, PyObject *ar
     }
     __py_result = wrap_instance(result, 1);
 __cleanup:
-        release_option_refs(arg_options_refs, 5);
+        release_option_refs(&arg_options_refs);
         free_input_owner_assign_actor_options(&arg_options);
     return __py_result;
 }
@@ -42698,14 +44844,14 @@ static PyObject *py_ifcopenshell_owner_create_owner_history(PyObject *self, PyOb
     ifcopenshell_file_t *arg_file = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_owner_create_owner_history_options_t arg_options = {0};
-    PyObject *arg_options_refs[2] = {0};
+    option_ref_owner arg_options_refs = {0};
     ifcopenshell_instance_t *result = NULL;
     if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_options_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_owner_create_owner_history_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_owner_create_owner_history_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -42721,7 +44867,7 @@ static PyObject *py_ifcopenshell_owner_create_owner_history(PyObject *self, PyOb
     }
     __py_result = wrap_instance(result, 1);
 __cleanup:
-        release_option_refs(arg_options_refs, 2);
+        release_option_refs(&arg_options_refs);
         free_input_owner_create_owner_history_options(&arg_options);
     return __py_result;
 }
@@ -43246,14 +45392,14 @@ static PyObject *py_ifcopenshell_owner_unassign_actor(PyObject *self, PyObject *
     ifcopenshell_file_t *arg_file = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_owner_unassign_actor_options_t arg_options = {0};
-    PyObject *arg_options_refs[4] = {0};
+    option_ref_owner arg_options_refs = {0};
 
     if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_options_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_owner_unassign_actor_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_owner_unassign_actor_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -43270,7 +45416,7 @@ static PyObject *py_ifcopenshell_owner_unassign_actor(PyObject *self, PyObject *
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
-        release_option_refs(arg_options_refs, 4);
+        release_option_refs(&arg_options_refs);
         free_input_owner_unassign_actor_options(&arg_options);
     return __py_result;
 }
@@ -43282,14 +45428,14 @@ static PyObject *py_ifcopenshell_owner_update_owner_history(PyObject *self, PyOb
     ifcopenshell_file_t *arg_file = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_owner_update_owner_history_options_t arg_options = {0};
-    PyObject *arg_options_refs[3] = {0};
+    option_ref_owner arg_options_refs = {0};
     ifcopenshell_instance_t *result = NULL;
     if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_options_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_owner_update_owner_history_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_owner_update_owner_history_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -43305,7 +45451,7 @@ static PyObject *py_ifcopenshell_owner_update_owner_history(PyObject *self, PyOb
     }
     __py_result = wrap_instance(result, 1);
 __cleanup:
-        release_option_refs(arg_options_refs, 3);
+        release_option_refs(&arg_options_refs);
         free_input_owner_update_owner_history_options(&arg_options);
     return __py_result;
 }
@@ -44134,11 +46280,12 @@ static PyObject *py_ifcopenshell_parse_instance_list_create_from_handles(PyObjec
     bool ok = false;
     PyObject *arg_instances_obj = NULL;
     ifcopenshell_instance_list_t arg_instances = {0};
+    option_ref_owner arg_instances_refs = {0};
     ifcopenshell_parse_instance_list_t *result = NULL;
     if (!PyArg_ParseTuple(args, "O", &arg_instances_obj)) return NULL;
 
 
-    if (!make_input_instance_list(arg_instances_obj, &arg_instances)) {
+    if (!make_input_instance_list(arg_instances_obj, &arg_instances, &arg_instances_refs)) {
         goto __cleanup;
     }
     ifcopenshell_clear_error();
@@ -44153,6 +46300,7 @@ static PyObject *py_ifcopenshell_parse_instance_list_create_from_handles(PyObjec
     }
     __py_result = wrap_parse_instance_list(result, 1);
 __cleanup:
+        release_option_refs(&arg_instances_refs);
         free_input_instance_list(&arg_instances);
     return __py_result;
 }
@@ -44285,11 +46433,12 @@ static PyObject *py_ifcopenshell_parse_open_bypass(PyObject *self, PyObject *arg
     const char *arg_path = NULL;
     PyObject *arg_type_names_obj = NULL;
     ifcopenshell_string_list_t arg_type_names = {0};
+    option_ref_owner arg_type_names_refs = {0};
     ifcopenshell_file_t *result = NULL;
     if (!PyArg_ParseTuple(args, "sO", &arg_path, &arg_type_names_obj)) return NULL;
 
 
-    if (!make_input_string_list(arg_type_names_obj, &arg_type_names)) {
+    if (!make_input_string_list(arg_type_names_obj, &arg_type_names, &arg_type_names_refs)) {
         goto __cleanup;
     }
     ifcopenshell_clear_error();
@@ -44304,6 +46453,7 @@ static PyObject *py_ifcopenshell_parse_open_bypass(PyObject *self, PyObject *arg
     }
     __py_result = wrap_file(result, 1);
 __cleanup:
+        release_option_refs(&arg_type_names_refs);
         free_input_string_list(&arg_type_names);
     return __py_result;
 }
@@ -44564,11 +46714,12 @@ static PyObject *py_ifcopenshell_parse_set_plugin_search_paths(PyObject *self, P
     bool ok = false;
     PyObject *arg_paths_obj = NULL;
     ifcopenshell_string_list_t arg_paths = {0};
+    option_ref_owner arg_paths_refs = {0};
 
     if (!PyArg_ParseTuple(args, "O", &arg_paths_obj)) return NULL;
 
 
-    if (!make_input_string_list(arg_paths_obj, &arg_paths)) {
+    if (!make_input_string_list(arg_paths_obj, &arg_paths, &arg_paths_refs)) {
         goto __cleanup;
     }
     ifcopenshell_clear_error();
@@ -44584,6 +46735,7 @@ static PyObject *py_ifcopenshell_parse_set_plugin_search_paths(PyObject *self, P
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
+        release_option_refs(&arg_paths_refs);
         free_input_string_list(&arg_paths);
     return __py_result;
 }
@@ -44972,21 +47124,24 @@ static PyObject *py_ifcopenshell_placement_matrix_from_axes(PyObject *self, PyOb
     bool ok = false;
     PyObject *arg_origin_obj = NULL;
     ifcopenshell_double_list_t arg_origin = {0};
+    option_ref_owner arg_origin_refs = {0};
     PyObject *arg_z_axis_obj = NULL;
     ifcopenshell_double_list_t arg_z_axis = {0};
+    option_ref_owner arg_z_axis_refs = {0};
     PyObject *arg_x_axis_obj = NULL;
     ifcopenshell_double_list_t arg_x_axis = {0};
+    option_ref_owner arg_x_axis_refs = {0};
     ifcopenshell_double_list_t result = {0};
     if (!PyArg_ParseTuple(args, "OOO", &arg_origin_obj, &arg_z_axis_obj, &arg_x_axis_obj)) return NULL;
 
 
-    if (!make_input_double_list(arg_origin_obj, &arg_origin)) {
+    if (!make_input_double_list(arg_origin_obj, &arg_origin, &arg_origin_refs)) {
         goto __cleanup;
     }
-    if (!make_input_double_list(arg_z_axis_obj, &arg_z_axis)) {
+    if (!make_input_double_list(arg_z_axis_obj, &arg_z_axis, &arg_z_axis_refs)) {
         goto __cleanup;
     }
-    if (!make_input_double_list(arg_x_axis_obj, &arg_x_axis)) {
+    if (!make_input_double_list(arg_x_axis_obj, &arg_x_axis, &arg_x_axis_refs)) {
         goto __cleanup;
     }
     ifcopenshell_clear_error();
@@ -44997,8 +47152,11 @@ static PyObject *py_ifcopenshell_placement_matrix_from_axes(PyObject *self, PyOb
     }
     __py_result = convert_double_list(&result, 1);
 __cleanup:
+        release_option_refs(&arg_x_axis_refs);
         free_input_double_list(&arg_x_axis);
+        release_option_refs(&arg_z_axis_refs);
         free_input_double_list(&arg_z_axis);
+        release_option_refs(&arg_origin_refs);
         free_input_double_list(&arg_origin);
     return __py_result;
 }
@@ -45031,14 +47189,14 @@ static PyObject *py_ifcopenshell_profile_add_arbitrary_profile(PyObject *self, P
     ifcopenshell_file_t *arg_file = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_profile_add_arbitrary_profile_options_t arg_options = {0};
-    PyObject *arg_options_refs[2] = {0};
+    option_ref_owner arg_options_refs = {0};
     ifcopenshell_instance_t *result = NULL;
     if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_options_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_profile_add_arbitrary_profile_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_profile_add_arbitrary_profile_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -45054,7 +47212,7 @@ static PyObject *py_ifcopenshell_profile_add_arbitrary_profile(PyObject *self, P
     }
     __py_result = wrap_instance(result, 1);
 __cleanup:
-        release_option_refs(arg_options_refs, 2);
+        release_option_refs(&arg_options_refs);
         free_input_profile_add_arbitrary_profile_options(&arg_options);
     return __py_result;
 }
@@ -45066,14 +47224,14 @@ static PyObject *py_ifcopenshell_profile_add_arbitrary_profile_with_voids(PyObje
     ifcopenshell_file_t *arg_file = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_profile_add_arbitrary_profile_with_voids_options_t arg_options = {0};
-    PyObject *arg_options_refs[3] = {0};
+    option_ref_owner arg_options_refs = {0};
     ifcopenshell_instance_t *result = NULL;
     if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_options_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_profile_add_arbitrary_profile_with_voids_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_profile_add_arbitrary_profile_with_voids_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -45089,7 +47247,7 @@ static PyObject *py_ifcopenshell_profile_add_arbitrary_profile_with_voids(PyObje
     }
     __py_result = wrap_instance(result, 1);
 __cleanup:
-        release_option_refs(arg_options_refs, 3);
+        release_option_refs(&arg_options_refs);
         free_input_profile_add_arbitrary_profile_with_voids_options(&arg_options);
     return __py_result;
 }
@@ -45237,14 +47395,14 @@ static PyObject *py_ifcopenshell_project_append_asset(PyObject *self, PyObject *
     ifcopenshell_file_t *arg_file = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_project_append_asset_options_t arg_options = {0};
-    PyObject *arg_options_refs[4] = {0};
+    option_ref_owner arg_options_refs = {0};
     ifcopenshell_instance_t *result = NULL;
     if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_options_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_project_append_asset_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_project_append_asset_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -45260,7 +47418,7 @@ static PyObject *py_ifcopenshell_project_append_asset(PyObject *self, PyObject *
     }
     __py_result = wrap_instance(result, 1);
 __cleanup:
-        release_option_refs(arg_options_refs, 4);
+        release_option_refs(&arg_options_refs);
         free_input_project_append_asset_options(&arg_options);
     return __py_result;
 }
@@ -45385,14 +47543,14 @@ static PyObject *py_ifcopenshell_project_assign_declaration(PyObject *self, PyOb
     ifcopenshell_file_t *arg_file = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_project_assign_declaration_options_t arg_options = {0};
-    PyObject *arg_options_refs[5] = {0};
+    option_ref_owner arg_options_refs = {0};
     ifcopenshell_instance_t *result = NULL;
     if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_options_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_project_assign_declaration_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_project_assign_declaration_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -45408,7 +47566,7 @@ static PyObject *py_ifcopenshell_project_assign_declaration(PyObject *self, PyOb
     }
     __py_result = wrap_instance(result, 1);
 __cleanup:
-        release_option_refs(arg_options_refs, 5);
+        release_option_refs(&arg_options_refs);
         free_input_project_assign_declaration_options(&arg_options);
     return __py_result;
 }
@@ -45420,14 +47578,14 @@ static PyObject *py_ifcopenshell_project_unassign_declaration(PyObject *self, Py
     ifcopenshell_file_t *arg_file = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_project_unassign_declaration_options_t arg_options = {0};
-    PyObject *arg_options_refs[4] = {0};
+    option_ref_owner arg_options_refs = {0};
 
     if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_options_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_project_unassign_declaration_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_project_unassign_declaration_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -45444,7 +47602,7 @@ static PyObject *py_ifcopenshell_project_unassign_declaration(PyObject *self, Py
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
-        release_option_refs(arg_options_refs, 4);
+        release_option_refs(&arg_options_refs);
         free_input_project_unassign_declaration_options(&arg_options);
     return __py_result;
 }
@@ -45456,14 +47614,14 @@ static PyObject *py_ifcopenshell_pset_add_pset(PyObject *self, PyObject *args) {
     ifcopenshell_file_t *arg_file = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_pset_add_pset_options_t arg_options = {0};
-    PyObject *arg_options_refs[6] = {0};
+    option_ref_owner arg_options_refs = {0};
     ifcopenshell_instance_t *result = NULL;
     if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_options_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_pset_add_pset_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_pset_add_pset_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -45479,7 +47637,7 @@ static PyObject *py_ifcopenshell_pset_add_pset(PyObject *self, PyObject *args) {
     }
     __py_result = wrap_instance(result, 1);
 __cleanup:
-        release_option_refs(arg_options_refs, 6);
+        release_option_refs(&arg_options_refs);
         free_input_pset_add_pset_options(&arg_options);
     return __py_result;
 }
@@ -45491,14 +47649,14 @@ static PyObject *py_ifcopenshell_pset_add_qto(PyObject *self, PyObject *args) {
     ifcopenshell_file_t *arg_file = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_pset_add_qto_options_t arg_options = {0};
-    PyObject *arg_options_refs[5] = {0};
+    option_ref_owner arg_options_refs = {0};
     ifcopenshell_instance_t *result = NULL;
     if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_options_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_pset_add_qto_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_pset_add_qto_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -45514,7 +47672,7 @@ static PyObject *py_ifcopenshell_pset_add_qto(PyObject *self, PyObject *args) {
     }
     __py_result = wrap_instance(result, 1);
 __cleanup:
-        release_option_refs(arg_options_refs, 5);
+        release_option_refs(&arg_options_refs);
         free_input_pset_add_qto_options(&arg_options);
     return __py_result;
 }
@@ -45526,14 +47684,14 @@ static PyObject *py_ifcopenshell_pset_assign_pset(PyObject *self, PyObject *args
     ifcopenshell_file_t *arg_file = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_pset_assign_pset_options_t arg_options = {0};
-    PyObject *arg_options_refs[5] = {0};
+    option_ref_owner arg_options_refs = {0};
     ifcopenshell_instance_t *result = NULL;
     if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_options_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_pset_assign_pset_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_pset_assign_pset_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -45549,7 +47707,7 @@ static PyObject *py_ifcopenshell_pset_assign_pset(PyObject *self, PyObject *args
     }
     __py_result = wrap_instance(result, 1);
 __cleanup:
-        release_option_refs(arg_options_refs, 5);
+        release_option_refs(&arg_options_refs);
         free_input_pset_assign_pset_options(&arg_options);
     return __py_result;
 }
@@ -45561,14 +47719,14 @@ static PyObject *py_ifcopenshell_pset_edit_pset(PyObject *self, PyObject *args) 
     ifcopenshell_file_t *arg_file = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_pset_edit_pset_options_t arg_options = {0};
-    PyObject *arg_options_refs[5] = {0};
+    option_ref_owner arg_options_refs = {0};
     bool result = {0};
     if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_options_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_pset_edit_pset_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_pset_edit_pset_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -45580,7 +47738,7 @@ static PyObject *py_ifcopenshell_pset_edit_pset(PyObject *self, PyObject *args) 
     }
     __py_result = PyBool_FromLong(result);
 __cleanup:
-        release_option_refs(arg_options_refs, 5);
+        release_option_refs(&arg_options_refs);
         free_input_pset_edit_pset_options(&arg_options);
     return __py_result;
 }
@@ -45592,14 +47750,14 @@ static PyObject *py_ifcopenshell_pset_edit_qto(PyObject *self, PyObject *args) {
     ifcopenshell_file_t *arg_file = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_pset_edit_qto_options_t arg_options = {0};
-    PyObject *arg_options_refs[4] = {0};
+    option_ref_owner arg_options_refs = {0};
     bool result = {0};
     if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_options_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_pset_edit_qto_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_pset_edit_qto_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -45611,7 +47769,7 @@ static PyObject *py_ifcopenshell_pset_edit_qto(PyObject *self, PyObject *args) {
     }
     __py_result = PyBool_FromLong(result);
 __cleanup:
-        release_option_refs(arg_options_refs, 4);
+        release_option_refs(&arg_options_refs);
         free_input_pset_edit_qto_options(&arg_options);
     return __py_result;
 }
@@ -45726,6 +47884,7 @@ static PyObject *py_ifcopenshell_pset_props_set_bool_list(PyObject *self, PyObje
     const char *arg_key = NULL;
     PyObject *arg_values_obj = NULL;
     ifcopenshell_bool_list_t arg_values = {0};
+    option_ref_owner arg_values_refs = {0};
 
     if (!PyArg_ParseTuple(args, "OsO", &arg_props_obj, &arg_key, &arg_values_obj)) return NULL;
 
@@ -45738,7 +47897,7 @@ static PyObject *py_ifcopenshell_pset_props_set_bool_list(PyObject *self, PyObje
         PyErr_SetString(PyExc_TypeError, "Expected a capsule or buffer-compatible object");
         goto __cleanup;
     }
-    if (!make_input_bool_list(arg_values_obj, &arg_values)) {
+    if (!make_input_bool_list(arg_values_obj, &arg_values, &arg_values_refs)) {
         goto __cleanup;
     }
     ifcopenshell_clear_error();
@@ -45754,6 +47913,7 @@ static PyObject *py_ifcopenshell_pset_props_set_bool_list(PyObject *self, PyObje
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
+        release_option_refs(&arg_values_refs);
         free_input_bool_list(&arg_values);
         if (arg_props_has_view) PyBuffer_Release(&arg_props_view);
     return __py_result;
@@ -45948,6 +48108,7 @@ static PyObject *py_ifcopenshell_pset_props_set_double_list(PyObject *self, PyOb
     const char *arg_key = NULL;
     PyObject *arg_values_obj = NULL;
     ifcopenshell_double_list_t arg_values = {0};
+    option_ref_owner arg_values_refs = {0};
 
     if (!PyArg_ParseTuple(args, "OsO", &arg_props_obj, &arg_key, &arg_values_obj)) return NULL;
 
@@ -45960,7 +48121,7 @@ static PyObject *py_ifcopenshell_pset_props_set_double_list(PyObject *self, PyOb
         PyErr_SetString(PyExc_TypeError, "Expected a capsule or buffer-compatible object");
         goto __cleanup;
     }
-    if (!make_input_double_list(arg_values_obj, &arg_values)) {
+    if (!make_input_double_list(arg_values_obj, &arg_values, &arg_values_refs)) {
         goto __cleanup;
     }
     ifcopenshell_clear_error();
@@ -45976,6 +48137,7 @@ static PyObject *py_ifcopenshell_pset_props_set_double_list(PyObject *self, PyOb
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
+        release_option_refs(&arg_values_refs);
         free_input_double_list(&arg_values);
         if (arg_props_has_view) PyBuffer_Release(&arg_props_view);
     return __py_result;
@@ -46080,6 +48242,7 @@ static PyObject *py_ifcopenshell_pset_props_set_instance_list(PyObject *self, Py
     const char *arg_key = NULL;
     PyObject *arg_values_obj = NULL;
     ifcopenshell_instance_list_t arg_values = {0};
+    option_ref_owner arg_values_refs = {0};
 
     if (!PyArg_ParseTuple(args, "OsO", &arg_props_obj, &arg_key, &arg_values_obj)) return NULL;
 
@@ -46092,7 +48255,7 @@ static PyObject *py_ifcopenshell_pset_props_set_instance_list(PyObject *self, Py
         PyErr_SetString(PyExc_TypeError, "Expected a capsule or buffer-compatible object");
         goto __cleanup;
     }
-    if (!make_input_instance_list(arg_values_obj, &arg_values)) {
+    if (!make_input_instance_list(arg_values_obj, &arg_values, &arg_values_refs)) {
         goto __cleanup;
     }
     ifcopenshell_clear_error();
@@ -46108,6 +48271,7 @@ static PyObject *py_ifcopenshell_pset_props_set_instance_list(PyObject *self, Py
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
+        release_option_refs(&arg_values_refs);
         free_input_instance_list(&arg_values);
         if (arg_props_has_view) PyBuffer_Release(&arg_props_view);
     return __py_result;
@@ -46162,6 +48326,7 @@ static PyObject *py_ifcopenshell_pset_props_set_int_list(PyObject *self, PyObjec
     const char *arg_key = NULL;
     PyObject *arg_values_obj = NULL;
     ifcopenshell_int64_list_t arg_values = {0};
+    option_ref_owner arg_values_refs = {0};
 
     if (!PyArg_ParseTuple(args, "OsO", &arg_props_obj, &arg_key, &arg_values_obj)) return NULL;
 
@@ -46174,7 +48339,7 @@ static PyObject *py_ifcopenshell_pset_props_set_int_list(PyObject *self, PyObjec
         PyErr_SetString(PyExc_TypeError, "Expected a capsule or buffer-compatible object");
         goto __cleanup;
     }
-    if (!make_input_int64_list(arg_values_obj, &arg_values)) {
+    if (!make_input_int64_list(arg_values_obj, &arg_values, &arg_values_refs)) {
         goto __cleanup;
     }
     ifcopenshell_clear_error();
@@ -46190,6 +48355,7 @@ static PyObject *py_ifcopenshell_pset_props_set_int_list(PyObject *self, PyObjec
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
+        release_option_refs(&arg_values_refs);
         free_input_int64_list(&arg_values);
         if (arg_props_has_view) PyBuffer_Release(&arg_props_view);
     return __py_result;
@@ -46282,6 +48448,7 @@ static PyObject *py_ifcopenshell_pset_props_set_string_list(PyObject *self, PyOb
     const char *arg_key = NULL;
     PyObject *arg_values_obj = NULL;
     ifcopenshell_string_list_t arg_values = {0};
+    option_ref_owner arg_values_refs = {0};
 
     if (!PyArg_ParseTuple(args, "OsO", &arg_props_obj, &arg_key, &arg_values_obj)) return NULL;
 
@@ -46294,7 +48461,7 @@ static PyObject *py_ifcopenshell_pset_props_set_string_list(PyObject *self, PyOb
         PyErr_SetString(PyExc_TypeError, "Expected a capsule or buffer-compatible object");
         goto __cleanup;
     }
-    if (!make_input_string_list(arg_values_obj, &arg_values)) {
+    if (!make_input_string_list(arg_values_obj, &arg_values, &arg_values_refs)) {
         goto __cleanup;
     }
     ifcopenshell_clear_error();
@@ -46310,6 +48477,7 @@ static PyObject *py_ifcopenshell_pset_props_set_string_list(PyObject *self, PyOb
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
+        release_option_refs(&arg_values_refs);
         free_input_string_list(&arg_values);
         if (arg_props_has_view) PyBuffer_Release(&arg_props_view);
     return __py_result;
@@ -46627,11 +48795,12 @@ static PyObject *py_ifcopenshell_pset_template_create_from_files(PyObject *self,
     const char *arg_schema_identifier = NULL;
     PyObject *arg_template_files_obj = NULL;
     ifcopenshell_file_list_t arg_template_files = {0};
+    option_ref_owner arg_template_files_refs = {0};
     ifcopenshell_pset_template_handle_t *result = NULL;
     if (!PyArg_ParseTuple(args, "sO", &arg_schema_identifier, &arg_template_files_obj)) return NULL;
 
 
-    if (!make_input_file_list(arg_template_files_obj, &arg_template_files)) {
+    if (!make_input_file_list(arg_template_files_obj, &arg_template_files, &arg_template_files_refs)) {
         goto __cleanup;
     }
     ifcopenshell_clear_error();
@@ -46646,6 +48815,7 @@ static PyObject *py_ifcopenshell_pset_template_create_from_files(PyObject *self,
     }
     __py_result = wrap_pset_template_handle(result, 1);
 __cleanup:
+        release_option_refs(&arg_template_files_refs);
         free_input_file_list(&arg_template_files);
     return __py_result;
 }
@@ -46657,14 +48827,14 @@ static PyObject *py_ifcopenshell_pset_template_edit_prop_template(PyObject *self
     ifcopenshell_file_t *arg_file = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_pset_template_edit_prop_template_options_t arg_options = {0};
-    PyObject *arg_options_refs[2] = {0};
+    option_ref_owner arg_options_refs = {0};
 
     if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_options_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_pset_template_edit_prop_template_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_pset_template_edit_prop_template_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -46681,7 +48851,7 @@ static PyObject *py_ifcopenshell_pset_template_edit_prop_template(PyObject *self
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
-        release_option_refs(arg_options_refs, 2);
+        release_option_refs(&arg_options_refs);
         free_input_pset_template_edit_prop_template_options(&arg_options);
     return __py_result;
 }
@@ -46985,6 +49155,7 @@ static PyObject *py_ifcopenshell_pset_unassign_pset(PyObject *self, PyObject *ar
     ifcopenshell_file_t *arg_file = NULL;
     PyObject *arg_products_obj = NULL;
     ifcopenshell_instance_list_t arg_products = {0};
+    option_ref_owner arg_products_refs = {0};
     PyObject *arg_pset_obj = NULL;
     ifcopenshell_instance_t *arg_pset = NULL;
 
@@ -46996,7 +49167,7 @@ static PyObject *py_ifcopenshell_pset_unassign_pset(PyObject *self, PyObject *ar
     if (!extract_handle(arg_pset_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_pset, 0)) {
         goto __cleanup;
     }
-    if (!make_input_instance_list(arg_products_obj, &arg_products)) {
+    if (!make_input_instance_list(arg_products_obj, &arg_products, &arg_products_refs)) {
         goto __cleanup;
     }
     ifcopenshell_clear_error();
@@ -47012,6 +49183,7 @@ static PyObject *py_ifcopenshell_pset_unassign_pset(PyObject *self, PyObject *ar
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
+        release_option_refs(&arg_products_refs);
         free_input_instance_list(&arg_products);
     return __py_result;
 }
@@ -47023,14 +49195,14 @@ static PyObject *py_ifcopenshell_pset_unshare_pset(PyObject *self, PyObject *arg
     ifcopenshell_file_t *arg_file = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_pset_unshare_pset_options_t arg_options = {0};
-    PyObject *arg_options_refs[5] = {0};
+    option_ref_owner arg_options_refs = {0};
     ifcopenshell_parse_instance_list_t *result = NULL;
     if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_options_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_pset_unshare_pset_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_pset_unshare_pset_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -47046,7 +49218,7 @@ static PyObject *py_ifcopenshell_pset_unshare_pset(PyObject *self, PyObject *arg
     }
     __py_result = wrap_parse_instance_list(result, 1);
 __cleanup:
-        release_option_refs(arg_options_refs, 5);
+        release_option_refs(&arg_options_refs);
         free_input_pset_unshare_pset_options(&arg_options);
     return __py_result;
 }
@@ -47139,14 +49311,14 @@ static PyObject *py_ifcopenshell_representation_get_product_representation(PyObj
     ifcopenshell_instance_t *arg_element = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_representation_get_product_representation_options_t arg_options = {0};
-    PyObject *arg_options_refs[4] = {0};
+    option_ref_owner arg_options_refs = {0};
     ifcopenshell_instance_t *result = NULL;
     if (!PyArg_ParseTuple(args, "OO", &arg_element_obj, &arg_options_obj)) return NULL;
 
     if (!extract_handle(arg_element_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_element, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_representation_get_product_representation_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_representation_get_product_representation_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -47162,7 +49334,7 @@ static PyObject *py_ifcopenshell_representation_get_product_representation(PyObj
     }
     __py_result = wrap_instance(result, 1);
 __cleanup:
-        release_option_refs(arg_options_refs, 4);
+        release_option_refs(&arg_options_refs);
         free_input_representation_get_product_representation_options(&arg_options);
     return __py_result;
 }
@@ -47228,14 +49400,14 @@ static PyObject *py_ifcopenshell_resource_add_resource(PyObject *self, PyObject 
     ifcopenshell_file_t *arg_file = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_resource_add_resource_options_t arg_options = {0};
-    PyObject *arg_options_refs[7] = {0};
+    option_ref_owner arg_options_refs = {0};
     ifcopenshell_instance_t *result = NULL;
     if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_options_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_resource_add_resource_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_resource_add_resource_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -47251,7 +49423,7 @@ static PyObject *py_ifcopenshell_resource_add_resource(PyObject *self, PyObject 
     }
     __py_result = wrap_instance(result, 1);
 __cleanup:
-        release_option_refs(arg_options_refs, 7);
+        release_option_refs(&arg_options_refs);
         free_input_resource_add_resource_options(&arg_options);
     return __py_result;
 }
@@ -47265,7 +49437,7 @@ static PyObject *py_ifcopenshell_resource_add_resource_quantity(PyObject *self, 
     ifcopenshell_instance_t *arg_resource = NULL;
     const char *arg_ifc_class = NULL;
     ifcopenshell_instance_t *result = NULL;
-    if (!PyArg_ParseTuple(args, "OOs", &arg_file_obj, &arg_resource_obj, &arg_ifc_class)) return NULL;
+    if (!PyArg_ParseTuple(args, "OO|z", &arg_file_obj, &arg_resource_obj, &arg_ifc_class)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
@@ -47328,14 +49500,14 @@ static PyObject *py_ifcopenshell_resource_assign_resource(PyObject *self, PyObje
     ifcopenshell_file_t *arg_file = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_resource_assignment_options_t arg_options = {0};
-    PyObject *arg_options_refs[5] = {0};
+    option_ref_owner arg_options_refs = {0};
     ifcopenshell_instance_t *result = NULL;
     if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_options_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_resource_assignment_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_resource_assignment_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -47351,7 +49523,7 @@ static PyObject *py_ifcopenshell_resource_assign_resource(PyObject *self, PyObje
     }
     __py_result = wrap_instance(result, 1);
 __cleanup:
-        release_option_refs(arg_options_refs, 5);
+        release_option_refs(&arg_options_refs);
         free_input_resource_assignment_options(&arg_options);
     return __py_result;
 }
@@ -47570,14 +49742,14 @@ static PyObject *py_ifcopenshell_resource_remove_resource(PyObject *self, PyObje
     ifcopenshell_file_t *arg_file = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_resource_remove_resource_options_t arg_options = {0};
-    PyObject *arg_options_refs[3] = {0};
+    option_ref_owner arg_options_refs = {0};
 
     if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_options_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_resource_remove_resource_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_resource_remove_resource_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -47594,7 +49766,7 @@ static PyObject *py_ifcopenshell_resource_remove_resource(PyObject *self, PyObje
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
-        release_option_refs(arg_options_refs, 3);
+        release_option_refs(&arg_options_refs);
         free_input_resource_remove_resource_options(&arg_options);
     return __py_result;
 }
@@ -47639,14 +49811,14 @@ static PyObject *py_ifcopenshell_resource_unassign_resource(PyObject *self, PyOb
     ifcopenshell_file_t *arg_file = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_resource_assignment_options_t arg_options = {0};
-    PyObject *arg_options_refs[5] = {0};
+    option_ref_owner arg_options_refs = {0};
 
     if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_options_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_resource_assignment_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_resource_assignment_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -47663,7 +49835,7 @@ static PyObject *py_ifcopenshell_resource_unassign_resource(PyObject *self, PyOb
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
-        release_option_refs(arg_options_refs, 5);
+        release_option_refs(&arg_options_refs);
         free_input_resource_assignment_options(&arg_options);
     return __py_result;
 }
@@ -47707,14 +49879,14 @@ static PyObject *py_ifcopenshell_root_create_entity(PyObject *self, PyObject *ar
     ifcopenshell_file_t *arg_file = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_root_create_entity_options_t arg_options = {0};
-    PyObject *arg_options_refs[4] = {0};
+    option_ref_owner arg_options_refs = {0};
     ifcopenshell_instance_t *result = NULL;
     if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_options_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_root_create_entity_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_root_create_entity_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -47730,7 +49902,7 @@ static PyObject *py_ifcopenshell_root_create_entity(PyObject *self, PyObject *ar
     }
     __py_result = wrap_instance(result, 1);
 __cleanup:
-        release_option_refs(arg_options_refs, 4);
+        release_option_refs(&arg_options_refs);
         free_input_root_create_entity_options(&arg_options);
     return __py_result;
 }
@@ -47742,14 +49914,14 @@ static PyObject *py_ifcopenshell_root_reassign_class(PyObject *self, PyObject *a
     ifcopenshell_file_t *arg_file = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_root_reassign_class_options_t arg_options = {0};
-    PyObject *arg_options_refs[4] = {0};
+    option_ref_owner arg_options_refs = {0};
     ifcopenshell_instance_t *result = NULL;
     if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_options_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_root_reassign_class_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_root_reassign_class_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -47765,7 +49937,7 @@ static PyObject *py_ifcopenshell_root_reassign_class(PyObject *self, PyObject *a
     }
     __py_result = wrap_instance(result, 1);
 __cleanup:
-        release_option_refs(arg_options_refs, 4);
+        release_option_refs(&arg_options_refs);
         free_input_root_reassign_class_options(&arg_options);
     return __py_result;
 }
@@ -47779,7 +49951,7 @@ static PyObject *py_ifcopenshell_root_remove_product(PyObject *self, PyObject *a
     ifcopenshell_instance_t *arg_product = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_root_remove_product_options_t arg_options = {0};
-    PyObject *arg_options_refs[2] = {0};
+    option_ref_owner arg_options_refs = {0};
 
     if (!PyArg_ParseTuple(args, "OOO", &arg_file_obj, &arg_product_obj, &arg_options_obj)) return NULL;
 
@@ -47789,7 +49961,7 @@ static PyObject *py_ifcopenshell_root_remove_product(PyObject *self, PyObject *a
     if (!extract_handle(arg_product_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_product, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_root_remove_product_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_root_remove_product_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -47806,7 +49978,7 @@ static PyObject *py_ifcopenshell_root_remove_product(PyObject *self, PyObject *a
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
-        release_option_refs(arg_options_refs, 2);
+        release_option_refs(&arg_options_refs);
         free_input_root_remove_product_options(&arg_options);
     return __py_result;
 }
@@ -48147,13 +50319,14 @@ static PyObject *py_ifcopenshell_selector_filter_elements(PyObject *self, PyObje
     const char *arg_query = NULL;
     PyObject *arg_elements_obj = NULL;
     ifcopenshell_instance_list_t arg_elements = {0};
+    option_ref_owner arg_elements_refs = {0};
     ifcopenshell_value_t *result = NULL;
     if (!PyArg_ParseTuple(args, "OsO", &arg_file_obj, &arg_query, &arg_elements_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
     }
-    if (!make_input_instance_list(arg_elements_obj, &arg_elements)) {
+    if (!make_input_instance_list(arg_elements_obj, &arg_elements, &arg_elements_refs)) {
         goto __cleanup;
     }
     ifcopenshell_clear_error();
@@ -48168,6 +50341,7 @@ static PyObject *py_ifcopenshell_selector_filter_elements(PyObject *self, PyObje
     }
     __py_result = wrap_value(result, 1);
 __cleanup:
+        release_option_refs(&arg_elements_refs);
         free_input_instance_list(&arg_elements);
     return __py_result;
 }
@@ -48706,14 +50880,14 @@ static PyObject *py_ifcopenshell_sequence_add_task(PyObject *self, PyObject *arg
     ifcopenshell_file_t *arg_file = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_sequence_add_task_options_t arg_options = {0};
-    PyObject *arg_options_refs[9] = {0};
+    option_ref_owner arg_options_refs = {0};
     ifcopenshell_instance_t *result = NULL;
     if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_options_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_sequence_add_task_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_sequence_add_task_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -48729,7 +50903,7 @@ static PyObject *py_ifcopenshell_sequence_add_task(PyObject *self, PyObject *arg
     }
     __py_result = wrap_instance(result, 1);
 __cleanup:
-        release_option_refs(arg_options_refs, 9);
+        release_option_refs(&arg_options_refs);
         free_input_sequence_add_task_options(&arg_options);
     return __py_result;
 }
@@ -48743,7 +50917,7 @@ static PyObject *py_ifcopenshell_sequence_add_task_time(PyObject *self, PyObject
     ifcopenshell_instance_t *arg_task = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_sequence_add_task_time_options_t arg_options = {0};
-    PyObject *arg_options_refs[1] = {0};
+    option_ref_owner arg_options_refs = {0};
     ifcopenshell_instance_t *result = NULL;
     if (!PyArg_ParseTuple(args, "OOO", &arg_file_obj, &arg_task_obj, &arg_options_obj)) return NULL;
 
@@ -48753,7 +50927,7 @@ static PyObject *py_ifcopenshell_sequence_add_task_time(PyObject *self, PyObject
     if (!extract_handle(arg_task_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_task, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_sequence_add_task_time_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_sequence_add_task_time_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -48769,7 +50943,7 @@ static PyObject *py_ifcopenshell_sequence_add_task_time(PyObject *self, PyObject
     }
     __py_result = wrap_instance(result, 1);
 __cleanup:
-        release_option_refs(arg_options_refs, 1);
+        release_option_refs(&arg_options_refs);
         free_input_sequence_add_task_time_options(&arg_options);
     return __py_result;
 }
@@ -48783,7 +50957,7 @@ static PyObject *py_ifcopenshell_sequence_add_time_period(PyObject *self, PyObje
     ifcopenshell_instance_t *arg_recurrence_pattern = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_sequence_add_time_period_options_t arg_options = {0};
-    PyObject *arg_options_refs[2] = {0};
+    option_ref_owner arg_options_refs = {0};
     ifcopenshell_instance_t *result = NULL;
     if (!PyArg_ParseTuple(args, "OOO", &arg_file_obj, &arg_recurrence_pattern_obj, &arg_options_obj)) return NULL;
 
@@ -48793,7 +50967,7 @@ static PyObject *py_ifcopenshell_sequence_add_time_period(PyObject *self, PyObje
     if (!extract_handle(arg_recurrence_pattern_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_recurrence_pattern, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_sequence_add_time_period_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_sequence_add_time_period_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -48809,7 +50983,7 @@ static PyObject *py_ifcopenshell_sequence_add_time_period(PyObject *self, PyObje
     }
     __py_result = wrap_instance(result, 1);
 __cleanup:
-        release_option_refs(arg_options_refs, 2);
+        release_option_refs(&arg_options_refs);
         free_input_sequence_add_time_period_options(&arg_options);
     return __py_result;
 }
@@ -48821,14 +50995,14 @@ static PyObject *py_ifcopenshell_sequence_add_work_calendar(PyObject *self, PyOb
     ifcopenshell_file_t *arg_file = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_sequence_add_work_calendar_options_t arg_options = {0};
-    PyObject *arg_options_refs[5] = {0};
+    option_ref_owner arg_options_refs = {0};
     ifcopenshell_instance_t *result = NULL;
     if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_options_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_sequence_add_work_calendar_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_sequence_add_work_calendar_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -48844,7 +51018,7 @@ static PyObject *py_ifcopenshell_sequence_add_work_calendar(PyObject *self, PyOb
     }
     __py_result = wrap_instance(result, 1);
 __cleanup:
-        release_option_refs(arg_options_refs, 5);
+        release_option_refs(&arg_options_refs);
         free_input_sequence_add_work_calendar_options(&arg_options);
     return __py_result;
 }
@@ -48856,14 +51030,14 @@ static PyObject *py_ifcopenshell_sequence_add_work_plan(PyObject *self, PyObject
     ifcopenshell_file_t *arg_file = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_sequence_add_work_plan_options_t arg_options = {0};
-    PyObject *arg_options_refs[8] = {0};
+    option_ref_owner arg_options_refs = {0};
     ifcopenshell_instance_t *result = NULL;
     if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_options_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_sequence_add_work_plan_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_sequence_add_work_plan_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -48879,7 +51053,7 @@ static PyObject *py_ifcopenshell_sequence_add_work_plan(PyObject *self, PyObject
     }
     __py_result = wrap_instance(result, 1);
 __cleanup:
-        release_option_refs(arg_options_refs, 8);
+        release_option_refs(&arg_options_refs);
         free_input_sequence_add_work_plan_options(&arg_options);
     return __py_result;
 }
@@ -48891,14 +51065,14 @@ static PyObject *py_ifcopenshell_sequence_add_work_schedule(PyObject *self, PyOb
     ifcopenshell_file_t *arg_file = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_sequence_add_work_schedule_options_t arg_options = {0};
-    PyObject *arg_options_refs[10] = {0};
+    option_ref_owner arg_options_refs = {0};
     ifcopenshell_instance_t *result = NULL;
     if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_options_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_sequence_add_work_schedule_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_sequence_add_work_schedule_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -48914,7 +51088,7 @@ static PyObject *py_ifcopenshell_sequence_add_work_schedule(PyObject *self, PyOb
     }
     __py_result = wrap_instance(result, 1);
 __cleanup:
-        release_option_refs(arg_options_refs, 10);
+        release_option_refs(&arg_options_refs);
         free_input_sequence_add_work_schedule_options(&arg_options);
     return __py_result;
 }
@@ -48962,7 +51136,7 @@ static PyObject *py_ifcopenshell_sequence_assign_lag_time(PyObject *self, PyObje
     const char *arg_lag_value = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_sequence_assign_lag_time_options_t arg_options = {0};
-    PyObject *arg_options_refs[1] = {0};
+    option_ref_owner arg_options_refs = {0};
     ifcopenshell_instance_t *result = NULL;
     if (!PyArg_ParseTuple(args, "OOsO", &arg_file_obj, &arg_rel_sequence_obj, &arg_lag_value, &arg_options_obj)) return NULL;
 
@@ -48972,7 +51146,7 @@ static PyObject *py_ifcopenshell_sequence_assign_lag_time(PyObject *self, PyObje
     if (!extract_handle(arg_rel_sequence_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_rel_sequence, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_sequence_assign_lag_time_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_sequence_assign_lag_time_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -48988,7 +51162,7 @@ static PyObject *py_ifcopenshell_sequence_assign_lag_time(PyObject *self, PyObje
     }
     __py_result = wrap_instance(result, 1);
 __cleanup:
-        release_option_refs(arg_options_refs, 1);
+        release_option_refs(&arg_options_refs);
         free_input_sequence_assign_lag_time_options(&arg_options);
     return __py_result;
 }
@@ -49004,7 +51178,7 @@ static PyObject *py_ifcopenshell_sequence_assign_process(PyObject *self, PyObjec
     ifcopenshell_instance_t *arg_related_object = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_sequence_assign_process_options_t arg_options = {0};
-    PyObject *arg_options_refs[3] = {0};
+    option_ref_owner arg_options_refs = {0};
     ifcopenshell_instance_t *result = NULL;
     if (!PyArg_ParseTuple(args, "OOOO", &arg_file_obj, &arg_relating_process_obj, &arg_related_object_obj, &arg_options_obj)) return NULL;
 
@@ -49017,7 +51191,7 @@ static PyObject *py_ifcopenshell_sequence_assign_process(PyObject *self, PyObjec
     if (!extract_handle(arg_related_object_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_related_object, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_sequence_assign_process_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_sequence_assign_process_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -49033,7 +51207,7 @@ static PyObject *py_ifcopenshell_sequence_assign_process(PyObject *self, PyObjec
     }
     __py_result = wrap_instance(result, 1);
 __cleanup:
-        release_option_refs(arg_options_refs, 3);
+        release_option_refs(&arg_options_refs);
         free_input_sequence_assign_process_options(&arg_options);
     return __py_result;
 }
@@ -49049,7 +51223,7 @@ static PyObject *py_ifcopenshell_sequence_assign_product(PyObject *self, PyObjec
     ifcopenshell_instance_t *arg_related_object = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_sequence_assign_product_options_t arg_options = {0};
-    PyObject *arg_options_refs[3] = {0};
+    option_ref_owner arg_options_refs = {0};
     ifcopenshell_instance_t *result = NULL;
     if (!PyArg_ParseTuple(args, "OOOO", &arg_file_obj, &arg_relating_product_obj, &arg_related_object_obj, &arg_options_obj)) return NULL;
 
@@ -49062,7 +51236,7 @@ static PyObject *py_ifcopenshell_sequence_assign_product(PyObject *self, PyObjec
     if (!extract_handle(arg_related_object_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_related_object, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_sequence_assign_product_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_sequence_assign_product_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -49078,7 +51252,7 @@ static PyObject *py_ifcopenshell_sequence_assign_product(PyObject *self, PyObjec
     }
     __py_result = wrap_instance(result, 1);
 __cleanup:
-        release_option_refs(arg_options_refs, 3);
+        release_option_refs(&arg_options_refs);
         free_input_sequence_assign_product_options(&arg_options);
     return __py_result;
 }
@@ -49127,7 +51301,7 @@ static PyObject *py_ifcopenshell_sequence_assign_sequence(PyObject *self, PyObje
     ifcopenshell_instance_t *arg_related_process = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_sequence_assign_sequence_options_t arg_options = {0};
-    PyObject *arg_options_refs[4] = {0};
+    option_ref_owner arg_options_refs = {0};
     ifcopenshell_instance_t *result = NULL;
     if (!PyArg_ParseTuple(args, "OOOO", &arg_file_obj, &arg_relating_process_obj, &arg_related_process_obj, &arg_options_obj)) return NULL;
 
@@ -49140,7 +51314,7 @@ static PyObject *py_ifcopenshell_sequence_assign_sequence(PyObject *self, PyObje
     if (!extract_handle(arg_related_process_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_related_process, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_sequence_assign_sequence_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_sequence_assign_sequence_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -49156,7 +51330,7 @@ static PyObject *py_ifcopenshell_sequence_assign_sequence(PyObject *self, PyObje
     }
     __py_result = wrap_instance(result, 1);
 __cleanup:
-        release_option_refs(arg_options_refs, 4);
+        release_option_refs(&arg_options_refs);
         free_input_sequence_assign_sequence_options(&arg_options);
     return __py_result;
 }
@@ -49172,7 +51346,7 @@ static PyObject *py_ifcopenshell_sequence_assign_work_plan(PyObject *self, PyObj
     ifcopenshell_instance_t *arg_work_plan = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_sequence_assign_work_plan_options_t arg_options = {0};
-    PyObject *arg_options_refs[3] = {0};
+    option_ref_owner arg_options_refs = {0};
     ifcopenshell_instance_t *result = NULL;
     if (!PyArg_ParseTuple(args, "OOOO", &arg_file_obj, &arg_work_schedule_obj, &arg_work_plan_obj, &arg_options_obj)) return NULL;
 
@@ -49185,7 +51359,7 @@ static PyObject *py_ifcopenshell_sequence_assign_work_plan(PyObject *self, PyObj
     if (!extract_handle(arg_work_plan_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_work_plan, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_sequence_assign_work_plan_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_sequence_assign_work_plan_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -49201,7 +51375,7 @@ static PyObject *py_ifcopenshell_sequence_assign_work_plan(PyObject *self, PyObj
     }
     __py_result = wrap_instance(result, 1);
 __cleanup:
-        release_option_refs(arg_options_refs, 3);
+        release_option_refs(&arg_options_refs);
         free_input_sequence_assign_work_plan_options(&arg_options);
     return __py_result;
 }
@@ -49281,7 +51455,7 @@ static PyObject *py_ifcopenshell_sequence_copy_work_schedule(PyObject *self, PyO
     ifcopenshell_instance_t *arg_work_schedule = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_sequence_copy_work_schedule_options_t arg_options = {0};
-    PyObject *arg_options_refs[3] = {0};
+    option_ref_owner arg_options_refs = {0};
     ifcopenshell_instance_t *result = NULL;
     if (!PyArg_ParseTuple(args, "OOO", &arg_file_obj, &arg_work_schedule_obj, &arg_options_obj)) return NULL;
 
@@ -49291,7 +51465,7 @@ static PyObject *py_ifcopenshell_sequence_copy_work_schedule(PyObject *self, PyO
     if (!extract_handle(arg_work_schedule_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_work_schedule, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_sequence_copy_work_schedule_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_sequence_copy_work_schedule_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -49307,7 +51481,7 @@ static PyObject *py_ifcopenshell_sequence_copy_work_schedule(PyObject *self, PyO
     }
     __py_result = wrap_instance(result, 1);
 __cleanup:
-        release_option_refs(arg_options_refs, 3);
+        release_option_refs(&arg_options_refs);
         free_input_sequence_copy_work_schedule_options(&arg_options);
     return __py_result;
 }
@@ -49321,7 +51495,7 @@ static PyObject *py_ifcopenshell_sequence_create_baseline(PyObject *self, PyObje
     ifcopenshell_instance_t *arg_work_schedule = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_sequence_create_baseline_options_t arg_options = {0};
-    PyObject *arg_options_refs[4] = {0};
+    option_ref_owner arg_options_refs = {0};
 
     if (!PyArg_ParseTuple(args, "OOO", &arg_file_obj, &arg_work_schedule_obj, &arg_options_obj)) return NULL;
 
@@ -49331,7 +51505,7 @@ static PyObject *py_ifcopenshell_sequence_create_baseline(PyObject *self, PyObje
     if (!extract_handle(arg_work_schedule_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_work_schedule, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_sequence_create_baseline_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_sequence_create_baseline_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -49348,7 +51522,7 @@ static PyObject *py_ifcopenshell_sequence_create_baseline(PyObject *self, PyObje
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
-        release_option_refs(arg_options_refs, 4);
+        release_option_refs(&arg_options_refs);
         free_input_sequence_create_baseline_options(&arg_options);
     return __py_result;
 }
@@ -49362,7 +51536,7 @@ static PyObject *py_ifcopenshell_sequence_duplicate_task(PyObject *self, PyObjec
     ifcopenshell_instance_t *arg_task = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_sequence_duplicate_task_options_t arg_options = {0};
-    PyObject *arg_options_refs[3] = {0};
+    option_ref_owner arg_options_refs = {0};
     ifcopenshell_sequence_duplicate_task_result_t result = {0};
     if (!PyArg_ParseTuple(args, "OOO", &arg_file_obj, &arg_task_obj, &arg_options_obj)) return NULL;
 
@@ -49372,7 +51546,7 @@ static PyObject *py_ifcopenshell_sequence_duplicate_task(PyObject *self, PyObjec
     if (!extract_handle(arg_task_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_task, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_sequence_duplicate_task_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_sequence_duplicate_task_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -49384,7 +51558,7 @@ static PyObject *py_ifcopenshell_sequence_duplicate_task(PyObject *self, PyObjec
     }
     __py_result = convert_sequence_duplicate_task_result(&result, 1);
 __cleanup:
-        release_option_refs(arg_options_refs, 3);
+        release_option_refs(&arg_options_refs);
         free_input_sequence_duplicate_task_options(&arg_options);
     return __py_result;
 }
@@ -49824,7 +51998,7 @@ static PyObject *py_ifcopenshell_sequence_remove_task(PyObject *self, PyObject *
     ifcopenshell_instance_t *arg_task = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_sequence_remove_options_t arg_options = {0};
-    PyObject *arg_options_refs[2] = {0};
+    option_ref_owner arg_options_refs = {0};
 
     if (!PyArg_ParseTuple(args, "OOO", &arg_file_obj, &arg_task_obj, &arg_options_obj)) return NULL;
 
@@ -49834,7 +52008,7 @@ static PyObject *py_ifcopenshell_sequence_remove_task(PyObject *self, PyObject *
     if (!extract_handle(arg_task_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_task, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_sequence_remove_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_sequence_remove_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -49851,7 +52025,7 @@ static PyObject *py_ifcopenshell_sequence_remove_task(PyObject *self, PyObject *
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
-        release_option_refs(arg_options_refs, 2);
+        release_option_refs(&arg_options_refs);
         free_input_sequence_remove_options(&arg_options);
     return __py_result;
 }
@@ -49898,7 +52072,7 @@ static PyObject *py_ifcopenshell_sequence_remove_work_calendar(PyObject *self, P
     ifcopenshell_instance_t *arg_work_calendar = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_sequence_remove_options_t arg_options = {0};
-    PyObject *arg_options_refs[2] = {0};
+    option_ref_owner arg_options_refs = {0};
 
     if (!PyArg_ParseTuple(args, "OOO", &arg_file_obj, &arg_work_calendar_obj, &arg_options_obj)) return NULL;
 
@@ -49908,7 +52082,7 @@ static PyObject *py_ifcopenshell_sequence_remove_work_calendar(PyObject *self, P
     if (!extract_handle(arg_work_calendar_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_work_calendar, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_sequence_remove_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_sequence_remove_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -49925,7 +52099,7 @@ static PyObject *py_ifcopenshell_sequence_remove_work_calendar(PyObject *self, P
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
-        release_option_refs(arg_options_refs, 2);
+        release_option_refs(&arg_options_refs);
         free_input_sequence_remove_options(&arg_options);
     return __py_result;
 }
@@ -49939,7 +52113,7 @@ static PyObject *py_ifcopenshell_sequence_remove_work_plan(PyObject *self, PyObj
     ifcopenshell_instance_t *arg_work_plan = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_sequence_remove_options_t arg_options = {0};
-    PyObject *arg_options_refs[2] = {0};
+    option_ref_owner arg_options_refs = {0};
 
     if (!PyArg_ParseTuple(args, "OOO", &arg_file_obj, &arg_work_plan_obj, &arg_options_obj)) return NULL;
 
@@ -49949,7 +52123,7 @@ static PyObject *py_ifcopenshell_sequence_remove_work_plan(PyObject *self, PyObj
     if (!extract_handle(arg_work_plan_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_work_plan, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_sequence_remove_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_sequence_remove_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -49966,7 +52140,7 @@ static PyObject *py_ifcopenshell_sequence_remove_work_plan(PyObject *self, PyObj
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
-        release_option_refs(arg_options_refs, 2);
+        release_option_refs(&arg_options_refs);
         free_input_sequence_remove_options(&arg_options);
     return __py_result;
 }
@@ -49980,7 +52154,7 @@ static PyObject *py_ifcopenshell_sequence_remove_work_schedule(PyObject *self, P
     ifcopenshell_instance_t *arg_work_schedule = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_sequence_remove_options_t arg_options = {0};
-    PyObject *arg_options_refs[2] = {0};
+    option_ref_owner arg_options_refs = {0};
 
     if (!PyArg_ParseTuple(args, "OOO", &arg_file_obj, &arg_work_schedule_obj, &arg_options_obj)) return NULL;
 
@@ -49990,7 +52164,7 @@ static PyObject *py_ifcopenshell_sequence_remove_work_schedule(PyObject *self, P
     if (!extract_handle(arg_work_schedule_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_work_schedule, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_sequence_remove_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_sequence_remove_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -50007,7 +52181,7 @@ static PyObject *py_ifcopenshell_sequence_remove_work_schedule(PyObject *self, P
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
-        release_option_refs(arg_options_refs, 2);
+        release_option_refs(&arg_options_refs);
         free_input_sequence_remove_options(&arg_options);
     return __py_result;
 }
@@ -50089,7 +52263,7 @@ static PyObject *py_ifcopenshell_sequence_unassign_process(PyObject *self, PyObj
     ifcopenshell_instance_t *arg_related_object = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_sequence_remove_options_t arg_options = {0};
-    PyObject *arg_options_refs[2] = {0};
+    option_ref_owner arg_options_refs = {0};
     ifcopenshell_instance_t *result = NULL;
     if (!PyArg_ParseTuple(args, "OOOO", &arg_file_obj, &arg_relating_process_obj, &arg_related_object_obj, &arg_options_obj)) return NULL;
 
@@ -50102,7 +52276,7 @@ static PyObject *py_ifcopenshell_sequence_unassign_process(PyObject *self, PyObj
     if (!extract_handle(arg_related_object_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_related_object, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_sequence_remove_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_sequence_remove_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -50118,7 +52292,7 @@ static PyObject *py_ifcopenshell_sequence_unassign_process(PyObject *self, PyObj
     }
     __py_result = wrap_instance(result, 1);
 __cleanup:
-        release_option_refs(arg_options_refs, 2);
+        release_option_refs(&arg_options_refs);
         free_input_sequence_remove_options(&arg_options);
     return __py_result;
 }
@@ -50134,7 +52308,7 @@ static PyObject *py_ifcopenshell_sequence_unassign_product(PyObject *self, PyObj
     ifcopenshell_instance_t *arg_related_object = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_sequence_remove_options_t arg_options = {0};
-    PyObject *arg_options_refs[2] = {0};
+    option_ref_owner arg_options_refs = {0};
     ifcopenshell_instance_t *result = NULL;
     if (!PyArg_ParseTuple(args, "OOOO", &arg_file_obj, &arg_relating_product_obj, &arg_related_object_obj, &arg_options_obj)) return NULL;
 
@@ -50147,7 +52321,7 @@ static PyObject *py_ifcopenshell_sequence_unassign_product(PyObject *self, PyObj
     if (!extract_handle(arg_related_object_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_related_object, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_sequence_remove_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_sequence_remove_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -50163,7 +52337,7 @@ static PyObject *py_ifcopenshell_sequence_unassign_product(PyObject *self, PyObj
     }
     __py_result = wrap_instance(result, 1);
 __cleanup:
-        release_option_refs(arg_options_refs, 2);
+        release_option_refs(&arg_options_refs);
         free_input_sequence_remove_options(&arg_options);
     return __py_result;
 }
@@ -50246,14 +52420,14 @@ static PyObject *py_ifcopenshell_shape_builder_axis2_placement_2d(PyObject *self
     ifcopenshell_file_t *arg_file = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_shape_builder_axis2_placement2d_options_t arg_options = {0};
-    PyObject *arg_options_refs[2] = {0};
+    option_ref_owner arg_options_refs = {0};
     ifcopenshell_instance_t *result = NULL;
     if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_options_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_shape_builder_axis2_placement2d_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_shape_builder_axis2_placement2d_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -50269,7 +52443,7 @@ static PyObject *py_ifcopenshell_shape_builder_axis2_placement_2d(PyObject *self
     }
     __py_result = wrap_instance(result, 1);
 __cleanup:
-        release_option_refs(arg_options_refs, 2);
+        release_option_refs(&arg_options_refs);
         free_input_shape_builder_axis2_placement2d_options(&arg_options);
     return __py_result;
 }
@@ -50281,14 +52455,14 @@ static PyObject *py_ifcopenshell_shape_builder_axis2_placement_3d(PyObject *self
     ifcopenshell_file_t *arg_file = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_shape_builder_axis2_placement3d_options_t arg_options = {0};
-    PyObject *arg_options_refs[3] = {0};
+    option_ref_owner arg_options_refs = {0};
     ifcopenshell_instance_t *result = NULL;
     if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_options_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_shape_builder_axis2_placement3d_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_shape_builder_axis2_placement3d_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -50304,7 +52478,7 @@ static PyObject *py_ifcopenshell_shape_builder_axis2_placement_3d(PyObject *self
     }
     __py_result = wrap_instance(result, 1);
 __cleanup:
-        release_option_refs(arg_options_refs, 3);
+        release_option_refs(&arg_options_refs);
         free_input_shape_builder_axis2_placement3d_options(&arg_options);
     return __py_result;
 }
@@ -50316,14 +52490,14 @@ static PyObject *py_ifcopenshell_shape_builder_block(PyObject *self, PyObject *a
     ifcopenshell_file_t *arg_file = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_shape_builder_block_options_t arg_options = {0};
-    PyObject *arg_options_refs[4] = {0};
+    option_ref_owner arg_options_refs = {0};
     ifcopenshell_instance_t *result = NULL;
     if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_options_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_shape_builder_block_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_shape_builder_block_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -50339,7 +52513,7 @@ static PyObject *py_ifcopenshell_shape_builder_block(PyObject *self, PyObject *a
     }
     __py_result = wrap_instance(result, 1);
 __cleanup:
-        release_option_refs(arg_options_refs, 4);
+        release_option_refs(&arg_options_refs);
         free_input_shape_builder_block_options(&arg_options);
     return __py_result;
 }
@@ -50351,6 +52525,7 @@ static PyObject *py_ifcopenshell_shape_builder_circle(PyObject *self, PyObject *
     ifcopenshell_file_t *arg_file = NULL;
     PyObject *arg_center_obj = NULL;
     ifcopenshell_double_list_t arg_center = {0};
+    option_ref_owner arg_center_refs = {0};
     double arg_radius = 0;
     ifcopenshell_instance_t *result = NULL;
     if (!PyArg_ParseTuple(args, "OOd", &arg_file_obj, &arg_center_obj, &arg_radius)) return NULL;
@@ -50358,7 +52533,7 @@ static PyObject *py_ifcopenshell_shape_builder_circle(PyObject *self, PyObject *
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
     }
-    if (!make_input_double_list(arg_center_obj, &arg_center)) {
+    if (!make_input_double_list(arg_center_obj, &arg_center, &arg_center_refs)) {
         goto __cleanup;
     }
     ifcopenshell_clear_error();
@@ -50373,6 +52548,7 @@ static PyObject *py_ifcopenshell_shape_builder_circle(PyObject *self, PyObject *
     }
     __py_result = wrap_instance(result, 1);
 __cleanup:
+        release_option_refs(&arg_center_refs);
         free_input_double_list(&arg_center);
     return __py_result;
 }
@@ -50384,13 +52560,14 @@ static PyObject *py_ifcopenshell_shape_builder_curve_between_two_points(PyObject
     ifcopenshell_file_t *arg_file = NULL;
     PyObject *arg_points_obj = NULL;
     ifcopenshell_double_list_list_t arg_points = {0};
+    option_ref_owner arg_points_refs = {0};
     ifcopenshell_instance_t *result = NULL;
     if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_points_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
     }
-    if (!make_input_double_list_list(arg_points_obj, &arg_points)) {
+    if (!make_input_double_list_list(arg_points_obj, &arg_points, &arg_points_refs)) {
         goto __cleanup;
     }
     ifcopenshell_clear_error();
@@ -50405,6 +52582,7 @@ static PyObject *py_ifcopenshell_shape_builder_curve_between_two_points(PyObject
     }
     __py_result = wrap_instance(result, 1);
 __cleanup:
+        release_option_refs(&arg_points_refs);
         free_input_double_list_list(&arg_points);
     return __py_result;
 }
@@ -50448,18 +52626,20 @@ static PyObject *py_ifcopenshell_shape_builder_edge(PyObject *self, PyObject *ar
     ifcopenshell_file_t *arg_file = NULL;
     PyObject *arg_start_obj = NULL;
     ifcopenshell_double_list_t arg_start = {0};
+    option_ref_owner arg_start_refs = {0};
     PyObject *arg_end_obj = NULL;
     ifcopenshell_double_list_t arg_end = {0};
+    option_ref_owner arg_end_refs = {0};
     ifcopenshell_instance_t *result = NULL;
     if (!PyArg_ParseTuple(args, "OOO", &arg_file_obj, &arg_start_obj, &arg_end_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
     }
-    if (!make_input_double_list(arg_start_obj, &arg_start)) {
+    if (!make_input_double_list(arg_start_obj, &arg_start, &arg_start_refs)) {
         goto __cleanup;
     }
-    if (!make_input_double_list(arg_end_obj, &arg_end)) {
+    if (!make_input_double_list(arg_end_obj, &arg_end, &arg_end_refs)) {
         goto __cleanup;
     }
     ifcopenshell_clear_error();
@@ -50474,7 +52654,9 @@ static PyObject *py_ifcopenshell_shape_builder_edge(PyObject *self, PyObject *ar
     }
     __py_result = wrap_instance(result, 1);
 __cleanup:
+        release_option_refs(&arg_end_refs);
         free_input_double_list(&arg_end);
+        release_option_refs(&arg_start_refs);
         free_input_double_list(&arg_start);
     return __py_result;
 }
@@ -50486,14 +52668,14 @@ static PyObject *py_ifcopenshell_shape_builder_ellipse_curve(PyObject *self, PyO
     ifcopenshell_file_t *arg_file = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_shape_builder_ellipse_curve_options_t arg_options = {0};
-    PyObject *arg_options_refs[6] = {0};
+    option_ref_owner arg_options_refs = {0};
     ifcopenshell_instance_t *result = NULL;
     if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_options_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_shape_builder_ellipse_curve_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_shape_builder_ellipse_curve_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -50509,7 +52691,7 @@ static PyObject *py_ifcopenshell_shape_builder_ellipse_curve(PyObject *self, PyO
     }
     __py_result = wrap_instance(result, 1);
 __cleanup:
-        release_option_refs(arg_options_refs, 6);
+        release_option_refs(&arg_options_refs);
         free_input_shape_builder_ellipse_curve_options(&arg_options);
     return __py_result;
 }
@@ -50521,14 +52703,14 @@ static PyObject *py_ifcopenshell_shape_builder_extrude(PyObject *self, PyObject 
     ifcopenshell_file_t *arg_file = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_shape_builder_extrude_options_t arg_options = {0};
-    PyObject *arg_options_refs[7] = {0};
+    option_ref_owner arg_options_refs = {0};
     ifcopenshell_instance_t *result = NULL;
     if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_options_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_shape_builder_extrude_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_shape_builder_extrude_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -50544,7 +52726,7 @@ static PyObject *py_ifcopenshell_shape_builder_extrude(PyObject *self, PyObject 
     }
     __py_result = wrap_instance(result, 1);
 __cleanup:
-        release_option_refs(arg_options_refs, 7);
+        release_option_refs(&arg_options_refs);
         free_input_shape_builder_extrude_options(&arg_options);
     return __py_result;
 }
@@ -50556,13 +52738,14 @@ static PyObject *py_ifcopenshell_shape_builder_face(PyObject *self, PyObject *ar
     ifcopenshell_file_t *arg_file = NULL;
     PyObject *arg_points_obj = NULL;
     ifcopenshell_double_list_list_t arg_points = {0};
+    option_ref_owner arg_points_refs = {0};
     ifcopenshell_instance_t *result = NULL;
     if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_points_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
     }
-    if (!make_input_double_list_list(arg_points_obj, &arg_points)) {
+    if (!make_input_double_list_list(arg_points_obj, &arg_points, &arg_points_refs)) {
         goto __cleanup;
     }
     ifcopenshell_clear_error();
@@ -50577,6 +52760,7 @@ static PyObject *py_ifcopenshell_shape_builder_face(PyObject *self, PyObject *ar
     }
     __py_result = wrap_instance(result, 1);
 __cleanup:
+        release_option_refs(&arg_points_refs);
         free_input_double_list_list(&arg_points);
     return __py_result;
 }
@@ -50588,18 +52772,20 @@ static PyObject *py_ifcopenshell_shape_builder_faceted_brep(PyObject *self, PyOb
     ifcopenshell_file_t *arg_file = NULL;
     PyObject *arg_points_obj = NULL;
     ifcopenshell_double_list_list_t arg_points = {0};
+    option_ref_owner arg_points_refs = {0};
     PyObject *arg_faces_obj = NULL;
     ifcopenshell_int32_list_list_t arg_faces = {0};
+    option_ref_owner arg_faces_refs = {0};
     ifcopenshell_instance_t *result = NULL;
     if (!PyArg_ParseTuple(args, "OOO", &arg_file_obj, &arg_points_obj, &arg_faces_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
     }
-    if (!make_input_double_list_list(arg_points_obj, &arg_points)) {
+    if (!make_input_double_list_list(arg_points_obj, &arg_points, &arg_points_refs)) {
         goto __cleanup;
     }
-    if (!make_input_int32_list_list(arg_faces_obj, &arg_faces)) {
+    if (!make_input_int32_list_list(arg_faces_obj, &arg_faces, &arg_faces_refs)) {
         goto __cleanup;
     }
     ifcopenshell_clear_error();
@@ -50614,7 +52800,9 @@ static PyObject *py_ifcopenshell_shape_builder_faceted_brep(PyObject *self, PyOb
     }
     __py_result = wrap_instance(result, 1);
 __cleanup:
+        release_option_refs(&arg_faces_refs);
         free_input_int32_list_list(&arg_faces);
+        release_option_refs(&arg_points_refs);
         free_input_double_list_list(&arg_points);
     return __py_result;
 }
@@ -50649,14 +52837,14 @@ static PyObject *py_ifcopenshell_shape_builder_half_space_solid(PyObject *self, 
     ifcopenshell_file_t *arg_file = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_shape_builder_half_space_solid_options_t arg_options = {0};
-    PyObject *arg_options_refs[2] = {0};
+    option_ref_owner arg_options_refs = {0};
     ifcopenshell_instance_t *result = NULL;
     if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_options_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_shape_builder_half_space_solid_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_shape_builder_half_space_solid_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -50672,7 +52860,7 @@ static PyObject *py_ifcopenshell_shape_builder_half_space_solid(PyObject *self, 
     }
     __py_result = wrap_instance(result, 1);
 __cleanup:
-        release_option_refs(arg_options_refs, 2);
+        release_option_refs(&arg_options_refs);
         free_input_shape_builder_half_space_solid_options(&arg_options);
     return __py_result;
 }
@@ -50682,24 +52870,21 @@ static PyObject *py_ifcopenshell_shape_builder_indexed_polycurve_2d(PyObject *se
     bool ok = false;
     PyObject *arg_file_obj = NULL;
     ifcopenshell_file_t *arg_file = NULL;
-    PyObject *arg_points_obj = NULL;
-    ifcopenshell_double_list_list_t arg_points = {0};
-    PyObject *arg_segments_obj = NULL;
-    ifcopenshell_int32_list_list_t arg_segments = {0};
+    PyObject *arg_options_obj = NULL;
+    ifcopenshell_shape_builder_indexed_polycurve2d_options_t arg_options = {0};
+    option_ref_owner arg_options_refs = {0};
     ifcopenshell_instance_t *result = NULL;
-    if (!PyArg_ParseTuple(args, "OOO", &arg_file_obj, &arg_points_obj, &arg_segments_obj)) return NULL;
+    if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_options_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
     }
-    if (!make_input_double_list_list(arg_points_obj, &arg_points)) {
+    if (!fill_input_shape_builder_indexed_polycurve2d_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
-    if (!make_input_int32_list_list(arg_segments_obj, &arg_segments)) {
-        goto __cleanup;
-    }
+
     ifcopenshell_clear_error();
-    ok = ifcopenshell_shape_builder_indexed_polycurve_2d(arg_file, &arg_points, &arg_segments, &result);
+    ok = ifcopenshell_shape_builder_indexed_polycurve_2d(arg_file, &arg_options, &result);
     if (!ok) {
         raise_last_error("ifcopenshell_shape_builder_indexed_polycurve_2d failed");
         goto __cleanup;
@@ -50710,8 +52895,8 @@ static PyObject *py_ifcopenshell_shape_builder_indexed_polycurve_2d(PyObject *se
     }
     __py_result = wrap_instance(result, 1);
 __cleanup:
-        free_input_int32_list_list(&arg_segments);
-        free_input_double_list_list(&arg_points);
+        release_option_refs(&arg_options_refs);
+        free_input_shape_builder_indexed_polycurve2d_options(&arg_options);
     return __py_result;
 }
 
@@ -50722,14 +52907,14 @@ static PyObject *py_ifcopenshell_shape_builder_mep_bend_shape(PyObject *self, Py
     ifcopenshell_file_t *arg_file = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_shape_builder_mep_bend_shape_options_t arg_options = {0};
-    PyObject *arg_options_refs[7] = {0};
+    option_ref_owner arg_options_refs = {0};
     ifcopenshell_shape_builder_mep_bend_shape_result_t result = {0};
     if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_options_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_shape_builder_mep_bend_shape_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_shape_builder_mep_bend_shape_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -50741,7 +52926,7 @@ static PyObject *py_ifcopenshell_shape_builder_mep_bend_shape(PyObject *self, Py
     }
     __py_result = convert_shape_builder_mep_bend_shape_result(&result, 1);
 __cleanup:
-        release_option_refs(arg_options_refs, 7);
+        release_option_refs(&arg_options_refs);
         free_input_shape_builder_mep_bend_shape_options(&arg_options);
     return __py_result;
 }
@@ -50751,11 +52936,11 @@ static PyObject *py_ifcopenshell_shape_builder_mep_transition_calculate(PyObject
     bool ok = false;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_shape_builder_mep_transition_calculate_options_t arg_options = {0};
-    PyObject *arg_options_refs[7] = {0};
+    option_ref_owner arg_options_refs = {0};
     double result = {0};
     if (!PyArg_ParseTuple(args, "O", &arg_options_obj)) return NULL;
 
-    if (!fill_input_shape_builder_mep_transition_calculate_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_shape_builder_mep_transition_calculate_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -50767,7 +52952,7 @@ static PyObject *py_ifcopenshell_shape_builder_mep_transition_calculate(PyObject
     }
     __py_result = PyFloat_FromDouble(result);
 __cleanup:
-        release_option_refs(arg_options_refs, 7);
+        release_option_refs(&arg_options_refs);
         free_input_shape_builder_mep_transition_calculate_options(&arg_options);
     return __py_result;
 }
@@ -50777,11 +52962,11 @@ static PyObject *py_ifcopenshell_shape_builder_mep_transition_length(PyObject *s
     bool ok = false;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_shape_builder_mep_transition_length_options_t arg_options = {0};
-    PyObject *arg_options_refs[4] = {0};
+    option_ref_owner arg_options_refs = {0};
     double result = {0};
     if (!PyArg_ParseTuple(args, "O", &arg_options_obj)) return NULL;
 
-    if (!fill_input_shape_builder_mep_transition_length_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_shape_builder_mep_transition_length_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -50793,7 +52978,7 @@ static PyObject *py_ifcopenshell_shape_builder_mep_transition_length(PyObject *s
     }
     __py_result = PyFloat_FromDouble(result);
 __cleanup:
-        release_option_refs(arg_options_refs, 4);
+        release_option_refs(&arg_options_refs);
         free_input_shape_builder_mep_transition_length_options(&arg_options);
     return __py_result;
 }
@@ -50805,14 +52990,14 @@ static PyObject *py_ifcopenshell_shape_builder_mep_transition_shape(PyObject *se
     ifcopenshell_file_t *arg_file = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_shape_builder_mep_transition_shape_options_t arg_options = {0};
-    PyObject *arg_options_refs[6] = {0};
+    option_ref_owner arg_options_refs = {0};
     ifcopenshell_optional_shape_builder_mep_transition_shape_result_t result = {0};
     if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_options_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_shape_builder_mep_transition_shape_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_shape_builder_mep_transition_shape_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -50824,7 +53009,7 @@ static PyObject *py_ifcopenshell_shape_builder_mep_transition_shape(PyObject *se
     }
     __py_result = convert_optional_shape_builder_mep_transition_shape_result(&result, 1);
 __cleanup:
-        release_option_refs(arg_options_refs, 6);
+        release_option_refs(&arg_options_refs);
         free_input_shape_builder_mep_transition_shape_options(&arg_options);
     return __py_result;
 }
@@ -50836,18 +53021,20 @@ static PyObject *py_ifcopenshell_shape_builder_mesh(PyObject *self, PyObject *ar
     ifcopenshell_file_t *arg_file = NULL;
     PyObject *arg_points_obj = NULL;
     ifcopenshell_double_list_list_t arg_points = {0};
+    option_ref_owner arg_points_refs = {0};
     PyObject *arg_faces_obj = NULL;
     ifcopenshell_int32_list_list_t arg_faces = {0};
+    option_ref_owner arg_faces_refs = {0};
     ifcopenshell_instance_t *result = NULL;
     if (!PyArg_ParseTuple(args, "OOO", &arg_file_obj, &arg_points_obj, &arg_faces_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
     }
-    if (!make_input_double_list_list(arg_points_obj, &arg_points)) {
+    if (!make_input_double_list_list(arg_points_obj, &arg_points, &arg_points_refs)) {
         goto __cleanup;
     }
-    if (!make_input_int32_list_list(arg_faces_obj, &arg_faces)) {
+    if (!make_input_int32_list_list(arg_faces_obj, &arg_faces, &arg_faces_refs)) {
         goto __cleanup;
     }
     ifcopenshell_clear_error();
@@ -50862,7 +53049,9 @@ static PyObject *py_ifcopenshell_shape_builder_mesh(PyObject *self, PyObject *ar
     }
     __py_result = wrap_instance(result, 1);
 __cleanup:
+        release_option_refs(&arg_faces_refs);
         free_input_int32_list_list(&arg_faces);
+        release_option_refs(&arg_points_refs);
         free_input_double_list_list(&arg_points);
     return __py_result;
 }
@@ -50874,14 +53063,14 @@ static PyObject *py_ifcopenshell_shape_builder_mirror(PyObject *self, PyObject *
     ifcopenshell_file_t *arg_file = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_shape_builder_mirror_options_t arg_options = {0};
-    PyObject *arg_options_refs[5] = {0};
+    option_ref_owner arg_options_refs = {0};
     ifcopenshell_instance_t *result = NULL;
     if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_options_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_shape_builder_mirror_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_shape_builder_mirror_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -50897,7 +53086,7 @@ static PyObject *py_ifcopenshell_shape_builder_mirror(PyObject *self, PyObject *
     }
     __py_result = wrap_instance(result, 1);
 __cleanup:
-        release_option_refs(arg_options_refs, 5);
+        release_option_refs(&arg_options_refs);
         free_input_shape_builder_mirror_options(&arg_options);
     return __py_result;
 }
@@ -50909,18 +53098,20 @@ static PyObject *py_ifcopenshell_shape_builder_plane(PyObject *self, PyObject *a
     ifcopenshell_file_t *arg_file = NULL;
     PyObject *arg_location_obj = NULL;
     ifcopenshell_double_list_t arg_location = {0};
+    option_ref_owner arg_location_refs = {0};
     PyObject *arg_normal_obj = NULL;
     ifcopenshell_double_list_t arg_normal = {0};
+    option_ref_owner arg_normal_refs = {0};
     ifcopenshell_instance_t *result = NULL;
     if (!PyArg_ParseTuple(args, "OOO", &arg_file_obj, &arg_location_obj, &arg_normal_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
     }
-    if (!make_input_double_list(arg_location_obj, &arg_location)) {
+    if (!make_input_double_list(arg_location_obj, &arg_location, &arg_location_refs)) {
         goto __cleanup;
     }
-    if (!make_input_double_list(arg_normal_obj, &arg_normal)) {
+    if (!make_input_double_list(arg_normal_obj, &arg_normal, &arg_normal_refs)) {
         goto __cleanup;
     }
     ifcopenshell_clear_error();
@@ -50935,7 +53126,9 @@ static PyObject *py_ifcopenshell_shape_builder_plane(PyObject *self, PyObject *a
     }
     __py_result = wrap_instance(result, 1);
 __cleanup:
+        release_option_refs(&arg_normal_refs);
         free_input_double_list(&arg_normal);
+        release_option_refs(&arg_location_refs);
         free_input_double_list(&arg_location);
     return __py_result;
 }
@@ -50947,18 +53140,20 @@ static PyObject *py_ifcopenshell_shape_builder_polygonal_face_set(PyObject *self
     ifcopenshell_file_t *arg_file = NULL;
     PyObject *arg_points_obj = NULL;
     ifcopenshell_double_list_list_t arg_points = {0};
+    option_ref_owner arg_points_refs = {0};
     PyObject *arg_faces_obj = NULL;
     ifcopenshell_int32_list_list_list_t arg_faces = {0};
+    option_ref_owner arg_faces_refs = {0};
     ifcopenshell_instance_t *result = NULL;
     if (!PyArg_ParseTuple(args, "OOO", &arg_file_obj, &arg_points_obj, &arg_faces_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
     }
-    if (!make_input_double_list_list(arg_points_obj, &arg_points)) {
+    if (!make_input_double_list_list(arg_points_obj, &arg_points, &arg_points_refs)) {
         goto __cleanup;
     }
-    if (!make_input_int32_list_list_list(arg_faces_obj, &arg_faces)) {
+    if (!make_input_int32_list_list_list(arg_faces_obj, &arg_faces, &arg_faces_refs)) {
         goto __cleanup;
     }
     ifcopenshell_clear_error();
@@ -50973,7 +53168,9 @@ static PyObject *py_ifcopenshell_shape_builder_polygonal_face_set(PyObject *self
     }
     __py_result = wrap_instance(result, 1);
 __cleanup:
+        release_option_refs(&arg_faces_refs);
         free_input_int32_list_list_list(&arg_faces);
+        release_option_refs(&arg_points_refs);
         free_input_double_list_list(&arg_points);
     return __py_result;
 }
@@ -50985,14 +53182,14 @@ static PyObject *py_ifcopenshell_shape_builder_polyline(PyObject *self, PyObject
     ifcopenshell_file_t *arg_file = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_shape_builder_polyline_options_t arg_options = {0};
-    PyObject *arg_options_refs[4] = {0};
+    option_ref_owner arg_options_refs = {0};
     ifcopenshell_instance_t *result = NULL;
     if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_options_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_shape_builder_polyline_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_shape_builder_polyline_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -51008,7 +53205,7 @@ static PyObject *py_ifcopenshell_shape_builder_polyline(PyObject *self, PyObject
     }
     __py_result = wrap_instance(result, 1);
 __cleanup:
-        release_option_refs(arg_options_refs, 4);
+        release_option_refs(&arg_options_refs);
         free_input_shape_builder_polyline_options(&arg_options);
     return __py_result;
 }
@@ -51020,14 +53217,14 @@ static PyObject *py_ifcopenshell_shape_builder_profile(PyObject *self, PyObject 
     ifcopenshell_file_t *arg_file = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_shape_builder_profile_options_t arg_options = {0};
-    PyObject *arg_options_refs[4] = {0};
+    option_ref_owner arg_options_refs = {0};
     ifcopenshell_instance_t *result = NULL;
     if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_options_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_shape_builder_profile_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_shape_builder_profile_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -51043,7 +53240,7 @@ static PyObject *py_ifcopenshell_shape_builder_profile(PyObject *self, PyObject 
     }
     __py_result = wrap_instance(result, 1);
 __cleanup:
-        release_option_refs(arg_options_refs, 4);
+        release_option_refs(&arg_options_refs);
         free_input_shape_builder_profile_options(&arg_options);
     return __py_result;
 }
@@ -51055,14 +53252,14 @@ static PyObject *py_ifcopenshell_shape_builder_representation(PyObject *self, Py
     ifcopenshell_file_t *arg_file = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_shape_builder_representation_options_t arg_options = {0};
-    PyObject *arg_options_refs[3] = {0};
+    option_ref_owner arg_options_refs = {0};
     ifcopenshell_instance_t *result = NULL;
     if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_options_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_shape_builder_representation_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_shape_builder_representation_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -51078,7 +53275,7 @@ static PyObject *py_ifcopenshell_shape_builder_representation(PyObject *self, Py
     }
     __py_result = wrap_instance(result, 1);
 __cleanup:
-        release_option_refs(arg_options_refs, 3);
+        release_option_refs(&arg_options_refs);
         free_input_shape_builder_representation_options(&arg_options);
     return __py_result;
 }
@@ -51090,14 +53287,14 @@ static PyObject *py_ifcopenshell_shape_builder_rotate(PyObject *self, PyObject *
     ifcopenshell_file_t *arg_file = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_shape_builder_rotate_options_t arg_options = {0};
-    PyObject *arg_options_refs[5] = {0};
+    option_ref_owner arg_options_refs = {0};
     ifcopenshell_instance_t *result = NULL;
     if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_options_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_shape_builder_rotate_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_shape_builder_rotate_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -51113,7 +53310,7 @@ static PyObject *py_ifcopenshell_shape_builder_rotate(PyObject *self, PyObject *
     }
     __py_result = wrap_instance(result, 1);
 __cleanup:
-        release_option_refs(arg_options_refs, 5);
+        release_option_refs(&arg_options_refs);
         free_input_shape_builder_rotate_options(&arg_options);
     return __py_result;
 }
@@ -51126,7 +53323,8 @@ static PyObject *py_ifcopenshell_shape_builder_set_polyline_coords(PyObject *sel
     PyObject *arg_polyline_obj = NULL;
     ifcopenshell_instance_t *arg_polyline = NULL;
     PyObject *arg_coords_obj = NULL;
-    ifcopenshell_double_list_list_t arg_coords = {0};
+    ifcopenshell_double_list_list_any_2_double_list_list_any_3_variant_t arg_coords = {0};
+    option_ref_owner arg_coords_refs = {0};
     ifcopenshell_instance_t *result = NULL;
     if (!PyArg_ParseTuple(args, "OOO", &arg_file_obj, &arg_polyline_obj, &arg_coords_obj)) return NULL;
 
@@ -51136,9 +53334,8 @@ static PyObject *py_ifcopenshell_shape_builder_set_polyline_coords(PyObject *sel
     if (!extract_handle(arg_polyline_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_polyline, 0)) {
         goto __cleanup;
     }
-    if (!make_input_double_list_list(arg_coords_obj, &arg_coords)) {
-        goto __cleanup;
-    }
+    if (!make_input_double_list_list_any_2_double_list_list_any_3_variant(arg_coords_obj, &arg_coords, &arg_coords_refs)) goto __cleanup;
+
     ifcopenshell_clear_error();
     ok = ifcopenshell_shape_builder_set_polyline_coords(arg_file, arg_polyline, &arg_coords, &result);
     if (!ok) {
@@ -51151,7 +53348,8 @@ static PyObject *py_ifcopenshell_shape_builder_set_polyline_coords(PyObject *sel
     }
     __py_result = wrap_instance(result, 1);
 __cleanup:
-        free_input_double_list_list(&arg_coords);
+        release_option_refs(&arg_coords_refs);
+        free_input_double_list_list_any_2_double_list_list_any_3_variant(&arg_coords);
     return __py_result;
 }
 
@@ -51162,14 +53360,14 @@ static PyObject *py_ifcopenshell_shape_builder_sphere(PyObject *self, PyObject *
     ifcopenshell_file_t *arg_file = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_shape_builder_sphere_options_t arg_options = {0};
-    PyObject *arg_options_refs[2] = {0};
+    option_ref_owner arg_options_refs = {0};
     ifcopenshell_instance_t *result = NULL;
     if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_options_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_shape_builder_sphere_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_shape_builder_sphere_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -51185,7 +53383,7 @@ static PyObject *py_ifcopenshell_shape_builder_sphere(PyObject *self, PyObject *
     }
     __py_result = wrap_instance(result, 1);
 __cleanup:
-        release_option_refs(arg_options_refs, 2);
+        release_option_refs(&arg_options_refs);
         free_input_shape_builder_sphere_options(&arg_options);
     return __py_result;
 }
@@ -51230,14 +53428,14 @@ static PyObject *py_ifcopenshell_shape_builder_translate(PyObject *self, PyObjec
     ifcopenshell_file_t *arg_file = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_shape_builder_translate_options_t arg_options = {0};
-    PyObject *arg_options_refs[3] = {0};
+    option_ref_owner arg_options_refs = {0};
     ifcopenshell_instance_t *result = NULL;
     if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_options_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_shape_builder_translate_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_shape_builder_translate_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -51253,7 +53451,7 @@ static PyObject *py_ifcopenshell_shape_builder_translate(PyObject *self, PyObjec
     }
     __py_result = wrap_instance(result, 1);
 __cleanup:
-        release_option_refs(arg_options_refs, 3);
+        release_option_refs(&arg_options_refs);
         free_input_shape_builder_translate_options(&arg_options);
     return __py_result;
 }
@@ -51265,18 +53463,20 @@ static PyObject *py_ifcopenshell_shape_builder_triangulated_face_set(PyObject *s
     ifcopenshell_file_t *arg_file = NULL;
     PyObject *arg_points_obj = NULL;
     ifcopenshell_double_list_list_t arg_points = {0};
+    option_ref_owner arg_points_refs = {0};
     PyObject *arg_faces_obj = NULL;
     ifcopenshell_int32_list_list_t arg_faces = {0};
+    option_ref_owner arg_faces_refs = {0};
     ifcopenshell_instance_t *result = NULL;
     if (!PyArg_ParseTuple(args, "OOO", &arg_file_obj, &arg_points_obj, &arg_faces_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
     }
-    if (!make_input_double_list_list(arg_points_obj, &arg_points)) {
+    if (!make_input_double_list_list(arg_points_obj, &arg_points, &arg_points_refs)) {
         goto __cleanup;
     }
-    if (!make_input_int32_list_list(arg_faces_obj, &arg_faces)) {
+    if (!make_input_int32_list_list(arg_faces_obj, &arg_faces, &arg_faces_refs)) {
         goto __cleanup;
     }
     ifcopenshell_clear_error();
@@ -51291,7 +53491,9 @@ static PyObject *py_ifcopenshell_shape_builder_triangulated_face_set(PyObject *s
     }
     __py_result = wrap_instance(result, 1);
 __cleanup:
+        release_option_refs(&arg_faces_refs);
         free_input_int32_list_list(&arg_faces);
+        release_option_refs(&arg_points_refs);
         free_input_double_list_list(&arg_points);
     return __py_result;
 }
@@ -51303,13 +53505,14 @@ static PyObject *py_ifcopenshell_shape_builder_vertex(PyObject *self, PyObject *
     ifcopenshell_file_t *arg_file = NULL;
     PyObject *arg_position_obj = NULL;
     ifcopenshell_double_list_t arg_position = {0};
+    option_ref_owner arg_position_refs = {0};
     ifcopenshell_instance_t *result = NULL;
     if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_position_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
     }
-    if (!make_input_double_list(arg_position_obj, &arg_position)) {
+    if (!make_input_double_list(arg_position_obj, &arg_position, &arg_position_refs)) {
         goto __cleanup;
     }
     ifcopenshell_clear_error();
@@ -51324,6 +53527,7 @@ static PyObject *py_ifcopenshell_shape_builder_vertex(PyObject *self, PyObject *
     }
     __py_result = wrap_instance(result, 1);
 __cleanup:
+        release_option_refs(&arg_position_refs);
         free_input_double_list(&arg_position);
     return __py_result;
 }
@@ -51430,14 +53634,14 @@ static PyObject *py_ifcopenshell_spatial_assign_container(PyObject *self, PyObje
     ifcopenshell_file_t *arg_file = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_spatial_assign_container_options_t arg_options = {0};
-    PyObject *arg_options_refs[5] = {0};
+    option_ref_owner arg_options_refs = {0};
     ifcopenshell_instance_t *result = NULL;
     if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_options_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_spatial_assign_container_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_spatial_assign_container_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -51453,7 +53657,7 @@ static PyObject *py_ifcopenshell_spatial_assign_container(PyObject *self, PyObje
     }
     __py_result = wrap_instance(result, 1);
 __cleanup:
-        release_option_refs(arg_options_refs, 5);
+        release_option_refs(&arg_options_refs);
         free_input_spatial_assign_container_options(&arg_options);
     return __py_result;
 }
@@ -51465,14 +53669,14 @@ static PyObject *py_ifcopenshell_spatial_dereference_structure(PyObject *self, P
     ifcopenshell_file_t *arg_file = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_spatial_dereference_structure_options_t arg_options = {0};
-    PyObject *arg_options_refs[4] = {0};
+    option_ref_owner arg_options_refs = {0};
 
     if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_options_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_spatial_dereference_structure_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_spatial_dereference_structure_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -51489,7 +53693,7 @@ static PyObject *py_ifcopenshell_spatial_dereference_structure(PyObject *self, P
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
-        release_option_refs(arg_options_refs, 4);
+        release_option_refs(&arg_options_refs);
         free_input_spatial_dereference_structure_options(&arg_options);
     return __py_result;
 }
@@ -51501,14 +53705,14 @@ static PyObject *py_ifcopenshell_spatial_reference_structure(PyObject *self, PyO
     ifcopenshell_file_t *arg_file = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_spatial_reference_structure_options_t arg_options = {0};
-    PyObject *arg_options_refs[5] = {0};
+    option_ref_owner arg_options_refs = {0};
     ifcopenshell_instance_t *result = NULL;
     if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_options_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_spatial_reference_structure_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_spatial_reference_structure_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -51524,7 +53728,7 @@ static PyObject *py_ifcopenshell_spatial_reference_structure(PyObject *self, PyO
     }
     __py_result = wrap_instance(result, 1);
 __cleanup:
-        release_option_refs(arg_options_refs, 5);
+        release_option_refs(&arg_options_refs);
         free_input_spatial_reference_structure_options(&arg_options);
     return __py_result;
 }
@@ -51536,14 +53740,14 @@ static PyObject *py_ifcopenshell_spatial_unassign_container(PyObject *self, PyOb
     ifcopenshell_file_t *arg_file = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_spatial_unassign_container_options_t arg_options = {0};
-    PyObject *arg_options_refs[3] = {0};
+    option_ref_owner arg_options_refs = {0};
 
     if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_options_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_spatial_unassign_container_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_spatial_unassign_container_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -51560,7 +53764,7 @@ static PyObject *py_ifcopenshell_spatial_unassign_container(PyObject *self, PyOb
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
-        release_option_refs(arg_options_refs, 3);
+        release_option_refs(&arg_options_refs);
         free_input_spatial_unassign_container_options(&arg_options);
     return __py_result;
 }
@@ -51579,7 +53783,7 @@ static PyObject *py_ifcopenshell_structural_add_structural_activity(PyObject *se
     const char *arg_global_or_local = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_structural_add_structural_activity_options_t arg_options = {0};
-    PyObject *arg_options_refs[2] = {0};
+    option_ref_owner arg_options_refs = {0};
     ifcopenshell_instance_t *result = NULL;
     if (!PyArg_ParseTuple(args, "OOOsssO", &arg_file_obj, &arg_applied_load_obj, &arg_structural_member_obj, &arg_ifc_class, &arg_predefined_type, &arg_global_or_local, &arg_options_obj)) return NULL;
 
@@ -51592,7 +53796,7 @@ static PyObject *py_ifcopenshell_structural_add_structural_activity(PyObject *se
     if (!extract_handle(arg_structural_member_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_structural_member, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_structural_add_structural_activity_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_structural_add_structural_activity_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -51608,7 +53812,7 @@ static PyObject *py_ifcopenshell_structural_add_structural_activity(PyObject *se
     }
     __py_result = wrap_instance(result, 1);
 __cleanup:
-        release_option_refs(arg_options_refs, 2);
+        release_option_refs(&arg_options_refs);
         free_input_structural_add_structural_activity_options(&arg_options);
     return __py_result;
 }
@@ -51653,14 +53857,14 @@ static PyObject *py_ifcopenshell_structural_add_structural_boundary_condition(Py
     const char *arg_ifc_class = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_structural_add_structural_boundary_condition_options_t arg_options = {0};
-    PyObject *arg_options_refs[2] = {0};
+    option_ref_owner arg_options_refs = {0};
     ifcopenshell_instance_t *result = NULL;
     if (!PyArg_ParseTuple(args, "OsO", &arg_file_obj, &arg_ifc_class, &arg_options_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_structural_add_structural_boundary_condition_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_structural_add_structural_boundary_condition_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -51676,7 +53880,7 @@ static PyObject *py_ifcopenshell_structural_add_structural_boundary_condition(Py
     }
     __py_result = wrap_instance(result, 1);
 __cleanup:
-        release_option_refs(arg_options_refs, 2);
+        release_option_refs(&arg_options_refs);
         free_input_structural_add_structural_boundary_condition_options(&arg_options);
     return __py_result;
 }
@@ -51871,11 +54075,12 @@ static PyObject *py_ifcopenshell_structural_assign_structural_analysis_model(PyO
     ifcopenshell_file_t *arg_file = NULL;
     PyObject *arg_products_obj = NULL;
     ifcopenshell_instance_list_t arg_products = {0};
+    option_ref_owner arg_products_refs = {0};
     PyObject *arg_structural_analysis_model_obj = NULL;
     ifcopenshell_instance_t *arg_structural_analysis_model = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_structural_assign_structural_analysis_model_options_t arg_options = {0};
-    PyObject *arg_options_refs[3] = {0};
+    option_ref_owner arg_options_refs = {0};
     ifcopenshell_instance_t *result = NULL;
     if (!PyArg_ParseTuple(args, "OOOO", &arg_file_obj, &arg_products_obj, &arg_structural_analysis_model_obj, &arg_options_obj)) return NULL;
 
@@ -51885,10 +54090,10 @@ static PyObject *py_ifcopenshell_structural_assign_structural_analysis_model(PyO
     if (!extract_handle(arg_structural_analysis_model_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_structural_analysis_model, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_structural_assign_structural_analysis_model_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_structural_assign_structural_analysis_model_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
-    if (!make_input_instance_list(arg_products_obj, &arg_products)) {
+    if (!make_input_instance_list(arg_products_obj, &arg_products, &arg_products_refs)) {
         goto __cleanup;
     }
     ifcopenshell_clear_error();
@@ -51903,8 +54108,9 @@ static PyObject *py_ifcopenshell_structural_assign_structural_analysis_model(PyO
     }
     __py_result = wrap_instance(result, 1);
 __cleanup:
-        release_option_refs(arg_options_refs, 3);
+        release_option_refs(&arg_options_refs);
         free_input_structural_assign_structural_analysis_model_options(&arg_options);
+        release_option_refs(&arg_products_refs);
         free_input_instance_list(&arg_products);
     return __py_result;
 }
@@ -52054,8 +54260,10 @@ static PyObject *py_ifcopenshell_structural_edit_structural_connection_cs(PyObje
     ifcopenshell_instance_t *arg_structural_item = NULL;
     PyObject *arg_axis_obj = NULL;
     ifcopenshell_double_list_t arg_axis = {0};
+    option_ref_owner arg_axis_refs = {0};
     PyObject *arg_ref_direction_obj = NULL;
     ifcopenshell_double_list_t arg_ref_direction = {0};
+    option_ref_owner arg_ref_direction_refs = {0};
 
     if (!PyArg_ParseTuple(args, "OOOO", &arg_file_obj, &arg_structural_item_obj, &arg_axis_obj, &arg_ref_direction_obj)) return NULL;
 
@@ -52065,10 +54273,10 @@ static PyObject *py_ifcopenshell_structural_edit_structural_connection_cs(PyObje
     if (!extract_handle(arg_structural_item_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_structural_item, 0)) {
         goto __cleanup;
     }
-    if (!make_input_double_list(arg_axis_obj, &arg_axis)) {
+    if (!make_input_double_list(arg_axis_obj, &arg_axis, &arg_axis_refs)) {
         goto __cleanup;
     }
-    if (!make_input_double_list(arg_ref_direction_obj, &arg_ref_direction)) {
+    if (!make_input_double_list(arg_ref_direction_obj, &arg_ref_direction, &arg_ref_direction_refs)) {
         goto __cleanup;
     }
     ifcopenshell_clear_error();
@@ -52084,7 +54292,9 @@ static PyObject *py_ifcopenshell_structural_edit_structural_connection_cs(PyObje
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
+        release_option_refs(&arg_ref_direction_refs);
         free_input_double_list(&arg_ref_direction);
+        release_option_refs(&arg_axis_refs);
         free_input_double_list(&arg_axis);
     return __py_result;
 }
@@ -52098,6 +54308,7 @@ static PyObject *py_ifcopenshell_structural_edit_structural_item_axis(PyObject *
     ifcopenshell_instance_t *arg_structural_item = NULL;
     PyObject *arg_axis_obj = NULL;
     ifcopenshell_double_list_t arg_axis = {0};
+    option_ref_owner arg_axis_refs = {0};
 
     if (!PyArg_ParseTuple(args, "OOO", &arg_file_obj, &arg_structural_item_obj, &arg_axis_obj)) return NULL;
 
@@ -52107,7 +54318,7 @@ static PyObject *py_ifcopenshell_structural_edit_structural_item_axis(PyObject *
     if (!extract_handle(arg_structural_item_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_structural_item, 0)) {
         goto __cleanup;
     }
-    if (!make_input_double_list(arg_axis_obj, &arg_axis)) {
+    if (!make_input_double_list(arg_axis_obj, &arg_axis, &arg_axis_refs)) {
         goto __cleanup;
     }
     ifcopenshell_clear_error();
@@ -52123,6 +54334,7 @@ static PyObject *py_ifcopenshell_structural_edit_structural_item_axis(PyObject *
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
+        release_option_refs(&arg_axis_refs);
         free_input_double_list(&arg_axis);
     return __py_result;
 }
@@ -52261,14 +54473,14 @@ static PyObject *py_ifcopenshell_structural_remove_structural_boundary_condition
     ifcopenshell_file_t *arg_file = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_structural_remove_structural_boundary_condition_options_t arg_options = {0};
-    PyObject *arg_options_refs[2] = {0};
+    option_ref_owner arg_options_refs = {0};
 
     if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_options_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_structural_remove_structural_boundary_condition_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_structural_remove_structural_boundary_condition_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -52285,7 +54497,7 @@ static PyObject *py_ifcopenshell_structural_remove_structural_boundary_condition
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
-        release_option_refs(arg_options_refs, 2);
+        release_option_refs(&arg_options_refs);
         free_input_structural_remove_structural_boundary_condition_options(&arg_options);
     return __py_result;
 }
@@ -52429,11 +54641,12 @@ static PyObject *py_ifcopenshell_structural_unassign_structural_analysis_model(P
     ifcopenshell_file_t *arg_file = NULL;
     PyObject *arg_products_obj = NULL;
     ifcopenshell_instance_list_t arg_products = {0};
+    option_ref_owner arg_products_refs = {0};
     PyObject *arg_structural_analysis_model_obj = NULL;
     ifcopenshell_instance_t *arg_structural_analysis_model = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_structural_unassign_structural_analysis_model_options_t arg_options = {0};
-    PyObject *arg_options_refs[2] = {0};
+    option_ref_owner arg_options_refs = {0};
 
     if (!PyArg_ParseTuple(args, "OOOO", &arg_file_obj, &arg_products_obj, &arg_structural_analysis_model_obj, &arg_options_obj)) return NULL;
 
@@ -52443,10 +54656,10 @@ static PyObject *py_ifcopenshell_structural_unassign_structural_analysis_model(P
     if (!extract_handle(arg_structural_analysis_model_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_structural_analysis_model, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_structural_unassign_structural_analysis_model_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_structural_unassign_structural_analysis_model_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
-    if (!make_input_instance_list(arg_products_obj, &arg_products)) {
+    if (!make_input_instance_list(arg_products_obj, &arg_products, &arg_products_refs)) {
         goto __cleanup;
     }
     ifcopenshell_clear_error();
@@ -52462,8 +54675,9 @@ static PyObject *py_ifcopenshell_structural_unassign_structural_analysis_model(P
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
-        release_option_refs(arg_options_refs, 2);
+        release_option_refs(&arg_options_refs);
         free_input_structural_unassign_structural_analysis_model_options(&arg_options);
+        release_option_refs(&arg_products_refs);
         free_input_instance_list(&arg_products);
     return __py_result;
 }
@@ -52551,18 +54765,20 @@ static PyObject *py_ifcopenshell_style_add_surface_textures(PyObject *self, PyOb
     ifcopenshell_file_t *arg_file = NULL;
     PyObject *arg_textures_obj = NULL;
     ifcopenshell_style_surface_texture_options_list_t arg_textures = {0};
+    option_ref_owner arg_textures_refs = {0};
     PyObject *arg_uv_maps_obj = NULL;
     ifcopenshell_instance_list_t arg_uv_maps = {0};
+    option_ref_owner arg_uv_maps_refs = {0};
     ifcopenshell_parse_instance_list_t *result = NULL;
     if (!PyArg_ParseTuple(args, "OOO", &arg_file_obj, &arg_textures_obj, &arg_uv_maps_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
     }
-    if (!make_input_style_surface_texture_options_list(arg_textures_obj, &arg_textures)) {
+    if (!make_input_style_surface_texture_options_list(arg_textures_obj, &arg_textures, &arg_textures_refs)) {
         goto __cleanup;
     }
-    if (!make_input_instance_list(arg_uv_maps_obj, &arg_uv_maps)) {
+    if (!make_input_instance_list(arg_uv_maps_obj, &arg_uv_maps, &arg_uv_maps_refs)) {
         goto __cleanup;
     }
     ifcopenshell_clear_error();
@@ -52577,7 +54793,9 @@ static PyObject *py_ifcopenshell_style_add_surface_textures(PyObject *self, PyOb
     }
     __py_result = wrap_parse_instance_list(result, 1);
 __cleanup:
+        release_option_refs(&arg_uv_maps_refs);
         free_input_instance_list(&arg_uv_maps);
+        release_option_refs(&arg_textures_refs);
         free_input_style_surface_texture_options_list(&arg_textures);
     return __py_result;
 }
@@ -52589,14 +54807,14 @@ static PyObject *py_ifcopenshell_style_assign_item_style(PyObject *self, PyObjec
     ifcopenshell_file_t *arg_file = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_style_assign_item_style_options_t arg_options = {0};
-    PyObject *arg_options_refs[3] = {0};
+    option_ref_owner arg_options_refs = {0};
     ifcopenshell_instance_t *result = NULL;
     if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_options_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_style_assign_item_style_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_style_assign_item_style_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -52612,7 +54830,7 @@ static PyObject *py_ifcopenshell_style_assign_item_style(PyObject *self, PyObjec
     }
     __py_result = wrap_instance(result, 1);
 __cleanup:
-        release_option_refs(arg_options_refs, 3);
+        release_option_refs(&arg_options_refs);
         free_input_style_assign_item_style_options(&arg_options);
     return __py_result;
 }
@@ -52670,6 +54888,7 @@ static PyObject *py_ifcopenshell_style_assign_representation_styles(PyObject *se
     ifcopenshell_instance_t *arg_shape_representation = NULL;
     PyObject *arg_styles_obj = NULL;
     ifcopenshell_instance_list_t arg_styles = {0};
+    option_ref_owner arg_styles_refs = {0};
     int arg_should_use_presentation_style_assignment = 0;
     int arg_replace_previous_same_type_style = 0;
     ifcopenshell_parse_instance_list_t *result = NULL;
@@ -52681,7 +54900,7 @@ static PyObject *py_ifcopenshell_style_assign_representation_styles(PyObject *se
     if (!extract_handle(arg_shape_representation_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_shape_representation, 0)) {
         goto __cleanup;
     }
-    if (!make_input_instance_list(arg_styles_obj, &arg_styles)) {
+    if (!make_input_instance_list(arg_styles_obj, &arg_styles, &arg_styles_refs)) {
         goto __cleanup;
     }
     ifcopenshell_clear_error();
@@ -52696,6 +54915,7 @@ static PyObject *py_ifcopenshell_style_assign_representation_styles(PyObject *se
     }
     __py_result = wrap_parse_instance_list(result, 1);
 __cleanup:
+        release_option_refs(&arg_styles_refs);
         free_input_instance_list(&arg_styles);
     return __py_result;
 }
@@ -52945,6 +55165,7 @@ static PyObject *py_ifcopenshell_style_unassign_representation_styles(PyObject *
     ifcopenshell_instance_t *arg_shape_representation = NULL;
     PyObject *arg_styles_obj = NULL;
     ifcopenshell_instance_list_t arg_styles = {0};
+    option_ref_owner arg_styles_refs = {0};
     int arg_should_use_presentation_style_assignment = 0;
 
     if (!PyArg_ParseTuple(args, "OOOp", &arg_file_obj, &arg_shape_representation_obj, &arg_styles_obj, &arg_should_use_presentation_style_assignment)) return NULL;
@@ -52955,7 +55176,7 @@ static PyObject *py_ifcopenshell_style_unassign_representation_styles(PyObject *
     if (!extract_handle(arg_shape_representation_obj, &IfcOpenshellInstanceType, "IfcOpenshellInstance", (void **)&arg_shape_representation, 0)) {
         goto __cleanup;
     }
-    if (!make_input_instance_list(arg_styles_obj, &arg_styles)) {
+    if (!make_input_instance_list(arg_styles_obj, &arg_styles, &arg_styles_refs)) {
         goto __cleanup;
     }
     ifcopenshell_clear_error();
@@ -52971,6 +55192,7 @@ static PyObject *py_ifcopenshell_style_unassign_representation_styles(PyObject *
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
+        release_option_refs(&arg_styles_refs);
         free_input_instance_list(&arg_styles);
     return __py_result;
 }
@@ -52982,14 +55204,14 @@ static PyObject *py_ifcopenshell_system_add_port(PyObject *self, PyObject *args)
     ifcopenshell_file_t *arg_file = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_system_add_port_options_t arg_options = {0};
-    PyObject *arg_options_refs[4] = {0};
+    option_ref_owner arg_options_refs = {0};
     ifcopenshell_instance_t *result = NULL;
     if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_options_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_system_add_port_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_system_add_port_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -53005,7 +55227,7 @@ static PyObject *py_ifcopenshell_system_add_port(PyObject *self, PyObject *args)
     }
     __py_result = wrap_instance(result, 1);
 __cleanup:
-        release_option_refs(arg_options_refs, 4);
+        release_option_refs(&arg_options_refs);
         free_input_system_add_port_options(&arg_options);
     return __py_result;
 }
@@ -53017,14 +55239,14 @@ static PyObject *py_ifcopenshell_system_add_system(PyObject *self, PyObject *arg
     ifcopenshell_file_t *arg_file = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_system_add_system_options_t arg_options = {0};
-    PyObject *arg_options_refs[2] = {0};
+    option_ref_owner arg_options_refs = {0};
     ifcopenshell_instance_t *result = NULL;
     if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_options_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_system_add_system_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_system_add_system_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -53040,7 +55262,7 @@ static PyObject *py_ifcopenshell_system_add_system(PyObject *self, PyObject *arg
     }
     __py_result = wrap_instance(result, 1);
 __cleanup:
-        release_option_refs(arg_options_refs, 2);
+        release_option_refs(&arg_options_refs);
         free_input_system_add_system_options(&arg_options);
     return __py_result;
 }
@@ -53052,14 +55274,14 @@ static PyObject *py_ifcopenshell_system_assign_flow_control(PyObject *self, PyOb
     ifcopenshell_file_t *arg_file = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_system_assign_flow_control_options_t arg_options = {0};
-    PyObject *arg_options_refs[5] = {0};
+    option_ref_owner arg_options_refs = {0};
     ifcopenshell_instance_t *result = NULL;
     if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_options_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_system_assign_flow_control_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_system_assign_flow_control_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -53075,7 +55297,7 @@ static PyObject *py_ifcopenshell_system_assign_flow_control(PyObject *self, PyOb
     }
     __py_result = wrap_instance(result, 1);
 __cleanup:
-        release_option_refs(arg_options_refs, 5);
+        release_option_refs(&arg_options_refs);
         free_input_system_assign_flow_control_options(&arg_options);
     return __py_result;
 }
@@ -53087,14 +55309,14 @@ static PyObject *py_ifcopenshell_system_assign_port(PyObject *self, PyObject *ar
     ifcopenshell_file_t *arg_file = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_system_assign_port_options_t arg_options = {0};
-    PyObject *arg_options_refs[5] = {0};
+    option_ref_owner arg_options_refs = {0};
     ifcopenshell_instance_t *result = NULL;
     if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_options_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_system_assign_port_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_system_assign_port_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -53110,7 +55332,7 @@ static PyObject *py_ifcopenshell_system_assign_port(PyObject *self, PyObject *ar
     }
     __py_result = wrap_instance(result, 1);
 __cleanup:
-        release_option_refs(arg_options_refs, 5);
+        release_option_refs(&arg_options_refs);
         free_input_system_assign_port_options(&arg_options);
     return __py_result;
 }
@@ -53122,14 +55344,14 @@ static PyObject *py_ifcopenshell_system_assign_system(PyObject *self, PyObject *
     ifcopenshell_file_t *arg_file = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_system_assign_system_options_t arg_options = {0};
-    PyObject *arg_options_refs[5] = {0};
+    option_ref_owner arg_options_refs = {0};
     ifcopenshell_instance_t *result = NULL;
     if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_options_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_system_assign_system_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_system_assign_system_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -53145,7 +55367,7 @@ static PyObject *py_ifcopenshell_system_assign_system(PyObject *self, PyObject *
     }
     __py_result = wrap_instance(result, 1);
 __cleanup:
-        release_option_refs(arg_options_refs, 5);
+        release_option_refs(&arg_options_refs);
         free_input_system_assign_system_options(&arg_options);
     return __py_result;
 }
@@ -53157,14 +55379,14 @@ static PyObject *py_ifcopenshell_system_connect_port(PyObject *self, PyObject *a
     ifcopenshell_file_t *arg_file = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_system_connect_port_options_t arg_options = {0};
-    PyObject *arg_options_refs[7] = {0};
+    option_ref_owner arg_options_refs = {0};
 
     if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_options_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_system_connect_port_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_system_connect_port_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -53181,7 +55403,7 @@ static PyObject *py_ifcopenshell_system_connect_port(PyObject *self, PyObject *a
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
-        release_option_refs(arg_options_refs, 7);
+        release_option_refs(&arg_options_refs);
         free_input_system_connect_port_options(&arg_options);
     return __py_result;
 }
@@ -53306,14 +55528,14 @@ static PyObject *py_ifcopenshell_system_unassign_flow_control(PyObject *self, Py
     ifcopenshell_file_t *arg_file = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_system_unassign_flow_control_options_t arg_options = {0};
-    PyObject *arg_options_refs[4] = {0};
+    option_ref_owner arg_options_refs = {0};
 
     if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_options_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_system_unassign_flow_control_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_system_unassign_flow_control_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -53330,7 +55552,7 @@ static PyObject *py_ifcopenshell_system_unassign_flow_control(PyObject *self, Py
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
-        release_option_refs(arg_options_refs, 4);
+        release_option_refs(&arg_options_refs);
         free_input_system_unassign_flow_control_options(&arg_options);
     return __py_result;
 }
@@ -53342,14 +55564,14 @@ static PyObject *py_ifcopenshell_system_unassign_port(PyObject *self, PyObject *
     ifcopenshell_file_t *arg_file = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_system_unassign_port_options_t arg_options = {0};
-    PyObject *arg_options_refs[4] = {0};
+    option_ref_owner arg_options_refs = {0};
 
     if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_options_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_system_unassign_port_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_system_unassign_port_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -53366,7 +55588,7 @@ static PyObject *py_ifcopenshell_system_unassign_port(PyObject *self, PyObject *
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
-        release_option_refs(arg_options_refs, 4);
+        release_option_refs(&arg_options_refs);
         free_input_system_unassign_port_options(&arg_options);
     return __py_result;
 }
@@ -53378,14 +55600,14 @@ static PyObject *py_ifcopenshell_system_unassign_system(PyObject *self, PyObject
     ifcopenshell_file_t *arg_file = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_system_unassign_system_options_t arg_options = {0};
-    PyObject *arg_options_refs[4] = {0};
+    option_ref_owner arg_options_refs = {0};
 
     if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_options_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_system_unassign_system_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_system_unassign_system_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -53402,7 +55624,7 @@ static PyObject *py_ifcopenshell_system_unassign_system(PyObject *self, PyObject
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
-        release_option_refs(arg_options_refs, 4);
+        release_option_refs(&arg_options_refs);
         free_input_system_unassign_system_options(&arg_options);
     return __py_result;
 }
@@ -53414,14 +55636,14 @@ static PyObject *py_ifcopenshell_type_assign_type(PyObject *self, PyObject *args
     ifcopenshell_file_t *arg_file = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_type_assign_type_options_t arg_options = {0};
-    PyObject *arg_options_refs[6] = {0};
+    option_ref_owner arg_options_refs = {0};
     ifcopenshell_instance_t *result = NULL;
     if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_options_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_type_assign_type_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_type_assign_type_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -53437,7 +55659,7 @@ static PyObject *py_ifcopenshell_type_assign_type(PyObject *self, PyObject *args
     }
     __py_result = wrap_instance(result, 1);
 __cleanup:
-        release_option_refs(arg_options_refs, 6);
+        release_option_refs(&arg_options_refs);
         free_input_type_assign_type_options(&arg_options);
     return __py_result;
 }
@@ -53559,14 +55781,14 @@ static PyObject *py_ifcopenshell_type_unassign_type(PyObject *self, PyObject *ar
     ifcopenshell_file_t *arg_file = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_type_unassign_type_options_t arg_options = {0};
-    PyObject *arg_options_refs[3] = {0};
+    option_ref_owner arg_options_refs = {0};
 
     if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_options_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_type_unassign_type_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_type_unassign_type_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -53583,7 +55805,7 @@ static PyObject *py_ifcopenshell_type_unassign_type(PyObject *self, PyObject *ar
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
-        release_option_refs(arg_options_refs, 3);
+        release_option_refs(&arg_options_refs);
         free_input_type_unassign_type_options(&arg_options);
     return __py_result;
 }
@@ -53597,13 +55819,14 @@ static PyObject *py_ifcopenshell_unit_add_context_dependent_unit(PyObject *self,
     const char *arg_name = NULL;
     PyObject *arg_dimensions_obj = NULL;
     ifcopenshell_int64_list_t arg_dimensions = {0};
+    option_ref_owner arg_dimensions_refs = {0};
     ifcopenshell_instance_t *result = NULL;
     if (!PyArg_ParseTuple(args, "OssO", &arg_file_obj, &arg_unit_type, &arg_name, &arg_dimensions_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
     }
-    if (!make_input_int64_list(arg_dimensions_obj, &arg_dimensions)) {
+    if (!make_input_int64_list(arg_dimensions_obj, &arg_dimensions, &arg_dimensions_refs)) {
         goto __cleanup;
     }
     ifcopenshell_clear_error();
@@ -53618,6 +55841,7 @@ static PyObject *py_ifcopenshell_unit_add_context_dependent_unit(PyObject *self,
     }
     __py_result = wrap_instance(result, 1);
 __cleanup:
+        release_option_refs(&arg_dimensions_refs);
         free_input_int64_list(&arg_dimensions);
     return __py_result;
 }
@@ -53629,14 +55853,14 @@ static PyObject *py_ifcopenshell_unit_add_conversion_based_unit(PyObject *self, 
     ifcopenshell_file_t *arg_file = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_unit_add_conversion_based_unit_options_t arg_options = {0};
-    PyObject *arg_options_refs[2] = {0};
+    option_ref_owner arg_options_refs = {0};
     ifcopenshell_instance_t *result = NULL;
     if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_options_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_unit_add_conversion_based_unit_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_unit_add_conversion_based_unit_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -53652,7 +55876,7 @@ static PyObject *py_ifcopenshell_unit_add_conversion_based_unit(PyObject *self, 
     }
     __py_result = wrap_instance(result, 1);
 __cleanup:
-        release_option_refs(arg_options_refs, 2);
+        release_option_refs(&arg_options_refs);
         free_input_unit_add_conversion_based_unit_options(&arg_options);
     return __py_result;
 }
@@ -53666,18 +55890,20 @@ static PyObject *py_ifcopenshell_unit_add_derived_unit(PyObject *self, PyObject 
     const char *arg_userdefinedtype = NULL;
     PyObject *arg_units_obj = NULL;
     ifcopenshell_instance_list_t arg_units = {0};
+    option_ref_owner arg_units_refs = {0};
     PyObject *arg_exponents_obj = NULL;
     ifcopenshell_int64_list_t arg_exponents = {0};
+    option_ref_owner arg_exponents_refs = {0};
     ifcopenshell_instance_t *result = NULL;
     if (!PyArg_ParseTuple(args, "Os|zOO", &arg_file_obj, &arg_unit_type, &arg_userdefinedtype, &arg_units_obj, &arg_exponents_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
     }
-    if (!make_input_instance_list(arg_units_obj, &arg_units)) {
+    if (!make_input_instance_list(arg_units_obj, &arg_units, &arg_units_refs)) {
         goto __cleanup;
     }
-    if (!make_input_int64_list(arg_exponents_obj, &arg_exponents)) {
+    if (!make_input_int64_list(arg_exponents_obj, &arg_exponents, &arg_exponents_refs)) {
         goto __cleanup;
     }
     ifcopenshell_clear_error();
@@ -53692,7 +55918,9 @@ static PyObject *py_ifcopenshell_unit_add_derived_unit(PyObject *self, PyObject 
     }
     __py_result = wrap_instance(result, 1);
 __cleanup:
+        release_option_refs(&arg_exponents_refs);
         free_input_int64_list(&arg_exponents);
+        release_option_refs(&arg_units_refs);
         free_input_instance_list(&arg_units);
     return __py_result;
 }
@@ -53761,14 +55989,14 @@ static PyObject *py_ifcopenshell_unit_assign_unit(PyObject *self, PyObject *args
     ifcopenshell_file_t *arg_file = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_unit_assign_unit_options_t arg_options = {0};
-    PyObject *arg_options_refs[7] = {0};
+    option_ref_owner arg_options_refs = {0};
     ifcopenshell_instance_t *result = NULL;
     if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_options_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_unit_assign_unit_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_unit_assign_unit_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -53784,7 +56012,7 @@ static PyObject *py_ifcopenshell_unit_assign_unit(PyObject *self, PyObject *args
     }
     __py_result = wrap_instance(result, 1);
 __cleanup:
-        release_option_refs(arg_options_refs, 7);
+        release_option_refs(&arg_options_refs);
         free_input_unit_assign_unit_options(&arg_options);
     return __py_result;
 }
@@ -53967,14 +56195,14 @@ static PyObject *py_ifcopenshell_unit_edit_named_unit(PyObject *self, PyObject *
     ifcopenshell_file_t *arg_file = NULL;
     PyObject *arg_options_obj = NULL;
     ifcopenshell_unit_edit_named_unit_options_t arg_options = {0};
-    PyObject *arg_options_refs[2] = {0};
+    option_ref_owner arg_options_refs = {0};
 
     if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_options_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
     }
-    if (!fill_input_unit_edit_named_unit_options(arg_options_obj, &arg_options, arg_options_refs)) {
+    if (!fill_input_unit_edit_named_unit_options(arg_options_obj, &arg_options, &arg_options_refs)) {
         goto __cleanup;
     }
 
@@ -53991,7 +56219,7 @@ static PyObject *py_ifcopenshell_unit_edit_named_unit(PyObject *self, PyObject *
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
-        release_option_refs(arg_options_refs, 2);
+        release_option_refs(&arg_options_refs);
         free_input_unit_edit_named_unit_options(&arg_options);
     return __py_result;
 }
@@ -54513,13 +56741,14 @@ static PyObject *py_ifcopenshell_unit_unassign_unit(PyObject *self, PyObject *ar
     ifcopenshell_file_t *arg_file = NULL;
     PyObject *arg_units_obj = NULL;
     ifcopenshell_instance_list_t arg_units = {0};
+    option_ref_owner arg_units_refs = {0};
 
     if (!PyArg_ParseTuple(args, "OO", &arg_file_obj, &arg_units_obj)) return NULL;
 
     if (!extract_handle(arg_file_obj, &IfcOpenshellFileType, "IfcOpenshellFile", (void **)&arg_file, 0)) {
         goto __cleanup;
     }
-    if (!make_input_instance_list(arg_units_obj, &arg_units)) {
+    if (!make_input_instance_list(arg_units_obj, &arg_units, &arg_units_refs)) {
         goto __cleanup;
     }
     ifcopenshell_clear_error();
@@ -54535,6 +56764,7 @@ static PyObject *py_ifcopenshell_unit_unassign_unit(PyObject *self, PyObject *ar
     Py_INCREF(Py_None);
     __py_result = Py_None;
 __cleanup:
+        release_option_refs(&arg_units_refs);
         free_input_instance_list(&arg_units);
     return __py_result;
 }

@@ -510,6 +510,29 @@ class TestFunctionWrapperParams:
         code = render_python_extension(meta)
         assert "double arg_scale" in code
 
+    def test_defaulted_optional_double_preserves_presence(self):
+        meta = _make_metadata(
+            functions={
+                "ifcopenshell_demo_set_scale": _make_function(
+                    c_name="ifcopenshell_demo_set_scale",
+                    params=(
+                        CParamIR(
+                            name="scale",
+                            c_type="const double*",
+                            role="param",
+                            type_kind="double",
+                            nullable=True,
+                            has_default=True,
+                        ),
+                    ),
+                ),
+            },
+        )
+        code = render_python_extension(meta)
+        assert 'PyArg_ParseTuple(args, "|O", &arg_scale_obj)' in code
+        assert "arg_scale_obj != NULL && arg_scale_obj != Py_None" in code
+        assert "arg_scale = (const double *)&arg_scale_value;" in code
+
     def test_non_nullable_string_uses_s_format(self):
         meta = _make_metadata(
             handles={"file": _make_handle("file", "ifcopenshell_demo_file_t")},
@@ -674,14 +697,14 @@ class TestFunctionWrapperParams:
         assert 'get_option_field(obj, "ifc_class", 1)' in code
         assert 'get_option_field(obj, "name", 0)' in code
         assert 'get_option_field(obj, "axis", 1)' in code
-        assert "make_input_double_list_list(field_1, sequence_1)" in code
+        assert "make_input_double_list_list(field_1, sequence_1, refs)" in code
         assert (
             "free_input_double_list_list((ifcopenshell_double_list_list_t *)value->axis);"
             in code
         )
         assert "out->has_name = true;" in code
         assert "PyUnicode_AsUTF8(field_0)" in code
-        assert "release_option_refs(arg_options_refs, 6);" in code
+        assert "release_option_refs(&arg_options_refs);" in code
         assert (
             'extract_handle(field_3, &IfcOpenshellInstanceType, "IfcOpenshellInstance"'
             in code
@@ -689,12 +712,66 @@ class TestFunctionWrapperParams:
         assert "PyCapsule_IsValid(field_4, NULL)" in code
         assert "out->properties = PyCapsule_GetPointer(field_4, NULL);" in code
         assert 'get_option_field(obj, "products", 1)' in code
-        assert "make_input_instance_list(field_5, &products_items_5)" in code
+        assert "make_input_instance_list(field_5, &products_items_5, refs)" in code
         assert (
             "ifcopenshell_parse_instance_list_create_from_handles(&products_items_5, &out->products)"
             in code
         )
         assert "ifcopenshell_parse_instance_list_destroy(value->products)" in code
+
+    def test_nested_option_record_is_filled_and_freed_recursively(self):
+        nested = COptionIR(
+            name="PanelProperties",
+            c_type="ifcopenshell_demo_panel_properties_t",
+            fields=(
+                COptionFieldIR(
+                    "depth",
+                    TypeSpec(kind="double", nullable=True),
+                    "double",
+                    presence_field="has_depth",
+                ),
+            ),
+        )
+        parent = COptionIR(
+            name="DoorOptions",
+            c_type="ifcopenshell_demo_door_options_t",
+            fields=(
+                COptionFieldIR(
+                    "panel",
+                    TypeSpec(kind="option", struct="PanelProperties", nullable=True),
+                    "const ifcopenshell_demo_panel_properties_t*",
+                    presence_field="has_panel",
+                ),
+            ),
+        )
+        meta = _make_metadata(
+            option_structs={"DoorOptions": parent, "PanelProperties": nested},
+            functions={
+                "ifcopenshell_demo_add_door": _make_function(
+                    c_name="ifcopenshell_demo_add_door",
+                    params=(
+                        CParamIR(
+                            "options",
+                            "const ifcopenshell_demo_door_options_t*",
+                            "param",
+                            "option",
+                        ),
+                    ),
+                )
+            },
+        )
+
+        code = render_python_extension(meta)
+
+        assert "fill_input_demo_panel_properties" in code
+        assert "PyMem_Calloc(1, sizeof(ifcopenshell_demo_panel_properties_t))" in code
+        assert "free_input_demo_panel_properties" in code
+        assert "out->has_panel = true;" in code
+        assert "option_ref_owner arg_options_refs = {0};" in code
+        assert "retain_option_ref(refs, field_0)" in code
+        assert "fill_input_demo_panel_properties(field_0, nested_0, refs)" in code
+        assert "nested_refs_0" not in code
+        assert "release_option_refs(&arg_options_refs);" in code
 
     def test_input_record_sequence_converts_once_and_cleans_partial_failure(self):
         option = COptionIR(
@@ -728,10 +805,27 @@ class TestFunctionWrapperParams:
             element_type="ifcopenshell_demo_texture_options_t",
             sequence_depth=1,
         )
+        batch = COptionIR(
+            name="BatchOptions",
+            c_type="ifcopenshell_demo_batch_options_t",
+            fields=(
+                COptionFieldIR(
+                    "textures",
+                    TypeSpec(
+                        kind="option",
+                        struct="TextureOptions",
+                        sequence_depth=1,
+                        nullable=True,
+                    ),
+                    "const ifcopenshell_demo_texture_options_list_t*",
+                    presence_field="has_textures",
+                ),
+            ),
+        )
         meta = _make_metadata(
             handles={"instance": _make_handle("instance", "ifcopenshell_instance_t")},
             value_types={"texture_options_list": record_list},
-            option_structs={"TextureOptions": option},
+            option_structs={"BatchOptions": batch, "TextureOptions": option},
             functions={
                 "ifcopenshell_demo_add_textures": _make_function(
                     c_name="ifcopenshell_demo_add_textures",
@@ -743,17 +837,225 @@ class TestFunctionWrapperParams:
                             "option",
                         ),
                     ),
-                )
+                ),
+                "ifcopenshell_demo_add_batch": _make_function(
+                    c_name="ifcopenshell_demo_add_batch",
+                    params=(
+                        CParamIR(
+                            "options",
+                            "const ifcopenshell_demo_batch_options_t*",
+                            "param",
+                            "option",
+                        ),
+                    ),
+                ),
             },
         )
         code = render_python_extension(meta)
-        conversion = (
-            "make_input_demo_texture_options_list(arg_textures_obj, &arg_textures)"
-        )
+        conversion = "make_input_demo_texture_options_list(arg_textures_obj, &arg_textures, &arg_textures_refs)"
         assert code.count(conversion) == 1
         assert "size ? (ifcopenshell_demo_texture_options_t *)PyMem_Calloc" in code
         assert "free_input_demo_texture_options_list(out);" in code
         assert "free_input_demo_texture_options(&value->items[j]);" in code
+        assert "make_input_demo_texture_options_list(field_0, sequence_0, refs)" in code
+        assert (
+            "free_input_demo_texture_options_list((ifcopenshell_demo_texture_options_list_t *)value->textures)"
+            in code
+        )
+
+    def test_input_variant_sequence_selects_and_frees_semantic_records(self):
+        plane = COptionIR(
+            "PlaneClipping",
+            "ifcopenshell_demo_plane_clipping_t",
+            (
+                COptionFieldIR(
+                    "location",
+                    TypeSpec(kind="double", sequence_depth=1),
+                    "const ifcopenshell_double_list_t*",
+                ),
+                COptionFieldIR(
+                    "normal",
+                    TypeSpec(kind="double", sequence_depth=1),
+                    "const ifcopenshell_double_list_t*",
+                ),
+            ),
+        )
+        entity = COptionIR(
+            "EntityClipping",
+            "ifcopenshell_demo_entity_clipping_t",
+            (
+                COptionFieldIR(
+                    "entity",
+                    TypeSpec(kind="handle", handle="instance"),
+                    "ifcopenshell_instance_t*",
+                ),
+            ),
+        )
+        variant = CTypeIR(
+            c_type="ifcopenshell_demo_clipping_variant_t",
+            kind="variant",
+            fields=(
+                CFieldIR("kind", "int32_t"),
+                CFieldIR("value_0", "const ifcopenshell_demo_plane_clipping_t*"),
+                CFieldIR("value_1", "const ifcopenshell_demo_entity_clipping_t*"),
+            ),
+            destroy_function=None,
+        )
+        variant_list = CTypeIR(
+            c_type="ifcopenshell_demo_clipping_variant_list_t",
+            kind="input_variant_sequence",
+            fields=(
+                CFieldIR("items", "ifcopenshell_demo_clipping_variant_t*"),
+                CFieldIR("size", "size_t"),
+            ),
+            destroy_function=None,
+            element_type="ifcopenshell_demo_clipping_variant_t",
+            sequence_depth=1,
+        )
+        meta = _make_metadata(
+            handles={"instance": _make_handle("instance", "ifcopenshell_instance_t")},
+            value_types={
+                "demo_clipping_variant": variant,
+                "demo_clipping_variant_list": variant_list,
+            },
+            option_structs={"PlaneClipping": plane, "EntityClipping": entity},
+        )
+
+        code = render_python_extension(meta)
+
+        assert 'PyMapping_HasKeyString(obj, "location")' in code
+        assert 'PyMapping_HasKeyString(obj, "entity")' in code
+        assert "make_input_demo_clipping_variant" in code
+        assert "free_input_demo_clipping_variant(&value->items[j]);" in code
+
+    def test_fixed_sequence_variant_selects_by_cardinality(self):
+        sequence = CTypeIR(
+            c_type="ifcopenshell_double_list_list_t",
+            kind="sequence",
+            fields=(
+                CFieldIR("items", "ifcopenshell_double_list_t*"),
+                CFieldIR("size", "size_t"),
+                CFieldIR("owner", "void*"),
+            ),
+            destroy_function=None,
+            element_type="ifcopenshell_double_list_t",
+            sequence_depth=2,
+        )
+        points_type = TypeSpec(
+            kind="variant",
+            variants=(
+                TypeSpec(
+                    kind="double",
+                    sequence_depth=2,
+                    fixed_lengths=(None, 2),
+                ),
+                TypeSpec(
+                    kind="double",
+                    sequence_depth=2,
+                    fixed_lengths=(None, 3),
+                ),
+            ),
+        )
+        variant = CTypeIR(
+            c_type="ifcopenshell_demo_points_variant_t",
+            kind="variant",
+            fields=(
+                CFieldIR("kind", "int32_t"),
+                CFieldIR("value_0", "ifcopenshell_double_list_list_t"),
+                CFieldIR("value_1", "ifcopenshell_double_list_list_t"),
+            ),
+            destroy_function=None,
+            variants=points_type.variants,
+        )
+        meta = _make_metadata(
+            value_types={
+                "double_list_list": sequence,
+                "demo_points_variant": variant,
+            },
+            functions={
+                "ifcopenshell_demo_polyline": _make_function(
+                    c_name="ifcopenshell_demo_polyline",
+                    params=(
+                        CParamIR(
+                            name="points",
+                            c_type="const ifcopenshell_demo_points_variant_t*",
+                            role="param",
+                            type_kind="variant",
+                            type=points_type,
+                        ),
+                    ),
+                ),
+            },
+        )
+
+        code = render_python_extension(meta)
+
+        assert "static const Py_ssize_t shape_0[] = {-1, 2};" in code
+        assert "static const Py_ssize_t shape_1[] = {-1, 3};" in code
+        assert "matches_input_shape(obj, shape_0, 2, 0)" in code
+        assert "matches_input_shape(obj, shape_1, 2, 0)" in code
+        assert "Expected exactly one variant alternative" in code
+        assert (
+            "make_input_demo_points_variant(arg_points_obj, &arg_points, &arg_points_refs)"
+            in code
+        )
+
+    def test_option_record_accepts_and_frees_required_variant_field(self):
+        from_length = COptionIR(
+            "FromLength",
+            "ifcopenshell_demo_from_length_t",
+            (COptionFieldIR("length", TypeSpec(kind="double"), "double"),),
+        )
+        from_angle = COptionIR(
+            "FromAngle",
+            "ifcopenshell_demo_from_angle_t",
+            (COptionFieldIR("angle", TypeSpec(kind="double"), "double"),),
+        )
+        variant_type = TypeSpec(
+            kind="variant",
+            variants=(
+                TypeSpec(kind="option", struct="FromLength"),
+                TypeSpec(kind="option", struct="FromAngle"),
+            ),
+        )
+        calculation = COptionIR(
+            "Calculation",
+            "ifcopenshell_demo_calculation_t",
+            (
+                COptionFieldIR(
+                    "value",
+                    variant_type,
+                    "const ifcopenshell_demo_calculation_variant_t*",
+                ),
+            ),
+        )
+        variant = CTypeIR(
+            c_type="ifcopenshell_demo_calculation_variant_t",
+            kind="variant",
+            fields=(
+                CFieldIR("kind", "int32_t"),
+                CFieldIR("value_0", "const ifcopenshell_demo_from_length_t*"),
+                CFieldIR("value_1", "const ifcopenshell_demo_from_angle_t*"),
+            ),
+            destroy_function=None,
+        )
+        meta = _make_metadata(
+            value_types={"demo_calculation_variant": variant},
+            option_structs={
+                "FromLength": from_length,
+                "FromAngle": from_angle,
+                "Calculation": calculation,
+            },
+        )
+
+        code = render_python_extension(meta)
+
+        assert "make_input_demo_calculation_variant(field_0, variant_0, refs)" in code
+        assert "out->value = variant_0;" in code
+        assert (
+            "free_input_demo_calculation_variant((ifcopenshell_demo_calculation_variant_t *)value->value);"
+            in code
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -1566,7 +1868,8 @@ class TestValueConverters:
         )
         code = render_python_extension(meta)
         assert (
-            "make_input_instance_list(arg_instances_obj, &arg_instances_items)" in code
+            "make_input_instance_list(arg_instances_obj, &arg_instances_items, &arg_instances_refs)"
+            in code
         )
         assert "free_input_instance_list(&arg_instances_items)" in code
         assert "make_input_ifc_instance_list" not in code

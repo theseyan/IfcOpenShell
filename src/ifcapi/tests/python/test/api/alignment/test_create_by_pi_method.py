@@ -20,6 +20,7 @@
 import ifcopenshell.api.alignment
 import ifcopenshell.api.context
 import ifcopenshell.api.unit
+import pytest
 
 
 def test_create_by_pi_method():
@@ -61,6 +62,29 @@ def test_create_by_pi_method():
     vertical_layout = ifcopenshell.api.alignment.get_vertical_layout(alignment)
     vertical_segment_nest = ifcopenshell.api.alignment.get_alignment_segment_nest(vertical_layout)
     assert len(vertical_segment_nest.RelatedObjects) == 10
+
+    straight = ifcopenshell.api.alignment.create_by_pi_method(
+        file,
+        "StraightHorizontal",
+        [(0.0, 0.0), (100.0, 0.0)],
+        [],
+        vpoints=[(0.0, 0.0), (100.0, 1.0)],
+    )
+    assert ifcopenshell.api.alignment.get_vertical_layout(straight) is None
+    assert ifcopenshell.api.alignment.get_alignment_start_station(file, straight) == 0.0
+    straight_layout = ifcopenshell.api.alignment.get_horizontal_layout(straight)
+    straight_segments = ifcopenshell.api.alignment.get_alignment_segment_nest(straight_layout)
+    assert len(straight_segments.RelatedObjects) == 2
+
+    before = len(file.by_type("IfcAlignment"))
+    with pytest.raises(RuntimeError, match="horizontal end_point must contain finite coordinates"):
+        ifcopenshell.api.alignment.create_by_pi_method(
+            file,
+            "Invalid",
+            [(0.0, 0.0), (float("nan"), 0.0)],
+            [],
+        )
+    assert len(file.by_type("IfcAlignment")) == before
 
 
 test_create_by_pi_method()

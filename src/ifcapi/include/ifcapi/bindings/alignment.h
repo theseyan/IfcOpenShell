@@ -8,6 +8,7 @@
 #include "ifcparse/express.h"
 #include "ifcparse/file.h"
 
+#include <array>
 #include <optional>
 #include <string>
 #include <vector>
@@ -25,13 +26,54 @@ struct AlignmentCreateOptions {
     std::optional<express::Base> application;
 };
 
+struct AlignmentHorizontalPi {
+    /** Plan-view point of intersection. */
+    std::array<double, 2> point;
+    /** Circular-arc radius at this interior PI. */
+    double radius;
+};
+
+struct AlignmentHorizontalPiLayout {
+    /** First plan-view point. */
+    std::array<double, 2> start_point;
+    /** Interior PIs, each carrying its corresponding radius. */
+    std::vector<AlignmentHorizontalPi> intersections;
+    /** Last plan-view point. */
+    std::array<double, 2> end_point;
+};
+
+struct AlignmentVerticalPi {
+    /** Distance-along and elevation at the point of intersection. */
+    std::array<double, 2> point;
+    /** Parabolic-curve length at this interior PI. */
+    double curve_length;
+};
+
+struct AlignmentVerticalPiLayout {
+    /** First distance-along and elevation point. */
+    std::array<double, 2> start_point;
+    /** Interior PIs, each carrying its corresponding curve length. */
+    std::vector<AlignmentVerticalPi> intersections;
+    /** Last distance-along and elevation point. */
+    std::array<double, 2> end_point;
+};
+
+struct AlignmentLayoutHorizontalByPiMethodOptions {
+    AlignmentHorizontalPiLayout pis;
+};
+
+struct AlignmentLayoutVerticalByPiMethodOptions {
+    AlignmentVerticalPiLayout pis;
+};
+
 struct AlignmentCreateByPiMethodOptions {
     std::string name;
-    std::vector<std::vector<double>> horizontal_points;
-    std::vector<double> radii;
-    std::vector<std::vector<double>> vertical_points;
-    std::vector<double> vertical_lengths;
-    double start_station = 0.0;
+    /** Required horizontal PI layout. Start and end encode the two-point minimum. */
+    AlignmentHorizontalPiLayout horizontal;
+    /** Optional vertical PI layout. Omit it to create a horizontal-only alignment. */
+    std::optional<AlignmentVerticalPiLayout> vertical;
+    /** Initial station value; defaults to zero when omitted. */
+    std::optional<double> start_station = 0.0;
     std::optional<express::Base> owner_history;
     std::optional<express::Base> user;
     std::optional<express::Base> application;
@@ -145,13 +187,11 @@ IFCAPI_BINDING bool alignment_has_zero_length_segment(express::Base layout);
 IFCAPI_BINDING void alignment_layout_horizontal_by_pi_method(
     ifcopenshell::file* file,
     express::Base layout,
-    const std::vector<std::vector<double>>& points,
-    const std::vector<double>& radii);
+    const AlignmentLayoutHorizontalByPiMethodOptions& options);
 IFCAPI_BINDING void alignment_layout_vertical_by_pi_method(
     ifcopenshell::file* file,
     express::Base layout,
-    const std::vector<std::vector<double>>& points,
-    const std::vector<double>& lengths);
+    const AlignmentLayoutVerticalByPiMethodOptions& options);
 
 IFCAPI_BINDING std::optional<express::Base> alignment_get_alignment(express::Base layout);
 IFCAPI_BINDING std::optional<express::Base> alignment_get_alignment_layout_nest(express::Base alignment);
@@ -167,11 +207,11 @@ IFCAPI_BINDING std::optional<express::Base> alignment_get_curve_segment(express:
 IFCAPI_BINDING std::string alignment_get_curve_segment_transition_code(
     express::Base segment,
     express::Base next_segment,
-    double position_tolerance = 0.001);
+    std::optional<double> position_tolerance = std::nullopt);
 IFCAPI_BINDING void alignment_update_curve_segment_transition_code(
     express::Base segment,
     express::Base next_segment,
-    double position_tolerance = 0.001);
+    std::optional<double> position_tolerance = std::nullopt);
 IFCAPI_BINDING std::optional<express::Base> alignment_get_horizontal_layout(express::Base alignment);
 IFCAPI_BINDING std::optional<express::Base> alignment_get_layout(express::Base segment);
 IFCAPI_BINDING std::optional<express::Base> alignment_get_layout_curve(express::Base layout);

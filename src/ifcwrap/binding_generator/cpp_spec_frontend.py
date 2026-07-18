@@ -18,6 +18,7 @@ from .binding_model import (
     TypeSpec,
 )
 from .clang_discovery import (
+    DiscoveredCppType,
     DiscoveredFunction,
     DiscoveryEnvironment,
     discover_namespace_functions,
@@ -34,10 +35,15 @@ from .contract_discovery import (
 )
 from .policy_ir import DirectFunctionPolicyOp, SpecMethodFunctionPolicyOp
 from .semantic_types import (
+    OptionalSemanticType,
     RecordSemanticType,
     SequenceSemanticType,
+    VariantSemanticType,
     analyze_cpp_type,
     semantic_leaf_type,
+    semantic_sequence_alias,
+    semantic_sequence_depth,
+    semantic_sequence_lengths,
 )
 
 
@@ -890,6 +896,7 @@ def discover_cpp_spec_option_structs(
     """
     result_structs = result_structs or {}
     option_structs: dict[str, OptionStructSpec] = {}
+    pending: list[tuple[str, str]] = []
     for function in functions:
         for param in function.discovered.params:
             option_name = _option_struct_name(
@@ -902,22 +909,138 @@ def discover_cpp_spec_option_structs(
                 cpp_type = f"{function.namespace}::{cpp_type}"
             if simple_name in option_structs:
                 continue
-            fields = []
-            for field in discover_public_fields(
-                environment, translation_unit, cpp_type
-            ).values():
-                fields.append(
-                    OptionStructFieldSpec(
-                        name=field.cpp_name,
-                        type=_infer_param_type(field.cpp_type_ref, handles),
-                        cpp_field=field.cpp_name,
-                        doc=field.doc,
-                    )
-                )
             option_structs[simple_name] = OptionStructSpec(
                 name=simple_name,
                 cpp_type=cpp_type,
                 c_type=_option_c_type(simple_name, c_prefix),
-                fields=tuple(fields),
+                fields=(),
             )
+            pending.append((simple_name, cpp_type))
+
+    def record_ref(semantic: object) -> tuple[str, str] | None:
+        if not isinstance(semantic, RecordSemanticType):
+            return None
+        normalized_cpp_type = " ".join(semantic.cpp_type.replace(" *", "*").split())
+        if normalized_cpp_type.rstrip("&").endswith("*"):
+            return None
+        qualified = semantic.base_name
+        simple = qualified.rsplit("::", 1)[-1]
+        if any(
+            _canonical_cpp_type(handle.cpp_type) == _canonical_cpp_type(qualified)
+            for handle in handles.values()
+        ):
+            return None
+        if any(
+            _canonical_cpp_type(struct.cpp_type) == _canonical_cpp_type(qualified)
+            for struct in result_structs.values()
+        ):
+            return None
+        return simple, qualified
+
+    def referenced_records(semantic: object) -> tuple[tuple[str, str], ...]:
+        if isinstance(semantic, OptionalSemanticType):
+            return referenced_records(semantic.element)
+        if isinstance(semantic, SequenceSemanticType):
+            return referenced_records(semantic.element)
+        if isinstance(semantic, VariantSemanticType):
+            return tuple(
+                item
+                for alternative in semantic.alternatives
+                for item in referenced_records(alternative)
+            )
+        ref = record_ref(semantic)
+        return (ref,) if ref is not None else ()
+
+    def infer_input_type(cpp_type: object) -> TypeSpec:
+        semantic = analyze_cpp_type(cpp_type)
+        if isinstance(semantic, OptionalSemanticType):
+            inner_cpp_type = (
+                cpp_type.template_args[0]
+                if isinstance(cpp_type, DiscoveredCppType) and cpp_type.template_args
+                else semantic.element.cpp_type
+            )
+            inner = infer_input_type(inner_cpp_type)
+            return TypeSpec(
+                **{
+                    **inner.__dict__,
+                    "nullable": True,
+                    "cpp_type": getattr(cpp_type, "storage_spelling", None)
+                    or semantic.cpp_type,
+                }
+            )
+        if isinstance(semantic, VariantSemanticType):
+            return TypeSpec(
+                kind="variant",
+                variants=tuple(
+                    infer_input_type(alternative.cpp_type)
+                    for alternative in semantic.alternatives
+                ),
+                ownership="copy",
+                cpp_type=getattr(cpp_type, "storage_spelling", None)
+                or semantic.cpp_type,
+            )
+        if isinstance(semantic, SequenceSemanticType):
+            leaf = semantic_leaf_type(semantic)
+            leaf_type = infer_input_type(leaf.cpp_type)
+            if leaf_type.kind in {"option", "variant"}:
+                return TypeSpec(
+                    **{
+                        **leaf_type.__dict__,
+                        "cpp_type": getattr(cpp_type, "storage_spelling", None)
+                        or semantic.cpp_type,
+                        "sequence_depth": semantic_sequence_depth(semantic),
+                        "alias": semantic_sequence_alias(semantic),
+                        "fixed_lengths": semantic_sequence_lengths(semantic),
+                    }
+                )
+        ref = record_ref(semantic)
+        if ref is not None and ref[0] in option_structs:
+            return TypeSpec(
+                kind="option",
+                struct=ref[0],
+                cpp_type=getattr(cpp_type, "storage_spelling", None)
+                or semantic.cpp_type,
+            )
+        return _infer_param_type(cpp_type, handles)
+
+    processed: set[str] = set()
+    while pending:
+        simple_name, cpp_type = pending.pop(0)
+        if simple_name in processed:
+            continue
+        discovered_fields = discover_public_fields(
+            environment, translation_unit, cpp_type
+        ).values()
+        discovered_fields = tuple(discovered_fields)
+        for field in discovered_fields:
+            for child_name, child_cpp_type in referenced_records(
+                analyze_cpp_type(field.cpp_type_ref)
+            ):
+                if child_name not in option_structs:
+                    option_structs[child_name] = OptionStructSpec(
+                        name=child_name,
+                        cpp_type=child_cpp_type,
+                        c_type=_option_c_type(child_name, c_prefix),
+                        fields=(),
+                    )
+                    pending.append((child_name, child_cpp_type))
+        option_structs[simple_name] = OptionStructSpec(
+            name=simple_name,
+            cpp_type=cpp_type,
+            c_type=option_structs[simple_name].c_type,
+            fields=tuple(
+                OptionStructFieldSpec(
+                    name=field.cpp_name,
+                    type=infer_input_type(field.cpp_type_ref),
+                    cpp_field=field.cpp_name,
+                    doc=field.doc,
+                    has_default=(
+                        field.cpp_type_ref.template_name == "std::optional"
+                        and field.has_initializer
+                    ),
+                )
+                for field in discovered_fields
+            ),
+        )
+        processed.add(simple_name)
     return option_structs

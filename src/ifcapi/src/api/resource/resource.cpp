@@ -311,9 +311,14 @@ express::Base resource_add_resource(ifcopenshell::file* file, const ResourceAddR
     }
 }
 
-express::Base resource_add_resource_quantity(ifcopenshell::file* file, express::Base* resource_ptr, const std::string& ifc_class) {
+express::Base resource_add_resource_quantity(
+    ifcopenshell::file* file,
+    express::Base* resource_ptr,
+    std::optional<std::string> ifc_class_input)
+{
     ifcopenshell_clear_error();
     try {
+        const std::string ifc_class = ifc_class_input.value_or("IfcQuantityCount");
         auto resource = ifcapi::detail::deref_or_empty(resource_ptr);
         require_owned(file, resource, "Resource");
         static const std::map<std::string, std::vector<std::string>> supported = {

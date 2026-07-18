@@ -154,6 +154,41 @@ static void test_ifc_wrapper_defaults_and_atomicity(void) {
     ifcopenshell_file_destroy(file);
 }
 
+static void test_edit_object_placement_rejects_malformed_matrix(void) {
+    ifcopenshell_file_t *file = NULL;
+    ASSERT(ifcopenshell_parse_new_file("IFC4", 0, "", &file), "new IFC4 file succeeds");
+    ifcopenshell_root_create_entity_options_t create = {0};
+    create.ifc_class = "IfcWall";
+    ifcopenshell_instance_t *wall = NULL;
+    ASSERT(ifcopenshell_root_create_entity(file, &create, &wall), "wall creation succeeds");
+
+    double identity_values[16] = {
+        1, 0, 0, 0,
+        0, 1, 0, 0,
+        0, 0, 1, 0,
+        0, 0, 0, 1,
+    };
+    ifcopenshell_double_list_t matrix = {identity_values, 15, NULL};
+    ifcopenshell_geometry_edit_object_placement_options_t options = {0};
+    options.product = wall;
+    options.matrix = &matrix;
+    options.has_matrix = true;
+    ifcopenshell_instance_t *placement = NULL;
+    ASSERT(!ifcopenshell_geometry_edit_object_placement(file, &options, &placement), "malformed supplied matrix is rejected");
+
+    ifcopenshell_parse_instance_list_t *placements = NULL;
+    size_t count = 0;
+    ASSERT(ifcopenshell_file_by_type(file, "IfcLocalPlacement", &placements), "placement query after rejection succeeds");
+    ASSERT(ifcopenshell_parse_instance_list_size(placements, &count) && count == 0, "malformed matrix fails before placement mutation");
+    ifcopenshell_parse_instance_list_destroy(placements);
+
+    matrix.size = 16;
+    ASSERT(ifcopenshell_geometry_edit_object_placement(file, &options, &placement), "fixed sixteen-value matrix creates a placement");
+    ifcopenshell_instance_destroy(placement);
+    ifcopenshell_instance_destroy(wall);
+    ifcopenshell_file_destroy(file);
+}
+
 int ifcapi_run_geometry_smoke_tests(void) {
     printf("=== Geometry C ABI tests ===\n");
     tests_run = tests_failed = 0;
@@ -161,6 +196,7 @@ int ifcapi_run_geometry_smoke_tests(void) {
     test_empty_record_list_and_repeated_destruction();
     test_collinear_degenerate_and_invalid_inputs();
     test_ifc_wrapper_defaults_and_atomicity();
+    test_edit_object_placement_rejects_malformed_matrix();
     printf("Geometry C ABI: %d assertions, %d failures\n", tests_run, tests_failed);
     return tests_failed;
 }

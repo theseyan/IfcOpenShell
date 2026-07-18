@@ -2,6 +2,7 @@
 #include "ifcopenshell_api_internal.hpp"
 
 #include <algorithm>
+#include <array>
 #include <cstring>
 #include <fstream>
 #include <iterator>
@@ -75,6 +76,41 @@ struct capi_array_owner final : capi_buffer_owner {
         : values(size == 0 ? nullptr : std::make_unique<T[]>(size)) {}
     std::unique_ptr<T[]> values;
 };
+
+template <size_t N, typename Sequence>
+auto to_fixed_array(Sequence&& values) {
+    if (values.size() != N) {
+        throw std::invalid_argument("Fixed-size sequence has invalid cardinality");
+    }
+    using item_type = std::decay_t<decltype(values[0])>;
+    std::array<item_type, N> result{};
+    std::move(values.begin(), values.end(), result.begin());
+    return result;
+}
+
+template <typename Sequence, typename Transform>
+auto transform_sequence(Sequence&& values, Transform transform) {
+    using item_type = decltype(transform(std::move(values[0])));
+    std::vector<item_type> result;
+    result.reserve(values.size());
+    for (auto& value : values) {
+        result.push_back(transform(std::move(value)));
+    }
+    return result;
+}
+
+template <size_t N, typename Sequence, typename Transform>
+auto transform_fixed_sequence(Sequence&& values, Transform transform) {
+    if (values.size() != N) {
+        throw std::invalid_argument("Fixed-size sequence has invalid cardinality");
+    }
+    using item_type = decltype(transform(std::move(values[0])));
+    std::array<item_type, N> result{};
+    for (size_t index = 0; index < N; ++index) {
+        result[index] = transform(std::move(values[index]));
+    }
+    return result;
+}
 
 bool feature_use_attribute_value_derived = false;
 std::stringstream ifcopenshell_log_stream;
@@ -1799,23 +1835,6 @@ void ifcopenshell_string_list_destroy(ifcopenshell_string_list_t* value) {
     value->size = 0;
 }
 
-void ifcopenshell_double_list_list_destroy(ifcopenshell_double_list_list_t* value) {
-    if (value == nullptr) {
-        return;
-    }
-    if (value->owner == nullptr) {
-        value->items = nullptr;
-        value->size = 0;
-        return;
-    }
-    for (size_t i = 0; i < value->size; ++i) {
-        ifcopenshell_double_list_destroy(&value->items[i]);
-    }
-    ifcopenshell_buffer_owner_destroy(&value->owner);
-    value->items = nullptr;
-    value->size = 0;
-}
-
 void ifcopenshell_bool_list_destroy(ifcopenshell_bool_list_t* value) {
     if (value == nullptr) {
         return;
@@ -1841,6 +1860,23 @@ void ifcopenshell_int64_list_destroy(ifcopenshell_int64_list_t* value) {
         return;
     }
 
+    ifcopenshell_buffer_owner_destroy(&value->owner);
+    value->items = nullptr;
+    value->size = 0;
+}
+
+void ifcopenshell_double_list_list_destroy(ifcopenshell_double_list_list_t* value) {
+    if (value == nullptr) {
+        return;
+    }
+    if (value->owner == nullptr) {
+        value->items = nullptr;
+        value->size = 0;
+        return;
+    }
+    for (size_t i = 0; i < value->size; ++i) {
+        ifcopenshell_double_list_destroy(&value->items[i]);
+    }
     ifcopenshell_buffer_owner_destroy(&value->owner);
     value->items = nullptr;
     value->size = 0;
@@ -1942,7 +1978,7 @@ void ifcopenshell_double_list_list_list_destroy(ifcopenshell_double_list_list_li
     value->size = 0;
 }
 
-void ifcopenshell_int32_list_list_list_list_destroy(ifcopenshell_int32_list_list_list_list_t* value) {
+void ifcopenshell_uint32_list_list_destroy(ifcopenshell_uint32_list_list_t* value) {
     if (value == nullptr) {
         return;
     }
@@ -1952,7 +1988,7 @@ void ifcopenshell_int32_list_list_list_list_destroy(ifcopenshell_int32_list_list
         return;
     }
     for (size_t i = 0; i < value->size; ++i) {
-        ifcopenshell_int32_list_list_list_destroy(&value->items[i]);
+        ifcopenshell_uint32_list_destroy(&value->items[i]);
     }
     ifcopenshell_buffer_owner_destroy(&value->owner);
     value->items = nullptr;
@@ -2006,35 +2042,6 @@ static std::vector<std::string> to_cpp_string_list(const ifcopenshell_string_lis
     return result;
 }
 
-static ifcopenshell_double_list_list_t make_double_list_list(std::vector<std::vector<double>> values) {
-    auto owner = std::make_unique<capi_value_owner<std::vector<ifcopenshell_double_list_t>>>(std::vector<ifcopenshell_double_list_t>{});
-    auto& items = owner->value;
-    items.reserve(values.size());
-    try {
-        for (auto& value : values) {
-            items.push_back(make_double_list(std::move(value)));
-        }
-    } catch (...) {
-        for (auto& item : items) {
-            ifcopenshell_double_list_destroy(&item);
-        }
-        throw;
-    }
-    auto* data = items.empty() ? nullptr : items.data();
-    const auto size = items.size();
-    return ifcopenshell_double_list_list_t{data, size, owner.release()};
-}
-
-static std::vector<std::vector<double>> to_cpp_double_list_list(const ifcopenshell_double_list_list_t* value) {
-    validate_list_items("double_list_list", value->items, value->size);
-    std::vector<std::vector<double>> result;
-    result.reserve(value->size);
-    for (size_t i = 0; i < value->size; ++i) {
-        result.push_back(to_cpp_double_list(&value->items[i]));
-    }
-    return result;
-}
-
 static ifcopenshell_bool_list_t make_bool_list(std::vector<bool> values) {
     auto owner = std::make_unique<capi_array_owner<bool>>(values.size());
     for (size_t i = 0; i < values.size(); ++i) {
@@ -2069,6 +2076,35 @@ static std::vector<int64_t> to_cpp_int64_list(const ifcopenshell_int64_list_t* v
         return {};
     }
     return std::vector<int64_t>(value->items, value->items + value->size);
+}
+
+static ifcopenshell_double_list_list_t make_double_list_list(std::vector<std::vector<double>> values) {
+    auto owner = std::make_unique<capi_value_owner<std::vector<ifcopenshell_double_list_t>>>(std::vector<ifcopenshell_double_list_t>{});
+    auto& items = owner->value;
+    items.reserve(values.size());
+    try {
+        for (auto& value : values) {
+            items.push_back(make_double_list(std::move(value)));
+        }
+    } catch (...) {
+        for (auto& item : items) {
+            ifcopenshell_double_list_destroy(&item);
+        }
+        throw;
+    }
+    auto* data = items.empty() ? nullptr : items.data();
+    const auto size = items.size();
+    return ifcopenshell_double_list_list_t{data, size, owner.release()};
+}
+
+static std::vector<std::vector<double>> to_cpp_double_list_list(const ifcopenshell_double_list_list_t* value) {
+    validate_list_items("double_list_list", value->items, value->size);
+    std::vector<std::vector<double>> result;
+    result.reserve(value->size);
+    for (size_t i = 0; i < value->size; ++i) {
+        result.push_back(to_cpp_double_list(&value->items[i]));
+    }
+    return result;
 }
 
 static ifcopenshell_int32_list_t make_int32_list(std::vector<int> values) {
@@ -2206,31 +2242,31 @@ static std::vector<std::vector<std::vector<double>>> to_cpp_double_list_list_lis
     return result;
 }
 
-static ifcopenshell_int32_list_list_list_list_t make_int32_list_list_list_list(std::vector<std::vector<std::vector<std::vector<int>>>> values) {
-    auto owner = std::make_unique<capi_value_owner<std::vector<ifcopenshell_int32_list_list_list_t>>>(std::vector<ifcopenshell_int32_list_list_list_t>{});
+static ifcopenshell_uint32_list_list_t make_uint32_list_list(std::vector<std::vector<unsigned int>> values) {
+    auto owner = std::make_unique<capi_value_owner<std::vector<ifcopenshell_uint32_list_t>>>(std::vector<ifcopenshell_uint32_list_t>{});
     auto& items = owner->value;
     items.reserve(values.size());
     try {
         for (auto& value : values) {
-            items.push_back(make_int32_list_list_list(std::move(value)));
+            items.push_back(make_uint32_list(std::move(value)));
         }
     } catch (...) {
         for (auto& item : items) {
-            ifcopenshell_int32_list_list_list_destroy(&item);
+            ifcopenshell_uint32_list_destroy(&item);
         }
         throw;
     }
     auto* data = items.empty() ? nullptr : items.data();
     const auto size = items.size();
-    return ifcopenshell_int32_list_list_list_list_t{data, size, owner.release()};
+    return ifcopenshell_uint32_list_list_t{data, size, owner.release()};
 }
 
-static std::vector<std::vector<std::vector<std::vector<int>>>> to_cpp_int32_list_list_list_list(const ifcopenshell_int32_list_list_list_list_t* value) {
-    validate_list_items("int32_list_list_list_list", value->items, value->size);
-    std::vector<std::vector<std::vector<std::vector<int>>>> result;
+static std::vector<std::vector<unsigned int>> to_cpp_uint32_list_list(const ifcopenshell_uint32_list_list_t* value) {
+    validate_list_items("uint32_list_list", value->items, value->size);
+    std::vector<std::vector<unsigned int>> result;
     result.reserve(value->size);
     for (size_t i = 0; i < value->size; ++i) {
-        result.push_back(to_cpp_int32_list_list_list(&value->items[i]));
+        result.push_back(to_cpp_uint32_list(&value->items[i]));
     }
     return result;
 }
@@ -3310,6 +3346,23 @@ void ifcopenshell_optional_shape_builder_mep_transition_shape_result_destroy(ifc
     }
     value->has_value = false;
 }
+void ifcopenshell_double_list_list_any_2_double_list_list_any_3_variant_destroy(ifcopenshell_double_list_list_any_2_double_list_list_any_3_variant_t* value) {
+    if (value == nullptr) {
+        return;
+    }
+    switch (value->kind) {
+    case 0:
+        ifcopenshell_double_list_list_destroy(&value->value_0);
+        break;
+    case 1:
+        ifcopenshell_double_list_list_destroy(&value->value_1);
+        break;
+    default:
+        break;
+    }
+    value->kind = -1;
+}
+
 void ifcopenshell_instance_string_variant_destroy(ifcopenshell_instance_string_variant_t* value) {
     if (value == nullptr) {
         return;
@@ -3321,6 +3374,100 @@ void ifcopenshell_instance_string_variant_destroy(ifcopenshell_instance_string_v
         break;
     case 1:
         ifcopenshell_string_destroy(&value->value_1);
+        break;
+    default:
+        break;
+    }
+    value->kind = -1;
+}
+
+void ifcopenshell_GeometryPlaneClipping_GeometryEntityClipping_variant_destroy(ifcopenshell_GeometryPlaneClipping_GeometryEntityClipping_variant_t* value) {
+    if (value == nullptr) {
+        return;
+    }
+    switch (value->kind) {
+    case 0:
+        break;
+    case 1:
+        break;
+    default:
+        break;
+    }
+    value->kind = -1;
+}
+
+void ifcopenshell_ShapeBuilderLineSegment_ShapeBuilderArcSegment_variant_destroy(ifcopenshell_ShapeBuilderLineSegment_ShapeBuilderArcSegment_variant_t* value) {
+    if (value == nullptr) {
+        return;
+    }
+    switch (value->kind) {
+    case 0:
+        break;
+    case 1:
+        break;
+    default:
+        break;
+    }
+    value->kind = -1;
+}
+
+void ifcopenshell_ShapeBuilderMepTransitionFromLength_ShapeBuilderMepTransitionFromAngle_variant_destroy(ifcopenshell_ShapeBuilderMepTransitionFromLength_ShapeBuilderMepTransitionFromAngle_variant_t* value) {
+    if (value == nullptr) {
+        return;
+    }
+    switch (value->kind) {
+    case 0:
+        break;
+    case 1:
+        break;
+    default:
+        break;
+    }
+    value->kind = -1;
+}
+
+void ifcopenshell_double_list_9_double_list_16_variant_destroy(ifcopenshell_double_list_9_double_list_16_variant_t* value) {
+    if (value == nullptr) {
+        return;
+    }
+    switch (value->kind) {
+    case 0:
+        ifcopenshell_double_list_destroy(&value->value_0);
+        break;
+    case 1:
+        ifcopenshell_double_list_destroy(&value->value_1);
+        break;
+    default:
+        break;
+    }
+    value->kind = -1;
+}
+
+void ifcopenshell_double_list_2_double_list_3_variant_destroy(ifcopenshell_double_list_2_double_list_3_variant_t* value) {
+    if (value == nullptr) {
+        return;
+    }
+    switch (value->kind) {
+    case 0:
+        ifcopenshell_double_list_destroy(&value->value_0);
+        break;
+    case 1:
+        ifcopenshell_double_list_destroy(&value->value_1);
+        break;
+    default:
+        break;
+    }
+    value->kind = -1;
+}
+
+void ifcopenshell_ShapeBuilderEllipsePointTrim_ShapeBuilderEllipseCardinalTrim_variant_destroy(ifcopenshell_ShapeBuilderEllipsePointTrim_ShapeBuilderEllipseCardinalTrim_variant_t* value) {
+    if (value == nullptr) {
+        return;
+    }
+    switch (value->kind) {
+    case 0:
+        break;
+    case 1:
         break;
     default:
         break;
@@ -4569,15 +4716,49 @@ bool ifcopenshell_alignment_create_by_pi_method(ifcopenshell_file_t* file, const
     ifcapi::bindings::AlignmentCreateByPiMethodOptions options_cpp{};
     if (options->name == nullptr) { throw std::runtime_error("Options field \"name\" must not be null"); }
     options_cpp.name = std::string(options->name);
-    if (options->horizontal_points == nullptr) { throw std::runtime_error("Options field \"horizontal_points\" must not be null"); }
-    options_cpp.horizontal_points = to_cpp_double_list_list(options->horizontal_points);
-    if (options->radii == nullptr) { throw std::runtime_error("Options field \"radii\" must not be null"); }
-    options_cpp.radii = to_cpp_double_list(options->radii);
-    if (options->vertical_points == nullptr) { throw std::runtime_error("Options field \"vertical_points\" must not be null"); }
-    options_cpp.vertical_points = to_cpp_double_list_list(options->vertical_points);
-    if (options->vertical_lengths == nullptr) { throw std::runtime_error("Options field \"vertical_lengths\" must not be null"); }
-    options_cpp.vertical_lengths = to_cpp_double_list(options->vertical_lengths);
-    options_cpp.start_station = static_cast<double>(options->start_station);
+    if (options->horizontal == nullptr) { throw std::runtime_error("Options field \"horizontal\" must not be null"); }
+    ifcapi::bindings::AlignmentHorizontalPiLayout nested_value_options_cpp_horizontal{};
+    if (options->horizontal->start_point == nullptr) { throw std::runtime_error("Options field \"start_point\" must not be null"); }
+    nested_value_options_cpp_horizontal.start_point = to_fixed_array<2>(to_cpp_double_list(options->horizontal->start_point));
+    if (options->horizontal->intersections == nullptr) { throw std::runtime_error("Options field \"intersections\" must not be null"); }
+    std::vector<ifcapi::bindings::AlignmentHorizontalPi> nested_values_nested_value_options_cpp_horizontal_intersections;
+    nested_values_nested_value_options_cpp_horizontal_intersections.reserve(options->horizontal->intersections->size);
+    for (size_t i_nested_value_options_cpp_horizontal_intersections = 0; i_nested_value_options_cpp_horizontal_intersections < options->horizontal->intersections->size; ++i_nested_value_options_cpp_horizontal_intersections) {
+        const auto* item_nested_value_options_cpp_horizontal_intersections = &options->horizontal->intersections->items[i_nested_value_options_cpp_horizontal_intersections];
+        ifcapi::bindings::AlignmentHorizontalPi nested_value_nested_value_options_cpp_horizontal_intersections{};
+        if (item_nested_value_options_cpp_horizontal_intersections->point == nullptr) { throw std::runtime_error("Options field \"point\" must not be null"); }
+        nested_value_nested_value_options_cpp_horizontal_intersections.point = to_fixed_array<2>(to_cpp_double_list(item_nested_value_options_cpp_horizontal_intersections->point));
+        nested_value_nested_value_options_cpp_horizontal_intersections.radius = static_cast<double>(item_nested_value_options_cpp_horizontal_intersections->radius);
+        nested_values_nested_value_options_cpp_horizontal_intersections.push_back(std::move(nested_value_nested_value_options_cpp_horizontal_intersections));
+    }
+    nested_value_options_cpp_horizontal.intersections = std::move(nested_values_nested_value_options_cpp_horizontal_intersections);
+    if (options->horizontal->end_point == nullptr) { throw std::runtime_error("Options field \"end_point\" must not be null"); }
+    nested_value_options_cpp_horizontal.end_point = to_fixed_array<2>(to_cpp_double_list(options->horizontal->end_point));
+    options_cpp.horizontal = std::move(nested_value_options_cpp_horizontal);
+    if (options->has_vertical) {
+        if (options->vertical == nullptr) { throw std::runtime_error("Options field \"vertical\" must not be null"); }
+        ifcapi::bindings::AlignmentVerticalPiLayout nested_value_options_cpp_vertical{};
+        if (options->vertical->start_point == nullptr) { throw std::runtime_error("Options field \"start_point\" must not be null"); }
+        nested_value_options_cpp_vertical.start_point = to_fixed_array<2>(to_cpp_double_list(options->vertical->start_point));
+        if (options->vertical->intersections == nullptr) { throw std::runtime_error("Options field \"intersections\" must not be null"); }
+        std::vector<ifcapi::bindings::AlignmentVerticalPi> nested_values_nested_value_options_cpp_vertical_intersections;
+        nested_values_nested_value_options_cpp_vertical_intersections.reserve(options->vertical->intersections->size);
+        for (size_t i_nested_value_options_cpp_vertical_intersections = 0; i_nested_value_options_cpp_vertical_intersections < options->vertical->intersections->size; ++i_nested_value_options_cpp_vertical_intersections) {
+            const auto* item_nested_value_options_cpp_vertical_intersections = &options->vertical->intersections->items[i_nested_value_options_cpp_vertical_intersections];
+            ifcapi::bindings::AlignmentVerticalPi nested_value_nested_value_options_cpp_vertical_intersections{};
+            if (item_nested_value_options_cpp_vertical_intersections->point == nullptr) { throw std::runtime_error("Options field \"point\" must not be null"); }
+            nested_value_nested_value_options_cpp_vertical_intersections.point = to_fixed_array<2>(to_cpp_double_list(item_nested_value_options_cpp_vertical_intersections->point));
+            nested_value_nested_value_options_cpp_vertical_intersections.curve_length = static_cast<double>(item_nested_value_options_cpp_vertical_intersections->curve_length);
+            nested_values_nested_value_options_cpp_vertical_intersections.push_back(std::move(nested_value_nested_value_options_cpp_vertical_intersections));
+        }
+        nested_value_options_cpp_vertical.intersections = std::move(nested_values_nested_value_options_cpp_vertical_intersections);
+        if (options->vertical->end_point == nullptr) { throw std::runtime_error("Options field \"end_point\" must not be null"); }
+        nested_value_options_cpp_vertical.end_point = to_fixed_array<2>(to_cpp_double_list(options->vertical->end_point));
+        options_cpp.vertical = std::move(nested_value_options_cpp_vertical);
+    }
+    if (options->has_start_station) {
+        options_cpp.start_station = options->start_station;
+    }
     if (options->has_owner_history) {
         if (options->owner_history == nullptr) { throw std::runtime_error("Options field \"owner_history\" must not be null"); }
         options_cpp.owner_history = options->owner_history->value;
@@ -5017,7 +5198,7 @@ bool ifcopenshell_alignment_get_curve_segment(ifcopenshell_instance_t* layout, i
     }
 }
 
-bool ifcopenshell_alignment_get_curve_segment_transition_code(ifcopenshell_instance_t* segment, ifcopenshell_instance_t* next_segment, double position_tolerance, ifcopenshell_string_t* out_result) {
+bool ifcopenshell_alignment_get_curve_segment_transition_code(ifcopenshell_instance_t* segment, ifcopenshell_instance_t* next_segment, const double* position_tolerance, ifcopenshell_string_t* out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
@@ -5025,7 +5206,8 @@ bool ifcopenshell_alignment_get_curve_segment_transition_code(ifcopenshell_insta
     auto segment_cpp = segment->value;
     if (next_segment == nullptr) { throw std::runtime_error("Handle parameter \"next_segment\" must not be null"); }
     auto next_segment_cpp = next_segment->value;
-    auto position_tolerance_cpp = static_cast<double>(position_tolerance);
+    std::optional<double> position_tolerance_cpp;
+    if (position_tolerance != nullptr) { position_tolerance_cpp = static_cast<double>(*position_tolerance); }
         *out_result = make_string(ifcapi::bindings::alignment_get_curve_segment_transition_code(segment_cpp, next_segment_cpp, position_tolerance_cpp));
         if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
             return false;
@@ -5250,18 +5432,35 @@ bool ifcopenshell_alignment_has_zero_length_segment(ifcopenshell_instance_t* lay
     }
 }
 
-bool ifcopenshell_alignment_layout_horizontal_by_pi_method(ifcopenshell_file_t* file, ifcopenshell_instance_t* layout, const ifcopenshell_double_list_list_t* points, const ifcopenshell_double_list_t* radii) {
+bool ifcopenshell_alignment_layout_horizontal_by_pi_method(ifcopenshell_file_t* file, ifcopenshell_instance_t* layout, const ifcopenshell_alignment_layout_horizontal_by_pi_method_options_t* options) {
     try {
         ifcopenshell_clear_error();
     if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
     auto file_cpp = file->ptr;
     if (layout == nullptr) { throw std::runtime_error("Handle parameter \"layout\" must not be null"); }
     auto layout_cpp = layout->value;
-    if (points == nullptr) { throw std::runtime_error("Parameter \"points\" must not be null"); }
-    auto points_cpp = to_cpp_double_list_list(points);
-    if (radii == nullptr) { throw std::runtime_error("Parameter \"radii\" must not be null"); }
-    auto radii_cpp = to_cpp_double_list(radii);
-        ifcapi::bindings::alignment_layout_horizontal_by_pi_method(file_cpp, layout_cpp, points_cpp, radii_cpp);
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::AlignmentLayoutHorizontalByPiMethodOptions options_cpp{};
+    if (options->pis == nullptr) { throw std::runtime_error("Options field \"pis\" must not be null"); }
+    ifcapi::bindings::AlignmentHorizontalPiLayout nested_value_options_cpp_pis{};
+    if (options->pis->start_point == nullptr) { throw std::runtime_error("Options field \"start_point\" must not be null"); }
+    nested_value_options_cpp_pis.start_point = to_fixed_array<2>(to_cpp_double_list(options->pis->start_point));
+    if (options->pis->intersections == nullptr) { throw std::runtime_error("Options field \"intersections\" must not be null"); }
+    std::vector<ifcapi::bindings::AlignmentHorizontalPi> nested_values_nested_value_options_cpp_pis_intersections;
+    nested_values_nested_value_options_cpp_pis_intersections.reserve(options->pis->intersections->size);
+    for (size_t i_nested_value_options_cpp_pis_intersections = 0; i_nested_value_options_cpp_pis_intersections < options->pis->intersections->size; ++i_nested_value_options_cpp_pis_intersections) {
+        const auto* item_nested_value_options_cpp_pis_intersections = &options->pis->intersections->items[i_nested_value_options_cpp_pis_intersections];
+        ifcapi::bindings::AlignmentHorizontalPi nested_value_nested_value_options_cpp_pis_intersections{};
+        if (item_nested_value_options_cpp_pis_intersections->point == nullptr) { throw std::runtime_error("Options field \"point\" must not be null"); }
+        nested_value_nested_value_options_cpp_pis_intersections.point = to_fixed_array<2>(to_cpp_double_list(item_nested_value_options_cpp_pis_intersections->point));
+        nested_value_nested_value_options_cpp_pis_intersections.radius = static_cast<double>(item_nested_value_options_cpp_pis_intersections->radius);
+        nested_values_nested_value_options_cpp_pis_intersections.push_back(std::move(nested_value_nested_value_options_cpp_pis_intersections));
+    }
+    nested_value_options_cpp_pis.intersections = std::move(nested_values_nested_value_options_cpp_pis_intersections);
+    if (options->pis->end_point == nullptr) { throw std::runtime_error("Options field \"end_point\" must not be null"); }
+    nested_value_options_cpp_pis.end_point = to_fixed_array<2>(to_cpp_double_list(options->pis->end_point));
+    options_cpp.pis = std::move(nested_value_options_cpp_pis);
+        ifcapi::bindings::alignment_layout_horizontal_by_pi_method(file_cpp, layout_cpp, options_cpp);
         if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
             return false;
         }
@@ -5272,18 +5471,35 @@ bool ifcopenshell_alignment_layout_horizontal_by_pi_method(ifcopenshell_file_t* 
     }
 }
 
-bool ifcopenshell_alignment_layout_vertical_by_pi_method(ifcopenshell_file_t* file, ifcopenshell_instance_t* layout, const ifcopenshell_double_list_list_t* points, const ifcopenshell_double_list_t* lengths) {
+bool ifcopenshell_alignment_layout_vertical_by_pi_method(ifcopenshell_file_t* file, ifcopenshell_instance_t* layout, const ifcopenshell_alignment_layout_vertical_by_pi_method_options_t* options) {
     try {
         ifcopenshell_clear_error();
     if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
     auto file_cpp = file->ptr;
     if (layout == nullptr) { throw std::runtime_error("Handle parameter \"layout\" must not be null"); }
     auto layout_cpp = layout->value;
-    if (points == nullptr) { throw std::runtime_error("Parameter \"points\" must not be null"); }
-    auto points_cpp = to_cpp_double_list_list(points);
-    if (lengths == nullptr) { throw std::runtime_error("Parameter \"lengths\" must not be null"); }
-    auto lengths_cpp = to_cpp_double_list(lengths);
-        ifcapi::bindings::alignment_layout_vertical_by_pi_method(file_cpp, layout_cpp, points_cpp, lengths_cpp);
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::AlignmentLayoutVerticalByPiMethodOptions options_cpp{};
+    if (options->pis == nullptr) { throw std::runtime_error("Options field \"pis\" must not be null"); }
+    ifcapi::bindings::AlignmentVerticalPiLayout nested_value_options_cpp_pis{};
+    if (options->pis->start_point == nullptr) { throw std::runtime_error("Options field \"start_point\" must not be null"); }
+    nested_value_options_cpp_pis.start_point = to_fixed_array<2>(to_cpp_double_list(options->pis->start_point));
+    if (options->pis->intersections == nullptr) { throw std::runtime_error("Options field \"intersections\" must not be null"); }
+    std::vector<ifcapi::bindings::AlignmentVerticalPi> nested_values_nested_value_options_cpp_pis_intersections;
+    nested_values_nested_value_options_cpp_pis_intersections.reserve(options->pis->intersections->size);
+    for (size_t i_nested_value_options_cpp_pis_intersections = 0; i_nested_value_options_cpp_pis_intersections < options->pis->intersections->size; ++i_nested_value_options_cpp_pis_intersections) {
+        const auto* item_nested_value_options_cpp_pis_intersections = &options->pis->intersections->items[i_nested_value_options_cpp_pis_intersections];
+        ifcapi::bindings::AlignmentVerticalPi nested_value_nested_value_options_cpp_pis_intersections{};
+        if (item_nested_value_options_cpp_pis_intersections->point == nullptr) { throw std::runtime_error("Options field \"point\" must not be null"); }
+        nested_value_nested_value_options_cpp_pis_intersections.point = to_fixed_array<2>(to_cpp_double_list(item_nested_value_options_cpp_pis_intersections->point));
+        nested_value_nested_value_options_cpp_pis_intersections.curve_length = static_cast<double>(item_nested_value_options_cpp_pis_intersections->curve_length);
+        nested_values_nested_value_options_cpp_pis_intersections.push_back(std::move(nested_value_nested_value_options_cpp_pis_intersections));
+    }
+    nested_value_options_cpp_pis.intersections = std::move(nested_values_nested_value_options_cpp_pis_intersections);
+    if (options->pis->end_point == nullptr) { throw std::runtime_error("Options field \"end_point\" must not be null"); }
+    nested_value_options_cpp_pis.end_point = to_fixed_array<2>(to_cpp_double_list(options->pis->end_point));
+    options_cpp.pis = std::move(nested_value_options_cpp_pis);
+        ifcapi::bindings::alignment_layout_vertical_by_pi_method(file_cpp, layout_cpp, options_cpp);
         if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
             return false;
         }
@@ -5354,14 +5570,15 @@ bool ifcopenshell_alignment_station_as_string(ifcopenshell_file_t* file, double 
     }
 }
 
-bool ifcopenshell_alignment_update_curve_segment_transition_code(ifcopenshell_instance_t* segment, ifcopenshell_instance_t* next_segment, double position_tolerance) {
+bool ifcopenshell_alignment_update_curve_segment_transition_code(ifcopenshell_instance_t* segment, ifcopenshell_instance_t* next_segment, const double* position_tolerance) {
     try {
         ifcopenshell_clear_error();
     if (segment == nullptr) { throw std::runtime_error("Handle parameter \"segment\" must not be null"); }
     auto segment_cpp = segment->value;
     if (next_segment == nullptr) { throw std::runtime_error("Handle parameter \"next_segment\" must not be null"); }
     auto next_segment_cpp = next_segment->value;
-    auto position_tolerance_cpp = static_cast<double>(position_tolerance);
+    std::optional<double> position_tolerance_cpp;
+    if (position_tolerance != nullptr) { position_tolerance_cpp = static_cast<double>(*position_tolerance); }
         ifcapi::bindings::alignment_update_curve_segment_transition_code(segment_cpp, next_segment_cpp, position_tolerance_cpp);
         if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
             return false;
@@ -5450,15 +5667,15 @@ bool ifcopenshell_boundary_assign_connection_geometry(ifcopenshell_file_t* file,
     if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
     ifcapi::bindings::BoundaryAssignConnectionGeometryOptions options_cpp{};
     if (options->outer_boundary == nullptr) { throw std::runtime_error("Options field \"outer_boundary\" must not be null"); }
-    options_cpp.outer_boundary = to_cpp_double_list_list(options->outer_boundary);
+    options_cpp.outer_boundary = transform_sequence(to_cpp_double_list_list(options->outer_boundary), [](auto&& item) { return to_fixed_array<2>(std::move(item)); });
     if (options->location == nullptr) { throw std::runtime_error("Options field \"location\" must not be null"); }
-    options_cpp.location = to_cpp_double_list(options->location);
+    options_cpp.location = to_fixed_array<3>(to_cpp_double_list(options->location));
     if (options->axis == nullptr) { throw std::runtime_error("Options field \"axis\" must not be null"); }
-    options_cpp.axis = to_cpp_double_list(options->axis);
+    options_cpp.axis = to_fixed_array<3>(to_cpp_double_list(options->axis));
     if (options->ref_direction == nullptr) { throw std::runtime_error("Options field \"ref_direction\" must not be null"); }
-    options_cpp.ref_direction = to_cpp_double_list(options->ref_direction);
+    options_cpp.ref_direction = to_fixed_array<3>(to_cpp_double_list(options->ref_direction));
     if (options->inner_boundaries == nullptr) { throw std::runtime_error("Options field \"inner_boundaries\" must not be null"); }
-    options_cpp.inner_boundaries = to_cpp_double_list_list_list(options->inner_boundaries);
+    options_cpp.inner_boundaries = transform_sequence(to_cpp_double_list_list_list(options->inner_boundaries), [](auto&& item) { return transform_sequence(std::move(item), [](auto&& item) { return to_fixed_array<2>(std::move(item)); }); });
     options_cpp.unit_scale = static_cast<double>(options->unit_scale);
         ifcapi::bindings::boundary_assign_connection_geometry(file_cpp, rel_space_boundary_cpp, options_cpp);
         if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
@@ -7776,7 +7993,7 @@ bool ifcopenshell_feature_remove_filling(ifcopenshell_file_t* file, ifcopenshell
     }
 }
 
-bool ifcopenshell_geometry_add_axis_representation(ifcopenshell_file_t* file, ifcopenshell_instance_t* context, const ifcopenshell_double_list_list_t* axis, ifcopenshell_instance_t** out_result) {
+bool ifcopenshell_geometry_add_axis_representation(ifcopenshell_file_t* file, ifcopenshell_instance_t* context, const ifcopenshell_double_list_list_any_2_double_list_list_any_3_variant_t* axis, ifcopenshell_instance_t** out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
@@ -7785,7 +8002,17 @@ bool ifcopenshell_geometry_add_axis_representation(ifcopenshell_file_t* file, if
     if (context == nullptr) { throw std::runtime_error("Handle parameter \"context\" must not be null"); }
     auto context_cpp = &context->value;
     if (axis == nullptr) { throw std::runtime_error("Parameter \"axis\" must not be null"); }
-    auto axis_cpp = to_cpp_double_list_list(axis);
+    std::variant<std::vector<std::array<double, 2>>, std::vector<std::array<double, 3>>> axis_cpp;
+    switch (axis->kind) {
+    case 0:
+        axis_cpp = transform_sequence(to_cpp_double_list_list(&axis->value_0), [](auto&& item) { return to_fixed_array<2>(std::move(item)); });
+        break;
+    case 1:
+        axis_cpp = transform_sequence(to_cpp_double_list_list(&axis->value_1), [](auto&& item) { return to_fixed_array<3>(std::move(item)); });
+        break;
+    default:
+        throw std::runtime_error("Unsupported variant alternative");
+    }
         auto result_value = ifcapi::bindings::geometry_add_axis_representation(file_cpp, context_cpp, axis_cpp);
         if (!static_cast<bool>(result_value)) {
             *out_result = nullptr;
@@ -7835,19 +8062,80 @@ bool ifcopenshell_geometry_add_door_representation(ifcopenshell_file_t* file, co
     ifcapi::bindings::GeometryAddDoorRepresentationOptions options_cpp{};
     if (options->context == nullptr) { throw std::runtime_error("Options field \"context\" must not be null"); }
     options_cpp.context = options->context->value;
-    options_cpp.overall_height = static_cast<double>(options->overall_height);
-    options_cpp.overall_width = static_cast<double>(options->overall_width);
-    if (options->operation_type == nullptr) { throw std::runtime_error("Options field \"operation_type\" must not be null"); }
-    options_cpp.operation_type = std::string(options->operation_type);
-    if (options->lining_properties == nullptr) { throw std::runtime_error("Options field \"lining_properties\" must not be null"); }
-    options_cpp.lining_properties = to_cpp_double_list(options->lining_properties);
-    if (options->panel_properties == nullptr) { throw std::runtime_error("Options field \"panel_properties\" must not be null"); }
-    options_cpp.panel_properties = to_cpp_double_list(options->panel_properties);
+    if (options->has_overall_height) {
+        options_cpp.overall_height = options->overall_height;
+    }
+    if (options->has_overall_width) {
+        options_cpp.overall_width = options->overall_width;
+    }
+    if (options->has_operation_type) {
+        options_cpp.operation_type = static_cast<ifcapi::bindings::GeometryDoorOperationType>(options->operation_type);
+    }
+    if (options->has_lining_properties) {
+        if (options->lining_properties == nullptr) { throw std::runtime_error("Options field \"lining_properties\" must not be null"); }
+        ifcapi::bindings::GeometryDoorLiningProperties nested_value_options_cpp_lining_properties{};
+        if (options->lining_properties->has_lining_depth) {
+            nested_value_options_cpp_lining_properties.lining_depth = options->lining_properties->lining_depth;
+        }
+        if (options->lining_properties->has_lining_thickness) {
+            nested_value_options_cpp_lining_properties.lining_thickness = options->lining_properties->lining_thickness;
+        }
+        if (options->lining_properties->has_lining_offset) {
+            nested_value_options_cpp_lining_properties.lining_offset = options->lining_properties->lining_offset;
+        }
+        if (options->lining_properties->has_lining_to_panel_offset_x) {
+            nested_value_options_cpp_lining_properties.lining_to_panel_offset_x = options->lining_properties->lining_to_panel_offset_x;
+        }
+        if (options->lining_properties->has_lining_to_panel_offset_y) {
+            nested_value_options_cpp_lining_properties.lining_to_panel_offset_y = options->lining_properties->lining_to_panel_offset_y;
+        }
+        if (options->lining_properties->has_transom_thickness) {
+            nested_value_options_cpp_lining_properties.transom_thickness = options->lining_properties->transom_thickness;
+        }
+        if (options->lining_properties->has_transom_offset) {
+            nested_value_options_cpp_lining_properties.transom_offset = options->lining_properties->transom_offset;
+        }
+        if (options->lining_properties->has_casing_depth) {
+            nested_value_options_cpp_lining_properties.casing_depth = options->lining_properties->casing_depth;
+        }
+        if (options->lining_properties->has_casing_thickness) {
+            nested_value_options_cpp_lining_properties.casing_thickness = options->lining_properties->casing_thickness;
+        }
+        if (options->lining_properties->has_threshold_depth) {
+            nested_value_options_cpp_lining_properties.threshold_depth = options->lining_properties->threshold_depth;
+        }
+        if (options->lining_properties->has_threshold_thickness) {
+            nested_value_options_cpp_lining_properties.threshold_thickness = options->lining_properties->threshold_thickness;
+        }
+        if (options->lining_properties->has_threshold_offset) {
+            nested_value_options_cpp_lining_properties.threshold_offset = options->lining_properties->threshold_offset;
+        }
+        options_cpp.lining_properties = std::move(nested_value_options_cpp_lining_properties);
+    }
+    if (options->has_panel_properties) {
+        if (options->panel_properties == nullptr) { throw std::runtime_error("Options field \"panel_properties\" must not be null"); }
+        ifcapi::bindings::GeometryDoorPanelProperties nested_value_options_cpp_panel_properties{};
+        if (options->panel_properties->has_panel_depth) {
+            nested_value_options_cpp_panel_properties.panel_depth = options->panel_properties->panel_depth;
+        }
+        if (options->panel_properties->has_panel_width) {
+            nested_value_options_cpp_panel_properties.panel_width = options->panel_properties->panel_width;
+        }
+        if (options->panel_properties->has_frame_depth) {
+            nested_value_options_cpp_panel_properties.frame_depth = options->panel_properties->frame_depth;
+        }
+        if (options->panel_properties->has_frame_thickness) {
+            nested_value_options_cpp_panel_properties.frame_thickness = options->panel_properties->frame_thickness;
+        }
+        options_cpp.panel_properties = std::move(nested_value_options_cpp_panel_properties);
+    }
     if (options->has_part_of_product) {
         if (options->part_of_product == nullptr) { throw std::runtime_error("Options field \"part_of_product\" must not be null"); }
         options_cpp.part_of_product = options->part_of_product->value;
     }
-    options_cpp.unit_scale = static_cast<double>(options->unit_scale);
+    if (options->has_unit_scale) {
+        options_cpp.unit_scale = options->unit_scale;
+    }
         auto result_value = ifcapi::bindings::geometry_add_door_representation(file_cpp, options_cpp);
         if (!static_cast<bool>(result_value)) {
             *out_result = nullptr;
@@ -7900,10 +8188,39 @@ bool ifcopenshell_geometry_add_mesh_representation(ifcopenshell_file_t* file, if
     auto context_cpp = &context->value;
     if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
     ifcapi::bindings::GeometryAddMeshRepresentationOptions options_cpp{};
-    if (options->vertices == nullptr) { throw std::runtime_error("Options field \"vertices\" must not be null"); }
-    options_cpp.vertices = to_cpp_double_list_list_list(options->vertices);
-    if (options->faces == nullptr) { throw std::runtime_error("Options field \"faces\" must not be null"); }
-    options_cpp.faces = to_cpp_int32_list_list_list_list(options->faces);
+    if (options->items == nullptr) { throw std::runtime_error("Options field \"items\" must not be null"); }
+    std::vector<ifcapi::bindings::GeometryMeshItem> nested_values_options_cpp_items;
+    nested_values_options_cpp_items.reserve(options->items->size);
+    for (size_t i_options_cpp_items = 0; i_options_cpp_items < options->items->size; ++i_options_cpp_items) {
+        const auto* item_options_cpp_items = &options->items->items[i_options_cpp_items];
+        ifcapi::bindings::GeometryMeshItem nested_value_options_cpp_items{};
+        if (item_options_cpp_items->vertices == nullptr) { throw std::runtime_error("Options field \"vertices\" must not be null"); }
+        nested_value_options_cpp_items.vertices = transform_sequence(to_cpp_double_list_list(item_options_cpp_items->vertices), [](auto&& item) { return to_fixed_array<3>(std::move(item)); });
+        if (item_options_cpp_items->faces == nullptr) { throw std::runtime_error("Options field \"faces\" must not be null"); }
+        std::vector<ifcapi::bindings::GeometryMeshFace> nested_values_nested_value_options_cpp_items_faces;
+        nested_values_nested_value_options_cpp_items_faces.reserve(item_options_cpp_items->faces->size);
+        for (size_t i_nested_value_options_cpp_items_faces = 0; i_nested_value_options_cpp_items_faces < item_options_cpp_items->faces->size; ++i_nested_value_options_cpp_items_faces) {
+            const auto* item_nested_value_options_cpp_items_faces = &item_options_cpp_items->faces->items[i_nested_value_options_cpp_items_faces];
+            ifcapi::bindings::GeometryMeshFace nested_value_nested_value_options_cpp_items_faces{};
+            if (item_nested_value_options_cpp_items_faces->outer == nullptr) { throw std::runtime_error("Options field \"outer\" must not be null"); }
+            nested_value_nested_value_options_cpp_items_faces.outer = to_cpp_uint32_list(item_nested_value_options_cpp_items_faces->outer);
+            if (item_nested_value_options_cpp_items_faces->has_inner_loops) {
+                if (item_nested_value_options_cpp_items_faces->inner_loops == nullptr) { throw std::runtime_error("Options field \"inner_loops\" must not be null"); }
+                nested_value_nested_value_options_cpp_items_faces.inner_loops = to_cpp_uint32_list_list(item_nested_value_options_cpp_items_faces->inner_loops);
+            }
+            nested_values_nested_value_options_cpp_items_faces.push_back(std::move(nested_value_nested_value_options_cpp_items_faces));
+        }
+        nested_value_options_cpp_items.faces = std::move(nested_values_nested_value_options_cpp_items_faces);
+        nested_values_options_cpp_items.push_back(std::move(nested_value_options_cpp_items));
+    }
+    options_cpp.items = std::move(nested_values_options_cpp_items);
+    if (options->has_coordinate_offset) {
+        if (options->coordinate_offset == nullptr) { throw std::runtime_error("Options field \"coordinate_offset\" must not be null"); }
+        options_cpp.coordinate_offset = to_fixed_array<3>(to_cpp_double_list(options->coordinate_offset));
+    }
+    if (options->has_unit_scale) {
+        options_cpp.unit_scale = options->unit_scale;
+    }
     if (options->has_force_faceted_brep) {
         options_cpp.force_faceted_brep = options->force_faceted_brep;
     }
@@ -7935,27 +8252,54 @@ bool ifcopenshell_geometry_add_profile_representation(ifcopenshell_file_t* file,
     options_cpp.context = options->context->value;
     if (options->profile == nullptr) { throw std::runtime_error("Options field \"profile\" must not be null"); }
     options_cpp.profile = options->profile->value;
-    options_cpp.depth = static_cast<double>(options->depth);
+    if (options->has_depth) {
+        options_cpp.depth = options->depth;
+    }
     if (options->has_cardinal_point) {
         if (options->cardinal_point == nullptr) { throw std::runtime_error("Options field \"cardinal_point\" must not be null"); }
         options_cpp.cardinal_point = std::string(options->cardinal_point);
     }
     if (options->has_placement_z_axis) {
         if (options->placement_z_axis == nullptr) { throw std::runtime_error("Options field \"placement_z_axis\" must not be null"); }
-        options_cpp.placement_z_axis = to_cpp_double_list(options->placement_z_axis);
+        options_cpp.placement_z_axis = to_fixed_array<3>(to_cpp_double_list(options->placement_z_axis));
     }
     if (options->has_placement_x_axis) {
         if (options->placement_x_axis == nullptr) { throw std::runtime_error("Options field \"placement_x_axis\" must not be null"); }
-        options_cpp.placement_x_axis = to_cpp_double_list(options->placement_x_axis);
+        options_cpp.placement_x_axis = to_fixed_array<3>(to_cpp_double_list(options->placement_x_axis));
     }
-    if (options->clipping_kinds == nullptr) { throw std::runtime_error("Options field \"clipping_kinds\" must not be null"); }
-    options_cpp.clipping_kinds = to_cpp_int32_list(options->clipping_kinds);
-    if (options->clipping_locations == nullptr) { throw std::runtime_error("Options field \"clipping_locations\" must not be null"); }
-    options_cpp.clipping_locations = to_cpp_double_list_list(options->clipping_locations);
-    if (options->clipping_normals == nullptr) { throw std::runtime_error("Options field \"clipping_normals\" must not be null"); }
-    options_cpp.clipping_normals = to_cpp_double_list_list(options->clipping_normals);
-    if (options->clipping_entities == nullptr) { throw std::runtime_error("Options field \"clipping_entities\" must not be null"); }
-    options_cpp.clipping_entities = options->clipping_entities->value;
+    if (options->has_clippings) {
+        if (options->clippings == nullptr) { throw std::runtime_error("Options field \"clippings\" must not be null"); }
+        std::vector<std::variant<ifcapi::bindings::GeometryPlaneClipping, ifcapi::bindings::GeometryEntityClipping>> nested_values_options_cpp_clippings;
+        nested_values_options_cpp_clippings.reserve(options->clippings->size);
+        for (size_t i_options_cpp_clippings = 0; i_options_cpp_clippings < options->clippings->size; ++i_options_cpp_clippings) {
+            const auto* item_options_cpp_clippings = &options->clippings->items[i_options_cpp_clippings];
+            std::variant<ifcapi::bindings::GeometryPlaneClipping, ifcapi::bindings::GeometryEntityClipping> nested_value_options_cpp_clippings;
+            switch (item_options_cpp_clippings->kind) {
+            case 0: {
+                if (item_options_cpp_clippings->value_0 == nullptr) { throw std::runtime_error("Variant alternative must not be null"); }
+                ifcapi::bindings::GeometryPlaneClipping alternative_value{};
+                if (item_options_cpp_clippings->value_0->location == nullptr) { throw std::runtime_error("Options field \"location\" must not be null"); }
+                alternative_value.location = to_fixed_array<3>(to_cpp_double_list(item_options_cpp_clippings->value_0->location));
+                if (item_options_cpp_clippings->value_0->normal == nullptr) { throw std::runtime_error("Options field \"normal\" must not be null"); }
+                alternative_value.normal = to_fixed_array<3>(to_cpp_double_list(item_options_cpp_clippings->value_0->normal));
+                nested_value_options_cpp_clippings = std::move(alternative_value);
+                break;
+            }
+            case 1: {
+                if (item_options_cpp_clippings->value_1 == nullptr) { throw std::runtime_error("Variant alternative must not be null"); }
+                ifcapi::bindings::GeometryEntityClipping alternative_value{};
+                if (item_options_cpp_clippings->value_1->entity == nullptr) { throw std::runtime_error("Options field \"entity\" must not be null"); }
+                alternative_value.entity = item_options_cpp_clippings->value_1->entity->value;
+                nested_value_options_cpp_clippings = std::move(alternative_value);
+                break;
+            }
+            default:
+                throw std::runtime_error("Unsupported variant alternative");
+            }
+            nested_values_options_cpp_clippings.push_back(std::move(nested_value_options_cpp_clippings));
+        }
+        options_cpp.clippings = std::move(nested_values_options_cpp_clippings);
+    }
         auto result_value = ifcapi::bindings::geometry_add_profile_representation(file_cpp, options_cpp);
         if (!static_cast<bool>(result_value)) {
             *out_result = nullptr;
@@ -7984,7 +8328,7 @@ bool ifcopenshell_geometry_add_railing_representation(ifcopenshell_file_t* file,
     options_cpp.context = options->context->value;
     if (options->has_railing_path) {
         if (options->railing_path == nullptr) { throw std::runtime_error("Options field \"railing_path\" must not be null"); }
-        options_cpp.railing_path = to_cpp_double_list_list(options->railing_path);
+        options_cpp.railing_path = transform_sequence(to_cpp_double_list_list(options->railing_path), [](auto&& item) { return to_fixed_array<3>(std::move(item)); });
     }
     if (options->has_use_manual_supports) {
         options_cpp.use_manual_supports = options->use_manual_supports;
@@ -8073,19 +8417,52 @@ bool ifcopenshell_geometry_add_slab_representation(ifcopenshell_file_t* file, co
     ifcapi::bindings::GeometryAddSlabRepresentationOptions options_cpp{};
     if (options->context == nullptr) { throw std::runtime_error("Options field \"context\" must not be null"); }
     options_cpp.context = options->context->value;
-    options_cpp.depth = static_cast<double>(options->depth);
-    if (options->direction_sense == nullptr) { throw std::runtime_error("Options field \"direction_sense\" must not be null"); }
-    options_cpp.direction_sense = std::string(options->direction_sense);
-    options_cpp.offset = static_cast<double>(options->offset);
-    options_cpp.x_angle = static_cast<double>(options->x_angle);
-    if (options->clipping_kinds == nullptr) { throw std::runtime_error("Options field \"clipping_kinds\" must not be null"); }
-    options_cpp.clipping_kinds = to_cpp_int32_list(options->clipping_kinds);
-    if (options->clipping_locations == nullptr) { throw std::runtime_error("Options field \"clipping_locations\" must not be null"); }
-    options_cpp.clipping_locations = to_cpp_double_list_list(options->clipping_locations);
-    if (options->clipping_normals == nullptr) { throw std::runtime_error("Options field \"clipping_normals\" must not be null"); }
-    options_cpp.clipping_normals = to_cpp_double_list_list(options->clipping_normals);
-    if (options->clipping_entities == nullptr) { throw std::runtime_error("Options field \"clipping_entities\" must not be null"); }
-    options_cpp.clipping_entities = options->clipping_entities->value;
+    if (options->has_depth) {
+        options_cpp.depth = options->depth;
+    }
+    if (options->has_direction_sense) {
+        if (options->direction_sense == nullptr) { throw std::runtime_error("Options field \"direction_sense\" must not be null"); }
+        options_cpp.direction_sense = std::string(options->direction_sense);
+    }
+    if (options->has_offset) {
+        options_cpp.offset = options->offset;
+    }
+    if (options->has_x_angle) {
+        options_cpp.x_angle = options->x_angle;
+    }
+    if (options->has_clippings) {
+        if (options->clippings == nullptr) { throw std::runtime_error("Options field \"clippings\" must not be null"); }
+        std::vector<std::variant<ifcapi::bindings::GeometryPlaneClipping, ifcapi::bindings::GeometryEntityClipping>> nested_values_options_cpp_clippings;
+        nested_values_options_cpp_clippings.reserve(options->clippings->size);
+        for (size_t i_options_cpp_clippings = 0; i_options_cpp_clippings < options->clippings->size; ++i_options_cpp_clippings) {
+            const auto* item_options_cpp_clippings = &options->clippings->items[i_options_cpp_clippings];
+            std::variant<ifcapi::bindings::GeometryPlaneClipping, ifcapi::bindings::GeometryEntityClipping> nested_value_options_cpp_clippings;
+            switch (item_options_cpp_clippings->kind) {
+            case 0: {
+                if (item_options_cpp_clippings->value_0 == nullptr) { throw std::runtime_error("Variant alternative must not be null"); }
+                ifcapi::bindings::GeometryPlaneClipping alternative_value{};
+                if (item_options_cpp_clippings->value_0->location == nullptr) { throw std::runtime_error("Options field \"location\" must not be null"); }
+                alternative_value.location = to_fixed_array<3>(to_cpp_double_list(item_options_cpp_clippings->value_0->location));
+                if (item_options_cpp_clippings->value_0->normal == nullptr) { throw std::runtime_error("Options field \"normal\" must not be null"); }
+                alternative_value.normal = to_fixed_array<3>(to_cpp_double_list(item_options_cpp_clippings->value_0->normal));
+                nested_value_options_cpp_clippings = std::move(alternative_value);
+                break;
+            }
+            case 1: {
+                if (item_options_cpp_clippings->value_1 == nullptr) { throw std::runtime_error("Variant alternative must not be null"); }
+                ifcapi::bindings::GeometryEntityClipping alternative_value{};
+                if (item_options_cpp_clippings->value_1->entity == nullptr) { throw std::runtime_error("Options field \"entity\" must not be null"); }
+                alternative_value.entity = item_options_cpp_clippings->value_1->entity->value;
+                nested_value_options_cpp_clippings = std::move(alternative_value);
+                break;
+            }
+            default:
+                throw std::runtime_error("Unsupported variant alternative");
+            }
+            nested_values_options_cpp_clippings.push_back(std::move(nested_value_options_cpp_clippings));
+        }
+        options_cpp.clippings = std::move(nested_values_options_cpp_clippings);
+    }
     if (options->has_polyline) {
         if (options->polyline == nullptr) { throw std::runtime_error("Options field \"polyline\" must not be null"); }
         options_cpp.polyline = to_cpp_double_list_list(options->polyline);
@@ -8152,23 +8529,62 @@ bool ifcopenshell_geometry_add_wall_representation(ifcopenshell_file_t* file, co
     ifcapi::bindings::GeometryAddWallRepresentationOptions options_cpp{};
     if (options->context == nullptr) { throw std::runtime_error("Options field \"context\" must not be null"); }
     options_cpp.context = options->context->value;
-    options_cpp.length = static_cast<double>(options->length);
-    options_cpp.height = static_cast<double>(options->height);
-    if (options->direction_sense == nullptr) { throw std::runtime_error("Options field \"direction_sense\" must not be null"); }
-    options_cpp.direction_sense = std::string(options->direction_sense);
-    options_cpp.offset = static_cast<double>(options->offset);
-    options_cpp.thickness = static_cast<double>(options->thickness);
-    options_cpp.x_angle = static_cast<double>(options->x_angle);
-    if (options->clipping_kinds == nullptr) { throw std::runtime_error("Options field \"clipping_kinds\" must not be null"); }
-    options_cpp.clipping_kinds = to_cpp_int32_list(options->clipping_kinds);
-    if (options->clipping_locations == nullptr) { throw std::runtime_error("Options field \"clipping_locations\" must not be null"); }
-    options_cpp.clipping_locations = to_cpp_double_list_list(options->clipping_locations);
-    if (options->clipping_normals == nullptr) { throw std::runtime_error("Options field \"clipping_normals\" must not be null"); }
-    options_cpp.clipping_normals = to_cpp_double_list_list(options->clipping_normals);
-    if (options->clipping_entities == nullptr) { throw std::runtime_error("Options field \"clipping_entities\" must not be null"); }
-    options_cpp.clipping_entities = options->clipping_entities->value;
-    if (options->booleans == nullptr) { throw std::runtime_error("Options field \"booleans\" must not be null"); }
-    options_cpp.booleans = options->booleans->value;
+    if (options->has_length) {
+        options_cpp.length = options->length;
+    }
+    if (options->has_height) {
+        options_cpp.height = options->height;
+    }
+    if (options->has_direction_sense) {
+        if (options->direction_sense == nullptr) { throw std::runtime_error("Options field \"direction_sense\" must not be null"); }
+        options_cpp.direction_sense = std::string(options->direction_sense);
+    }
+    if (options->has_offset) {
+        options_cpp.offset = options->offset;
+    }
+    if (options->has_thickness) {
+        options_cpp.thickness = options->thickness;
+    }
+    if (options->has_x_angle) {
+        options_cpp.x_angle = options->x_angle;
+    }
+    if (options->has_clippings) {
+        if (options->clippings == nullptr) { throw std::runtime_error("Options field \"clippings\" must not be null"); }
+        std::vector<std::variant<ifcapi::bindings::GeometryPlaneClipping, ifcapi::bindings::GeometryEntityClipping>> nested_values_options_cpp_clippings;
+        nested_values_options_cpp_clippings.reserve(options->clippings->size);
+        for (size_t i_options_cpp_clippings = 0; i_options_cpp_clippings < options->clippings->size; ++i_options_cpp_clippings) {
+            const auto* item_options_cpp_clippings = &options->clippings->items[i_options_cpp_clippings];
+            std::variant<ifcapi::bindings::GeometryPlaneClipping, ifcapi::bindings::GeometryEntityClipping> nested_value_options_cpp_clippings;
+            switch (item_options_cpp_clippings->kind) {
+            case 0: {
+                if (item_options_cpp_clippings->value_0 == nullptr) { throw std::runtime_error("Variant alternative must not be null"); }
+                ifcapi::bindings::GeometryPlaneClipping alternative_value{};
+                if (item_options_cpp_clippings->value_0->location == nullptr) { throw std::runtime_error("Options field \"location\" must not be null"); }
+                alternative_value.location = to_fixed_array<3>(to_cpp_double_list(item_options_cpp_clippings->value_0->location));
+                if (item_options_cpp_clippings->value_0->normal == nullptr) { throw std::runtime_error("Options field \"normal\" must not be null"); }
+                alternative_value.normal = to_fixed_array<3>(to_cpp_double_list(item_options_cpp_clippings->value_0->normal));
+                nested_value_options_cpp_clippings = std::move(alternative_value);
+                break;
+            }
+            case 1: {
+                if (item_options_cpp_clippings->value_1 == nullptr) { throw std::runtime_error("Variant alternative must not be null"); }
+                ifcapi::bindings::GeometryEntityClipping alternative_value{};
+                if (item_options_cpp_clippings->value_1->entity == nullptr) { throw std::runtime_error("Options field \"entity\" must not be null"); }
+                alternative_value.entity = item_options_cpp_clippings->value_1->entity->value;
+                nested_value_options_cpp_clippings = std::move(alternative_value);
+                break;
+            }
+            default:
+                throw std::runtime_error("Unsupported variant alternative");
+            }
+            nested_values_options_cpp_clippings.push_back(std::move(nested_value_options_cpp_clippings));
+        }
+        options_cpp.clippings = std::move(nested_values_options_cpp_clippings);
+    }
+    if (options->has_booleans) {
+        if (options->booleans == nullptr) { throw std::runtime_error("Options field \"booleans\" must not be null"); }
+        options_cpp.booleans = options->booleans->value;
+    }
         auto result_value = ifcapi::bindings::geometry_add_wall_representation(file_cpp, options_cpp);
         if (!static_cast<bool>(result_value)) {
             *out_result = nullptr;
@@ -8195,19 +8611,77 @@ bool ifcopenshell_geometry_add_window_representation(ifcopenshell_file_t* file, 
     ifcapi::bindings::GeometryAddWindowRepresentationOptions options_cpp{};
     if (options->context == nullptr) { throw std::runtime_error("Options field \"context\" must not be null"); }
     options_cpp.context = options->context->value;
-    options_cpp.overall_height = static_cast<double>(options->overall_height);
-    options_cpp.overall_width = static_cast<double>(options->overall_width);
-    if (options->panel_schema == nullptr) { throw std::runtime_error("Options field \"panel_schema\" must not be null"); }
-    options_cpp.panel_schema = to_cpp_int32_list_list(options->panel_schema);
-    if (options->lining_properties == nullptr) { throw std::runtime_error("Options field \"lining_properties\" must not be null"); }
-    options_cpp.lining_properties = to_cpp_double_list(options->lining_properties);
-    if (options->panel_properties == nullptr) { throw std::runtime_error("Options field \"panel_properties\" must not be null"); }
-    options_cpp.panel_properties = to_cpp_double_list_list(options->panel_properties);
+    if (options->has_overall_height) {
+        options_cpp.overall_height = options->overall_height;
+    }
+    if (options->has_overall_width) {
+        options_cpp.overall_width = options->overall_width;
+    }
+    if (options->has_partition_type) {
+        options_cpp.partition_type = static_cast<ifcapi::bindings::GeometryWindowPartitionType>(options->partition_type);
+    }
+    if (options->has_lining_properties) {
+        if (options->lining_properties == nullptr) { throw std::runtime_error("Options field \"lining_properties\" must not be null"); }
+        ifcapi::bindings::GeometryWindowLiningProperties nested_value_options_cpp_lining_properties{};
+        if (options->lining_properties->has_lining_depth) {
+            nested_value_options_cpp_lining_properties.lining_depth = options->lining_properties->lining_depth;
+        }
+        if (options->lining_properties->has_lining_thickness) {
+            nested_value_options_cpp_lining_properties.lining_thickness = options->lining_properties->lining_thickness;
+        }
+        if (options->lining_properties->has_lining_offset) {
+            nested_value_options_cpp_lining_properties.lining_offset = options->lining_properties->lining_offset;
+        }
+        if (options->lining_properties->has_lining_to_panel_offset_x) {
+            nested_value_options_cpp_lining_properties.lining_to_panel_offset_x = options->lining_properties->lining_to_panel_offset_x;
+        }
+        if (options->lining_properties->has_lining_to_panel_offset_y) {
+            nested_value_options_cpp_lining_properties.lining_to_panel_offset_y = options->lining_properties->lining_to_panel_offset_y;
+        }
+        if (options->lining_properties->has_mullion_thickness) {
+            nested_value_options_cpp_lining_properties.mullion_thickness = options->lining_properties->mullion_thickness;
+        }
+        if (options->lining_properties->has_first_mullion_offset) {
+            nested_value_options_cpp_lining_properties.first_mullion_offset = options->lining_properties->first_mullion_offset;
+        }
+        if (options->lining_properties->has_second_mullion_offset) {
+            nested_value_options_cpp_lining_properties.second_mullion_offset = options->lining_properties->second_mullion_offset;
+        }
+        if (options->lining_properties->has_transom_thickness) {
+            nested_value_options_cpp_lining_properties.transom_thickness = options->lining_properties->transom_thickness;
+        }
+        if (options->lining_properties->has_first_transom_offset) {
+            nested_value_options_cpp_lining_properties.first_transom_offset = options->lining_properties->first_transom_offset;
+        }
+        if (options->lining_properties->has_second_transom_offset) {
+            nested_value_options_cpp_lining_properties.second_transom_offset = options->lining_properties->second_transom_offset;
+        }
+        options_cpp.lining_properties = std::move(nested_value_options_cpp_lining_properties);
+    }
+    if (options->has_panel_properties) {
+        if (options->panel_properties == nullptr) { throw std::runtime_error("Options field \"panel_properties\" must not be null"); }
+        std::vector<ifcapi::bindings::GeometryWindowPanelProperties> nested_values_options_cpp_panel_properties;
+        nested_values_options_cpp_panel_properties.reserve(options->panel_properties->size);
+        for (size_t i_options_cpp_panel_properties = 0; i_options_cpp_panel_properties < options->panel_properties->size; ++i_options_cpp_panel_properties) {
+            const auto* item_options_cpp_panel_properties = &options->panel_properties->items[i_options_cpp_panel_properties];
+            ifcapi::bindings::GeometryWindowPanelProperties nested_value_options_cpp_panel_properties{};
+            if (item_options_cpp_panel_properties->has_frame_depth) {
+                nested_value_options_cpp_panel_properties.frame_depth = item_options_cpp_panel_properties->frame_depth;
+            }
+            if (item_options_cpp_panel_properties->has_frame_thickness) {
+                nested_value_options_cpp_panel_properties.frame_thickness = item_options_cpp_panel_properties->frame_thickness;
+            }
+            nested_values_options_cpp_panel_properties.push_back(std::move(nested_value_options_cpp_panel_properties));
+        }
+        options_cpp.panel_properties = std::move(nested_values_options_cpp_panel_properties);
+    }
     if (options->has_part_of_product) {
         if (options->part_of_product == nullptr) { throw std::runtime_error("Options field \"part_of_product\" must not be null"); }
         options_cpp.part_of_product = options->part_of_product->value;
     }
-    options_cpp.glass_thickness = static_cast<double>(options->glass_thickness);
+    if (options->has_unit_scale) {
+        options_cpp.unit_scale = options->unit_scale;
+    }
         auto result_value = ifcapi::bindings::geometry_add_window_representation(file_cpp, options_cpp);
         if (!static_cast<bool>(result_value)) {
             *out_result = nullptr;
@@ -8261,9 +8735,9 @@ bool ifcopenshell_geometry_clip_solid(ifcopenshell_file_t* file, const ifcopensh
     if (options->item == nullptr) { throw std::runtime_error("Options field \"item\" must not be null"); }
     options_cpp.item = options->item->value;
     if (options->location == nullptr) { throw std::runtime_error("Options field \"location\" must not be null"); }
-    options_cpp.location = to_cpp_double_list(options->location);
+    options_cpp.location = to_fixed_array<3>(to_cpp_double_list(options->location));
     if (options->normal == nullptr) { throw std::runtime_error("Options field \"normal\" must not be null"); }
-    options_cpp.normal = to_cpp_double_list(options->normal);
+    options_cpp.normal = to_fixed_array<3>(to_cpp_double_list(options->normal));
     if (options->has_element) {
         if (options->element == nullptr) { throw std::runtime_error("Options field \"element\" must not be null"); }
         options_cpp.element = options->element->value;
@@ -8307,13 +8781,13 @@ bool ifcopenshell_geometry_clip_solid_bounded(ifcopenshell_file_t* file, const i
     if (options->item == nullptr) { throw std::runtime_error("Options field \"item\" must not be null"); }
     options_cpp.item = options->item->value;
     if (options->location == nullptr) { throw std::runtime_error("Options field \"location\" must not be null"); }
-    options_cpp.location = to_cpp_double_list(options->location);
+    options_cpp.location = to_fixed_array<3>(to_cpp_double_list(options->location));
     if (options->normal == nullptr) { throw std::runtime_error("Options field \"normal\" must not be null"); }
-    options_cpp.normal = to_cpp_double_list(options->normal);
+    options_cpp.normal = to_fixed_array<3>(to_cpp_double_list(options->normal));
     if (options->boundary_points == nullptr) { throw std::runtime_error("Options field \"boundary_points\" must not be null"); }
-    options_cpp.boundary_points = to_cpp_double_list_list(options->boundary_points);
+    options_cpp.boundary_points = transform_sequence(to_cpp_double_list_list(options->boundary_points), [](auto&& item) { return to_fixed_array<2>(std::move(item)); });
     if (options->boundary_position == nullptr) { throw std::runtime_error("Options field \"boundary_position\" must not be null"); }
-    options_cpp.boundary_position = to_cpp_double_list(options->boundary_position);
+    options_cpp.boundary_position = to_fixed_array<3>(to_cpp_double_list(options->boundary_position));
     if (options->has_element) {
         if (options->element == nullptr) { throw std::runtime_error("Options field \"element\" must not be null"); }
         options_cpp.element = options->element->value;
@@ -8353,7 +8827,7 @@ bool ifcopenshell_geometry_compute_wall_mounted_handrail_geometry(const ifcopens
     if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
     ifcapi::bindings::GeometryComputeWallMountedHandrailOptions options_cpp{};
     if (options->railing_path == nullptr) { throw std::runtime_error("Options field \"railing_path\" must not be null"); }
-    options_cpp.railing_path = to_cpp_double_list_list(options->railing_path);
+    options_cpp.railing_path = transform_sequence(to_cpp_double_list_list(options->railing_path), [](auto&& item) { return to_fixed_array<3>(std::move(item)); });
     options_cpp.support_spacing = static_cast<double>(options->support_spacing);
     options_cpp.railing_diameter = static_cast<double>(options->railing_diameter);
     options_cpp.clear_width = static_cast<double>(options->clear_width);
@@ -8581,9 +9055,9 @@ bool ifcopenshell_geometry_create_2pt_wall(ifcopenshell_file_t* file, const ifco
     if (options->context == nullptr) { throw std::runtime_error("Options field \"context\" must not be null"); }
     options_cpp.context = options->context->value;
     if (options->start == nullptr) { throw std::runtime_error("Options field \"start\" must not be null"); }
-    options_cpp.start = to_cpp_double_list(options->start);
+    options_cpp.start = to_fixed_array<2>(to_cpp_double_list(options->start));
     if (options->end == nullptr) { throw std::runtime_error("Options field \"end\" must not be null"); }
-    options_cpp.end = to_cpp_double_list(options->end);
+    options_cpp.end = to_fixed_array<2>(to_cpp_double_list(options->end));
     options_cpp.elevation = static_cast<double>(options->elevation);
     options_cpp.height = static_cast<double>(options->height);
     options_cpp.thickness = static_cast<double>(options->thickness);
@@ -8668,8 +9142,10 @@ bool ifcopenshell_geometry_edit_object_placement(ifcopenshell_file_t* file, cons
     ifcapi::bindings::GeometryEditObjectPlacementOptions options_cpp{};
     if (options->product == nullptr) { throw std::runtime_error("Options field \"product\" must not be null"); }
     options_cpp.product = options->product->value;
-    if (options->matrix == nullptr) { throw std::runtime_error("Options field \"matrix\" must not be null"); }
-    options_cpp.matrix = to_cpp_double_list(options->matrix);
+    if (options->has_matrix) {
+        if (options->matrix == nullptr) { throw std::runtime_error("Options field \"matrix\" must not be null"); }
+        options_cpp.matrix = to_fixed_array<16>(to_cpp_double_list(options->matrix));
+    }
     options_cpp.is_si = static_cast<bool>(options->is_si);
     options_cpp.should_transform_children = static_cast<bool>(options->should_transform_children);
         auto result_value = ifcapi::bindings::geometry_edit_object_placement(file_cpp, options_cpp);
@@ -8915,7 +9391,7 @@ bool ifcopenshell_georeference_edit_true_north(ifcopenshell_file_t* file, const 
     ifcapi::bindings::GeoreferenceEditTrueNorthOptions options_cpp{};
     if (options->has_true_north) {
         if (options->true_north == nullptr) { throw std::runtime_error("Options field \"true_north\" must not be null"); }
-        options_cpp.true_north = to_cpp_double_list(options->true_north);
+        options_cpp.true_north = to_fixed_array<2>(to_cpp_double_list(options->true_north));
     }
         ifcapi::bindings::georeference_edit_true_north(file_cpp, options_cpp);
         if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
@@ -8983,9 +9459,9 @@ bool ifcopenshell_grid_create_axis_curve(ifcopenshell_file_t* file, const ifcope
     if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
     auto file_cpp = file->ptr;
     if (p1 == nullptr) { throw std::runtime_error("Parameter \"p1\" must not be null"); }
-    auto p1_cpp = to_cpp_double_list(p1);
+    auto p1_cpp = to_fixed_array<3>(to_cpp_double_list(p1));
     if (p2 == nullptr) { throw std::runtime_error("Parameter \"p2\" must not be null"); }
-    auto p2_cpp = to_cpp_double_list(p2);
+    auto p2_cpp = to_fixed_array<3>(to_cpp_double_list(p2));
     if (grid_axis == nullptr) { throw std::runtime_error("Handle parameter \"grid_axis\" must not be null"); }
     auto grid_axis_cpp = &grid_axis->value;
     auto is_si_cpp = static_cast<bool>(is_si);
@@ -11044,7 +11520,7 @@ bool ifcopenshell_placement_get_axis2_placement(ifcopenshell_instance_t* instanc
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
     if (instance == nullptr) { throw std::runtime_error("Handle parameter \"instance\" must not be null"); }
     auto instance_cpp = &instance->value;
-        *out_result = make_double_list(ifcapi::bindings::placement_get_axis2_placement(instance_cpp));
+        *out_result = make_double_list(transform_sequence(ifcapi::bindings::placement_get_axis2_placement(instance_cpp), [](auto&& item) { return item; }));
         if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
             return false;
         }
@@ -11061,7 +11537,7 @@ bool ifcopenshell_placement_get_cartesian_xform_3d(ifcopenshell_instance_t* inst
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
     if (instance == nullptr) { throw std::runtime_error("Handle parameter \"instance\" must not be null"); }
     auto instance_cpp = &instance->value;
-        *out_result = make_double_list(ifcapi::bindings::placement_get_cartesian_xform_3d(instance_cpp));
+        *out_result = make_double_list(transform_sequence(ifcapi::bindings::placement_get_cartesian_xform_3d(instance_cpp), [](auto&& item) { return item; }));
         if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
             return false;
         }
@@ -11078,7 +11554,7 @@ bool ifcopenshell_placement_get_local_placement(ifcopenshell_instance_t* instanc
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
     std::optional<express::Base> instance_cpp;
     if (instance != nullptr) { instance_cpp = instance->value; }
-        *out_result = make_double_list(ifcapi::bindings::placement_get_local_placement(instance_cpp));
+        *out_result = make_double_list(transform_sequence(ifcapi::bindings::placement_get_local_placement(instance_cpp), [](auto&& item) { return item; }));
         if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
             return false;
         }
@@ -11095,7 +11571,7 @@ bool ifcopenshell_placement_get_mappeditem_xform(ifcopenshell_instance_t* instan
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
     if (instance == nullptr) { throw std::runtime_error("Handle parameter \"instance\" must not be null"); }
     auto instance_cpp = &instance->value;
-        *out_result = make_double_list(ifcapi::bindings::placement_get_mappeditem_xform(instance_cpp));
+        *out_result = make_double_list(transform_sequence(ifcapi::bindings::placement_get_mappeditem_xform(instance_cpp), [](auto&& item) { return item; }));
         if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
             return false;
         }
@@ -11128,12 +11604,12 @@ bool ifcopenshell_placement_matrix_from_axes(const ifcopenshell_double_list_t* o
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
     if (origin == nullptr) { throw std::runtime_error("Parameter \"origin\" must not be null"); }
-    auto origin_cpp = to_cpp_double_list(origin);
+    auto origin_cpp = to_fixed_array<3>(to_cpp_double_list(origin));
     if (z_axis == nullptr) { throw std::runtime_error("Parameter \"z_axis\" must not be null"); }
-    auto z_axis_cpp = to_cpp_double_list(z_axis);
+    auto z_axis_cpp = to_fixed_array<3>(to_cpp_double_list(z_axis));
     if (x_axis == nullptr) { throw std::runtime_error("Parameter \"x_axis\" must not be null"); }
-    auto x_axis_cpp = to_cpp_double_list(x_axis);
-        *out_result = make_double_list(ifcapi::bindings::placement_matrix_from_axes(origin_cpp, z_axis_cpp, x_axis_cpp));
+    auto x_axis_cpp = to_fixed_array<3>(to_cpp_double_list(x_axis));
+        *out_result = make_double_list(transform_sequence(ifcapi::bindings::placement_matrix_from_axes(origin_cpp, z_axis_cpp, x_axis_cpp), [](auto&& item) { return item; }));
         if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
             return false;
         }
@@ -11151,7 +11627,7 @@ bool ifcopenshell_placement_rotation(double angle_rad, const char* axis, ifcopen
     auto angle_rad_cpp = static_cast<double>(angle_rad);
     if (axis == nullptr) { throw std::runtime_error("Parameter \"axis\" must not be null"); }
     std::string axis_cpp(axis);
-        *out_result = make_double_list(ifcapi::bindings::placement_rotation(angle_rad_cpp, axis_cpp));
+        *out_result = make_double_list(transform_sequence(ifcapi::bindings::placement_rotation(angle_rad_cpp, axis_cpp), [](auto&& item) { return item; }));
         if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
             return false;
         }
@@ -11171,7 +11647,16 @@ bool ifcopenshell_profile_add_arbitrary_profile(ifcopenshell_file_t* file, const
     if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
     ifcapi::bindings::ProfileAddArbitraryProfileOptions options_cpp{};
     if (options->profile == nullptr) { throw std::runtime_error("Options field \"profile\" must not be null"); }
-    options_cpp.profile = to_cpp_double_list_list(options->profile);
+    switch (options->profile->kind) {
+    case 0:
+        options_cpp.profile = transform_sequence(to_cpp_double_list_list(&options->profile->value_0), [](auto&& item) { return to_fixed_array<2>(std::move(item)); });
+        break;
+    case 1:
+        options_cpp.profile = transform_sequence(to_cpp_double_list_list(&options->profile->value_1), [](auto&& item) { return to_fixed_array<3>(std::move(item)); });
+        break;
+    default:
+        throw std::runtime_error("Unsupported variant alternative");
+    }
     if (options->has_name) {
         if (options->name == nullptr) { throw std::runtime_error("Options field \"name\" must not be null"); }
         options_cpp.name = std::string(options->name);
@@ -11201,9 +11686,35 @@ bool ifcopenshell_profile_add_arbitrary_profile_with_voids(ifcopenshell_file_t* 
     if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
     ifcapi::bindings::ProfileAddArbitraryProfileWithVoidsOptions options_cpp{};
     if (options->outer_profile == nullptr) { throw std::runtime_error("Options field \"outer_profile\" must not be null"); }
-    options_cpp.outer_profile = to_cpp_double_list_list(options->outer_profile);
+    switch (options->outer_profile->kind) {
+    case 0:
+        options_cpp.outer_profile = transform_sequence(to_cpp_double_list_list(&options->outer_profile->value_0), [](auto&& item) { return to_fixed_array<2>(std::move(item)); });
+        break;
+    case 1:
+        options_cpp.outer_profile = transform_sequence(to_cpp_double_list_list(&options->outer_profile->value_1), [](auto&& item) { return to_fixed_array<3>(std::move(item)); });
+        break;
+    default:
+        throw std::runtime_error("Unsupported variant alternative");
+    }
     if (options->inner_profiles == nullptr) { throw std::runtime_error("Options field \"inner_profiles\" must not be null"); }
-    options_cpp.inner_profiles = to_cpp_double_list_list_list(options->inner_profiles);
+    std::vector<std::variant<std::vector<std::array<double, 2>>, std::vector<std::array<double, 3>>>> nested_values_options_cpp_inner_profiles;
+    nested_values_options_cpp_inner_profiles.reserve(options->inner_profiles->size);
+    for (size_t i_options_cpp_inner_profiles = 0; i_options_cpp_inner_profiles < options->inner_profiles->size; ++i_options_cpp_inner_profiles) {
+        const auto* item_options_cpp_inner_profiles = &options->inner_profiles->items[i_options_cpp_inner_profiles];
+        std::variant<std::vector<std::array<double, 2>>, std::vector<std::array<double, 3>>> nested_value_options_cpp_inner_profiles;
+        switch (item_options_cpp_inner_profiles->kind) {
+        case 0:
+            nested_value_options_cpp_inner_profiles = transform_sequence(to_cpp_double_list_list(&item_options_cpp_inner_profiles->value_0), [](auto&& item) { return to_fixed_array<2>(std::move(item)); });
+            break;
+        case 1:
+            nested_value_options_cpp_inner_profiles = transform_sequence(to_cpp_double_list_list(&item_options_cpp_inner_profiles->value_1), [](auto&& item) { return to_fixed_array<3>(std::move(item)); });
+            break;
+        default:
+            throw std::runtime_error("Unsupported variant alternative");
+        }
+        nested_values_options_cpp_inner_profiles.push_back(std::move(nested_value_options_cpp_inner_profiles));
+    }
+    options_cpp.inner_profiles = std::move(nested_values_options_cpp_inner_profiles);
     if (options->has_name) {
         if (options->name == nullptr) { throw std::runtime_error("Options field \"name\" must not be null"); }
         options_cpp.name = std::string(options->name);
@@ -12705,8 +13216,8 @@ bool ifcopenshell_resource_add_resource_quantity(ifcopenshell_file_t* file, ifco
     auto file_cpp = file->ptr;
     if (resource == nullptr) { throw std::runtime_error("Handle parameter \"resource\" must not be null"); }
     auto resource_cpp = &resource->value;
-    if (ifc_class == nullptr) { throw std::runtime_error("Parameter \"ifc_class\" must not be null"); }
-    std::string ifc_class_cpp(ifc_class);
+    std::optional<std::string> ifc_class_cpp;
+    if (ifc_class != nullptr) { ifc_class_cpp = std::string(ifc_class); }
         auto result_value = ifcapi::bindings::resource_add_resource_quantity(file_cpp, resource_cpp, ifc_class_cpp);
         if (!static_cast<bool>(result_value)) {
             *out_result = nullptr;
@@ -14666,11 +15177,13 @@ bool ifcopenshell_shape_builder_axis2_placement_2d(ifcopenshell_file_t* file, co
     auto file_cpp = file->ptr;
     if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
     ifcapi::bindings::ShapeBuilderAxis2Placement2dOptions options_cpp{};
-    if (options->position == nullptr) { throw std::runtime_error("Options field \"position\" must not be null"); }
-    options_cpp.position = to_cpp_double_list(options->position);
+    if (options->has_position) {
+        if (options->position == nullptr) { throw std::runtime_error("Options field \"position\" must not be null"); }
+        options_cpp.position = to_fixed_array<2>(to_cpp_double_list(options->position));
+    }
     if (options->has_x_direction) {
         if (options->x_direction == nullptr) { throw std::runtime_error("Options field \"x_direction\" must not be null"); }
-        options_cpp.x_direction = to_cpp_double_list(options->x_direction);
+        options_cpp.x_direction = to_fixed_array<2>(to_cpp_double_list(options->x_direction));
     }
         auto result_value = ifcapi::bindings::shape_builder_axis2_placement_2d(file_cpp, options_cpp);
         if (!static_cast<bool>(result_value)) {
@@ -14696,12 +15209,18 @@ bool ifcopenshell_shape_builder_axis2_placement_3d(ifcopenshell_file_t* file, co
     auto file_cpp = file->ptr;
     if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
     ifcapi::bindings::ShapeBuilderAxis2Placement3dOptions options_cpp{};
-    if (options->position == nullptr) { throw std::runtime_error("Options field \"position\" must not be null"); }
-    options_cpp.position = to_cpp_double_list(options->position);
-    if (options->z_axis == nullptr) { throw std::runtime_error("Options field \"z_axis\" must not be null"); }
-    options_cpp.z_axis = to_cpp_double_list(options->z_axis);
-    if (options->x_axis == nullptr) { throw std::runtime_error("Options field \"x_axis\" must not be null"); }
-    options_cpp.x_axis = to_cpp_double_list(options->x_axis);
+    if (options->has_position) {
+        if (options->position == nullptr) { throw std::runtime_error("Options field \"position\" must not be null"); }
+        options_cpp.position = to_fixed_array<3>(to_cpp_double_list(options->position));
+    }
+    if (options->has_z_axis) {
+        if (options->z_axis == nullptr) { throw std::runtime_error("Options field \"z_axis\" must not be null"); }
+        options_cpp.z_axis = to_fixed_array<3>(to_cpp_double_list(options->z_axis));
+    }
+    if (options->has_x_axis) {
+        if (options->x_axis == nullptr) { throw std::runtime_error("Options field \"x_axis\" must not be null"); }
+        options_cpp.x_axis = to_fixed_array<3>(to_cpp_double_list(options->x_axis));
+    }
         auto result_value = ifcapi::bindings::shape_builder_axis2_placement_3d(file_cpp, options_cpp);
         if (!static_cast<bool>(result_value)) {
             *out_result = nullptr;
@@ -14726,11 +15245,19 @@ bool ifcopenshell_shape_builder_block(ifcopenshell_file_t* file, const ifcopensh
     auto file_cpp = file->ptr;
     if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
     ifcapi::bindings::ShapeBuilderBlockOptions options_cpp{};
-    if (options->position == nullptr) { throw std::runtime_error("Options field \"position\" must not be null"); }
-    options_cpp.position = to_cpp_double_list(options->position);
-    options_cpp.x_length = static_cast<double>(options->x_length);
-    options_cpp.y_length = static_cast<double>(options->y_length);
-    options_cpp.z_length = static_cast<double>(options->z_length);
+    if (options->has_position) {
+        if (options->position == nullptr) { throw std::runtime_error("Options field \"position\" must not be null"); }
+        options_cpp.position = to_fixed_array<3>(to_cpp_double_list(options->position));
+    }
+    if (options->has_x_length) {
+        options_cpp.x_length = options->x_length;
+    }
+    if (options->has_y_length) {
+        options_cpp.y_length = options->y_length;
+    }
+    if (options->has_z_length) {
+        options_cpp.z_length = options->z_length;
+    }
         auto result_value = ifcapi::bindings::shape_builder_block(file_cpp, options_cpp);
         if (!static_cast<bool>(result_value)) {
             *out_result = nullptr;
@@ -14754,7 +15281,7 @@ bool ifcopenshell_shape_builder_circle(ifcopenshell_file_t* file, const ifcopens
     if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
     auto file_cpp = file->ptr;
     if (center == nullptr) { throw std::runtime_error("Parameter \"center\" must not be null"); }
-    auto center_cpp = to_cpp_double_list(center);
+    auto center_cpp = to_fixed_array<2>(to_cpp_double_list(center));
     auto radius_cpp = static_cast<double>(radius);
         auto result_value = ifcapi::bindings::shape_builder_circle(file_cpp, center_cpp, radius_cpp);
         if (!static_cast<bool>(result_value)) {
@@ -14779,7 +15306,7 @@ bool ifcopenshell_shape_builder_curve_between_two_points(ifcopenshell_file_t* fi
     if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
     auto file_cpp = file->ptr;
     if (points == nullptr) { throw std::runtime_error("Parameter \"points\" must not be null"); }
-    auto points_cpp = to_cpp_double_list_list(points);
+    auto points_cpp = transform_fixed_sequence<2>(to_cpp_double_list_list(points), [](auto&& item) { return to_fixed_array<2>(std::move(item)); });
         auto result_value = ifcapi::bindings::shape_builder_curve_between_two_points(file_cpp, points_cpp);
         if (!static_cast<bool>(result_value)) {
             *out_result = nullptr;
@@ -14827,9 +15354,9 @@ bool ifcopenshell_shape_builder_edge(ifcopenshell_file_t* file, const ifcopenshe
     if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
     auto file_cpp = file->ptr;
     if (start == nullptr) { throw std::runtime_error("Parameter \"start\" must not be null"); }
-    auto start_cpp = to_cpp_double_list(start);
+    auto start_cpp = to_fixed_array<3>(to_cpp_double_list(start));
     if (end == nullptr) { throw std::runtime_error("Parameter \"end\" must not be null"); }
-    auto end_cpp = to_cpp_double_list(end);
+    auto end_cpp = to_fixed_array<3>(to_cpp_double_list(end));
         auto result_value = ifcapi::bindings::shape_builder_edge(file_cpp, start_cpp, end_cpp);
         if (!static_cast<bool>(result_value)) {
             *out_result = nullptr;
@@ -14856,16 +15383,40 @@ bool ifcopenshell_shape_builder_ellipse_curve(ifcopenshell_file_t* file, const i
     ifcapi::bindings::ShapeBuilderEllipseCurveOptions options_cpp{};
     options_cpp.x_axis_radius = static_cast<double>(options->x_axis_radius);
     options_cpp.y_axis_radius = static_cast<double>(options->y_axis_radius);
-    if (options->position == nullptr) { throw std::runtime_error("Options field \"position\" must not be null"); }
-    options_cpp.position = to_cpp_double_list(options->position);
-    if (options->trim_points == nullptr) { throw std::runtime_error("Options field \"trim_points\" must not be null"); }
-    options_cpp.trim_points = to_cpp_double_list_list(options->trim_points);
+    if (options->has_position) {
+        if (options->position == nullptr) { throw std::runtime_error("Options field \"position\" must not be null"); }
+        options_cpp.position = to_fixed_array<2>(to_cpp_double_list(options->position));
+    }
     if (options->has_ref_x_direction) {
         if (options->ref_x_direction == nullptr) { throw std::runtime_error("Options field \"ref_x_direction\" must not be null"); }
-        options_cpp.ref_x_direction = to_cpp_double_list(options->ref_x_direction);
+        options_cpp.ref_x_direction = to_fixed_array<2>(to_cpp_double_list(options->ref_x_direction));
     }
-    if (options->trim_points_mask == nullptr) { throw std::runtime_error("Options field \"trim_points_mask\" must not be null"); }
-    options_cpp.trim_points_mask = to_cpp_int32_list(options->trim_points_mask);
+    if (options->has_trim) {
+        if (options->trim == nullptr) { throw std::runtime_error("Options field \"trim\" must not be null"); }
+        ifcapi::bindings::ShapeBuilderEllipseTrim nested_value_options_cpp_trim{};
+        if (options->trim->value == nullptr) { throw std::runtime_error("Options field \"value\" must not be null"); }
+        switch (options->trim->value->kind) {
+        case 0: {
+            if (options->trim->value->value_0 == nullptr) { throw std::runtime_error("Variant alternative must not be null"); }
+            ifcapi::bindings::ShapeBuilderEllipsePointTrim alternative_value{};
+            if (options->trim->value->value_0->points == nullptr) { throw std::runtime_error("Options field \"points\" must not be null"); }
+            alternative_value.points = transform_fixed_sequence<2>(to_cpp_double_list_list(options->trim->value->value_0->points), [](auto&& item) { return to_fixed_array<2>(std::move(item)); });
+            nested_value_options_cpp_trim.value = std::move(alternative_value);
+            break;
+        }
+        case 1: {
+            if (options->trim->value->value_1 == nullptr) { throw std::runtime_error("Variant alternative must not be null"); }
+            ifcapi::bindings::ShapeBuilderEllipseCardinalTrim alternative_value{};
+            if (options->trim->value->value_1->cardinal_points == nullptr) { throw std::runtime_error("Options field \"cardinal_points\" must not be null"); }
+            alternative_value.cardinal_points = to_fixed_array<2>(to_cpp_uint32_list(options->trim->value->value_1->cardinal_points));
+            nested_value_options_cpp_trim.value = std::move(alternative_value);
+            break;
+        }
+        default:
+            throw std::runtime_error("Unsupported variant alternative");
+        }
+        options_cpp.trim = std::move(nested_value_options_cpp_trim);
+    }
         auto result_value = ifcapi::bindings::shape_builder_ellipse_curve(file_cpp, options_cpp);
         if (!static_cast<bool>(result_value)) {
             *out_result = nullptr;
@@ -14892,18 +15443,28 @@ bool ifcopenshell_shape_builder_extrude(ifcopenshell_file_t* file, const ifcopen
     ifcapi::bindings::ShapeBuilderExtrudeOptions options_cpp{};
     if (options->profile_or_curve == nullptr) { throw std::runtime_error("Options field \"profile_or_curve\" must not be null"); }
     options_cpp.profile_or_curve = options->profile_or_curve->value;
-    options_cpp.magnitude = static_cast<double>(options->magnitude);
-    if (options->position == nullptr) { throw std::runtime_error("Options field \"position\" must not be null"); }
-    options_cpp.position = to_cpp_double_list(options->position);
-    if (options->extrusion_vector == nullptr) { throw std::runtime_error("Options field \"extrusion_vector\" must not be null"); }
-    options_cpp.extrusion_vector = to_cpp_double_list(options->extrusion_vector);
-    if (options->position_z_axis == nullptr) { throw std::runtime_error("Options field \"position_z_axis\" must not be null"); }
-    options_cpp.position_z_axis = to_cpp_double_list(options->position_z_axis);
-    if (options->position_x_axis == nullptr) { throw std::runtime_error("Options field \"position_x_axis\" must not be null"); }
-    options_cpp.position_x_axis = to_cpp_double_list(options->position_x_axis);
+    if (options->has_magnitude) {
+        options_cpp.magnitude = options->magnitude;
+    }
+    if (options->has_position) {
+        if (options->position == nullptr) { throw std::runtime_error("Options field \"position\" must not be null"); }
+        options_cpp.position = to_fixed_array<3>(to_cpp_double_list(options->position));
+    }
+    if (options->has_extrusion_vector) {
+        if (options->extrusion_vector == nullptr) { throw std::runtime_error("Options field \"extrusion_vector\" must not be null"); }
+        options_cpp.extrusion_vector = to_fixed_array<3>(to_cpp_double_list(options->extrusion_vector));
+    }
+    if (options->has_position_z_axis) {
+        if (options->position_z_axis == nullptr) { throw std::runtime_error("Options field \"position_z_axis\" must not be null"); }
+        options_cpp.position_z_axis = to_fixed_array<3>(to_cpp_double_list(options->position_z_axis));
+    }
+    if (options->has_position_x_axis) {
+        if (options->position_x_axis == nullptr) { throw std::runtime_error("Options field \"position_x_axis\" must not be null"); }
+        options_cpp.position_x_axis = to_fixed_array<3>(to_cpp_double_list(options->position_x_axis));
+    }
     if (options->has_position_y_axis) {
         if (options->position_y_axis == nullptr) { throw std::runtime_error("Options field \"position_y_axis\" must not be null"); }
-        options_cpp.position_y_axis = to_cpp_double_list(options->position_y_axis);
+        options_cpp.position_y_axis = to_fixed_array<3>(to_cpp_double_list(options->position_y_axis));
     }
         auto result_value = ifcapi::bindings::shape_builder_extrude(file_cpp, options_cpp);
         if (!static_cast<bool>(result_value)) {
@@ -14928,7 +15489,7 @@ bool ifcopenshell_shape_builder_face(ifcopenshell_file_t* file, const ifcopenshe
     if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
     auto file_cpp = file->ptr;
     if (points == nullptr) { throw std::runtime_error("Parameter \"points\" must not be null"); }
-    auto points_cpp = to_cpp_double_list_list(points);
+    auto points_cpp = transform_sequence(to_cpp_double_list_list(points), [](auto&& item) { return to_fixed_array<3>(std::move(item)); });
         auto result_value = ifcapi::bindings::shape_builder_face(file_cpp, points_cpp);
         if (!static_cast<bool>(result_value)) {
             *out_result = nullptr;
@@ -14952,7 +15513,7 @@ bool ifcopenshell_shape_builder_faceted_brep(ifcopenshell_file_t* file, const if
     if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
     auto file_cpp = file->ptr;
     if (points == nullptr) { throw std::runtime_error("Parameter \"points\" must not be null"); }
-    auto points_cpp = to_cpp_double_list_list(points);
+    auto points_cpp = transform_sequence(to_cpp_double_list_list(points), [](auto&& item) { return to_fixed_array<3>(std::move(item)); });
     if (faces == nullptr) { throw std::runtime_error("Parameter \"faces\" must not be null"); }
     auto faces_cpp = to_cpp_int32_list_list(faces);
         auto result_value = ifcapi::bindings::shape_builder_faceted_brep(file_cpp, points_cpp, faces_cpp);
@@ -14998,7 +15559,9 @@ bool ifcopenshell_shape_builder_half_space_solid(ifcopenshell_file_t* file, cons
     ifcapi::bindings::ShapeBuilderHalfSpaceSolidOptions options_cpp{};
     if (options->plane == nullptr) { throw std::runtime_error("Options field \"plane\" must not be null"); }
     options_cpp.plane = options->plane->value;
-    options_cpp.agreement_flag = static_cast<bool>(options->agreement_flag);
+    if (options->has_agreement_flag) {
+        options_cpp.agreement_flag = options->agreement_flag;
+    }
         auto result_value = ifcapi::bindings::shape_builder_half_space_solid(file_cpp, options_cpp);
         if (!static_cast<bool>(result_value)) {
             *out_result = nullptr;
@@ -15015,17 +15578,46 @@ bool ifcopenshell_shape_builder_half_space_solid(ifcopenshell_file_t* file, cons
     }
 }
 
-bool ifcopenshell_shape_builder_indexed_polycurve_2d(ifcopenshell_file_t* file, const ifcopenshell_double_list_list_t* points, const ifcopenshell_int32_list_list_t* segments, ifcopenshell_instance_t** out_result) {
+bool ifcopenshell_shape_builder_indexed_polycurve_2d(ifcopenshell_file_t* file, const ifcopenshell_shape_builder_indexed_polycurve2d_options_t* options, ifcopenshell_instance_t** out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
     if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
     auto file_cpp = file->ptr;
-    if (points == nullptr) { throw std::runtime_error("Parameter \"points\" must not be null"); }
-    auto points_cpp = to_cpp_double_list_list(points);
-    if (segments == nullptr) { throw std::runtime_error("Parameter \"segments\" must not be null"); }
-    auto segments_cpp = to_cpp_int32_list_list(segments);
-        auto result_value = ifcapi::bindings::shape_builder_indexed_polycurve_2d(file_cpp, points_cpp, segments_cpp);
+    if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
+    ifcapi::bindings::ShapeBuilderIndexedPolycurve2dOptions options_cpp{};
+    if (options->points == nullptr) { throw std::runtime_error("Options field \"points\" must not be null"); }
+    options_cpp.points = transform_sequence(to_cpp_double_list_list(options->points), [](auto&& item) { return to_fixed_array<2>(std::move(item)); });
+    if (options->segments == nullptr) { throw std::runtime_error("Options field \"segments\" must not be null"); }
+    std::vector<std::variant<ifcapi::bindings::ShapeBuilderLineSegment, ifcapi::bindings::ShapeBuilderArcSegment>> nested_values_options_cpp_segments;
+    nested_values_options_cpp_segments.reserve(options->segments->size);
+    for (size_t i_options_cpp_segments = 0; i_options_cpp_segments < options->segments->size; ++i_options_cpp_segments) {
+        const auto* item_options_cpp_segments = &options->segments->items[i_options_cpp_segments];
+        std::variant<ifcapi::bindings::ShapeBuilderLineSegment, ifcapi::bindings::ShapeBuilderArcSegment> nested_value_options_cpp_segments;
+        switch (item_options_cpp_segments->kind) {
+        case 0: {
+            if (item_options_cpp_segments->value_0 == nullptr) { throw std::runtime_error("Variant alternative must not be null"); }
+            ifcapi::bindings::ShapeBuilderLineSegment alternative_value{};
+            if (item_options_cpp_segments->value_0->line_indices == nullptr) { throw std::runtime_error("Options field \"line_indices\" must not be null"); }
+            alternative_value.line_indices = to_cpp_uint32_list(item_options_cpp_segments->value_0->line_indices);
+            nested_value_options_cpp_segments = std::move(alternative_value);
+            break;
+        }
+        case 1: {
+            if (item_options_cpp_segments->value_1 == nullptr) { throw std::runtime_error("Variant alternative must not be null"); }
+            ifcapi::bindings::ShapeBuilderArcSegment alternative_value{};
+            if (item_options_cpp_segments->value_1->arc_indices == nullptr) { throw std::runtime_error("Options field \"arc_indices\" must not be null"); }
+            alternative_value.arc_indices = to_fixed_array<3>(to_cpp_uint32_list(item_options_cpp_segments->value_1->arc_indices));
+            nested_value_options_cpp_segments = std::move(alternative_value);
+            break;
+        }
+        default:
+            throw std::runtime_error("Unsupported variant alternative");
+        }
+        nested_values_options_cpp_segments.push_back(std::move(nested_value_options_cpp_segments));
+    }
+    options_cpp.segments = std::move(nested_values_options_cpp_segments);
+        auto result_value = ifcapi::bindings::shape_builder_indexed_polycurve_2d(file_cpp, options_cpp);
         if (!static_cast<bool>(result_value)) {
             *out_result = nullptr;
         } else {
@@ -15056,7 +15648,10 @@ bool ifcopenshell_shape_builder_mep_bend_shape(ifcopenshell_file_t* file, const 
     options_cpp.angle = static_cast<double>(options->angle);
     options_cpp.radius = static_cast<double>(options->radius);
     if (options->bend_vector == nullptr) { throw std::runtime_error("Options field \"bend_vector\" must not be null"); }
-    options_cpp.bend_vector = to_cpp_double_list(options->bend_vector);
+    ifcapi::bindings::ShapeBuilderMepBendDirection nested_value_options_cpp_bend_vector{};
+    nested_value_options_cpp_bend_vector.x = static_cast<double>(options->bend_vector->x);
+    nested_value_options_cpp_bend_vector.y = static_cast<double>(options->bend_vector->y);
+    options_cpp.bend_vector = std::move(nested_value_options_cpp_bend_vector);
     options_cpp.flip_z_axis = static_cast<bool>(options->flip_z_axis);
         auto result_value = ifcapi::bindings::shape_builder_mep_bend_shape(file_cpp, options_cpp);
         ifcopenshell_shape_builder_mep_bend_shape_result_t result_value_c{};
@@ -15093,21 +15688,50 @@ bool ifcopenshell_shape_builder_mep_transition_calculate(const ifcopenshell_shap
     if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
     ifcapi::bindings::ShapeBuilderMepTransitionCalculateOptions options_cpp{};
     if (options->start_half_dim == nullptr) { throw std::runtime_error("Options field \"start_half_dim\" must not be null"); }
-    options_cpp.start_half_dim = to_cpp_double_list(options->start_half_dim);
+    ifcapi::bindings::ShapeBuilderMepProfileHalfDimensions nested_value_options_cpp_start_half_dim{};
+    nested_value_options_cpp_start_half_dim.half_x = static_cast<double>(options->start_half_dim->half_x);
+    nested_value_options_cpp_start_half_dim.half_y = static_cast<double>(options->start_half_dim->half_y);
+    nested_value_options_cpp_start_half_dim.depth = static_cast<double>(options->start_half_dim->depth);
+    options_cpp.start_half_dim = std::move(nested_value_options_cpp_start_half_dim);
     if (options->end_half_dim == nullptr) { throw std::runtime_error("Options field \"end_half_dim\" must not be null"); }
-    options_cpp.end_half_dim = to_cpp_double_list(options->end_half_dim);
+    ifcapi::bindings::ShapeBuilderMepProfileHalfDimensions nested_value_options_cpp_end_half_dim{};
+    nested_value_options_cpp_end_half_dim.half_x = static_cast<double>(options->end_half_dim->half_x);
+    nested_value_options_cpp_end_half_dim.half_y = static_cast<double>(options->end_half_dim->half_y);
+    nested_value_options_cpp_end_half_dim.depth = static_cast<double>(options->end_half_dim->depth);
+    options_cpp.end_half_dim = std::move(nested_value_options_cpp_end_half_dim);
     if (options->offset == nullptr) { throw std::runtime_error("Options field \"offset\" must not be null"); }
-    options_cpp.offset = to_cpp_double_list(options->offset);
+    ifcapi::bindings::ShapeBuilderMepOffset nested_value_options_cpp_offset{};
+    nested_value_options_cpp_offset.x = static_cast<double>(options->offset->x);
+    nested_value_options_cpp_offset.y = static_cast<double>(options->offset->y);
+    options_cpp.offset = std::move(nested_value_options_cpp_offset);
     if (options->has_diff) {
         if (options->diff == nullptr) { throw std::runtime_error("Options field \"diff\" must not be null"); }
-        options_cpp.diff = to_cpp_double_list(options->diff);
+        ifcapi::bindings::ShapeBuilderMepOffset nested_value_options_cpp_diff{};
+        nested_value_options_cpp_diff.x = static_cast<double>(options->diff->x);
+        nested_value_options_cpp_diff.y = static_cast<double>(options->diff->y);
+        options_cpp.diff = std::move(nested_value_options_cpp_diff);
     }
-    options_cpp.end_profile = static_cast<bool>(options->end_profile);
-    if (options->has_length) {
-        options_cpp.length = options->length;
+    if (options->has_end_profile) {
+        options_cpp.end_profile = options->end_profile;
     }
-    if (options->has_angle) {
-        options_cpp.angle = options->angle;
+    if (options->calculation == nullptr) { throw std::runtime_error("Options field \"calculation\" must not be null"); }
+    switch (options->calculation->kind) {
+    case 0: {
+        if (options->calculation->value_0 == nullptr) { throw std::runtime_error("Variant alternative must not be null"); }
+        ifcapi::bindings::ShapeBuilderMepTransitionFromLength alternative_value{};
+        alternative_value.length = static_cast<double>(options->calculation->value_0->length);
+        options_cpp.calculation = std::move(alternative_value);
+        break;
+    }
+    case 1: {
+        if (options->calculation->value_1 == nullptr) { throw std::runtime_error("Variant alternative must not be null"); }
+        ifcapi::bindings::ShapeBuilderMepTransitionFromAngle alternative_value{};
+        alternative_value.angle = static_cast<double>(options->calculation->value_1->angle);
+        options_cpp.calculation = std::move(alternative_value);
+        break;
+    }
+    default:
+        throw std::runtime_error("Unsupported variant alternative");
     }
         *out_result = static_cast<double>(ifcapi::bindings::shape_builder_mep_transition_calculate(options_cpp));
         if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
@@ -15127,12 +15751,25 @@ bool ifcopenshell_shape_builder_mep_transition_length(const ifcopenshell_shape_b
     if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
     ifcapi::bindings::ShapeBuilderMepTransitionLengthOptions options_cpp{};
     if (options->start_half_dim == nullptr) { throw std::runtime_error("Options field \"start_half_dim\" must not be null"); }
-    options_cpp.start_half_dim = to_cpp_double_list(options->start_half_dim);
+    ifcapi::bindings::ShapeBuilderMepProfileHalfDimensions nested_value_options_cpp_start_half_dim{};
+    nested_value_options_cpp_start_half_dim.half_x = static_cast<double>(options->start_half_dim->half_x);
+    nested_value_options_cpp_start_half_dim.half_y = static_cast<double>(options->start_half_dim->half_y);
+    nested_value_options_cpp_start_half_dim.depth = static_cast<double>(options->start_half_dim->depth);
+    options_cpp.start_half_dim = std::move(nested_value_options_cpp_start_half_dim);
     if (options->end_half_dim == nullptr) { throw std::runtime_error("Options field \"end_half_dim\" must not be null"); }
-    options_cpp.end_half_dim = to_cpp_double_list(options->end_half_dim);
+    ifcapi::bindings::ShapeBuilderMepProfileHalfDimensions nested_value_options_cpp_end_half_dim{};
+    nested_value_options_cpp_end_half_dim.half_x = static_cast<double>(options->end_half_dim->half_x);
+    nested_value_options_cpp_end_half_dim.half_y = static_cast<double>(options->end_half_dim->half_y);
+    nested_value_options_cpp_end_half_dim.depth = static_cast<double>(options->end_half_dim->depth);
+    options_cpp.end_half_dim = std::move(nested_value_options_cpp_end_half_dim);
     options_cpp.angle = static_cast<double>(options->angle);
-    if (options->profile_offset == nullptr) { throw std::runtime_error("Options field \"profile_offset\" must not be null"); }
-    options_cpp.profile_offset = to_cpp_double_list(options->profile_offset);
+    if (options->has_profile_offset) {
+        if (options->profile_offset == nullptr) { throw std::runtime_error("Options field \"profile_offset\" must not be null"); }
+        ifcapi::bindings::ShapeBuilderMepOffset nested_value_options_cpp_profile_offset{};
+        nested_value_options_cpp_profile_offset.x = static_cast<double>(options->profile_offset->x);
+        nested_value_options_cpp_profile_offset.y = static_cast<double>(options->profile_offset->y);
+        options_cpp.profile_offset = std::move(nested_value_options_cpp_profile_offset);
+    }
         *out_result = static_cast<double>(ifcapi::bindings::shape_builder_mep_transition_length(options_cpp));
         if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
             return false;
@@ -15158,9 +15795,16 @@ bool ifcopenshell_shape_builder_mep_transition_shape(ifcopenshell_file_t* file, 
     options_cpp.end_segment = options->end_segment->value;
     options_cpp.start_length = static_cast<double>(options->start_length);
     options_cpp.end_length = static_cast<double>(options->end_length);
-    options_cpp.angle = static_cast<double>(options->angle);
-    if (options->profile_offset == nullptr) { throw std::runtime_error("Options field \"profile_offset\" must not be null"); }
-    options_cpp.profile_offset = to_cpp_double_list(options->profile_offset);
+    if (options->has_angle) {
+        options_cpp.angle = options->angle;
+    }
+    if (options->has_profile_offset) {
+        if (options->profile_offset == nullptr) { throw std::runtime_error("Options field \"profile_offset\" must not be null"); }
+        ifcapi::bindings::ShapeBuilderMepOffset nested_value_options_cpp_profile_offset{};
+        nested_value_options_cpp_profile_offset.x = static_cast<double>(options->profile_offset->x);
+        nested_value_options_cpp_profile_offset.y = static_cast<double>(options->profile_offset->y);
+        options_cpp.profile_offset = std::move(nested_value_options_cpp_profile_offset);
+    }
         auto result_value = ifcapi::bindings::shape_builder_mep_transition_shape(file_cpp, options_cpp);
         ifcopenshell_optional_shape_builder_mep_transition_shape_result_t result_value_c{};
         try {
@@ -15197,7 +15841,7 @@ bool ifcopenshell_shape_builder_mesh(ifcopenshell_file_t* file, const ifcopenshe
     if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
     auto file_cpp = file->ptr;
     if (points == nullptr) { throw std::runtime_error("Parameter \"points\" must not be null"); }
-    auto points_cpp = to_cpp_double_list_list(points);
+    auto points_cpp = transform_sequence(to_cpp_double_list_list(points), [](auto&& item) { return to_fixed_array<3>(std::move(item)); });
     if (faces == nullptr) { throw std::runtime_error("Parameter \"faces\" must not be null"); }
     auto faces_cpp = to_cpp_int32_list_list(faces);
         auto result_value = ifcapi::bindings::shape_builder_mesh(file_cpp, points_cpp, faces_cpp);
@@ -15226,13 +15870,30 @@ bool ifcopenshell_shape_builder_mirror(ifcopenshell_file_t* file, const ifcopens
     ifcapi::bindings::ShapeBuilderMirrorOptions options_cpp{};
     if (options->item == nullptr) { throw std::runtime_error("Options field \"item\" must not be null"); }
     options_cpp.item = options->item->value;
-    if (options->mirror_axes == nullptr) { throw std::runtime_error("Options field \"mirror_axes\" must not be null"); }
-    options_cpp.mirror_axes = to_cpp_double_list(options->mirror_axes);
-    if (options->mirror_point == nullptr) { throw std::runtime_error("Options field \"mirror_point\" must not be null"); }
-    options_cpp.mirror_point = to_cpp_double_list(options->mirror_point);
-    options_cpp.create_copy = static_cast<bool>(options->create_copy);
-    if (options->placement_matrix == nullptr) { throw std::runtime_error("Options field \"placement_matrix\" must not be null"); }
-    options_cpp.placement_matrix = to_cpp_double_list(options->placement_matrix);
+    if (options->has_mirror_axes) {
+        if (options->mirror_axes == nullptr) { throw std::runtime_error("Options field \"mirror_axes\" must not be null"); }
+        options_cpp.mirror_axes = to_fixed_array<2>(to_cpp_double_list(options->mirror_axes));
+    }
+    if (options->has_mirror_point) {
+        if (options->mirror_point == nullptr) { throw std::runtime_error("Options field \"mirror_point\" must not be null"); }
+        options_cpp.mirror_point = to_fixed_array<2>(to_cpp_double_list(options->mirror_point));
+    }
+    if (options->has_create_copy) {
+        options_cpp.create_copy = options->create_copy;
+    }
+    if (options->has_placement_matrix) {
+        if (options->placement_matrix == nullptr) { throw std::runtime_error("Options field \"placement_matrix\" must not be null"); }
+        switch (options->placement_matrix->kind) {
+        case 0:
+            options_cpp.placement_matrix = to_fixed_array<9>(to_cpp_double_list(&options->placement_matrix->value_0));
+            break;
+        case 1:
+            options_cpp.placement_matrix = to_fixed_array<16>(to_cpp_double_list(&options->placement_matrix->value_1));
+            break;
+        default:
+            throw std::runtime_error("Unsupported variant alternative");
+        }
+    }
         auto result_value = ifcapi::bindings::shape_builder_mirror(file_cpp, options_cpp);
         if (!static_cast<bool>(result_value)) {
             *out_result = nullptr;
@@ -15256,9 +15917,9 @@ bool ifcopenshell_shape_builder_plane(ifcopenshell_file_t* file, const ifcopensh
     if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
     auto file_cpp = file->ptr;
     if (location == nullptr) { throw std::runtime_error("Parameter \"location\" must not be null"); }
-    auto location_cpp = to_cpp_double_list(location);
+    auto location_cpp = to_fixed_array<3>(to_cpp_double_list(location));
     if (normal == nullptr) { throw std::runtime_error("Parameter \"normal\" must not be null"); }
-    auto normal_cpp = to_cpp_double_list(normal);
+    auto normal_cpp = to_fixed_array<3>(to_cpp_double_list(normal));
         auto result_value = ifcapi::bindings::shape_builder_plane(file_cpp, location_cpp, normal_cpp);
         if (!static_cast<bool>(result_value)) {
             *out_result = nullptr;
@@ -15282,7 +15943,7 @@ bool ifcopenshell_shape_builder_polygonal_face_set(ifcopenshell_file_t* file, co
     if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
     auto file_cpp = file->ptr;
     if (points == nullptr) { throw std::runtime_error("Parameter \"points\" must not be null"); }
-    auto points_cpp = to_cpp_double_list_list(points);
+    auto points_cpp = transform_sequence(to_cpp_double_list_list(points), [](auto&& item) { return to_fixed_array<3>(std::move(item)); });
     if (faces == nullptr) { throw std::runtime_error("Parameter \"faces\" must not be null"); }
     auto faces_cpp = to_cpp_int32_list_list_list(faces);
         auto result_value = ifcapi::bindings::shape_builder_polygonal_face_set(file_cpp, points_cpp, faces_cpp);
@@ -15310,16 +15971,60 @@ bool ifcopenshell_shape_builder_polyline(ifcopenshell_file_t* file, const ifcope
     if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
     ifcapi::bindings::ShapeBuilderPolylineOptions options_cpp{};
     if (options->points == nullptr) { throw std::runtime_error("Options field \"points\" must not be null"); }
-    options_cpp.points = to_cpp_double_list_list(options->points);
-    if (options->has_closed) {
-        options_cpp.closed = options->closed;
+    switch (options->points->kind) {
+    case 0:
+        options_cpp.points = transform_sequence(to_cpp_double_list_list(&options->points->value_0), [](auto&& item) { return to_fixed_array<2>(std::move(item)); });
+        break;
+    case 1:
+        options_cpp.points = transform_sequence(to_cpp_double_list_list(&options->points->value_1), [](auto&& item) { return to_fixed_array<3>(std::move(item)); });
+        break;
+    default:
+        throw std::runtime_error("Unsupported variant alternative");
     }
     if (options->has_position_offset) {
         if (options->position_offset == nullptr) { throw std::runtime_error("Options field \"position_offset\" must not be null"); }
-        options_cpp.position_offset = to_cpp_double_list(options->position_offset);
+        switch (options->position_offset->kind) {
+        case 0:
+            options_cpp.position_offset = to_fixed_array<2>(to_cpp_double_list(&options->position_offset->value_0));
+            break;
+        case 1:
+            options_cpp.position_offset = to_fixed_array<3>(to_cpp_double_list(&options->position_offset->value_1));
+            break;
+        default:
+            throw std::runtime_error("Unsupported variant alternative");
+        }
     }
-    if (options->arc_points == nullptr) { throw std::runtime_error("Options field \"arc_points\" must not be null"); }
-    options_cpp.arc_points = to_cpp_int32_list(options->arc_points);
+    if (options->has_segments) {
+        if (options->segments == nullptr) { throw std::runtime_error("Options field \"segments\" must not be null"); }
+        std::vector<std::variant<ifcapi::bindings::ShapeBuilderLineSegment, ifcapi::bindings::ShapeBuilderArcSegment>> nested_values_options_cpp_segments;
+        nested_values_options_cpp_segments.reserve(options->segments->size);
+        for (size_t i_options_cpp_segments = 0; i_options_cpp_segments < options->segments->size; ++i_options_cpp_segments) {
+            const auto* item_options_cpp_segments = &options->segments->items[i_options_cpp_segments];
+            std::variant<ifcapi::bindings::ShapeBuilderLineSegment, ifcapi::bindings::ShapeBuilderArcSegment> nested_value_options_cpp_segments;
+            switch (item_options_cpp_segments->kind) {
+            case 0: {
+                if (item_options_cpp_segments->value_0 == nullptr) { throw std::runtime_error("Variant alternative must not be null"); }
+                ifcapi::bindings::ShapeBuilderLineSegment alternative_value{};
+                if (item_options_cpp_segments->value_0->line_indices == nullptr) { throw std::runtime_error("Options field \"line_indices\" must not be null"); }
+                alternative_value.line_indices = to_cpp_uint32_list(item_options_cpp_segments->value_0->line_indices);
+                nested_value_options_cpp_segments = std::move(alternative_value);
+                break;
+            }
+            case 1: {
+                if (item_options_cpp_segments->value_1 == nullptr) { throw std::runtime_error("Variant alternative must not be null"); }
+                ifcapi::bindings::ShapeBuilderArcSegment alternative_value{};
+                if (item_options_cpp_segments->value_1->arc_indices == nullptr) { throw std::runtime_error("Options field \"arc_indices\" must not be null"); }
+                alternative_value.arc_indices = to_fixed_array<3>(to_cpp_uint32_list(item_options_cpp_segments->value_1->arc_indices));
+                nested_value_options_cpp_segments = std::move(alternative_value);
+                break;
+            }
+            default:
+                throw std::runtime_error("Unsupported variant alternative");
+            }
+            nested_values_options_cpp_segments.push_back(std::move(nested_value_options_cpp_segments));
+        }
+        options_cpp.segments = std::move(nested_values_options_cpp_segments);
+    }
         auto result_value = ifcapi::bindings::shape_builder_polyline(file_cpp, options_cpp);
         if (!static_cast<bool>(result_value)) {
             *out_result = nullptr;
@@ -15350,8 +16055,10 @@ bool ifcopenshell_shape_builder_profile(ifcopenshell_file_t* file, const ifcopen
         if (options->name == nullptr) { throw std::runtime_error("Options field \"name\" must not be null"); }
         options_cpp.name = std::string(options->name);
     }
-    if (options->inner_curves == nullptr) { throw std::runtime_error("Options field \"inner_curves\" must not be null"); }
-    options_cpp.inner_curves = options->inner_curves->value;
+    if (options->has_inner_curves) {
+        if (options->inner_curves == nullptr) { throw std::runtime_error("Options field \"inner_curves\" must not be null"); }
+        options_cpp.inner_curves = options->inner_curves->value;
+    }
     if (options->has_profile_type) {
         if (options->profile_type == nullptr) { throw std::runtime_error("Options field \"profile_type\" must not be null"); }
         options_cpp.profile_type = std::string(options->profile_type);
@@ -15414,11 +16121,19 @@ bool ifcopenshell_shape_builder_rotate(ifcopenshell_file_t* file, const ifcopens
     ifcapi::bindings::ShapeBuilderRotateOptions options_cpp{};
     if (options->item == nullptr) { throw std::runtime_error("Options field \"item\" must not be null"); }
     options_cpp.item = options->item->value;
-    options_cpp.angle = static_cast<double>(options->angle);
-    if (options->pivot_point == nullptr) { throw std::runtime_error("Options field \"pivot_point\" must not be null"); }
-    options_cpp.pivot_point = to_cpp_double_list(options->pivot_point);
-    options_cpp.counter_clockwise = static_cast<bool>(options->counter_clockwise);
-    options_cpp.create_copy = static_cast<bool>(options->create_copy);
+    if (options->has_angle) {
+        options_cpp.angle = options->angle;
+    }
+    if (options->has_pivot_point) {
+        if (options->pivot_point == nullptr) { throw std::runtime_error("Options field \"pivot_point\" must not be null"); }
+        options_cpp.pivot_point = to_fixed_array<2>(to_cpp_double_list(options->pivot_point));
+    }
+    if (options->has_counter_clockwise) {
+        options_cpp.counter_clockwise = options->counter_clockwise;
+    }
+    if (options->has_create_copy) {
+        options_cpp.create_copy = options->create_copy;
+    }
         auto result_value = ifcapi::bindings::shape_builder_rotate(file_cpp, options_cpp);
         if (!static_cast<bool>(result_value)) {
             *out_result = nullptr;
@@ -15435,7 +16150,7 @@ bool ifcopenshell_shape_builder_rotate(ifcopenshell_file_t* file, const ifcopens
     }
 }
 
-bool ifcopenshell_shape_builder_set_polyline_coords(ifcopenshell_file_t* file, ifcopenshell_instance_t* polyline, const ifcopenshell_double_list_list_t* coords, ifcopenshell_instance_t** out_result) {
+bool ifcopenshell_shape_builder_set_polyline_coords(ifcopenshell_file_t* file, ifcopenshell_instance_t* polyline, const ifcopenshell_double_list_list_any_2_double_list_list_any_3_variant_t* coords, ifcopenshell_instance_t** out_result) {
     try {
         ifcopenshell_clear_error();
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
@@ -15444,7 +16159,17 @@ bool ifcopenshell_shape_builder_set_polyline_coords(ifcopenshell_file_t* file, i
     if (polyline == nullptr) { throw std::runtime_error("Handle parameter \"polyline\" must not be null"); }
     auto polyline_cpp = &polyline->value;
     if (coords == nullptr) { throw std::runtime_error("Parameter \"coords\" must not be null"); }
-    auto coords_cpp = to_cpp_double_list_list(coords);
+    std::variant<std::vector<std::array<double, 2>>, std::vector<std::array<double, 3>>> coords_cpp;
+    switch (coords->kind) {
+    case 0:
+        coords_cpp = transform_sequence(to_cpp_double_list_list(&coords->value_0), [](auto&& item) { return to_fixed_array<2>(std::move(item)); });
+        break;
+    case 1:
+        coords_cpp = transform_sequence(to_cpp_double_list_list(&coords->value_1), [](auto&& item) { return to_fixed_array<3>(std::move(item)); });
+        break;
+    default:
+        throw std::runtime_error("Unsupported variant alternative");
+    }
         auto result_value = ifcapi::bindings::shape_builder_set_polyline_coords(file_cpp, polyline_cpp, coords_cpp);
         if (!static_cast<bool>(result_value)) {
             *out_result = nullptr;
@@ -15469,9 +16194,13 @@ bool ifcopenshell_shape_builder_sphere(ifcopenshell_file_t* file, const ifcopens
     auto file_cpp = file->ptr;
     if (options == nullptr) { throw std::runtime_error("Options parameter \"options\" must not be null"); }
     ifcapi::bindings::ShapeBuilderSphereOptions options_cpp{};
-    options_cpp.radius = static_cast<double>(options->radius);
-    if (options->center == nullptr) { throw std::runtime_error("Options field \"center\" must not be null"); }
-    options_cpp.center = to_cpp_double_list(options->center);
+    if (options->has_radius) {
+        options_cpp.radius = options->radius;
+    }
+    if (options->has_center) {
+        if (options->center == nullptr) { throw std::runtime_error("Options field \"center\" must not be null"); }
+        options_cpp.center = to_fixed_array<3>(to_cpp_double_list(options->center));
+    }
         auto result_value = ifcapi::bindings::shape_builder_sphere(file_cpp, options_cpp);
         if (!static_cast<bool>(result_value)) {
             *out_result = nullptr;
@@ -15524,8 +16253,19 @@ bool ifcopenshell_shape_builder_translate(ifcopenshell_file_t* file, const ifcop
     if (options->item == nullptr) { throw std::runtime_error("Options field \"item\" must not be null"); }
     options_cpp.item = options->item->value;
     if (options->translation == nullptr) { throw std::runtime_error("Options field \"translation\" must not be null"); }
-    options_cpp.translation = to_cpp_double_list(options->translation);
-    options_cpp.create_copy = static_cast<bool>(options->create_copy);
+    switch (options->translation->kind) {
+    case 0:
+        options_cpp.translation = to_fixed_array<2>(to_cpp_double_list(&options->translation->value_0));
+        break;
+    case 1:
+        options_cpp.translation = to_fixed_array<3>(to_cpp_double_list(&options->translation->value_1));
+        break;
+    default:
+        throw std::runtime_error("Unsupported variant alternative");
+    }
+    if (options->has_create_copy) {
+        options_cpp.create_copy = options->create_copy;
+    }
         auto result_value = ifcapi::bindings::shape_builder_translate(file_cpp, options_cpp);
         if (!static_cast<bool>(result_value)) {
             *out_result = nullptr;
@@ -15549,9 +16289,9 @@ bool ifcopenshell_shape_builder_triangulated_face_set(ifcopenshell_file_t* file,
     if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
     auto file_cpp = file->ptr;
     if (points == nullptr) { throw std::runtime_error("Parameter \"points\" must not be null"); }
-    auto points_cpp = to_cpp_double_list_list(points);
+    auto points_cpp = transform_sequence(to_cpp_double_list_list(points), [](auto&& item) { return to_fixed_array<3>(std::move(item)); });
     if (faces == nullptr) { throw std::runtime_error("Parameter \"faces\" must not be null"); }
-    auto faces_cpp = to_cpp_int32_list_list(faces);
+    auto faces_cpp = transform_sequence(to_cpp_int32_list_list(faces), [](auto&& item) { return to_fixed_array<3>(std::move(item)); });
         auto result_value = ifcapi::bindings::shape_builder_triangulated_face_set(file_cpp, points_cpp, faces_cpp);
         if (!static_cast<bool>(result_value)) {
             *out_result = nullptr;
@@ -15575,7 +16315,7 @@ bool ifcopenshell_shape_builder_vertex(ifcopenshell_file_t* file, const ifcopens
     if (file == nullptr || file->ptr == nullptr) { throw std::runtime_error("Handle parameter \"file\" is invalid"); }
     auto file_cpp = file->ptr;
     if (position == nullptr) { throw std::runtime_error("Parameter \"position\" must not be null"); }
-    auto position_cpp = to_cpp_double_list(position);
+    auto position_cpp = to_fixed_array<3>(to_cpp_double_list(position));
         auto result_value = ifcapi::bindings::shape_builder_vertex(file_cpp, position_cpp);
         if (!static_cast<bool>(result_value)) {
             *out_result = nullptr;
@@ -16106,9 +16846,9 @@ bool ifcopenshell_structural_edit_structural_connection_cs(ifcopenshell_file_t* 
     if (structural_item == nullptr) { throw std::runtime_error("Handle parameter \"structural_item\" must not be null"); }
     auto structural_item_cpp = &structural_item->value;
     if (axis == nullptr) { throw std::runtime_error("Parameter \"axis\" must not be null"); }
-    auto axis_cpp = to_cpp_double_list(axis);
+    auto axis_cpp = to_fixed_array<3>(to_cpp_double_list(axis));
     if (ref_direction == nullptr) { throw std::runtime_error("Parameter \"ref_direction\" must not be null"); }
-    auto ref_direction_cpp = to_cpp_double_list(ref_direction);
+    auto ref_direction_cpp = to_fixed_array<3>(to_cpp_double_list(ref_direction));
         ifcapi::bindings::structural_edit_structural_connection_cs(file_cpp, structural_item_cpp, axis_cpp, ref_direction_cpp);
         if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
             return false;
@@ -16128,7 +16868,7 @@ bool ifcopenshell_structural_edit_structural_item_axis(ifcopenshell_file_t* file
     if (structural_item == nullptr) { throw std::runtime_error("Handle parameter \"structural_item\" must not be null"); }
     auto structural_item_cpp = &structural_item->value;
     if (axis == nullptr) { throw std::runtime_error("Parameter \"axis\" must not be null"); }
-    auto axis_cpp = to_cpp_double_list(axis);
+    auto axis_cpp = to_fixed_array<3>(to_cpp_double_list(axis));
         ifcapi::bindings::structural_edit_structural_item_axis(file_cpp, structural_item_cpp, axis_cpp);
         if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
             return false;
@@ -25864,7 +26604,7 @@ bool ifcopenshell_geom_tree_clash_p1(ifcopenshell_geom_tree_clash_t* self, ifcop
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
-        *out_result = make_double_list(std::vector<double>(self_cpp->p1.begin(), self_cpp->p1.end()));
+        *out_result = make_double_list(transform_sequence(std::vector<double>(self_cpp->p1.begin(), self_cpp->p1.end()), [](auto&& item) { return item; }));
         if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
             return false;
         }
@@ -25881,7 +26621,7 @@ bool ifcopenshell_geom_tree_clash_p2(ifcopenshell_geom_tree_clash_t* self, ifcop
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
-        *out_result = make_double_list(std::vector<double>(self_cpp->p2.begin(), self_cpp->p2.end()));
+        *out_result = make_double_list(transform_sequence(std::vector<double>(self_cpp->p2.begin(), self_cpp->p2.end()), [](auto&& item) { return item; }));
         if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
             return false;
         }
@@ -25932,7 +26672,7 @@ bool ifcopenshell_geom_tree_ray_intersection_normal(ifcopenshell_geom_tree_ray_i
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
-        *out_result = make_double_list(std::vector<double>(self_cpp->normal.begin(), self_cpp->normal.end()));
+        *out_result = make_double_list(transform_sequence(std::vector<double>(self_cpp->normal.begin(), self_cpp->normal.end()), [](auto&& item) { return item; }));
         if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
             return false;
         }
@@ -25949,7 +26689,7 @@ bool ifcopenshell_geom_tree_ray_intersection_position(ifcopenshell_geom_tree_ray
     if (out_result == nullptr) { throw std::runtime_error("out_result must not be null"); }
     if (self == nullptr || self->ptr == nullptr) { throw std::runtime_error("Receiver handle is invalid"); }
     auto* self_cpp = self->ptr;
-        *out_result = make_double_list(std::vector<double>(self_cpp->position.begin(), self_cpp->position.end()));
+        *out_result = make_double_list(transform_sequence(std::vector<double>(self_cpp->position.begin(), self_cpp->position.end()), [](auto&& item) { return item; }));
         if (ifcopenshell_last_error_kind() != IFCOPENSHELL_ERROR_NONE) {
             return false;
         }

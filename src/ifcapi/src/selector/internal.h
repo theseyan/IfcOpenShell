@@ -23,6 +23,7 @@
 #include "ifcparse/instance_data.h"
 #include "ifcparse/file.h"
 
+#include <array>
 #include <cmath>
 #include <cstring>
 #include <regex>
@@ -122,8 +123,7 @@ inline Val* make_dict() {
     auto v = new Val(); v->kind = IFCSEL_VALUE_DICT; return v;
 }
 
-inline bool placement_matrix_to_array(const std::vector<double>& values, double out[16]) {
-    if (values.size() != 16) return false;
+inline bool placement_matrix_to_array(const std::array<double, 16>& values, double out[16]) {
     std::copy(values.begin(), values.end(), out);
     return true;
 }

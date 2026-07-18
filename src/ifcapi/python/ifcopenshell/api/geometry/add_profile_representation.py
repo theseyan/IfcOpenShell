@@ -24,7 +24,9 @@ from ifcopenshell.util.data import Clipping
 from . import _capi
 
 VECTOR_3D = tuple[float, float, float]
-CardinalPointNumeric = Literal[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]
+CardinalPointNumeric = Literal[
+    1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19
+]
 CardinalPointString = Literal[
     "bottom left",
     "bottom centre",
@@ -58,7 +60,10 @@ def add_profile_representation(
     # TODO: None makes more sense as default value?
     cardinal_point: Union[CardinalPoint, None] = 5,
     clippings: Optional[list[Union[Clipping, dict[str, Any]]]] = None,
-    placement_zx_axes: tuple[Union[VECTOR_3D, None], Union[VECTOR_3D, None]] = (None, None),
+    placement_zx_axes: tuple[Union[VECTOR_3D, None], Union[VECTOR_3D, None]] = (
+        None,
+        None,
+    ),
 ) -> ifcopenshell.entity_instance:
     """Add profile representation.
 
@@ -77,19 +82,15 @@ def add_profile_representation(
     if isinstance(cardinal_point, int):
         cardinal_point = CARDINAL_POINT_VALUES[cardinal_point - 1]
 
-    clipping_kinds: list[int] = []
-    clipping_locations: list[tuple[float, float, float]] = []
-    clipping_normals: list[tuple[float, float, float]] = []
-    clipping_entities: list[ifcopenshell.entity_instance] = []
+    clipping_items: list[dict[str, Any]] = []
     for clipping in clippings if clippings is not None else []:
         parsed = Clipping.parse(clipping)
         if isinstance(parsed, ifcopenshell.entity_instance):
-            clipping_kinds.append(1)
-            clipping_entities.append(parsed)
+            clipping_items.append({"entity": _capi.instance_handle(parsed)})
         else:
-            clipping_kinds.append(0)
-            clipping_locations.append(parsed.location)
-            clipping_normals.append(parsed.normal)
+            clipping_items.append(
+                {"location": parsed.location, "normal": parsed.normal}
+            )
 
     return _capi.call_handle(
         file,
@@ -102,9 +103,6 @@ def add_profile_representation(
             "cardinal_point": cardinal_point,
             "placement_z_axis": placement_zx_axes[0],
             "placement_x_axis": placement_zx_axes[1],
-            "clipping_kinds": clipping_kinds,
-            "clipping_locations": clipping_locations,
-            "clipping_normals": clipping_normals,
-            "clipping_entities": _capi.instance_list(clipping_entities),
+            "clippings": clipping_items,
         },
     )

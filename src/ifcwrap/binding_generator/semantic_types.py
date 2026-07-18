@@ -82,6 +82,7 @@ class StringSemanticType:
 class EnumSemanticType:
     cpp_type: str
     enum_qualified_name: str | None
+    values: tuple[tuple[str, int], ...] = ()
 
 
 @dataclass(frozen=True)
@@ -98,6 +99,8 @@ class SequenceSemanticType:
     cpp_type: str
     container_kind: str
     element: SemanticCppType
+    fixed_length: int | None = None
+    alias: str | None = None
 
 
 @dataclass(frozen=True)
@@ -164,7 +167,9 @@ def _from_discovered(cpp_type: DiscoveredCppType) -> SemanticCppType:
 
     if cpp_type.is_enum:
         return EnumSemanticType(
-            cpp_type=cpp_text, enum_qualified_name=cpp_type.enum_qualified_name
+            cpp_type=cpp_text,
+            enum_qualified_name=cpp_type.enum_qualified_name,
+            values=cpp_type.enum_values,
         )
 
     if (
@@ -175,6 +180,21 @@ def _from_discovered(cpp_type: DiscoveredCppType) -> SemanticCppType:
             cpp_type=cpp_text,
             container_kind=cpp_type.template_name,
             element=analyze_cpp_type(cpp_type.template_args[0]),
+            fixed_length=(
+                int(cpp_type.template_args[1].spelling)
+                if cpp_type.template_name == "std::array"
+                and len(cpp_type.template_args) > 1
+                and cpp_type.template_args[1].spelling.isdigit()
+                else None
+            ),
+            alias=(
+                _strip_qualifiers(cpp_type.normalized_spelling)
+                if cpp_type.normalized_desugared_spelling
+                and cpp_type.normalized_spelling
+                != cpp_type.normalized_desugared_spelling
+                and "<" not in _strip_qualifiers(cpp_type.normalized_spelling)
+                else None
+            ),
         )
 
     if cpp_type.template_name == "std::optional" and cpp_type.template_args:
@@ -233,6 +253,13 @@ def _from_string(cpp_type: str) -> SemanticCppType:
                 cpp_type=normalized,
                 container_kind=template_name,
                 element=analyze_cpp_type(args[0]),
+                fixed_length=(
+                    int(args[1])
+                    if template_name == "std::array"
+                    and len(args) > 1
+                    and args[1].isdigit()
+                    else None
+                ),
             )
 
     args = _template_match(normalized, "std::optional")
@@ -315,6 +342,26 @@ def semantic_sequence_depth(semantic: SemanticCppType) -> int:
         depth += 1
         current = current.element
     return depth
+
+
+def semantic_sequence_lengths(
+    semantic: SemanticCppType,
+) -> tuple[int | None, ...]:
+    lengths: list[int | None] = []
+    current = semantic
+    while isinstance(current, SequenceSemanticType):
+        lengths.append(current.fixed_length)
+        current = current.element
+    return tuple(lengths)
+
+
+def semantic_sequence_alias(semantic: SemanticCppType) -> str | None:
+    current = semantic
+    while isinstance(current, SequenceSemanticType):
+        if current.alias:
+            return current.alias.rsplit("::", 1)[-1]
+        current = current.element
+    return None
 
 
 def semantic_leaf_type(semantic: SemanticCppType) -> SemanticCppType:

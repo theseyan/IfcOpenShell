@@ -21,11 +21,27 @@ import ifcopenshell.api.resource
 import ifcopenshell.util.resource
 import pytest
 from ifcopenshell import _ifcopenshell_capi as _capi
+from ifcopenshell.api.resource import _capi as resource_capi
 
 import test.bootstrap
 
 
 class TestAddResourceQuantity(test.bootstrap.IFC4):
+    def test_native_default_is_applied_when_class_is_omitted(self):
+        self.file.create_entity("IfcProject")
+        resource = ifcopenshell.api.resource.add_resource(
+            self.file, ifc_class="IfcConstructionProductResource"
+        )
+
+        quantity = resource_capi._call_handle(
+            self.file,
+            "resource_add_resource_quantity",
+            resource_capi.file_handle(self.file),
+            resource_capi.instance_handle(resource),
+        )
+
+        assert quantity.is_a("IfcQuantityCount")
+
     def test_run(self):
         schema = ifcopenshell.schema_by_name(self.file.schema)
         assert (quantity_entity := schema.declaration_by_name("IfcPhysicalSimpleQuantity").as_entity())

@@ -7,6 +7,5 @@ def layout_horizontal_alignment_by_pi_method(file, layout, hpoints, radii):
         "alignment_layout_horizontal_by_pi_method",
         _capi.file_handle(file),
         _capi.instance_handle(layout),
-        _capi.point_list(hpoints),
-        list(radii),
+        {"pis": _capi.horizontal_pi_layout(hpoints, radii)},
     )

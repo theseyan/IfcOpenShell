@@ -4,6 +4,7 @@
 #define IFCAPI_BINDINGS_PLACEMENT_H
 
 #include "ifcapi/bindings/contract.h"
+#include "ifcapi/bindings/types.h"
 
 #include "ifcparse/express.h"
 
@@ -22,10 +23,10 @@ namespace bindings {
  * @param x_axis Direction ratios for the X axis (Y is derived).
  * @return 16-element row-major 4x4 matrix.
  */
-IFCAPI_BINDING std::vector<double> placement_matrix_from_axes(
-    const std::vector<double>& origin,
-    const std::vector<double>& z_axis,
-    const std::vector<double>& x_axis);
+IFCAPI_BINDING std::array<double, 16> placement_matrix_from_axes(
+    const std::array<double, 3>& origin,
+    const std::array<double, 3>& z_axis,
+    const std::array<double, 3>& x_axis);
 
 /**
  * Extract a 4x4 row-major matrix from an IfcAxis2Placement entity.
@@ -36,7 +37,7 @@ IFCAPI_BINDING std::vector<double> placement_matrix_from_axes(
  * @param instance IfcAxis2Placement entity.
  * @return 16-element row-major 4x4 matrix.
  */
-IFCAPI_BINDING std::vector<double> placement_get_axis2_placement(express::Base* instance);
+IFCAPI_BINDING std::array<double, 16> placement_get_axis2_placement(express::Base* instance);
 
 /**
  * Compute the cumulative 4x4 row-major world matrix of an IfcLocalPlacement.
@@ -47,7 +48,7 @@ IFCAPI_BINDING std::vector<double> placement_get_axis2_placement(express::Base* 
  * @param instance IfcLocalPlacement entity. When omitted, returns the identity matrix.
  * @return 16-element row-major 4x4 matrix.
  */
-IFCAPI_BINDING std::vector<double> placement_get_local_placement(
+IFCAPI_BINDING std::array<double, 16> placement_get_local_placement(
     std::optional<express::Base> instance);
 
 /**
@@ -59,7 +60,7 @@ IFCAPI_BINDING std::vector<double> placement_get_local_placement(
  * @param instance IfcCartesianTransformationOperator3D entity.
  * @return 16-element row-major 4x4 matrix.
  */
-IFCAPI_BINDING std::vector<double> placement_get_cartesian_xform_3d(express::Base* instance);
+IFCAPI_BINDING std::array<double, 16> placement_get_cartesian_xform_3d(express::Base* instance);
 
 /**
  * Compute the combined 4x4 row-major matrix for an IfcMappedItem.
@@ -71,7 +72,7 @@ IFCAPI_BINDING std::vector<double> placement_get_cartesian_xform_3d(express::Bas
  * @param instance IfcMappedItem entity.
  * @return 16-element row-major 4x4 matrix.
  */
-IFCAPI_BINDING std::vector<double> placement_get_mappeditem_xform(express::Base* instance);
+IFCAPI_BINDING std::array<double, 16> placement_get_mappeditem_xform(express::Base* instance);
 
 /**
  * Return the elevation of a building storey in model units.
@@ -92,7 +93,7 @@ IFCAPI_BINDING double placement_get_storey_elevation(express::Base* instance);
  * @param axis Rotation axis: "X", "Y", or "Z" (case-insensitive).
  * @return 16-element row-major 4x4 rotation matrix.
  */
-IFCAPI_BINDING std::vector<double> placement_rotation(double angle_rad, const std::string& axis);
+IFCAPI_BINDING std::array<double, 16> placement_rotation(double angle_rad, const std::string& axis);
 
 } // namespace bindings
 } // namespace ifcapi

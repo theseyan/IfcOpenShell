@@ -3,6 +3,7 @@
 
 #include "ifcapi/bindings/geometry.h"
 #include "ifcapi/bindings/shape_builder.h"
+#include "ifcapi/bindings/unit.h"
 #include "ifcapi/detail/attribute.h"
 #include "ifcapi/detail/shape_builder.h"
 #include "ifcapi/detail/window_builder.h"
@@ -11,6 +12,7 @@
 #include "ifcparse/file.h"
 
 #include <algorithm>
+#include <cmath>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -40,27 +42,87 @@ struct PanelProperties {
     double frame_thickness;
 };
 
-LiningProperties parse_lining_properties(const std::vector<double>& values) {
-    if (values.size() != 11) {
-        throw std::runtime_error("Expected 11 window lining properties");
+inline double mm(double value) { return value / 1000.0; }
+inline double to_unit(double value, double unit_scale) { return value / unit_scale; }
+
+void require_finite(double value, const char* name) {
+    if (!std::isfinite(value)) {
+        throw std::invalid_argument(std::string("Window ") + name + " must be finite");
     }
-    return {values[0], values[1], values[2], values[3], values[4], values[5], values[6], values[7], values[8], values[9], values[10]};
 }
 
-std::vector<PanelProperties> parse_panel_properties(const std::vector<std::vector<double>>& values) {
+LiningProperties resolve_lining_properties(
+    const std::optional<ifcapi::bindings::GeometryWindowLiningProperties>& value,
+    double unit_scale)
+{
+    const auto properties = value.value_or(ifcapi::bindings::GeometryWindowLiningProperties{});
+    LiningProperties result{
+        properties.lining_depth.value_or(to_unit(mm(50.0), unit_scale)),
+        properties.lining_thickness.value_or(to_unit(mm(50.0), unit_scale)),
+        properties.lining_offset.value_or(to_unit(mm(50.0), unit_scale)),
+        properties.lining_to_panel_offset_x.value_or(to_unit(mm(25.0), unit_scale)),
+        properties.lining_to_panel_offset_y.value_or(to_unit(mm(25.0), unit_scale)),
+        properties.mullion_thickness.value_or(to_unit(mm(50.0), unit_scale)),
+        properties.first_mullion_offset.value_or(to_unit(mm(300.0), unit_scale)),
+        properties.second_mullion_offset.value_or(to_unit(mm(450.0), unit_scale)),
+        properties.transom_thickness.value_or(to_unit(mm(50.0), unit_scale)),
+        properties.first_transom_offset.value_or(to_unit(mm(300.0), unit_scale)),
+        properties.second_transom_offset.value_or(to_unit(mm(600.0), unit_scale)),
+    };
+    const double values[] = {
+        result.lining_depth, result.lining_thickness, result.lining_offset,
+        result.lining_to_panel_offset_x, result.lining_to_panel_offset_y,
+        result.mullion_thickness, result.first_mullion_offset,
+        result.second_mullion_offset, result.transom_thickness,
+        result.first_transom_offset, result.second_transom_offset};
+    for (double item : values) require_finite(item, "lining property");
+    return result;
+}
+
+std::vector<PanelProperties> resolve_panel_properties(
+    const std::optional<std::vector<ifcapi::bindings::GeometryWindowPanelProperties>>& value,
+    double unit_scale)
+{
+    const auto properties = value.value_or(
+        std::vector<ifcapi::bindings::GeometryWindowPanelProperties>{
+            ifcapi::bindings::GeometryWindowPanelProperties{}});
     std::vector<PanelProperties> result;
-    result.reserve(values.size());
-    for (const auto& row : values) {
-        if (row.size() != 2) {
-            throw std::runtime_error("Expected 2 window panel properties");
-        }
-        result.push_back({row[0], row[1]});
+    result.reserve(properties.size());
+    for (const auto& panel : properties) {
+        PanelProperties resolved{
+            panel.frame_depth.value_or(to_unit(mm(35.0), unit_scale)),
+            panel.frame_thickness.value_or(to_unit(mm(35.0), unit_scale)),
+        };
+        require_finite(resolved.frame_depth, "panel property");
+        require_finite(resolved.frame_thickness, "panel property");
+        result.push_back(resolved);
     }
     return result;
 }
 
-std::vector<std::vector<int>> reversed_schema(const std::vector<std::vector<int>>& panel_schema) {
-    return {panel_schema.rbegin(), panel_schema.rend()};
+std::vector<std::vector<int>> panel_schema(ifcapi::bindings::GeometryWindowPartitionType partition_type) {
+    using Partition = ifcapi::bindings::GeometryWindowPartitionType;
+    switch (partition_type) {
+    case Partition::SINGLE_PANEL:
+        return {{0}};
+    case Partition::DOUBLE_PANEL_HORIZONTAL:
+        return {{1}, {0}};
+    case Partition::DOUBLE_PANEL_VERTICAL:
+        return {{0, 1}};
+    case Partition::TRIPLE_PANEL_BOTTOM:
+        return {{2, 2}, {0, 1}};
+    case Partition::TRIPLE_PANEL_HORIZONTAL:
+        return {{2}, {1}, {0}};
+    case Partition::TRIPLE_PANEL_LEFT:
+        return {{0, 2}, {0, 1}};
+    case Partition::TRIPLE_PANEL_RIGHT:
+        return {{2, 1}, {0, 1}};
+    case Partition::TRIPLE_PANEL_TOP:
+        return {{1, 2}, {0, 0}};
+    case Partition::TRIPLE_PANEL_VERTICAL:
+        return {{0, 1, 2}};
+    }
+    throw std::invalid_argument("Unsupported window partition type");
 }
 
 express::Base create_window_2d_representation(
@@ -157,7 +219,11 @@ express::Base create_window_2d_representation(
                 ifcapi::bindings::shape_builder_mirror(
                     file,
                     ifcapi::bindings::ShapeBuilderMirrorOptions{
-                        shape, {1.0, 0.0}, {panel_width / 2.0, 0.0}, false, {}});
+                        shape,
+                        ifcapi::bindings::Vec2{1.0, 0.0},
+                        ifcapi::bindings::Vec2{panel_width / 2.0, 0.0},
+                        false,
+                        {}});
             }
             return shape;
         };
@@ -181,7 +247,11 @@ express::Base create_window_2d_representation(
         frame_items.push_back(ifcapi::bindings::shape_builder_mirror(
             file,
             ifcapi::bindings::ShapeBuilderMirrorOptions{
-                frame_vertical, {1.0, 0.0}, {frame_width / 2.0, 0.0}, true, {}}));
+                frame_vertical,
+                ifcapi::bindings::Vec2{1.0, 0.0},
+                ifcapi::bindings::Vec2{frame_width / 2.0, 0.0},
+                true,
+                {}}));
         auto frame_horizontal = ifcapi::detail::polyline(
             file,
             {ifcapi::detail::v2(panel.frame_thickness, 0.0), ifcapi::detail::v2(frame_width - panel.frame_thickness, 0.0)},
@@ -189,10 +259,12 @@ express::Base create_window_2d_representation(
         frame_items.push_back(frame_horizontal);
         frame_items.push_back(ifcapi::bindings::shape_builder_translate(
             file,
-            ifcapi::bindings::ShapeBuilderTranslateOptions{frame_horizontal, {0.0, panel.frame_depth}, true}));
+            ifcapi::bindings::ShapeBuilderTranslateOptions{
+                frame_horizontal, ifcapi::bindings::Vec2{0.0, panel.frame_depth}, true}));
         frame_items.push_back(ifcapi::bindings::shape_builder_translate(
             file,
-            ifcapi::bindings::ShapeBuilderTranslateOptions{frame_horizontal, {0.0, panel.frame_depth / 2.0}, true}));
+            ifcapi::bindings::ShapeBuilderTranslateOptions{
+                frame_horizontal, ifcapi::bindings::Vec2{0.0, panel.frame_depth / 2.0}, true}));
         ifcapi::detail::translate_items(file, frame_items, frame_position);
         ifcapi::detail::append_items(cur_panel_items, frame_items);
 
@@ -226,15 +298,37 @@ express::Base geometry_add_window_representation(
     try {
         express::Base context_value = options.context;
         express::Base* context = &context_value;
-        const double overall_height = options.overall_height;
-        const double overall_width = options.overall_width;
-        const double glass_thickness = options.glass_thickness;
-        const auto lining = parse_lining_properties(options.lining_properties);
-        const auto panels = parse_panel_properties(options.panel_properties);
-        auto panel_schema = reversed_schema(options.panel_schema);
+        if (options.context.file() != file) {
+            throw std::invalid_argument("Window context must belong to the supplied file");
+        }
+        if (options.part_of_product && options.part_of_product->file() != file) {
+            throw std::invalid_argument("Window shape aspect product must belong to the supplied file");
+        }
+        const double unit_scale = options.unit_scale.value_or(unit_calculate_unit_scale(file, "LENGTHUNIT"));
+        require_finite(unit_scale, "unit scale");
+        if (unit_scale <= 0.0) throw std::invalid_argument("Window unit scale must be positive");
+        const double overall_height = options.overall_height.value_or(to_unit(0.9, unit_scale));
+        const double overall_width = options.overall_width.value_or(to_unit(0.6, unit_scale));
+        require_finite(overall_height, "overall height");
+        require_finite(overall_width, "overall width");
+        if (overall_height <= 0.0 || overall_width <= 0.0) {
+            throw std::invalid_argument("Window overall dimensions must be positive");
+        }
+        const double glass_thickness = to_unit(0.01, unit_scale);
+        const auto lining = resolve_lining_properties(options.lining_properties, unit_scale);
+        const auto panels = resolve_panel_properties(options.panel_properties, unit_scale);
+        auto panel_schema = ::panel_schema(
+            options.partition_type.value_or(GeometryWindowPartitionType::SINGLE_PANEL));
         express::Base* part_of_product = options.part_of_product ? const_cast<express::Base*>(&*options.part_of_product) : nullptr;
-        if (panel_schema.empty() || panel_schema[0].empty()) {
-            throw std::runtime_error("Invalid panel schema");
+        const int max_panel_index = *std::max_element(
+            panel_schema.front().begin(), panel_schema.front().end());
+        int required_panel_index = max_panel_index;
+        for (const auto& row : panel_schema) {
+            required_panel_index = std::max(
+                required_panel_index, *std::max_element(row.begin(), row.end()));
+        }
+        if (panels.size() <= static_cast<size_t>(required_panel_index)) {
+            throw std::invalid_argument("Window panel properties do not cover the partition layout");
         }
 
         const std::string target_view = ifcapi::detail::read_string_attr(ifcapi::detail::deref_or_empty(context), "TargetView");

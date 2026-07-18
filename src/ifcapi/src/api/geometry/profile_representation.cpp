@@ -58,13 +58,18 @@ express::Base geometry_add_profile_representation(
             throw std::runtime_error("Unable to determine profile extents");
         }
 
-        const auto location = cardinal_point_location(options.cardinal_point, extents[0], extents[1]);
-        const std::vector<double> default_z_axis = {0.0, 0.0, 1.0};
-        const std::vector<double> default_x_axis = {1.0, 0.0, 0.0};
-        const auto& z_axis = options.placement_z_axis.value_or(default_z_axis);
-        const auto& x_axis = options.placement_x_axis.value_or(default_x_axis);
+        const auto location = cardinal_point_location(
+            options.cardinal_point ? options.cardinal_point : std::optional<std::string>("mid-depth centre"),
+            extents[0],
+            extents[1]);
+        const auto z_axis = options.placement_z_axis.value_or(std::array<double, 3>{0.0, 0.0, 1.0});
+        const auto x_axis = options.placement_x_axis.value_or(std::array<double, 3>{1.0, 0.0, 0.0});
 
-        auto placement = ifcapi::detail::create_axis2_placement_3d(file, location, z_axis, x_axis);
+        auto placement = ifcapi::detail::create_axis2_placement_3d(
+            file,
+            location,
+            std::vector<double>(z_axis.begin(), z_axis.end()),
+            std::vector<double>(x_axis.begin(), x_axis.end()));
         auto extrusion = file->create(file->schema()->declaration_by_name("IfcExtrudedAreaSolid"));
         ifcapi::detail::write_ref_attr(extrusion, "SweptArea", options.profile);
         ifcapi::detail::write_ref_attr(extrusion, "Position", placement);
@@ -72,23 +77,18 @@ express::Base geometry_add_profile_representation(
             extrusion,
             "ExtrudedDirection",
             ifcapi::detail::create_direction(file, {0.0, 0.0, 1.0}));
-        ifcapi::detail::write_double_attr(extrusion, "Depth", options.depth / unit_scale);
+        ifcapi::detail::write_double_attr(extrusion, "Depth", options.depth.value_or(1.0) / unit_scale);
 
-        express::Base item = ifcapi::detail::apply_ordered_clippings(
-            file,
-            extrusion,
-            options.clipping_kinds,
-            options.clipping_locations,
-            options.clipping_normals,
-            options.clipping_entities,
-            unit_scale);
+        static const std::vector<GeometryClipping> empty_clippings;
+        const auto& clippings = options.clippings ? *options.clippings : empty_clippings;
+        express::Base item = ifcapi::detail::apply_ordered_clippings(file, extrusion, clippings, unit_scale);
 
         auto representation = file->create(file->schema()->declaration_by_name("IfcShapeRepresentation"));
         ifcapi::detail::write_ref_attr(representation, "ContextOfItems", options.context);
         ifcapi::detail::copy_string_attr_preserving_null(
             representation, "RepresentationIdentifier", options.context, "ContextIdentifier");
         ifcapi::detail::write_string_attr(
-            representation, "RepresentationType", options.clipping_kinds.empty() ? "SweptSolid" : "Clipping");
+            representation, "RepresentationType", clippings.empty() ? "SweptSolid" : "Clipping");
         ifcapi::detail::write_ref_aggregate(representation, "Items", {item});
         return representation;
     } catch (const std::exception& e) {

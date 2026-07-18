@@ -100,6 +100,7 @@ class DiscoveredCppType:
     template_args: tuple[DiscoveredCppType, ...]
     is_enum: bool
     enum_qualified_name: str | None
+    enum_values: tuple[tuple[str, int], ...]
     is_const: bool
     pointer_depth: int
     is_lvalue_reference: bool
@@ -130,6 +131,7 @@ class DiscoveredField:
     cpp_type: str
     cpp_type_ref: DiscoveredCppType
     doc: str | None = None
+    has_initializer: bool = False
 
 
 @dataclass(frozen=True)
@@ -862,6 +864,7 @@ def _extract_public_fields(
                 child.get("type", {}), index=index, current_scope=current_scope
             ),
             doc=_extract_documentation(child),
+            has_initializer=bool(child.get("hasInitializer", False)),
         )
     return fields
 
@@ -1473,6 +1476,15 @@ def _parse_discovered_cpp_type(
         else _resolved_enum(index, base_name, current_scope)
     )
     is_enum = resolved_enum is not None
+    enum_values = (
+        tuple(
+            (child.get("name", ""), int(child.get("value", 0)))
+            for child in resolved_enum.node.get("inner", ())
+            if child.get("kind") == "EnumConstantDecl" and child.get("name")
+        )
+        if resolved_enum is not None
+        else ()
+    )
     return DiscoveredCppType(
         spelling=spelling,
         desugared_spelling=desugared_spelling,
@@ -1490,6 +1502,7 @@ def _parse_discovered_cpp_type(
         enum_qualified_name=resolved_enum.qualified_name
         if resolved_enum is not None
         else None,
+        enum_values=enum_values,
         is_const=is_const,
         pointer_depth=pointer_depth,
         is_lvalue_reference=is_lvalue_reference,

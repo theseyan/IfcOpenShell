@@ -55,18 +55,15 @@ static void test_creation_queries_pi_and_csv(void) {
     ASSERT(ifcopenshell_alignment_get_curve(alignment, &curve) && curve == NULL, "nullable curve query returns null without geometry");
 
     double p0[] = {0.0, 0.0}, p1[] = {100.0, 0.0}, p2[] = {200.0, 100.0};
-    ifcopenshell_double_list_t point_rows[] = {{p0, 2, NULL}, {p1, 2, NULL}, {p2, 2, NULL}};
-    ifcopenshell_double_list_list_t points = {point_rows, 3, NULL};
-    double radius_values[] = {25.0};
-    ifcopenshell_double_list_t radii = {radius_values, 1, NULL};
-    ifcopenshell_double_list_list_t empty_points = {0};
-    ifcopenshell_double_list_t empty_values = {0};
+    ifcopenshell_double_list_t start_point = {p0, 2, NULL};
+    ifcopenshell_double_list_t intersection_point = {p1, 2, NULL};
+    ifcopenshell_double_list_t end_point = {p2, 2, NULL};
+    ifcopenshell_alignment_horizontal_pi_t intersection = {&intersection_point, 25.0};
+    ifcopenshell_alignment_horizontal_pi_list_t intersections = {&intersection, 1};
+    ifcopenshell_alignment_horizontal_pi_layout_t horizontal = {&start_point, &intersections, &end_point};
     ifcopenshell_alignment_create_by_pi_method_options_t pi = {0};
     pi.name = "PI alignment";
-    pi.horizontal_points = &points;
-    pi.radii = &radii;
-    pi.vertical_points = &empty_points;
-    pi.vertical_lengths = &empty_values;
+    pi.horizontal = &horizontal;
     ifcopenshell_instance_t *pi_alignment = NULL, *pi_layout = NULL, *first = NULL;
     ifcopenshell_parse_instance_list_t *segments = NULL, *mapped = NULL;
     ASSERT(ifcopenshell_alignment_create_by_pi_method(file, &pi, &pi_alignment), "PI authoring succeeds");
